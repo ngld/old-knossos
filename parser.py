@@ -1,8 +1,9 @@
 import logging
-import os.path
+import os
 import re
 import shutil
 import hashlib
+import patoolib
 import six
 from six.moves.urllib.request import urlopen
 
@@ -11,14 +12,49 @@ def get(link):
     try:
         logging.info('Retrieving "%s"...', link)
         result = urlopen(link)
-        if result.getcode() == 200:
+        if six.PY2:
+            code = result.getcode()
+        else:
+            code = result.status
+
+        if code == 200:
             return result
         else:
             return None
     except:
-        logging.exception('Failed to load "{0}"!'.format(link))
+        logging.exception('Failed to load "%s"!', link)
 
     return None
+
+
+def download(link, dest, hook, *hargs):
+    try:
+        logging.info('Downloading "%s"...', link)
+        result = urlopen(link)
+        if six.PY2:
+            size = int(result.info()['Content-Length'])
+            if result.getcode() != 200:
+                return False
+        else:
+            size = int(result.getheader('Content-Length'))
+            if result.status != 200:
+                return False
+
+        start = dest.tell()
+        while True:
+            chunk = result.read(10 * 1024)  # Read 10KB chunks
+            if not chunk:
+                break
+
+            dest.write(chunk)
+
+            if hook is not None:
+                hook(dest.tell() - start, size, *hargs)
+    except:
+        logging.exception('Failed to load "%s"!', link)
+        return False
+
+    return True
 
 
 def normpath(path):
@@ -26,8 +62,10 @@ def normpath(path):
 
 
 class EntryPoint(object):
-    # These URLs are taken from the Java installer. (src/com/fsoinstaller/main/FreeSpaceOpenInstaller.java)
-    # These point to the root files which contain the latest installer version and links to the mod configs.
+    # These URLs are taken from the Java installer.
+    # (in src/com/fsoinstaller/main/FreeSpaceOpenInstaller.java)
+    # These point to the root files which contain the latest installer version
+    # and links to the mod configs.
     HOME_URLS = ('http://www.fsoinstaller.com/files/installer/java/', 'http://scp.indiegames.us/fsoinstaller/')
 
     # Home files:
@@ -44,7 +82,13 @@ class EntryPoint(object):
 
             return None
         else:
-            return filter(lambda x: x is not None, [get(home + file) for home in cls.HOME_URLS])
+            results = []
+            for home in cls.HOME_URLS:
+                result = get(home + file)
+                if result is not None:
+                    results.append(result)
+
+            return results
 
     @classmethod
     def get_lines(cls, file):
@@ -58,26 +102,26 @@ class EntryPoint(object):
     @classmethod
     def get_version(cls):
         # version.txt contains 2 lines: The version and the link to the installer's jar.
-        return cls.get('version.txt').readlines()[0].strip()
+        return cls.get('version.txt').readlines()[0].decode('utf8').strip()
 
     @classmethod
     def get_basic_config(cls):
         # basic_config.txt contains one mod or installation option per line.
         # It contains all options which should be enabled for the "Basic" installation.
 
-        return [line.strip() for line in cls.get_lines('basic_config.txt')]
+        return [line.decode('utf8').strip() for line in cls.get_lines('basic_config.txt')]
 
     @classmethod
     def get_mods(cls):
         mods = []
 
         for link in cls.get_lines('filenames.txt'):
-            data = get(link.strip())
+            data = get(link.decode('utf8').strip())
 
             if data is None:
                 continue
             else:
-                mods.extend(ModParser().parse(data.read()))
+                mods.extend(ModParser().parse(data.read().decode('utf8')))
 
         return mods
 
@@ -123,7 +167,7 @@ class ModParser(Parser):
 
         if len(mods) < 1:
             logging.error('ModInfo: No mod found!')
-        
+
         return mods
 
     def _parse_sub(self):
@@ -133,20 +177,20 @@ class ModParser(Parser):
 
         while len(self._data) > 0:
             line = self._read()
-            
+
             if line == '':
                 continue
-            
+
             if line not in self.TOKENS:
                 if re.match('^[A-Z]+$', line):
                     logging.warning('ModInfo: Unexpected line "%s". Was expecting a token (%s).', line, ', '.join(self.TOKENS))
                 else:
-                    if len(mod.files) < 1:
+                    if len(mod.urls) < 1:
                         logging.error('ModInfo: Failed to add "%s" to "%s" because we have no URLs, yet!', line, mod.name)
                     else:
-                        logging.info('ModInfo: Adding "%s" to mod "%s".', line, mod.name)
-                        mod.files[-1][1].append(line)
-                
+                        logging.debug('ModInfo: Adding "%s" to mod "%s".', line, mod.name)
+                        mod.urls[-1][1].append(line)
+
                 continue
 
             if line == 'DESC':
@@ -181,7 +225,7 @@ class ModParser(Parser):
 
         return mod
 
-    
+
 class ModInfo(object):
     name = ''
     desc = ''
@@ -200,51 +244,80 @@ class ModInfo(object):
         self.urls = []
         self.hash = []
         self.submods = []
-    
-    def download(self, dest):
+
+    # progress(bytes_done, file_size, filename, cur_file, file_count)
+    def download(self, dest, sel_files=None, progress=None):
+        count = 0
+        num = 0
+        for u, files in self.urls:
+            if sel_files is not None:
+                files = files & sel_files
+            count += len(files)
+
         for urls, files in self.urls:
             if not isinstance(urls, list):
                 urls = [urls]
-            
+
+            if sel_files is not None:
+                files = files & sel_files
+
             for filename in files:
-                data = None
+                done = False
+
                 for link in urls:
-                    data = get(link + filename)
-                    if data is not None:
-                        with open(os.path.join(dest, filename), 'wb') as dl:
-                            shutil.copyfileobj(data, dl)
-                        
-                        break
-                
-                if data is None:
+                    with open(os.path.join(dest, filename), 'wb') as dl:
+                        if download(link + filename, dl, progress, filename, num, count):
+                            num += 1
+                            done = True
+                            break
+
+                if not done:
                     logging.error('Failed to download "%s"!', filename)
-    
+
     def check_hashes(self, path):
         alright = True
-        
+
         for algo, filepath, chksum in self.hash:
             mysum = hashlib.new(algo)
             with open(os.path.join(path, filepath), 'rb') as stream:
                 mysum.update(stream.read(10 * 1024))  # Read 10KB chunks
-            
+
             mysum = mysum.hexdigest()
             if mysum != chksum.lower():
                 alright = False
                 logging.warning('File "%s" has checksum "%s" but should have "%s"! Used algorithm: %s', filepath, mysum, chksum, algo)
-        
+
         return alright
-    
+
     def execute_del(self, path):
         for item in self.delete:
             logging.info('Deleting "%s"...', item)
-            
+
             item = os.path.join(path, item)
             if os.path.isdir(item):
                 shutil.rmtree(item)
             else:
                 os.unlink(item)
-    
+
     def execute_rename(self, path):
         for src, dest in self.rename:
             logging.info('Moving "%s" to "%s"...', src, dest)
             shutil.move(src, dest)
+
+    def extract(self, path):
+        for u, files in self.urls:
+            for item in files:
+                if patoolib.util.guess_mime(os.path.join(path, item))[0] is not None:
+                    patoolib.extract_archive(os.path.join(path, item), outdir=path)
+
+    def setup(self, fs2_path):
+        modpath = os.path.join(fs2_path, self.folder)
+
+        if not os.path.isdir(modpath):
+            os.mkdir(modpath)
+
+        self.execute_del(modpath)
+        self.execute_rename(modpath)
+        self.download(modpath)
+        self.check_hashes(modpath)
+        self.extract(modpath)
