@@ -5,6 +5,7 @@ import shutil
 import hashlib
 import patoolib
 import six
+import progress
 from six.moves.urllib.request import urlopen
 
 
@@ -27,29 +28,28 @@ def get(link):
     return None
 
 
-def download(link, dest, hook, *hargs):
+def download(link, dest):
     try:
         logging.info('Downloading "%s"...', link)
         result = urlopen(link)
         if six.PY2:
-            size = int(result.info()['Content-Length'])
+            size = float(result.info()['Content-Length'])
             if result.getcode() != 200:
                 return False
         else:
-            size = int(result.getheader('Content-Length'))
+            size = float(result.getheader('Content-Length'))
             if result.status != 200:
                 return False
 
         start = dest.tell()
         while True:
-            chunk = result.read(10 * 1024)  # Read 10KB chunks
+            chunk = result.read(50 * 1024)  # Read 50KB chunks
             if not chunk:
                 break
 
             dest.write(chunk)
 
-            if hook is not None:
-                hook(dest.tell() - start, size, *hargs)
+            progress.update((dest.tell() - start) / size, '%s: %d%%' % (os.path.basename(link), 100 * (dest.tell() - start) / size))
     except:
         logging.exception('Failed to load "%s"!', link)
         return False
@@ -209,9 +209,9 @@ class ModParser(Parser):
                 line = self._read()
                 parts = re.split('\s+', line)
                 if len(parts) == 3:
-                    mod.hash.append((parts[0], normpath(parts[1]), parts[2]))
+                    mod.hashes.append((parts[0], normpath(parts[1]), parts[2]))
                 else:
-                    mod.hash.append((line, normpath(self._read()), self._read()))
+                    mod.hashes.append((line, normpath(self._read()), self._read()))
             elif line == 'VERSION':
                 mod.version = self._read()
             elif line == 'NOTE':
@@ -233,7 +233,7 @@ class ModInfo(object):
     delete = None
     rename = None
     urls = None
-    hash = None
+    hashes = None
     version = ''
     note = ''
     submods = None
@@ -242,11 +242,10 @@ class ModInfo(object):
         self.delete = []
         self.rename = []
         self.urls = []
-        self.hash = []
+        self.hashes = []
         self.submods = []
 
-    # progress(bytes_done, file_size, filename, cur_file, file_count)
-    def download(self, dest, sel_files=None, progress=None):
+    def download(self, dest, sel_files=None):
         count = 0
         num = 0
         for u, files in self.urls:
@@ -266,10 +265,14 @@ class ModInfo(object):
 
                 for link in urls:
                     with open(os.path.join(dest, filename), 'wb') as dl:
-                        if download(link + filename, dl, progress, filename, num, count):
+                        progress.start_task(float(num) / count, 1.0 / count, '%d/%d: %%s' % (num + 1, count))
+                        if download(link + filename, dl):
                             num += 1
                             done = True
+                            progress.finish_task()
                             break
+                        
+                        progress.finish_task()
 
                 if not done:
                     logging.error('Failed to download "%s"!', filename)
@@ -277,7 +280,7 @@ class ModInfo(object):
     def check_hashes(self, path):
         alright = True
 
-        for algo, filepath, chksum in self.hash:
+        for algo, filepath, chksum in self.hashes:
             mysum = hashlib.new(algo)
             with open(os.path.join(path, filepath), 'rb') as stream:
                 mysum.update(stream.read(10 * 1024))  # Read 10KB chunks
@@ -307,7 +310,9 @@ class ModInfo(object):
     def extract(self, path):
         for u, files in self.urls:
             for item in files:
-                if patoolib.util.guess_mime(os.path.join(path, item))[0] is not None:
+                mime = patoolib.util.guess_mime(os.path.join(path, item))[0]
+                logging.info('%s is %s', item, mime)
+                if mime is not None and not mime.startswith('image/'):
                     patoolib.extract_archive(os.path.join(path, item), outdir=path)
 
     def setup(self, fs2_path):

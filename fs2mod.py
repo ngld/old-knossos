@@ -1,10 +1,12 @@
 import sys
 import os
 import tempfile
+import zipfile
 import hashlib
 from six.moves import configparser
 import patoolib
 import six
+import progress
 from parser import ModInfo
 
 if six.PY2:
@@ -22,7 +24,8 @@ class ModInfo2(ModInfo):
 
         self.contents = {}
         self.dependencies = []
-
+    
+    # hook(progress, text)
     def read(self, mod, hook=None):
         if not isinstance(mod, ModInfo):
             raise Exception('Invalid argument! Expected ModInfo!')
@@ -34,15 +37,25 @@ class ModInfo2(ModInfo):
         with tempfile.TemporaryDirectory() as tmpdir:
             # Download all archives...
             if hook is not None:
-                self.download(tmpdir, progress=lambda bd, fs, fn, cf, fc: hook(100 * (bd/fs + cf) / fc, '(%d/%d) %s' % (cf, fc, fn)))
+                self.download(tmpdir)
             else:
-                self.download(tmpdir, progress=lambda bd, fs, fn, cf, fc: sys.stdout.write('\r(%d/%d) %s %d%%' % (cf, fc, fn, 100 * (bd/fs + cf) / fc)))
-                sys.stdout.write('\n')
+                self.download(tmpdir)
 
             # Now check them...
             if not self.check_hashes(tmpdir):
                 return
-
+            
+            # Add hashes for downloaded files if they have none.
+            for urls, filename in self.urls:
+                found = False
+                for a, path, c in self.hashes:
+                    if filename == path:
+                        found = True
+                        break
+                
+                if not found:
+                    self.hashes.append(('MD5', filename, self._hash(os.path.join(tmpdir, filename))))
+            
             # ... and generate our content list.
             for url, files in self.urls:
                 for item in files:
@@ -55,7 +68,7 @@ class ModInfo2(ModInfo):
                         }
                     else:
                         self._inspect_archive(path, item)
-
+    
     def _inspect_archive(self, path, archive_name):
         with tempfile.TemporaryDirectory() as outdir:
             patoolib.extract_archive(path, outdir=outdir)
@@ -98,3 +111,64 @@ class ModInfo2(ModInfo):
                 h.update(chunk)
 
         return h.hexdigest()
+    
+    def generate_zip(self, path):
+        # download file
+        download = []
+        for urls, filename in self.urls:
+            chksum = ''
+            for a, name, csum in self.hashes:
+                if name == filename:
+                    chksum = csum
+                    break
+            
+            # Just pick the first URL for now...
+            download.append(chksum + ';' + filename + ';' + urls[0])
+        
+        # vp file
+        vp = []
+        for path, info in self.contents.iteritem():
+            vp.append(info['md5sum'] + ';' + path + ';' + info['archive'] if info['archive'] is not None else '')
+        
+        # update and dep files are problematic
+        # I have the folders a mod depends on but I can't provide a link to their fs2mod files...
+        # I'm just leaving the links out for now...
+        
+        # Now build the actual archive.
+        archive = zipfile.ZipFile(path, 'w')
+        archive.writestr('download', '\n'.join(download))
+        archive.writestr('vp', '\n'.join(vp))
+        archive.writestr('title', self.title)
+        archive.writestr('update', 'PLEASE CHANGE')
+        archive.writestr('dep', ';CHANGEME'.join(self.dependencies))
+        archive.close()
+
+
+def count_modtree(mods):
+    count = 0
+    for mod in mods:
+        count += count_modtree(mod.submods) + 1
+    
+    return count
+
+
+def convert_modtree(mods, complete=0):
+    mod2s = []
+    count = count_modtree(mods)
+    
+    for mod in mods:
+        m = ModInfo2()
+        progress.start_task(complete / count, 1 / count, 'Converting "%s": %%s' % mod.name)
+        m.read(mod)
+        progress.finish_task()
+        
+        mod2s.append(m)
+        complete += 1
+        
+        m.submods = convert_modtree(m.submods, complete)
+        for sm in m.submods:
+            sm.dependencies.append(m.folder)
+        
+        mod2s.extend(m.submods)
+    
+    return mod2s
