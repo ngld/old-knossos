@@ -46,15 +46,16 @@ class ModInfo2(ModInfo):
                 return
             
             # Add hashes for downloaded files if they have none.
-            for urls, filename in self.urls:
-                found = False
-                for a, path, c in self.hashes:
-                    if filename == path:
-                        found = True
-                        break
-                
-                if not found:
-                    self.hashes.append(('MD5', filename, self._hash(os.path.join(tmpdir, filename))))
+            for urls, files in self.urls:
+                for filename in files:
+                    found = False
+                    for a, path, c in self.hashes:
+                        if filename == path:
+                            found = True
+                            break
+                    
+                    if not found:
+                        self.hashes.append(('MD5', filename, self._hash(os.path.join(tmpdir, filename))))
             
             # ... and generate our content list.
             for url, files in self.urls:
@@ -115,19 +116,20 @@ class ModInfo2(ModInfo):
     def generate_zip(self, path):
         # download file
         download = []
-        for urls, filename in self.urls:
-            chksum = ''
-            for a, name, csum in self.hashes:
-                if name == filename:
-                    chksum = csum
-                    break
-            
-            # Just pick the first URL for now...
-            download.append(chksum + ';' + filename + ';' + urls[0])
+        for urls, files in self.urls:
+            for filename in files:
+                chksum = ''
+                for a, name, csum in self.hashes:
+                    if name == filename:
+                        chksum = csum
+                        break
+                
+                # Just pick the first URL for now...
+                download.append(chksum + ';' + filename + ';' + urls[0])
         
         # vp file
         vp = []
-        for path, info in self.contents.iteritem():
+        for path, info in self.contents.iteritems():
             vp.append(info['md5sum'] + ';' + path + ';' + info['archive'] if info['archive'] is not None else '')
         
         # update and dep files are problematic
@@ -172,3 +174,37 @@ def convert_modtree(mods, complete=0):
         mod2s.extend(m.submods)
     
     return mod2s
+
+
+def find_mod(mods, needle):
+    for mod in mods:
+        if mod.name == needle:
+            return mod
+        
+        res = find_mod(mod.submods, needle)
+        if res is not None:
+            return res
+    
+    return None
+
+
+def _resolve_dependencies(deps, modtree):
+    d_mods = []
+    
+    for mod in modtree:
+        for item in mod.contents:
+            path = mod.folder + '/' + item
+            if path in deps:
+                deps.remove(path)
+                d_mods.append(mod)
+                
+                if len(deps) == 0:
+                    return d_mods
+            
+        d_mods.extend(_resolve_dependencies(deps, mod.submods))
+    
+    return d_mods
+
+
+def resolve_dependencies(mod, modtree):
+    return _resolve_dependencies(mod.dependencies[:], modtree)
