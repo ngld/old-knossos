@@ -1,12 +1,11 @@
-import sys
 import os
 import tempfile
 import zipfile
 import hashlib
-from six.moves import configparser
 import patoolib
 import six
 import progress
+from six.moves import configparser
 from parser import ModInfo
 
 if six.PY2:
@@ -113,7 +112,7 @@ class ModInfo2(ModInfo):
 
         return h.hexdigest()
     
-    def generate_zip(self, path):
+    def generate_zip(self, zpath):
         # download file
         download = []
         for urls, files in self.urls:
@@ -137,7 +136,7 @@ class ModInfo2(ModInfo):
         # I'm just leaving the links out for now...
         
         # Now build the actual archive.
-        archive = zipfile.ZipFile(path, 'w')
+        archive = zipfile.ZipFile(zpath, 'w')
         archive.writestr('download', '\n'.join(download))
         archive.writestr('vp', '\n'.join(vp))
         archive.writestr('title', self.title)
