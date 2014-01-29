@@ -1,12 +1,16 @@
 import os.path
 import logging
 import pickle
+import progress
 from qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
+from ui.progress import Ui_Dialog as Ui_Progress
+from parser import EntryPoint
 
 logging.basicConfig(level=logging.INFO)
 
 main_win = None
+progress_win = None
 settings = {
     'fs2_path': None,
     'mods': None,
@@ -21,6 +25,28 @@ def init_ui(ui, win):
         setattr(win, attr, getattr(ui, attr))
 
     return win
+
+
+def show_progress():
+    global progress_win
+    
+    if progress_win is None:
+        progress_win = init_ui(Ui_Progress(), QtGui.QDialog())
+    
+    progress_win.show()
+    progress.reset()
+    
+    def update_prog(percent, text):
+        progress_win.progressBar.setValue(percent * 100)
+        progress_win.label.setText(text)
+    
+    progress.progress_callback = update_prog
+
+
+def hide_progress():
+    global progress_win
+    
+    progress_win.hide()
 
 
 # FS2 tab
@@ -46,8 +72,9 @@ def select_fs2_path():
 
 
 # Mod tab
-def update_list():
-    pass
+def update_list(fetch=True):
+    if fetch:
+        pass
 
 
 def select_mod():
@@ -68,8 +95,7 @@ def main():
     app = QtGui.QApplication([])
 
     main_win = init_ui(Ui_MainWindow(), QtGui.QMainWindow())
-    main_win.show()
-
+    
     # Try to load our settings.
     if os.path.exists(settings_path):
         try:
@@ -96,7 +122,10 @@ def main():
     main_win.uninstall_mod.clicked.connect(uninstall_mod)
     main_win.select_mod.clicked.connect(select_mod)
     main_win.update.clicked.connect(update_list)
-
+    
+    update_list(False)
+    
+    main_win.show()
     app.exec_()
 
 if __name__ == '__main__':

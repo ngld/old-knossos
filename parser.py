@@ -202,7 +202,7 @@ class ModParser(Parser):
             elif line == 'RENAME':
                 mod.rename.append((normpath(self._read()), normpath(self._read())))
             elif line == 'URL':
-                mod.urls.append((self._read(), []))
+                mod.urls.append(([self._read()], []))
             elif line == 'MULTIURL':
                 mod.urls.extend((self._read_until('ENDMULTI'), []))
             elif line == 'HASH':

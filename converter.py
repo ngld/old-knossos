@@ -5,6 +5,7 @@ import argparse
 import progress
 import logging
 import pickle
+import json
 import time
 import datetime
 from parser import EntryPoint
@@ -44,6 +45,11 @@ def main(args):
     convert_parser = subs.add_parser('convert', help='generates a fs2mod file for one of the listed mods')
     convert_parser.add_argument('modname')
     convert_parser.add_argument('outpath', help='path to the fs2mod file')
+    
+    json_parser = subs.add_parser('json', help='generate a json file for the passed mods')
+    json_parser.add_argument('modname', nargs='+')
+    json_parser.add_argument('-o', dest='outpath', help='output file', type=argparse.FileType('wb'), default=sys.stdout)
+    json_parser.add_argument('-p', dest='pretty', help='pretty print the output', action='store_true')
     
     args = parser.parse_args(args)
     
@@ -91,6 +97,26 @@ def main(args):
         mod.generate_zip(args.outpath)
         
         logging.info('Done!')
+    
+    elif args.action == 'json':
+        # Look for our mods
+        mods = []
+        for mod in args.modname:
+            m = find_mod(cache['mods'], mod)
+            if m is None:
+                logging.warning('Mod "%s" was not found!', mod)
+            else:
+                mods.append(m)
+        
+        if len(mods) < 1:
+            logging.error('No mods to convert!')
+            return
+        
+        mods = [mod.__dict__ for mod in convert_modtree(mods)]
+        if args.pretty:
+            json.dump(mods, args.outpath, indent=4)
+        else:
+            json.dump(mods, args.outpath, separators=(',', ':'))
 
 if __name__ == '__main__':
     main(sys.argv[1:])

@@ -5,7 +5,6 @@ import hashlib
 import patoolib
 import six
 import progress
-from six.moves import configparser
 from parser import ModInfo
 
 if six.PY2:
@@ -87,17 +86,19 @@ class ModInfo2(ModInfo):
                         self._inspect_modini(os.path.join(dpath, item))
 
     def _inspect_modini(self, path):
-        parser = configparser.ConfigParser()
-        parser.read(path)
-
-        if parser.has_option('multimod', 'secondarylist'):
-            deps = parser.get('multimod', 'secondarylist', raw=True).strip('; \t').split(',')
-        else:
-            deps = []
-
-        if parser.has_option('multimod', 'primarylist'):
-            deps += parser.get('multimod', 'primarylist', raw=True).strip('; \t').split(',')
-
+        deps = []
+        with open(path, 'r') as stream:
+            # Skip straight to the multimod section...
+            for line in stream:
+                if line.strip() != '[multimod]':
+                    continue
+            
+            # Now look for the primarylist and secondarylist lines...
+            for line in stream:
+                line = [p.strip() for p in line.split('=')]
+                if line[0] == 'primarylist' or line[0] == 'secondarylist':
+                    deps.extend(line[1].strip(';').split(','))
+        
         self.dependencies = deps
 
     def _hash(self, path):
@@ -115,7 +116,7 @@ class ModInfo2(ModInfo):
     def generate_zip(self, zpath):
         # download file
         download = []
-        for urls, files in self.urls:
+        for url, files in self.urls:
             for filename in files:
                 chksum = ''
                 for a, name, csum in self.hashes:
@@ -124,11 +125,18 @@ class ModInfo2(ModInfo):
                         break
                 
                 # Just pick the first URL for now...
-                download.append(chksum + ';' + filename + ';' + urls[0])
+                download.append(chksum + ';' + filename + ';' + url + filename)
         
         # vp file
         vp = []
         for path, info in self.contents.iteritems():
+            if self.folder == '/':
+                # Strip the mod folder off.
+                
+                path = path.split('/')
+                path.pop(0)
+                path = '/'.join('/')
+            
             vp.append(info['md5sum'] + ';' + path + ';' + info['archive'] if info['archive'] is not None else '')
         
         # update and dep files are problematic
@@ -139,7 +147,7 @@ class ModInfo2(ModInfo):
         archive = zipfile.ZipFile(zpath, 'w')
         archive.writestr('download', '\n'.join(download))
         archive.writestr('vp', '\n'.join(vp))
-        archive.writestr('title', self.title)
+        archive.writestr('title', self.name)
         archive.writestr('update', 'PLEASE CHANGE')
         archive.writestr('dep', ';CHANGEME'.join(self.dependencies))
         archive.close()
@@ -155,7 +163,7 @@ def count_modtree(mods):
 
 def convert_modtree(mods, complete=0):
     mod2s = []
-    count = count_modtree(mods)
+    count = len(mods)  # count_modtree(mods)
     
     for mod in mods:
         m = ModInfo2()
