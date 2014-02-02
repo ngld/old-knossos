@@ -240,6 +240,9 @@ class Task(QtCore.QObject):
         
         return total, prog
     
+    def is_done(self):
+        return self._done.is_set()
+    
     def get_results(self):
         if not self._done.is_set():
             self._done.wait()

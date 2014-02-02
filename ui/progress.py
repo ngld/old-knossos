@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui/progress.ui'
 #
-# Created: Wed Jan 29 04:18:00 2014
+# Created: Sun Feb  2 23:42:52 2014
 #      by: pyside-uic 0.2.15 running on qt 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from qt import QtCore, QtGui
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(400, 300)
+        Dialog.resize(594, 443)
         self.verticalLayout = QtGui.QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName("verticalLayout")
         self.label = QtGui.QLabel(Dialog)
@@ -22,6 +22,11 @@ class Ui_Dialog(object):
         self.progressBar.setProperty("value", 24)
         self.progressBar.setObjectName("progressBar")
         self.verticalLayout.addWidget(self.progressBar)
+        self.tasks = QtGui.QGroupBox(Dialog)
+        self.tasks.setObjectName("tasks")
+        self.verticalLayout_3 = QtGui.QVBoxLayout(self.tasks)
+        self.verticalLayout_3.setObjectName("verticalLayout_3")
+        self.verticalLayout.addWidget(self.tasks)
         self.textEdit = QtGui.QTextEdit(Dialog)
         self.textEdit.setReadOnly(True)
         self.textEdit.setObjectName("textEdit")
@@ -33,4 +38,5 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(QtGui.QApplication.translate("Dialog", "Working...", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("Dialog", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
+        self.tasks.setTitle(QtGui.QApplication.translate("Dialog", "Tasks", None, QtGui.QApplication.UnicodeUTF8))
 

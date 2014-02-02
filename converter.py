@@ -2,13 +2,14 @@ from __future__ import print_function
 import sys
 import os
 import argparse
-import progress
 import logging
 import pickle
+import hashlib
 import json
 import time
 import datetime
 import signal
+import progress
 from parser import EntryPoint
 from fs2mod import convert_modtree, find_mod, ModInfo2
 from qt import QtCore, QtGui
@@ -130,7 +131,11 @@ def main(args):
                 cur = mod
                 while cur.parent is not None:
                     cur = cur.parent
-                    result.dependencies.append(cur.folder)
+                    if cur.folder != '':
+                        result.dependencies.append(cur.folder)
+                
+                if mod.parent is not None:
+                    mod.parent = mod.parent.name
                 
                 for i, sub in enumerate(mod.submods):
                     mod.submods[i] = sub.name
@@ -167,8 +172,26 @@ def main(args):
         sys.stdout.write(out.getvalue())
         
         mods = {}
+        if hasattr(args.outpath, 'name'):
+            outpath = args.outpath.name
+        else:
+            outpath = None
+        
         for mod in task.get_results():
             mods[mod.name] = mod.__dict__
+            
+            if mod.logo is not None:
+                if outpath is None:
+                    del mods[mod.name]['logo']
+                    logging.warning('Skipping logo for "%s" because the output is stdout.', mod.name)
+                else:
+                    dest = outpath + '.' + hashlib.md5(mod.logo).hexdigest() + '.jpg'
+                    with open(dest, 'wb') as stream:
+                        stream.write(mod.logo)
+                    
+                    mods[mod.name]['logo'] = os.path.basename(dest)
+        
+        print(mods)
         
         if args.pretty:
             json.dump(mods, args.outpath, indent=4)

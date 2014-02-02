@@ -4,19 +4,46 @@ import tempfile
 import zipfile
 import hashlib
 import patoolib
+import subprocess
+import base64
 import six
 import progress
 from parser import ModInfo
 
 if six.PY2:
-    from py2_compat import TemporaryDirectory as T
-    tempfile.TemporaryDirectory = T
-    del T
+    import py2_compat
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
+
+def convert_img(path, outfmt):
+    fd, dest = tempfile.mkstemp('.' + outfmt)
+    os.close(fd)
+    if Image is not None:
+        img = Image.open(path)
+        img.save(dest)
+        
+        return dest
+    else:
+        try:
+            subprocess.check_call(['which', 'convert'])
+        except subprocess.CalledProcessError:
+            # Well, this failed, too. Is there any other way to convert an image?
+            # For now I'll just abort.
+            return None
+        
+        logging.info(repr([path, dest]))
+        subprocess.check_call(['convert', path, dest])
+        return dest
 
 
 class ModInfo2(ModInfo):
     contents = None
     dependencies = None
+    logo = None
 
     def __init__(self, values=None):
         super(ModInfo2, self).__init__()
@@ -97,10 +124,29 @@ class ModInfo2(ModInfo):
     def _inspect_modini(self, path):
         deps = []
         with open(path, 'r') as stream:
-            # Skip straight to the multimod section...
+            for line in stream:
+                if line.strip() == '[launcher]':
+                    break
+            
+            # Look for the logo and info text
             for line in stream:
                 if line.strip() == '[multimod]':
                     break
+                
+                line = [p.strip(' ;\n\r') for p in line.split('=')]
+                if line[0] == 'image255x112':
+                    imgpath = os.path.join(os.path.dirname(path), line[1])
+                    if os.path.isfile(imgpath):
+                        dest = convert_img(imgpath, 'jpg')
+                        
+                        if dest is not None:
+                            with open(dest, 'rb') as img:
+                                self.logo = img.read()
+                            
+                            os.unlink(dest)
+                elif line[0] == 'infotext':
+                    if self.desc == '':
+                        self.desc = line[1]
             
             # Now look for the primarylist and secondarylist lines...
             for line in stream:
@@ -192,6 +238,31 @@ class ModInfo2(ModInfo):
             checked += 1
         
         return archives, success, count
+    
+    def remove(self, path):
+        count = len(self.contents)
+        checked = 0
+        folders = set()
+        
+        for item, info in self.contents.items():
+            mypath = os.path.join(path, item)
+            if os.path.isfile(mypath):
+                progress.update(checked / count, 'Removing "%s"...' % (item))
+                
+                os.unlink(mypath)
+                folders.add(os.path.dirname(mypath))
+            
+            checked += 1
+        
+        # Sort the folders so that the longest path aka deepest folder comes first.
+        folders = sorted(folders, key=len, reverse=True)
+        
+        for path in folders:
+            # Only remove empty folders...
+            if os.path.isdir(path) and len(os.listdir(path)) == 0:
+                os.rmdir(path)
+            else:
+                logging.info('Skipped "%s" because it still contains files.', path)
 
 
 def count_modtree(mods):
@@ -217,7 +288,9 @@ def convert_modtree(mods, complete=0):
         
         m.submods = convert_modtree(m.submods, complete)
         for i, sm in enumerate(m.submods):
-            sm.dependencies.append(m.folder)
+            if m.folder != '':
+                sm.dependencies.append(m.folder)
+            
             mod2s.append(sm)
             m.submods[i] = sm.name
     

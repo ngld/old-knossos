@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>594</width>
+    <height>443</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,6 +26,14 @@
      <property name="value">
       <number>24</number>
      </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="tasks">
+     <property name="title">
+      <string>Tasks</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3"/>
     </widget>
    </item>
    <item>

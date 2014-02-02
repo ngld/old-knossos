@@ -83,3 +83,5 @@ class TemporaryDirectory(object):
             self._rmdir(path)
         except self._os_error:
             pass
+
+tempfile.TemporaryDirectory = TemporaryDirectory

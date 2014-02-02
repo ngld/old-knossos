@@ -2,11 +2,15 @@ import logging
 import os
 import re
 import shutil
+import tempfile
 import hashlib
 import patoolib
 import six
 import progress
 from util import get, download, normpath
+
+if six.PY2:
+    import py2_compat
 
 
 class EntryPoint(object):
@@ -291,7 +295,23 @@ class ModInfo(object):
                 mypath = os.path.join(path, item)
                 if os.path.exists(mypath) and self.is_archive(mypath):
                     progress.update(i / count, 'Extracting "%s"...' % item)
-                    patoolib.extract_archive(mypath, outdir=path)
+                    
+                    with tempfile.TemporaryDirectory() as tempdir:
+                        # Extract to a temporary directory and then move the result
+                        # to final destination to avoid "Do you want to overwrite?" questions.
+                        
+                        patoolib.extract_archive(mypath, outdir=tempdir)
+                        
+                        for item in os.listdir(tempdir):
+                            dest = os.path.join(path, item)
+                            if os.path.exists(dest):
+                                # "Overwrite"
+                                if os.path.isdir(dest):
+                                    shutil.rmtree(dest)
+                                else:
+                                    os.unlink(dest)
+                            
+                            shutil.move(os.path.join(tempdir, item), path)
                 
                 i += 1
     
@@ -306,7 +326,7 @@ class ModInfo(object):
                 mypath = os.path.join(path, item)
                 if os.path.exists(mypath) and self.is_archive(mypath):
                     # Only remove the archives...
-                    progress.update(i / count, 'Removing "%s"...')
+                    progress.update(i / count, 'Removing "%s"...' % item)
                     os.unlink(mypath)
                 
                 i += 1
@@ -317,7 +337,7 @@ class ModInfo(object):
         if not os.path.isdir(modpath):
             os.mkdir(modpath)
         
-        progress.start_task(0, 1/6.0)
+        progress.start_task(0, 1/6.0, 'Downloading: %s')
         self.execute_del(modpath)
         progress.finish_task()
         
