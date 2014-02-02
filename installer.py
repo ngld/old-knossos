@@ -1,22 +1,111 @@
 import os.path
 import logging
 import pickle
+import tempfile
+import json
 import progress
 from qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.progress import Ui_Dialog as Ui_Progress
-from parser import EntryPoint
+#from parser import EntryPoint
+from fs2mod import find_mod, resolve_dependencies
+from util import get
 
 logging.basicConfig(level=logging.INFO)
 
 main_win = None
 progress_win = None
+pmaster = progress.Master()
 settings = {
     'fs2_path': None,
     'mods': None,
     'installed_mods': None
 }
 settings_path = os.path.expanduser('~/.fs2mod-py/settings.pick')
+
+
+class FetchTask(progress.Task):
+    def __init__(self):
+        super(FetchTask, self).__init__()
+        
+        self.done.connect(self.finish)
+        self.add_work(['http://dev.tproxy.de/fs2/repo.txt'])
+    
+    def work(self, link):
+        data = get(link)
+        
+        try:
+            data = json.load(data)
+        except:
+            logging.exception('Failed to decode "%s"!', link)
+            return
+        
+        if '#include' in data:
+            self.add_work(data['#include'])
+            del data['#include']
+        
+        self.post(data)
+    
+    def finish(self):
+        global settings
+        
+        settings['mods'] = {}
+        
+        for part in self.get_results():
+            settings['mods'].update(part)
+        
+        update_list()
+
+
+class RepairTask(progress.Task):
+    _mod = None
+    
+    def __init__(self, mod, archives):
+        super(RepairTask, self).__init__()
+        
+        self._mod = mod
+        self.add_work(archives)
+    
+    def work(self, archive):
+        progress.start_task(0, 2/3.0)
+        
+        modpath = os.path.join(settings['fs2_path'], self._mod.folder)
+        self._mod.download(modpath, set([archive]))
+        
+        progress.finish_task()
+        progress.start_task(2.0/3.0, 0.5/3.0)
+        
+        self._mod.extract(modpath)
+        progress.finish_task()
+        
+        progress.start_task(2.5/3.0, 0.5/3.0)
+        self._mod.cleanup(modpath)
+        progress.finish_task()
+
+
+class InstallTask(progress.Task):
+    def __init__(self, modname):
+        super(InstallTask, self).__init__()
+        
+        self.done.connect(self.finish)
+        self.add_work([find_mod(settings['mods'], modname)])
+    
+    def work(self, mod):
+        self.add_work(resolve_dependencies(mod, settings['mods']))
+        
+        if not os.path.exists(os.path.join(settings['fs2_path'], mod.folder)):
+            mod.setup(settings['fs2_path'])
+        else:
+            progress.start_task(0, 1)
+            archives, s, c = mod.check_files(settings['fs2_path'])
+            progress.finish_task()
+            
+            if len(archives) > 0:
+                dltask = RepairTask(mod, archives)
+                self._master.add_task(dltask)
+    
+    def finish(self):
+        update_list()
 
 
 def init_ui(ui, win):
@@ -40,13 +129,31 @@ def show_progress():
         progress_win.progressBar.setValue(percent * 100)
         progress_win.label.setText(text)
     
-    progress.progress_callback = update_prog
+    progress.set_callback(update_prog)
 
 
 def hide_progress():
     global progress_win
     
     progress_win.hide()
+
+
+def update_task_progress(task):
+    total, items = task.get_progress()
+    text = []
+    for item in items.values():
+        text.append('%3d%% %s' % (item[0] * 100, item[1]))
+    
+    progress.update(total, '\n'.join(text))
+
+
+def run_task(task):
+    global running_task
+    
+    show_progress()
+    task.done.connect(hide_progress)
+    task.progress.connect(lambda: update_task_progress(task))
+    pmaster.add_task(task)
 
 
 # FS2 tab
@@ -72,9 +179,25 @@ def select_fs2_path():
 
 
 # Mod tab
-def update_list(fetch=True):
-    if fetch:
-        pass
+def fetch_list():
+    run_task(FetchTask())
+
+
+def update_list():
+    global settings, main_win
+    
+    table = main_win.tableWidget
+    table.setRowCount(len(settings['mods']))
+    
+    row = 0
+    for name, mod in settings['mods'].iteritems():
+        item = QtGui.QTableWidgetItem(name)
+        item.setFlags(QtCore.Qt.ItemIsUserCheckable)
+        table.setItem(row, 0, item)
+        table.setItem(row, 1, QtGui.QTableWidgetItem(mod.version))
+        table.setItem(row, 2, QtGui.QTableWidgetItem('?'))
+        
+        row += 1
 
 
 def select_mod():
@@ -121,9 +244,10 @@ def main():
     main_win.install_mod.clicked.connect(install_mod)
     main_win.uninstall_mod.clicked.connect(uninstall_mod)
     main_win.select_mod.clicked.connect(select_mod)
-    main_win.update.clicked.connect(update_list)
+    main_win.update.clicked.connect(fetch_list)
     
-    update_list(False)
+    pmaster.start_workers(10)
+    update_list()
     
     main_win.show()
     app.exec_()

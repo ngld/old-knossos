@@ -6,59 +6,7 @@ import hashlib
 import patoolib
 import six
 import progress
-from six.moves.urllib.request import urlopen
-
-
-def get(link):
-    try:
-        logging.info('Retrieving "%s"...', link)
-        result = urlopen(link)
-        if six.PY2:
-            code = result.getcode()
-        else:
-            code = result.status
-
-        if code == 200:
-            return result
-        else:
-            return None
-    except:
-        logging.exception('Failed to load "%s"!', link)
-
-    return None
-
-
-def download(link, dest):
-    try:
-        logging.info('Downloading "%s"...', link)
-        result = urlopen(link)
-        if six.PY2:
-            size = float(result.info()['Content-Length'])
-            if result.getcode() != 200:
-                return False
-        else:
-            size = float(result.getheader('Content-Length'))
-            if result.status != 200:
-                return False
-
-        start = dest.tell()
-        while True:
-            chunk = result.read(50 * 1024)  # Read 50KB chunks
-            if not chunk:
-                break
-
-            dest.write(chunk)
-
-            progress.update((dest.tell() - start) / size, '%s: %d%%' % (os.path.basename(link), 100 * (dest.tell() - start) / size))
-    except:
-        logging.exception('Failed to load "%s"!', link)
-        return False
-
-    return True
-
-
-def normpath(path):
-    return os.path.normcase(path.replace('\\', '/'))
+from util import get, download, normpath
 
 
 class EntryPoint(object):
@@ -276,15 +224,26 @@ class ModInfo(object):
 
                 if not done:
                     logging.error('Failed to download "%s"!', filename)
-
+    
+    def is_archive(self, filename):
+        try:
+            patoolib.get_archive_format(filename)
+            return True
+        except patoolib.util.PatoolError:
+            return False
+    
     def check_hashes(self, path):
         alright = True
 
         for algo, filepath, chksum in self.hashes:
-            mysum = hashlib.new(algo)
-            with open(os.path.join(path, filepath), 'rb') as stream:
-                mysum.update(stream.read(10 * 1024))  # Read 10KB chunks
-
+            try:
+                mysum = hashlib.new(algo)
+                with open(os.path.join(path, filepath), 'rb') as stream:
+                    mysum.update(stream.read(10 * 1024))  # Read 10KB chunks
+            except:
+                logging.exception('Failed to computed checksum for "%s" with algorithm "%s"!', filepath, algo)
+                continue
+            
             mysum = mysum.hexdigest()
             if mysum != chksum.lower():
                 alright = False
@@ -293,8 +252,11 @@ class ModInfo(object):
         return alright
 
     def execute_del(self, path):
-        for item in self.delete:
+        count = float(len(self.delete))
+        
+        for i, item in enumerate(self.delete):
             logging.info('Deleting "%s"...', item)
+            progress.update(i / count, 'Deleting "%s"...' % item)
 
             item = os.path.join(path, item)
             if os.path.isdir(item):
@@ -303,26 +265,73 @@ class ModInfo(object):
                 os.unlink(item)
 
     def execute_rename(self, path):
+        count = float(len(self.rename))
+        i = 0
+        
         for src, dest in self.rename:
             logging.info('Moving "%s" to "%s"...', src, dest)
+            progress.update(i / count, 'Moving "%s" to "%s"...' % (src, dest))
+            
             shutil.move(src, dest)
+            i += 1
 
     def extract(self, path):
+        count = 0.0
+        for u, files in self.urls:
+            count += len(files)
+        
+        i = 0
         for u, files in self.urls:
             for item in files:
-                mime = patoolib.util.guess_mime(os.path.join(path, item))[0]
-                logging.info('%s is %s', item, mime)
-                if mime is not None and not mime.startswith('image/'):
-                    patoolib.extract_archive(os.path.join(path, item), outdir=path)
+                mypath = os.path.join(path, item)
+                if os.path.exists(mypath) and self.is_archive(mypath):
+                    progress.update(i / count, 'Extracting "%s"...' % item)
+                    patoolib.extract_archive(mypath, outdir=path)
+                
+                i += 1
+    
+    def cleanup(self, path):
+        count = 0.0
+        for u, files in self.urls:
+            count += len(files)
+        
+        i = 0
+        for u, files in self.urls:
+            for item in files:
+                mypath = os.path.join(path, item)
+                if os.path.exists(mypath) and self.is_archive(mypath):
+                    # Only remove the archives...
+                    progress.update(i / count, 'Removing "%s"...')
+                    os.unlink(mypath)
+                
+                i += 1
 
     def setup(self, fs2_path):
         modpath = os.path.join(fs2_path, self.folder)
 
         if not os.path.isdir(modpath):
             os.mkdir(modpath)
-
+        
+        progress.start_task(0, 1/6.0)
         self.execute_del(modpath)
+        progress.finish_task()
+        
+        progress.start_task(1/6.0, 1/6.0)
         self.execute_rename(modpath)
+        progress.finish_task()
+        
+        progress.start_task(2/6.0, 1/6.0)
         self.download(modpath)
+        progress.finish_task()
+        
+        progress.start_task(3/6.0, 1/6.0)
         self.check_hashes(modpath)
+        progress.finish_task()
+        
+        progress.start_task(4/6.0, 1/6.0)
         self.extract(modpath)
+        progress.finish_task()
+        
+        progress.start_task(5/6.0, 1/6.0)
+        self.cleanup(modpath)
+        progress.finish_task()

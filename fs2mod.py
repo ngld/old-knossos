@@ -1,4 +1,5 @@
 import os
+import logging
 import tempfile
 import zipfile
 import hashlib
@@ -59,7 +60,8 @@ class ModInfo2(ModInfo):
             for url, files in self.urls:
                 for item in files:
                     path = os.path.join(tmpdir, item)
-                    if patoolib.util.guess_mime(path)[0] is None:
+                    
+                    if not self.is_archive(os.path.join(path, item)):
                         # This is a simple file.
                         self.contents[item] = {
                             'archive': None,
@@ -90,14 +92,14 @@ class ModInfo2(ModInfo):
         with open(path, 'r') as stream:
             # Skip straight to the multimod section...
             for line in stream:
-                if line.strip() != '[multimod]':
-                    continue
+                if line.strip() == '[multimod]':
+                    break
             
             # Now look for the primarylist and secondarylist lines...
             for line in stream:
                 line = [p.strip() for p in line.split('=')]
                 if line[0] == 'primarylist' or line[0] == 'secondarylist':
-                    deps.extend(line[1].strip(';').split(','))
+                    deps.extend(filter(lambda x: x != '', line[1].strip(';').split(',')))
         
         self.dependencies = deps
 
@@ -151,6 +153,38 @@ class ModInfo2(ModInfo):
         archive.writestr('update', 'PLEASE CHANGE')
         archive.writestr('dep', ';CHANGEME'.join(self.dependencies))
         archive.close()
+    
+    def check_files(self, path):
+        count = len(self.contents)
+        success = 0
+        checked = 0
+        
+        archives = set()
+        
+        for item, info in self.contents.iteritems():
+            mypath = os.path.join(path, item)
+            fix = False
+            if os.path.isfile(mypath):
+                progress.update(checked / count, 'Checking "%s"...' % (item))
+                
+                if self._hash(mypath) == info['md5sum']:
+                    success += 1
+                else:
+                    logging.warning('File "%s" is corrupted. (checksum mismatch)', item)
+                    fix = True
+            else:
+                logging.warning('File "%s" is missing.', item)
+                fix = True
+            
+            if fix:
+                if info['archive'] is None:
+                    archives.add(os.path.basename(item))
+                else:
+                    archives.add(info['archive'])
+            
+            checked += 1
+        
+        return archives, success, count
 
 
 def count_modtree(mods):
@@ -175,10 +209,10 @@ def convert_modtree(mods, complete=0):
         complete += 1
         
         m.submods = convert_modtree(m.submods, complete)
-        for sm in m.submods:
+        for i, sm in enumerate(m.submods):
             sm.dependencies.append(m.folder)
-        
-        mod2s.extend(m.submods)
+            mod2s.append(sm)
+            m.submods[i] = sm.name
     
     return mod2s
 

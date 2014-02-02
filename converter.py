@@ -8,8 +8,11 @@ import pickle
 import json
 import time
 import datetime
+import signal
 from parser import EntryPoint
 from fs2mod import convert_modtree, find_mod
+from qt import QtCore, QtGui
+from six import StringIO
 
 
 def show_progress(prog, text):
@@ -32,9 +35,10 @@ def list_modtree(mods, level=0):
 def main(args):
     global cache, cache_path
     
-    progress.progress_callback = show_progress
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
+    
+    progress.set_callback(show_progress)
     progress.reset()
-    logging.basicConfig(level=logging.INFO)
     
     parser = argparse.ArgumentParser()
     subs = parser.add_subparsers(dest='action')
@@ -47,8 +51,8 @@ def main(args):
     convert_parser.add_argument('outpath', help='path to the fs2mod file')
     
     json_parser = subs.add_parser('json', help='generate a json file for the passed mods')
-    json_parser.add_argument('modname', nargs='+')
-    json_parser.add_argument('-o', dest='outpath', help='output file', type=argparse.FileType('wb'), default=sys.stdout)
+    json_parser.add_argument('modname', nargs='+', help='several names of mods or just "all"')
+    json_parser.add_argument('-o', dest='outpath', help='output file', type=argparse.FileType('w'), default=sys.stdout)
     json_parser.add_argument('-p', dest='pretty', help='pretty print the output', action='store_true')
     
     args = parser.parse_args(args)
@@ -100,19 +104,61 @@ def main(args):
     
     elif args.action == 'json':
         # Look for our mods
-        mods = []
-        for mod in args.modname:
-            m = find_mod(cache['mods'], mod)
-            if m is None:
-                logging.warning('Mod "%s" was not found!', mod)
-            else:
-                mods.append(m)
+        
+        if 'all' in args.modname:
+            mods = cache['mods']
+        else:
+            mods = []
+            for mod in args.modname:
+                m = find_mod(cache['mods'], mod)
+                if m is None:
+                    logging.warning('Mod "%s" was not found!', mod)
+                else:
+                    mods.append(m)
         
         if len(mods) < 1:
             logging.error('No mods to convert!')
             return
         
-        mods = [mod.__dict__ for mod in convert_modtree(mods)]
+        app = QtCore.QCoreApplication([])
+        
+        class ConvertTask(progress.Task):
+            def work(self, mod):
+                logging.basicConfig(level=logging.DEBUG)
+                self.post([m.__dict__ for m in convert_modtree([mod])])
+        
+        master = progress.Master()
+        task = ConvertTask()
+        task.add_work(mods)
+        
+        def update_progress():
+            total, items = task.get_progress()
+            text = []
+            for item in items.values():
+                text.append('%3d%% %s' % (item[0] * 100, item[1]))
+            
+            progress.update(total, '\n'.join(text))
+        
+        def finish():
+            app.quit()
+        
+        task.progress.connect(update_progress)
+        task.done.connect(finish)
+        
+        def core():
+            signal.signal(signal.SIGINT, lambda a, b: sys.exit(2))
+            master.start_workers(5)
+            master.add_task(task)
+            app.exec_()
+        
+        out = StringIO()
+        progress.init_curses(core, out)
+        sys.stdout.write(out.getvalue())
+        
+        mods = []
+        for part in task.get_results():
+            mods.extend(part)
+        
         if args.pretty:
             json.dump(mods, args.outpath, indent=4)
         else:
