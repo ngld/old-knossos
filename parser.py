@@ -145,6 +145,8 @@ class ModParser(Parser):
                 mod.desc = '\n'.join(self._read_until('ENDDESC'))
             elif line == 'FOLDER':
                 mod.folder = normpath(self._read())
+                if mod.folder == '/':
+                    mod.folder = ''
             elif line == 'DELETE':
                 mod.delete.append(normpath(self._read()))
             elif line == 'RENAME':
@@ -165,7 +167,9 @@ class ModParser(Parser):
             elif line == 'NOTE':
                 mod.note = '\n'.join(self._read_until('ENDNOTE'))
             elif line == 'NAME':
-                mod.submods.append(self._parse_sub())
+                sub = self._parse_sub()
+                sub.parent = mod
+                mod.submods.append(sub)
             elif line == 'END':
                 break
             else:
@@ -185,6 +189,7 @@ class ModInfo(object):
     version = ''
     note = ''
     submods = None
+    parent = None
 
     def __init__(self):
         self.delete = []
@@ -198,7 +203,7 @@ class ModInfo(object):
         num = 0
         for u, files in self.urls:
             if sel_files is not None:
-                files = files & sel_files
+                files = set(files) & sel_files
             count += len(files)
 
         for urls, files in self.urls:
@@ -206,7 +211,7 @@ class ModInfo(object):
                 urls = [urls]
 
             if sel_files is not None:
-                files = files & sel_files
+                files = set(files) & sel_files
 
             for filename in files:
                 done = False

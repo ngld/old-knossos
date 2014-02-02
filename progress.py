@@ -191,6 +191,9 @@ class Task(QtCore.QObject):
     
     def _deinit(self):
         self._running -= 1
+        with self._progress_lock:
+            self._progress[threading.get_ident()] = (1, 'Done')
+        
         done = False
         
         if self._running == 0:

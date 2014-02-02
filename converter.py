@@ -10,7 +10,7 @@ import time
 import datetime
 import signal
 from parser import EntryPoint
-from fs2mod import convert_modtree, find_mod
+from fs2mod import convert_modtree, find_mod, ModInfo2
 from qt import QtCore, QtGui
 from six import StringIO
 
@@ -37,8 +37,8 @@ def main(args):
     
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
     
-    progress.set_callback(show_progress)
     progress.reset()
+    progress.set_callback(show_progress)
     
     parser = argparse.ArgumentParser()
     subs = parser.add_subparsers(dest='action')
@@ -124,8 +124,19 @@ def main(args):
         
         class ConvertTask(progress.Task):
             def work(self, mod):
-                logging.basicConfig(level=logging.DEBUG)
-                self.post([m.__dict__ for m in convert_modtree([mod])])
+                self.add_work(mod.submods)
+                
+                result = ModInfo2()
+                cur = mod
+                while cur.parent is not None:
+                    cur = cur.parent
+                    result.dependencies.append(cur.folder)
+                
+                for i, sub in enumerate(mod.submods):
+                    mod.submods[i] = sub.name
+                
+                result.read(mod)
+                self.post(result)
         
         master = progress.Master()
         task = ConvertTask()
@@ -155,9 +166,9 @@ def main(args):
         progress.init_curses(core, out)
         sys.stdout.write(out.getvalue())
         
-        mods = []
-        for part in task.get_results():
-            mods.extend(part)
+        mods = {}
+        for mod in task.get_results():
+            mods[mod.name] = mod.__dict__
         
         if args.pretty:
             json.dump(mods, args.outpath, indent=4)

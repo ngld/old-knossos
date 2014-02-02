@@ -18,11 +18,18 @@ class ModInfo2(ModInfo):
     contents = None
     dependencies = None
 
-    def __init__(self):
+    def __init__(self, values=None):
         super(ModInfo2, self).__init__()
 
         self.contents = {}
         self.dependencies = []
+        
+        if values is not None:
+            for key, val in values.items():
+                if hasattr(self, key):
+                    setattr(self, key, val)
+        
+        self.folder = self.folder.lstrip('/')
     
     # hook(progress, text)
     def read(self, mod, hook=None):
@@ -131,7 +138,7 @@ class ModInfo2(ModInfo):
         
         # vp file
         vp = []
-        for path, info in self.contents.iteritems():
+        for path, info in self.contents.items():
             if self.folder == '/':
                 # Strip the mod folder off.
                 
@@ -161,7 +168,7 @@ class ModInfo2(ModInfo):
         
         archives = set()
         
-        for item, info in self.contents.iteritems():
+        for item, info in self.contents.items():
             mypath = os.path.join(path, item)
             fix = False
             if os.path.isfile(mypath):
