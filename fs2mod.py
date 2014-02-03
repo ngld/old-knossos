@@ -3,12 +3,11 @@ import logging
 import tempfile
 import zipfile
 import hashlib
-import patoolib
 import subprocess
 import six
 import progress
 from fso_parser import ModInfo
-from util import ipath
+from util import ipath, is_archive, extract_archive
 
 if six.PY2:
     import py2_compat
@@ -29,7 +28,7 @@ def convert_img(path, outfmt):
         return dest
     else:
         try:
-            subprocess.check_call(['which', 'convert'])
+            subprocess.check_call(['which', 'convert'], stdout=subprocess.DEVNULL)
         except subprocess.CalledProcessError:
             # Well, this failed, too. Is there any other way to convert an image?
             # For now I'll just abort.
@@ -95,7 +94,7 @@ class ModInfo2(ModInfo):
                 for item in files:
                     path = os.path.join(tmpdir, item)
                     
-                    if not self.is_archive(os.path.join(path, item)):
+                    if not is_archive(os.path.join(path, item)):
                         # This is a simple file.
                         self.contents[item] = {
                             'archive': None,
@@ -106,7 +105,7 @@ class ModInfo2(ModInfo):
     
     def _inspect_archive(self, path, archive_name):
         with tempfile.TemporaryDirectory() as outdir:
-            patoolib.extract_archive(path, outdir=outdir)
+            extract_archive(path, outdir)
 
             for dpath, dirs, files in os.walk(outdir):
                 for item in files:

@@ -4,10 +4,9 @@ import re
 import shutil
 import tempfile
 import hashlib
-import patoolib
 import six
 import progress
-from util import get, download, normpath, movetree, ipath
+from util import get, download, normpath, movetree, ipath, is_archive, extract_archive
 
 if six.PY2:
     import py2_compat
@@ -234,13 +233,6 @@ class ModInfo(object):
                 if not done:
                     logging.error('Failed to download "%s"!', filename)
     
-    def is_archive(self, filename):
-        try:
-            patoolib.get_archive_format(filename)
-            return True
-        except patoolib.util.PatoolError:
-            return False
-    
     def check_hashes(self, path):
         alright = True
 
@@ -304,14 +296,14 @@ class ModInfo(object):
 
             for item in files:
                 mypath = os.path.join(path, item)
-                if os.path.exists(mypath) and self.is_archive(mypath):
+                if os.path.exists(mypath) and is_archive(mypath):
                     progress.update(i / count, 'Extracting "%s"...' % item)
                     
                     with tempfile.TemporaryDirectory() as tempdir:
                         # Extract to a temporary directory and then move the result
                         # to final destination to avoid "Do you want to overwrite?" questions.
                         
-                        patoolib.extract_archive(mypath, outdir=tempdir)
+                        extract_archive(mypath, tempdir)
                         movetree(tempdir, path, ifix=True)
                 
                 i += 1
@@ -331,7 +323,7 @@ class ModInfo(object):
 
             for item in files:
                 mypath = os.path.join(path, item)
-                if os.path.exists(mypath) and self.is_archive(mypath):
+                if os.path.exists(mypath) and is_archive(mypath):
                     # Only remove the archives...
                     progress.update(i / count, 'Removing "%s"...' % item)
                     os.unlink(mypath)

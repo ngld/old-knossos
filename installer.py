@@ -23,19 +23,19 @@ class UserStream(object):
 sys.stdout = UserStream(sys.stdout)
 sys.stderr = UserStream(sys.stderr)
 
-import os.path
+import os
 import logging
 import pickle
 import json
 import subprocess
 import time
 import progress
+import util
 from qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.progress import Ui_Dialog as Ui_Progress
 from ui.modinfo import Ui_Dialog as Ui_Modinfo
 from fs2mod import ModInfo2
-from util import get
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
 
@@ -88,7 +88,7 @@ class FetchTask(progress.Task):
         self.add_work(['http://dev.tproxy.de/fs2/repo.txt'])
     
     def work(self, link):
-        data = get(link).read().decode('utf8', 'replace')
+        data = util.get(link).read().decode('utf8', 'replace')
         
         try:
             data = json.loads(data)
@@ -102,7 +102,7 @@ class FetchTask(progress.Task):
         
         for mod in data.values():
             if 'logo' in mod:
-                mod['logo'] = get(os.path.dirname(link) + '/' + mod['logo']).read()
+                mod['logo'] = util.get(os.path.dirname(link) + '/' + mod['logo']).read()
         
         self.post(data)
     
@@ -389,23 +389,20 @@ def _update_list(results):
     table.setSortingEnabled(False)
     
     row = 0
-    #for mod, archives, s, c, m in results:
-    for mod in settings['mods'].values():
-        mod = ModInfo2(mod)
+    for mod, archives, s, c, m in results:
         name_item = QtGui.QTableWidgetItem(mod.name)
-        name_item.setData(QtCore.Qt.UserRole + 1, [])
+        name_item.setData(QtCore.Qt.UserRole + 1, m)
 
-        status = 'Not installed'
-        # if s == c:
-        #     name_item.setCheckState(QtCore.Qt.Checked)
-        #     status = 'Installed'
-        #     installed.append(mod.name)
-        # elif s == 0:
-        #     name_item.setCheckState(QtCore.Qt.Unchecked)
-        #     status = 'Not installed'
-        # else:
-        #     name_item.setCheckState(QtCore.Qt.PartiallyChecked)
-        #     status = '%d corrupted or updated files' % (c - s)
+        if s == c:
+            name_item.setCheckState(QtCore.Qt.Checked)
+            status = 'Installed'
+            installed.append(mod.name)
+        elif s == 0:
+            name_item.setCheckState(QtCore.Qt.Unchecked)
+            status = 'Not installed'
+        else:
+            name_item.setCheckState(QtCore.Qt.PartiallyChecked)
+            status = '%d corrupted or updated files' % (c - s)
         
         name_item.setData(QtCore.Qt.UserRole, name_item.checkState())
         version_item = QtGui.QTableWidgetItem(mod.version)
@@ -428,8 +425,7 @@ def update_list():
         main_win.tableWidget.setRowCount(0)
         return
 
-    #run_task(CheckTask())
-    _update_list(None)
+    run_task(CheckTask())
 
 
 def resolve_dependencies(mods):
@@ -641,10 +637,25 @@ def apply_selection():
 def main():
     global settings, main_win, progress_win
     
-    app = QtGui.QApplication([])
-    progress_win = ProgressDisplay()
+    if hasattr(sys, 'frozen'):
+        os.chdir(os.path.dirname(sys.executable))
 
+        if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
+            util.SEVEN_PATH = os.path.abspath('7z.exe')
+
+    app = QtGui.QApplication([])
+
+    if not util.test_7z():
+        QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
+        return
+
+    progress_win = ProgressDisplay()
     main_win = init_ui(Ui_MainWindow(), QtGui.QMainWindow())
+
+    if hasattr(sys, 'frozen'):
+        main_win.aboutLabel.setHtml(main_win.aboutLabel.html() + '<br><p>' +
+                                    'This bundle was created with <a href="http://pyinstaller.org">PyInstaller</a>' +
+                                    ' and contains a 7z executable.</p>')
     
     # Try to load our settings.
     if os.path.exists(settings_path):
@@ -672,7 +683,7 @@ def main():
     
     pmaster.start_workers(10)
     QtCore.QTimer.singleShot(300, update_list)
-    
+
     main_win.show()
     app.exec_()
 

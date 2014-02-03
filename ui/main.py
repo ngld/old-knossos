@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui/main.ui'
 #
-# Created: Mon Feb  3 10:24:36 2014
+# Created: Mon Feb  3 11:59:56 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -75,9 +75,9 @@ class Ui_MainWindow(object):
         self.tab.setObjectName("tab")
         self.verticalLayout_4 = QtGui.QVBoxLayout(self.tab)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
-        self.label = QtGui.QLabel(self.tab)
-        self.label.setObjectName("label")
-        self.verticalLayout_4.addWidget(self.label)
+        self.aboutLabel = QtGui.QLabel(self.tab)
+        self.aboutLabel.setObjectName("aboutLabel")
+        self.verticalLayout_4.addWidget(self.aboutLabel)
         self.tabs.addTab(self.tab, "")
         self.verticalLayout.addWidget(self.tabs)
         MainWindow.setCentralWidget(self.centralwidget)
@@ -90,7 +90,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(2)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -106,7 +106,7 @@ class Ui_MainWindow(object):
         self.update.setText(QtGui.QApplication.translate("MainWindow", "Update", None, QtGui.QApplication.UnicodeUTF8))
         self.apply_sel.setText(QtGui.QApplication.translate("MainWindow", "Apply", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.mods), QtGui.QApplication.translate("MainWindow", "Mods", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+        self.aboutLabel.setText(QtGui.QApplication.translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
 "</style></head><body style=\" font-family:\'Sans Serif\'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
@@ -118,6 +118,6 @@ class Ui_MainWindow(object):
 "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Dependencies:</p>\n"
 "<ul style=\"margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;\"><li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"http://python.org\"><span style=\" text-decoration: underline; color:#0000ff;\">Python</span></a> (2 or 3)</li>\n"
 "<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"http://qt-project.org/wiki/Category:LanguageBindings::PySide\"><span style=\" text-decoration: underline; color:#0000ff;\">PySide</span></a> or <a href=\"http://riverbankcomputing.co.uk/software/pyqt/intro\"><span style=\" text-decoration: underline; color:#0000ff;\">PyQt4</span></a></li>\n"
-"<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"http://wummel.github.io/patool/\"><span style=\" text-decoration: underline; color:#0000ff;\">patool</span></a> (a wrapper around various extraction programs)</li></ul></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+"<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"http://www.7-zip.org/\"><span style=\" text-decoration: underline; color:#0000ff;\">7zip</span></a> (to extract downloaded archives)</li></ul></body></html>", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.tab), QtGui.QApplication.translate("MainWindow", "About", None, QtGui.QApplication.UnicodeUTF8))
 

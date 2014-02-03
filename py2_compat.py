@@ -1,6 +1,11 @@
 import os as _os
 import warnings as _warnings
 import tempfile
+import subprocess
+import six
+
+if six.PY3:
+    raise RuntimeError('py2_compat was imported even though we are running python 3!!!')
 
 
 class TemporaryDirectory(object):
@@ -85,3 +90,4 @@ class TemporaryDirectory(object):
             pass
 
 tempfile.TemporaryDirectory = TemporaryDirectory
+subprocess.DEVNULL = open('/dev/null', 'wb')
