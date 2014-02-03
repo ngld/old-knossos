@@ -1,8 +1,13 @@
-import os.path
+import os
 import logging
+import shutil
+import subprocess
 import six
 import progress
 from six.moves.urllib.request import urlopen
+
+
+SEVEN_PATH = '7z'
 
 
 def get(link):
@@ -53,5 +58,63 @@ def download(link, dest):
     return True
 
 
+# This function will move the contents of src inside dest so that src/a/r/z.dat ends up as dest/a/r/z.dat.
+# It will overwrite everything already present in the destination directory!
+def movetree(src, dest, ifix=False):
+    if not os.path.isdir(dest):
+        os.makedirs(dest)
+
+    if ifix:
+        siblings = os.listdir(dest)
+        l_siblings = [s.lower() for s in siblings]
+
+    for item in os.listdir(src):
+        spath = os.path.join(src, item)
+        dpath = os.path.join(dest, item)
+
+        if ifix and not os.path.exists(dpath):
+            if item.lower() in l_siblings:
+                l_item = siblings[l_siblings.index(item.lower())]
+                logging.warning('Changing path "%s" to "%s" to avoid case problems...', dpath, os.path.join(dest, l_item))
+
+                dpath = os.path.join(dest, l_item)
+            else:
+                siblings.append(item)
+                l_siblings.append(item.lower())
+
+        if os.path.isdir(spath):
+            movetree(spath, dpath)
+        else:
+            if os.path.exists(dpath):
+                os.unlink(dpath)
+            
+            shutil.move(spath, dpath)
+
+
 def normpath(path):
     return os.path.normcase(path.replace('\\', '/'))
+
+
+# Try to map a case insensitive path to an existing one.
+def ipath(path):
+    if os.path.exists(path):
+        return path
+
+    parent = os.path.dirname(path)
+    if not os.path.exists(parent):
+        parent = ipath(parent)
+
+        if not os.path.exists(parent):
+            # Well, nothing we can do here...
+            return path
+
+    siblings = os.listdir(parent)
+    l_siblings = [s.lower() for s in siblings]
+    
+    item = os.path.basename(path)
+    if item.lower() in l_siblings:
+        item = siblings[l_siblings.index(item.lower())]
+        path = os.path.join(parent, item)
+
+    return path
+

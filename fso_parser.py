@@ -7,7 +7,7 @@ import hashlib
 import patoolib
 import six
 import progress
-from util import get, download, normpath
+from util import get, download, normpath, movetree, ipath
 
 if six.PY2:
     import py2_compat
@@ -247,7 +247,7 @@ class ModInfo(object):
         for algo, filepath, chksum in self.hashes:
             try:
                 mysum = hashlib.new(algo)
-                with open(os.path.join(path, filepath), 'rb') as stream:
+                with open(ipath(os.path.join(path, filepath)), 'rb') as stream:
                     mysum.update(stream.read(10 * 1024))  # Read 10KB chunks
             except:
                 logging.exception('Failed to computed checksum for "%s" with algorithm "%s"!', filepath, algo)
@@ -270,8 +270,10 @@ class ModInfo(object):
             item = os.path.join(path, item)
             if os.path.isdir(item):
                 shutil.rmtree(item)
-            else:
+            elif os.path.exists(item):
                 os.unlink(item)
+            else:
+                logging.warning('"%s" not found!', item)
 
     def execute_rename(self, path):
         count = float(len(self.rename))
@@ -281,16 +283,25 @@ class ModInfo(object):
             logging.info('Moving "%s" to "%s"...', src, dest)
             progress.update(i / count, 'Moving "%s" to "%s"...' % (src, dest))
             
-            shutil.move(src, dest)
+            if os.path.exists(src):
+                shutil.move(src, dest)
+            else:
+                logging.warning('"%s" not found!', src)
             i += 1
 
-    def extract(self, path):
+    def extract(self, path, sel_files=None):
         count = 0.0
         for u, files in self.urls:
+            if sel_files is not None:
+                files = set(files) & sel_files
+
             count += len(files)
         
         i = 0
         for u, files in self.urls:
+            if sel_files is not None:
+                files = set(files) & sel_files
+
             for item in files:
                 mypath = os.path.join(path, item)
                 if os.path.exists(mypath) and self.is_archive(mypath):
@@ -301,27 +312,23 @@ class ModInfo(object):
                         # to final destination to avoid "Do you want to overwrite?" questions.
                         
                         patoolib.extract_archive(mypath, outdir=tempdir)
-                        
-                        for item in os.listdir(tempdir):
-                            dest = os.path.join(path, item)
-                            if os.path.exists(dest):
-                                # "Overwrite"
-                                if os.path.isdir(dest):
-                                    shutil.rmtree(dest)
-                                else:
-                                    os.unlink(dest)
-                            
-                            shutil.move(os.path.join(tempdir, item), path)
+                        movetree(tempdir, path, ifix=True)
                 
                 i += 1
     
-    def cleanup(self, path):
+    def cleanup(self, path, sel_files=None):
         count = 0.0
         for u, files in self.urls:
+            if sel_files is not None:
+                files = set(files) & sel_files
+
             count += len(files)
         
         i = 0
         for u, files in self.urls:
+            if sel_files is not None:
+                files = set(files) & sel_files
+
             for item in files:
                 mypath = os.path.join(path, item)
                 if os.path.exists(mypath) and self.is_archive(mypath):
@@ -350,11 +357,11 @@ class ModInfo(object):
         progress.finish_task()
         
         progress.start_task(3/6.0, 1/6.0)
-        self.check_hashes(modpath)
+        self.extract(modpath)
         progress.finish_task()
         
         progress.start_task(4/6.0, 1/6.0)
-        self.extract(modpath)
+        self.check_hashes(modpath)
         progress.finish_task()
         
         progress.start_task(5/6.0, 1/6.0)

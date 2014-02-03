@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>337</width>
-    <height>488</height>
+    <width>377</width>
+    <height>552</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -64,7 +64,11 @@
     </widget>
    </item>
    <item>
-    <widget class="QPlainTextEdit" name="desc"/>
+    <widget class="QPlainTextEdit" name="desc">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QLabel" name="label_3">
@@ -80,14 +84,18 @@
     </widget>
    </item>
    <item>
-    <widget class="QPlainTextEdit" name="note"/>
+    <widget class="QPlainTextEdit" name="note">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QPushButton" name="runButton">
        <property name="text">
-        <string>Start</string>
+        <string>Launch</string>
        </property>
       </widget>
      </item>

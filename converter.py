@@ -1,8 +1,10 @@
 from __future__ import print_function
+import logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
+
 import sys
 import os
 import argparse
-import logging
 import pickle
 import hashlib
 import json
@@ -10,9 +12,9 @@ import time
 import datetime
 import signal
 import progress
-from parser import EntryPoint
+from fso_parser import EntryPoint
 from fs2mod import convert_modtree, find_mod, ModInfo2
-from qt import QtCore, QtGui
+from qt import QtCore
 from six import StringIO
 
 
@@ -35,8 +37,6 @@ def list_modtree(mods, level=0):
 
 def main(args):
     global cache, cache_path
-    
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
     
     progress.reset()
     progress.set_callback(show_progress)
@@ -134,9 +134,6 @@ def main(args):
                     if cur.folder != '':
                         result.dependencies.append(cur.folder)
                 
-                if mod.parent is not None:
-                    mod.parent = mod.parent.name
-                
                 for i, sub in enumerate(mod.submods):
                     mod.submods[i] = sub.name
                 
@@ -190,6 +187,9 @@ def main(args):
                         stream.write(mod.logo)
                     
                     mods[mod.name]['logo'] = os.path.basename(dest)
+
+            if mod.parent is not None:
+                mods[mod.name]['parent'] = mod.parent.name
         
         print(mods)
         

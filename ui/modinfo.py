@@ -2,17 +2,17 @@
 
 # Form implementation generated from reading ui file 'ui/modinfo.ui'
 #
-# Created: Sun Feb  2 23:42:52 2014
-#      by: pyside-uic 0.2.15 running on qt 1.2.1
+# Created: Mon Feb  3 10:25:23 2014
+#      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
 
-from qt import QtCore, QtGui
+from PySide import QtCore, QtGui
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(337, 488)
+        Dialog.resize(377, 552)
         self.verticalLayout = QtGui.QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName("verticalLayout")
         self.modname = QtGui.QLabel(Dialog)
@@ -37,6 +37,7 @@ class Ui_Dialog(object):
         self.label.setObjectName("label")
         self.verticalLayout.addWidget(self.label)
         self.desc = QtGui.QPlainTextEdit(Dialog)
+        self.desc.setReadOnly(True)
         self.desc.setObjectName("desc")
         self.verticalLayout.addWidget(self.desc)
         self.label_3 = QtGui.QLabel(Dialog)
@@ -47,6 +48,7 @@ class Ui_Dialog(object):
         self.label_3.setObjectName("label_3")
         self.verticalLayout.addWidget(self.label_3)
         self.note = QtGui.QPlainTextEdit(Dialog)
+        self.note.setReadOnly(True)
         self.note.setObjectName("note")
         self.verticalLayout.addWidget(self.note)
         self.horizontalLayout = QtGui.QHBoxLayout()
@@ -68,6 +70,6 @@ class Ui_Dialog(object):
         self.logo.setText(QtGui.QApplication.translate("Dialog", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("Dialog", "Description", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("Dialog", "Notes", None, QtGui.QApplication.UnicodeUTF8))
-        self.runButton.setText(QtGui.QApplication.translate("Dialog", "Start", None, QtGui.QApplication.UnicodeUTF8))
+        self.runButton.setText(QtGui.QApplication.translate("Dialog", "Launch", None, QtGui.QApplication.UnicodeUTF8))
         self.closeButton.setText(QtGui.QApplication.translate("Dialog", "Close", None, QtGui.QApplication.UnicodeUTF8))
 

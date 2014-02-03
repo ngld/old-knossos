@@ -6,8 +6,12 @@ import sys
 import logging
 import threading
 import six
-import curses
 from qt import QtCore
+
+try:
+    import curses
+except ImportError:
+    curses = None
 
 if six.PY2:
     threading.get_ident = lambda: threading.current_thread().ident
@@ -233,7 +237,10 @@ class Task(QtCore.QObject):
             work = len(self._work)
         
         work_count = float(results + work + len(prog))
-        total = results / work_count
+        if work_count == 0:
+            total = 1
+        else:
+            total = results / work_count
         
         for item in prog.values():
             total += item[0] * (1.0 / work_count)

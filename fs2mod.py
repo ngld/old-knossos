@@ -5,10 +5,10 @@ import zipfile
 import hashlib
 import patoolib
 import subprocess
-import base64
 import six
 import progress
-from parser import ModInfo
+from fso_parser import ModInfo
+from util import ipath
 
 if six.PY2:
     import py2_compat
@@ -74,10 +74,6 @@ class ModInfo2(ModInfo):
             else:
                 self.download(tmpdir)
 
-            # Now check them...
-            if not self.check_hashes(tmpdir):
-                return
-            
             # Add hashes for downloaded files if they have none.
             for urls, files in self.urls:
                 for filename in files:
@@ -90,6 +86,10 @@ class ModInfo2(ModInfo):
                     if not found:
                         self.hashes.append(('MD5', filename, self._hash(os.path.join(tmpdir, filename))))
             
+            # Now check them...
+            if not self.check_hashes(tmpdir):
+                logging.warning('Some hashes failed for "%s". Continuing anyway...', mod.name)
+
             # ... and generate our content list.
             for url, files in self.urls:
                 for item in files:
@@ -213,9 +213,10 @@ class ModInfo2(ModInfo):
         checked = 0
         
         archives = set()
+        msgs = []
         
         for item, info in self.contents.items():
-            mypath = os.path.join(path, item)
+            mypath = ipath(os.path.join(path, item))
             fix = False
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (item))
@@ -223,10 +224,10 @@ class ModInfo2(ModInfo):
                 if self._hash(mypath) == info['md5sum']:
                     success += 1
                 else:
-                    logging.warning('File "%s" is corrupted. (checksum mismatch)', item)
+                    msgs.append('File "%s" is corrupted. (checksum mismatch)' % (item))
                     fix = True
             else:
-                logging.warning('File "%s" is missing.', item)
+                msgs.append('File "%s" is missing.' % (item))
                 fix = True
             
             if fix:
@@ -237,7 +238,7 @@ class ModInfo2(ModInfo):
             
             checked += 1
         
-        return archives, success, count
+        return archives, success, count, msgs
     
     def remove(self, path):
         count = len(self.contents)
@@ -248,7 +249,8 @@ class ModInfo2(ModInfo):
             mypath = os.path.join(path, item)
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Removing "%s"...' % (item))
-                
+                logging.info('Deleting "%s"...', os.path.join(path, item))
+
                 os.unlink(mypath)
                 folders.add(os.path.dirname(mypath))
             
@@ -256,7 +258,7 @@ class ModInfo2(ModInfo):
         
         # Sort the folders so that the longest path aka deepest folder comes first.
         folders = sorted(folders, key=len, reverse=True)
-        
+
         for path in folders:
             # Only remove empty folders...
             if os.path.isdir(path) and len(os.listdir(path)) == 0:
@@ -288,7 +290,12 @@ def convert_modtree(mods, complete=0):
         
         m.submods = convert_modtree(m.submods, complete)
         for i, sm in enumerate(m.submods):
-            if m.folder != '':
+            if m.folder == '':
+                for item in m.contents:
+                    if '/' in item:
+                        sm.dependencies.append(item.split('/')[0])
+                        break
+            else:
                 sm.dependencies.append(m.folder)
             
             mod2s.append(sm)

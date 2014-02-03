@@ -41,6 +41,7 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(m
 
 main_win = None
 progress_win = None
+installed = []
 pmaster = progress.Master()
 settings = {
     'fs2_bin': None,
@@ -117,6 +118,22 @@ class FetchTask(progress.Task):
         update_list()
 
 
+class CheckTask(progress.Task):
+    def __init__(self):
+        super(CheckTask, self).__init__()
+
+        self.done.connect(self.finish)
+        self.add_work(settings['mods'].values())
+
+    def work(self, mod):
+        mod = ModInfo2(mod)
+        a, s, c, m = mod.check_files(os.path.join(settings['fs2_path'], mod.folder))
+        self.post((mod, a, s, c, m))
+
+    def finish(self):
+        _update_list(self.get_results())
+
+
 class InstallTask(progress.Task):
     def __init__(self, mods):
         super(InstallTask, self).__init__()
@@ -129,13 +146,13 @@ class InstallTask(progress.Task):
         
         if action == 'install':
             mod = ModInfo2(settings['mods'][mod])
-            self.add_work([('install', d, None) for d in mod.dependencies])
+            #self.add_work([('install', d, None) for d in mod.dependencies])
             
             if not os.path.exists(os.path.join(settings['fs2_path'], mod.folder)):
                 mod.setup(settings['fs2_path'])
             else:
                 progress.start_task(0, 1)
-                archives, s, c = mod.check_files(settings['fs2_path'])
+                archives, s, c, m = mod.check_files(settings['fs2_path'])
                 progress.finish_task()
                 
                 if len(archives) > 0:
@@ -149,11 +166,11 @@ class InstallTask(progress.Task):
             progress.finish_task()
             progress.start_task(2.0/3.0, 0.5/3.0)
             
-            mod.extract(modpath)
+            mod.extract(modpath, set([archive]))
             progress.finish_task()
             
             progress.start_task(2.5/3.0, 0.5/3.0)
-            mod.cleanup(modpath)
+            mod.cleanup(modpath, set([archive]))
             progress.finish_task()
     
     def finish(self):
@@ -169,7 +186,7 @@ class UninstallTask(progress.Task):
     
     def work(self, modname):
         mod = ModInfo2(settings['mods'][modname])
-        mod.remove(settings['fs2_path'])
+        mod.remove(os.path.join(settings['fs2_path'], mod.folder))
     
     def finish(self):
         update_list()
@@ -208,14 +225,18 @@ class ProgressDisplay(object):
     def update_tasks(self):
         total = 0
         count = len(self._tasks)
-        items = {}
+        items = []
         layout = self.win.tasks.layout()
         
         for task in self._tasks:
             t_total, t_items = task.get_progress()
             total += t_total / count
-            items.update(t_items)
-        
+
+            for prog, text in t_items.values():
+                # Skip 0% and 100% items, they aren't interesting...
+                if prog not in (0, 1):
+                    items.append((prog, text))
+
         while len(self._threads) < len(items):
             bar = QtGui.QProgressBar()
             bar.setValue(0)
@@ -228,10 +249,10 @@ class ProgressDisplay(object):
         while len(self._threads) > len(items):
             label, bar = self._threads.pop()
             
-            label.destroy()
-            bar.destroy()
+            label.deleteLater()
+            bar.deleteLater()
         
-        for i, item in enumerate(items.values()):
+        for i, item in enumerate(items):
             label, bar = self._threads[i]
             label.setText(item[1])
             bar.setValue(item[0] * 100)
@@ -278,6 +299,8 @@ class ProgressDisplay(object):
                 self._tasks.remove(task)
         
         if len(self._tasks) == 0:
+            # Cleanup
+            self.update_tasks()
             self.hide()
 
 
@@ -296,7 +319,7 @@ def init_fs2_tab():
     global settings, main_win
     
     if settings['fs2_path'] is not None:
-        if not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
+        if settings['fs2_bin'] is None or not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
             QtGui.QMessageBox.warning(main_win, 'Warning', 'I somehow couldn\'t find your FS2 binary (%s). Please select it again!' % (settings['fs2_bin']))
             
             settings['fs2_bin'] = None
@@ -356,32 +379,33 @@ def fetch_list():
     run_task(FetchTask())
 
 
-def update_list():
-    global settings, main_win
+def _update_list(results):
+    global settings, main_win, installed
     
+    installed = []
     table = main_win.tableWidget
-    if settings['mods'] is None:
-        table.setRowCount(0)
-        return
     
     table.setRowCount(len(settings['mods']))
     table.setSortingEnabled(False)
     
     row = 0
-    for name, mod in settings['mods'].items():
+    #for mod, archives, s, c, m in results:
+    for mod in settings['mods'].values():
         mod = ModInfo2(mod)
-        archives, s, c = mod.check_files(os.path.join(settings['fs2_path'], mod.folder))
-        
-        name_item = QtGui.QTableWidgetItem(name)
-        if s == c:
-            name_item.setCheckState(QtCore.Qt.Checked)
-            status = 'Installed'
-        elif s == 0:
-            name_item.setCheckState(QtCore.Qt.Unchecked)
-            status = 'Not installed'
-        else:
-            name_item.setCheckState(QtCore.Qt.PartiallyChecked)
-            status = '%d corrupted or updated files' % (c - s)
+        name_item = QtGui.QTableWidgetItem(mod.name)
+        name_item.setData(QtCore.Qt.UserRole + 1, [])
+
+        status = 'Not installed'
+        # if s == c:
+        #     name_item.setCheckState(QtCore.Qt.Checked)
+        #     status = 'Installed'
+        #     installed.append(mod.name)
+        # elif s == 0:
+        #     name_item.setCheckState(QtCore.Qt.Unchecked)
+        #     status = 'Not installed'
+        # else:
+        #     name_item.setCheckState(QtCore.Qt.PartiallyChecked)
+        #     status = '%d corrupted or updated files' % (c - s)
         
         name_item.setData(QtCore.Qt.UserRole, name_item.checkState())
         version_item = QtGui.QTableWidgetItem(mod.version)
@@ -397,9 +421,52 @@ def update_list():
     table.resizeColumnsToContents()
 
 
+def update_list():
+    global settings, main_win
+
+    if settings['mods'] is None:
+        main_win.tableWidget.setRowCount(0)
+        return
+
+    #run_task(CheckTask())
+    _update_list(None)
+
+
+def resolve_dependencies(mods):
+    global installed
+
+    needed = mods[:]
+    provided = dict()
+
+    while len(needed) > 0:
+        mod = settings['mods'][needed.pop(0)]
+
+        for dep in mod['dependencies']:
+            dep = (dep + '/mod.ini').lower()
+            if not dep in provided:
+                for omod in settings['mods'].values():
+                    for path in omod['contents']:
+                        if (omod['folder'] + '/' + path).lstrip('/').lower().startswith(dep) and omod['name'] != mod['name']:
+                            provided[dep] = omod['name']
+                            needed.append(omod['name'])
+
+                            break
+
+                    if dep in provided:
+                        break
+
+                if dep not in provided:
+                    logging.warning('Dependency "%s" of "%s" wasn\'t found!', dep, mod['name'])
+
+    deps = set(provided.values()) - set(mods) - set(installed)
+    return list(deps)
+
+
 def select_mod(row, col):
-    name = main_win.tableWidget.item(row, 0).text()
-    installed = main_win.tableWidget.item(row, 0).data(QtCore.Qt.UserRole) == QtCore.Qt.Checked
+    item = main_win.tableWidget.item(row, 0)
+    name = item.text()
+    installed = item.data(QtCore.Qt.UserRole) == QtCore.Qt.Checked
+    check_msgs = item.data(QtCore.Qt.UserRole + 1)
     mod = ModInfo2(settings['mods'][name])
     
     # NOTE: lambdas don't work with connect()
@@ -407,17 +474,20 @@ def select_mod(row, col):
         if installed:
             run_mod(mod)
         else:
+            deps = resolve_dependencies([mod.name])
+
             msg = QtGui.QMessageBox()
             msg.setIcon(QtGui.QMessageBox.Question)
             msg.setText('You don\'t have %s, yet. Shall I install it?' % (mod.name))
-            msg.setInformativeText('%s will be installed.' % (mod.name))
+            msg.setInformativeText('%s will be installed.' % (', '.join([mod.name] + deps)))
             msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
             msg.setDefaultButton(QtGui.QMessageBox.Yes)
             
             if msg.exec_() == QtGui.QMessageBox.Yes:
-                task = InstallTask([mod.name])
+                task = InstallTask([mod.name] + deps)
                 task.done.connect(do_run2)
                 run_task(task)
+                infowin.close()
     
     def do_run2():
         run_mod(mod)
@@ -435,6 +505,9 @@ def select_mod(row, col):
     
     infowin.desc.setPlainText(mod.desc)
     infowin.note.setPlainText(mod.note)
+
+    if len(check_msgs) > 0 and item.data(QtCore.Qt.UserRole) != QtCore.Qt.Unchecked:
+        infowin.note.appendPlainText('\nCheck messages:\n* ' + '\n* '.join(check_msgs))
     
     infowin.closeButton.clicked.connect(infowin.close)
     infowin.runButton.clicked.connect(do_run)
@@ -476,8 +549,11 @@ def run_mod(mod):
                 elif line[0] == 'secondarylist':
                     seclist = line[1].split(',')
         
+        if ini == 'mod.ini':
+            ini = mod.folder + '/' + ini
+
         # Build the whole list
-        modfolder = ','.join(primlist + [ini.split('/')[0]] + seclist)
+        modfolder = ','.join(primlist + [ini.split('/')[0]] + seclist).strip(',')
     
     # Now look for the user directory...
     if sys.platform in ('linux2', 'linux'):
@@ -489,7 +565,7 @@ def run_mod(mod):
     path = os.path.join(path, 'data/cmdline_fso.cfg')
     if os.path.exists(path):
         with open(path, 'r') as stream:
-            cmdline = stream.read().split(' ')
+            cmdline = stream.read().strip().split(' ')
     else:
         cmdline = []
     
@@ -538,6 +614,8 @@ def apply_selection():
         return
     
     if len(install) > 0:
+        install = install + resolve_dependencies(install)
+
         msg = QtGui.QMessageBox()
         msg.setIcon(QtGui.QMessageBox.Question)
         msg.setText('Do you really want to install these mods?')
@@ -557,7 +635,7 @@ def apply_selection():
         msg.setDefaultButton(QtGui.QMessageBox.Yes)
         
         if msg.exec_() == QtGui.QMessageBox.Yes:
-            run_task(UninstallTask(install))
+            run_task(UninstallTask(uninstall))
 
 
 def main():
@@ -572,7 +650,7 @@ def main():
     if os.path.exists(settings_path):
         try:
             with open(settings_path, 'rb') as stream:
-                settings = pickle.load(stream)
+                settings.update(pickle.load(stream))
         except:
             logging.exception('Failed to load settings from "%s"!', settings_path)
     else:
