@@ -8,6 +8,7 @@ if six.PY3:
     raise RuntimeError('py2_compat was imported even though we are running python 3!!!')
 
 
+# This class is copied straight from /usr/lib/python3.3/tempfile.py
 class TemporaryDirectory(object):
     """Create and return a temporary directory.  This has the same
     behavior as mkdtemp but can be used as a context manager.  For
@@ -90,4 +91,4 @@ class TemporaryDirectory(object):
             pass
 
 tempfile.TemporaryDirectory = TemporaryDirectory
-subprocess.DEVNULL = open('/dev/null', 'wb')
+subprocess.DEVNULL = open(_os.devnull, 'wb')

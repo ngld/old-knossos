@@ -38,7 +38,7 @@ from ui.progress import Ui_Dialog as Ui_Progress
 from ui.modinfo import Ui_Dialog as Ui_Modinfo
 from fs2mod import ModInfo2
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
+VERSION = '0.1-alpha'
 
 main_win = None
 progress_win = None
@@ -51,7 +51,9 @@ settings = {
     'installed_mods': None,
     'hash_cache': None
 }
-settings_path = os.path.expanduser('~/.fs2mod-py/settings.pick')
+settings_path = os.path.expanduser('~/.fs2mod-py')
+if sys.platform.startswith('win'):
+    settings_path = os.path.expandvars('$APPDATA/fs2mod-py')
 
 
 def init_ui(ui, win):
@@ -313,7 +315,7 @@ def run_task(task):
 
 # FS2 tab
 def save_settings():
-    with open(settings_path, 'wb') as stream:
+    with open(os.path.join(settings_path, 'settings.pick'), 'wb') as stream:
         pickle.dump(settings, stream)
 
 
@@ -337,7 +339,7 @@ def init_fs2_tab():
         main_win.tabs.setTabEnabled(1, True)
         main_win.tabs.setCurrentIndex(1)
         main_win.fs2_bin.show()
-        main_win.fs2_bin.setText('Selected FS2 Open: ' + os.path.join(settings['fs2_path'], settings['fs2_bin']))
+        main_win.fs2_bin.setText('Selected FS2 Open: ' + os.path.normcase(os.path.join(settings['fs2_path'], settings['fs2_bin'])))
 
 
 def do_gog_extract():
@@ -348,7 +350,7 @@ def do_gog_extract():
 def select_fs2_path():
     global settings
     
-    if sys.platform[:3] == 'win':
+    if sys.platform.startswith('win'):
         mask = 'Executable (*.exe)'
     else:
         mask = ''
@@ -371,7 +373,7 @@ def select_fs2_path():
 def run_fs2():
     p = subprocess.Popen([os.path.join(settings['fs2_path'], settings['fs2_bin'])], cwd=settings['fs2_path'])
     
-    time.sleep(0.3)
+    time.sleep(0.5)
     if p.poll() is not None:
         QtGui.QMessageBox.critical(main_win, 'Failed', 'Starting FS2 Open (%s) failed! (return code: %d)' % (os.path.join(settings['fs2_path'], settings['fs2_bin']), p.returncode))
 
@@ -510,13 +512,14 @@ def run_mod(mod):
     ini = None
     modfolder = None
     
+    # Look for the mod.ini
     for item in mod.contents:
         if os.path.basename(item).lower() == 'mod.ini':
             ini = item
             break
     
     if ini is None:
-        # Look for the first subdirectory then.
+        # No mod.ini found, look for the first subdirectory then.
         if mod.folder == '':
             for item in mod.contents:
                 if item.lower().endswith('.vp'):
@@ -525,6 +528,7 @@ def run_mod(mod):
         else:
             modfolder = mod.folder.split('/')[0]
     else:
+        # mod.ini was found, now read its "[multimod]" section.
         primlist = []
         seclist = []
         
@@ -543,7 +547,7 @@ def run_mod(mod):
         if ini == 'mod.ini':
             ini = mod.folder + '/' + ini
 
-        # Build the whole list
+        # Build the whole list for -mod
         modfolder = ','.join(primlist + [ini.split('/')[0]] + seclist).strip(',')
     
     # Now look for the user directory...
@@ -565,6 +569,7 @@ def run_mod(mod):
         if part.strip() == '-mod':
             mod_found = True
             cmdline[i + 1] = modfolder
+            break
     
     if not mod_found:
         cmdline.append('-mod')
@@ -644,7 +649,7 @@ def apply_selection():
 
 
 def main():
-    global settings, main_win, progress_win
+    global VERSION, settings, main_win, progress_win
     
     if hasattr(sys, 'frozen'):
         if hasattr(sys, '_MEIPASS'):
@@ -654,6 +659,28 @@ def main():
 
         if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
             util.SEVEN_PATH = os.path.abspath('7z.exe')
+    
+    if not os.path.isdir(settings_path):
+        os.makedirs(settings_path)
+    
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
+    if sys.platform.startswith('win'):
+        # Windows won't display a console so write our log messages to a file.
+        logging.getLogger().addHandler(logging.FileHandler(os.path.join(settings_path, 'log.txt')))
+    
+    # Try to load our settings.
+    spath = os.path.join(settings_path, 'settings.pick')
+    if os.path.exists(spath):
+        try:
+            with open(spath, 'rb') as stream:
+                settings.update(pickle.load(stream))
+        except:
+            logging.exception('Failed to load settings from "%s"!', spath)
+
+        save_settings()
+    
+    if settings['hash_cache'] is not None:
+        fs2mod.HASH_CACHE = settings['hash_cache']
     
     app = QtGui.QApplication([])
 
@@ -665,27 +692,22 @@ def main():
     main_win = init_ui(Ui_MainWindow(), QtGui.QMainWindow())
 
     if hasattr(sys, 'frozen'):
+        # Add note about bundled content.
+        # NOTE: This will appear even when this script is bundled with py2exe or a similiar program.
         main_win.aboutLabel.setText(main_win.aboutLabel.text().replace('</body>', '<br><p>' +
                                     'This bundle was created with <a href="http://pyinstaller.org">PyInstaller</a>' +
                                     ' and contains a 7z executable.</p></body>'))
+        
+        if os.path.isfile('commit'):
+            with open('commit', 'r') as data:
+                VERSION += '-' + data.read().strip()
     
-    # Try to load our settings.
-    if os.path.exists(settings_path):
-        try:
-            with open(settings_path, 'rb') as stream:
-                settings.update(pickle.load(stream))
-        except:
-            logging.exception('Failed to load settings from "%s"!', settings_path)
-    else:
-        if not os.path.isdir(os.path.dirname(settings_path)):
-            os.makedirs(os.path.dirname(settings_path))
-
-        save_settings()
-    
-    if settings['hash_cache'] is not None:
-        fs2mod.HASH_CACHE = settings['hash_cache']
+    tab = main_win.tabs.addTab(QtGui.QWidget(), 'Version: ' + VERSION)
+    main_win.tabs.setTabEnabled(tab, False)
     
     init_fs2_tab()
+    
+    main_win.aboutLabel.linkActivated.connect(QtGui.QDesktopServices.openUrl)
     
     main_win.gogextract.clicked.connect(do_gog_extract)
     main_win.select.clicked.connect(select_fs2_path)
