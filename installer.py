@@ -31,6 +31,7 @@ import subprocess
 import time
 import progress
 import util
+import fs2mod
 from qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.progress import Ui_Dialog as Ui_Progress
@@ -47,7 +48,8 @@ settings = {
     'fs2_bin': None,
     'fs2_path': None,
     'mods': None,
-    'installed_mods': None
+    'installed_mods': None,
+    'hash_cache': None
 }
 settings_path = os.path.expanduser('~/.fs2mod-py/settings.pick')
 
@@ -119,9 +121,9 @@ class FetchTask(progress.Task):
 
 
 class CheckTask(progress.Task):
-    def __init__(self):
+    def __init__(self, update=False):
         super(CheckTask, self).__init__()
-
+        
         self.done.connect(self.finish)
         self.add_work(settings['mods'].values())
 
@@ -383,46 +385,40 @@ def _update_list(results):
     global settings, main_win, installed
     
     installed = []
-    table = main_win.tableWidget
+    rows = dict()
     
-    table.setRowCount(len(settings['mods']))
-    table.setSortingEnabled(False)
-    
-    row = 0
     for mod, archives, s, c, m in results:
-        name_item = QtGui.QTableWidgetItem(mod.name)
-        name_item.setData(QtCore.Qt.UserRole + 1, m)
-
         if s == c:
-            name_item.setCheckState(QtCore.Qt.Checked)
+            cstate = QtCore.Qt.Checked
             status = 'Installed'
             installed.append(mod.name)
         elif s == 0:
-            name_item.setCheckState(QtCore.Qt.Unchecked)
+            cstate = QtCore.Qt.Unchecked
             status = 'Not installed'
         else:
-            name_item.setCheckState(QtCore.Qt.PartiallyChecked)
+            cstate = QtCore.Qt.PartiallyChecked
             status = '%d corrupted or updated files' % (c - s)
         
-        name_item.setData(QtCore.Qt.UserRole, name_item.checkState())
-        version_item = QtGui.QTableWidgetItem(mod.version)
-        status_item = QtGui.QTableWidgetItem(status)
+        row = QtGui.QTreeWidgetItem((mod.name, mod.version, status))
+        row.setCheckState(0, cstate)
+        row.setData(0, QtCore.Qt.UserRole, cstate)
+        row.setData(0, QtCore.Qt.UserRole + 1, m)
         
-        table.setItem(row, 0, name_item)
-        table.setItem(row, 1, version_item)
-        table.setItem(row, 2, status_item)
-        
-        row += 1
+        rows[mod.name] = (row, mod)
     
-    table.setSortingEnabled(True)
-    table.resizeColumnsToContents()
+    for row, mod in rows.values():
+        if mod.parent is None or mod.parent not in rows:
+            main_win.modTree.addTopLevelItem(row)
+        else:
+            rows[mod.parent][0].addChild(row)
 
 
 def update_list():
     global settings, main_win
+    
+    main_win.modTree.clear()
 
     if settings['mods'] is None:
-        main_win.tableWidget.setRowCount(0)
         return
 
     run_task(CheckTask())
@@ -458,11 +454,10 @@ def resolve_dependencies(mods):
     return list(deps)
 
 
-def select_mod(row, col):
-    item = main_win.tableWidget.item(row, 0)
-    name = item.text()
-    installed = item.data(QtCore.Qt.UserRole) == QtCore.Qt.Checked
-    check_msgs = item.data(QtCore.Qt.UserRole + 1)
+def select_mod(item, col):
+    name = item.text(0)
+    installed = item.data(0, QtCore.Qt.UserRole) == QtCore.Qt.Checked
+    check_msgs = item.data(0, QtCore.Qt.UserRole + 1)
     mod = ModInfo2(settings['mods'][name])
     
     # NOTE: lambdas don't work with connect()
@@ -502,7 +497,7 @@ def select_mod(row, col):
     infowin.desc.setPlainText(mod.desc)
     infowin.note.setPlainText(mod.note)
 
-    if len(check_msgs) > 0 and item.data(QtCore.Qt.UserRole) != QtCore.Qt.Unchecked:
+    if len(check_msgs) > 0 and item.data(0, QtCore.Qt.UserRole) != QtCore.Qt.Unchecked:
         infowin.note.appendPlainText('\nCheck messages:\n* ' + '\n* '.join(check_msgs))
     
     infowin.closeButton.clicked.connect(infowin.close)
@@ -581,29 +576,43 @@ def run_mod(mod):
     run_fs2()
 
 
+def read_tree(parent, items=[]):
+    if isinstance(parent, QtGui.QTreeWidget):
+        for i in range(0, parent.topLevelItemCount()):
+            item = parent.topLevelItem(i)
+            items.append((item, None))
+            
+            read_tree(item, items)
+    else:
+        for i in range(0, parent.childCount()):
+            item = parent.child(i)
+            items.append((item, parent))
+            
+            read_tree(item, items)
+    
+    return items
+
+
 def apply_selection():
     global settings
     
     if settings['mods'] is None:
         return
     
-    table = main_win.tableWidget
     install = []
     uninstall = []
-    
-    for row in range(0, table.rowCount()):
-        name_item = table.item(row, 0)
-        
-        if name_item.checkState() == name_item.data(QtCore.Qt.UserRole):
+    items = read_tree(main_win.modTree)
+    for item, parent in items:
+        if item.checkState(0) == item.data(0, QtCore.Qt.UserRole):
             # Unchanged
             continue
         
-        if name_item.checkState():
+        if item.checkState(0):
             # Install
-            install.append(name_item.text())
+            install.append(item.text(0))
         else:
             # Uninstall
-            uninstall.append(name_item.text())
+            uninstall.append(item.text(0))
     
     if len(install) == 0 and len(uninstall) == 0:
         QtGui.QMessageBox.warning(main_win, 'Warning', 'You didn\'t change anything! There\'s nothing for me to do...')
@@ -638,11 +647,14 @@ def main():
     global settings, main_win, progress_win
     
     if hasattr(sys, 'frozen'):
-        os.chdir(os.path.dirname(sys.executable))
+        if hasattr(sys, '_MEIPASS'):
+            os.chdir(sys._MEIPASS)
+        else:
+            os.chdir(os.path.dirname(sys.executable))
 
         if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
             util.SEVEN_PATH = os.path.abspath('7z.exe')
-
+    
     app = QtGui.QApplication([])
 
     if not util.test_7z():
@@ -653,9 +665,9 @@ def main():
     main_win = init_ui(Ui_MainWindow(), QtGui.QMainWindow())
 
     if hasattr(sys, 'frozen'):
-        main_win.aboutLabel.setHtml(main_win.aboutLabel.html() + '<br><p>' +
+        main_win.aboutLabel.setText(main_win.aboutLabel.text().replace('</body>', '<br><p>' +
                                     'This bundle was created with <a href="http://pyinstaller.org">PyInstaller</a>' +
-                                    ' and contains a 7z executable.</p>')
+                                    ' and contains a 7z executable.</p></body>'))
     
     # Try to load our settings.
     if os.path.exists(settings_path):
@@ -669,7 +681,10 @@ def main():
             os.makedirs(os.path.dirname(settings_path))
 
         save_settings()
-
+    
+    if settings['hash_cache'] is not None:
+        fs2mod.HASH_CACHE = settings['hash_cache']
+    
     init_fs2_tab()
     
     main_win.gogextract.clicked.connect(do_gog_extract)
@@ -678,14 +693,24 @@ def main():
     main_win.apply_sel.clicked.connect(apply_selection)
     main_win.update.clicked.connect(fetch_list)
     
-    main_win.tableWidget.cellDoubleClicked.connect(select_mod)
-    main_win.tableWidget.sortItems(0)
+    main_win.modTree.itemClicked.connect(select_mod)
+    main_win.modTree.sortItems(0, QtCore.Qt.AscendingOrder)
+    main_win.modTree.header().setResizeMode(QtGui.QHeaderView.ResizeToContents)
+    main_win.modTree.setSortingEnabled(True)
     
     pmaster.start_workers(10)
     QtCore.QTimer.singleShot(300, update_list)
 
     main_win.show()
     app.exec_()
+    
+    settings['hash_cache'] = dict()
+    for path, info in fs2mod.HASH_CACHE.items():
+        # Skip deleted files
+        if os.path.exists(path):
+            settings['hash_cache'][path] = info
+    
+    save_settings()
 
 if __name__ == '__main__':
     main()

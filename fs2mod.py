@@ -17,6 +17,8 @@ try:
 except ImportError:
     Image = None
 
+HASH_CACHE = dict()
+
 
 def convert_img(path, outfmt):
     fd, dest = tempfile.mkstemp('.' + outfmt)
@@ -156,6 +158,16 @@ class ModInfo2(ModInfo):
         self.dependencies = deps
 
     def _hash(self, path):
+        global HASH_CACHE
+        
+        path = os.path.abspath(path)
+        info = os.stat(path)
+        
+        if path in HASH_CACHE:
+            chksum, mtime = HASH_CACHE[path]
+            if mtime == info.st_mtime:
+                return chksum
+        
         h = hashlib.md5()
         with open(path, 'rb') as stream:
             while True:
@@ -165,7 +177,10 @@ class ModInfo2(ModInfo):
 
                 h.update(chunk)
 
-        return h.hexdigest()
+        chksum = h.hexdigest()
+        HASH_CACHE[path] = (chksum, info.st_mtime)
+        
+        return chksum
     
     def generate_zip(self, zpath):
         # download file
