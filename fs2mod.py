@@ -36,7 +36,6 @@ def convert_img(path, outfmt):
             # For now I'll just abort.
             return None
         
-        logging.info(repr([path, dest]))
         subprocess.check_call(['convert', path, dest])
         return dest
 
@@ -96,7 +95,7 @@ class ModInfo2(ModInfo):
                 for item in files:
                     path = os.path.join(tmpdir, item)
                     
-                    if not is_archive(os.path.join(path, item)):
+                    if not is_archive(path):
                         # This is a simple file.
                         self.contents[item] = {
                             'archive': None,

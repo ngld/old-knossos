@@ -371,7 +371,6 @@ class CursesOutput(object):
             if self.log is not None:
                 self.log.flush()
 
-
 def _init_curses(scr, cb, log):
     # Setup the display
     height, width = scr.getmaxyx()

@@ -122,14 +122,14 @@ def ipath(path):
 
 def test_7z():
     try:
-        return subprocess.call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL, stderr=sys.stdout) == 0
+        return subprocess.call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL) == 0
     except:
         logging.exception('Call to 7z failed!')
         return False
 
 
 def is_archive(path):
-    return subprocess.call([SEVEN_PATH, 'l', path], stdout=subprocess.DEVNULL, stderr=sys.stdout) == 0
+    return subprocess.call([SEVEN_PATH, 'l', path], stdout=subprocess.DEVNULL) == 0
 
 
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
@@ -163,4 +163,8 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
 
     # Redirect its stdout to sys.stdout so its output is logged.
     # (installer.py redirects sys.stdout.)
-    return subprocess.call(cmd, stdout=sys.stdout, stderr=sys.stdout) == 0
+    if hasattr(sys.stdout, 'fileno'):
+        output = sys.stdout
+    else:
+        output = None
+    return subprocess.call(cmd, stdout=output, stderr=output) == 0
