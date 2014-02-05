@@ -33,11 +33,11 @@ if [ ! -d _w ]; then
     download python.msi "http://python.org/ftp/python/2.7.6/python-2.7.6.msi"
     download pywin32.exe "http://sourceforge.net/projects/pywin32/files/pywin32/Build%20218/pywin32-218.win32-py2.7.exe/download"
     download pyside.exe "http://download.qt-project.org/official_releases/pyside/PySide-1.2.1.win32-py2.7.exe"
+    # download pyside.exe "http://sourceforge.net/projects/pyqt/files/PyQt4/PyQt-4.10.3/PyQt4-4.10.3-gpl-Py2.7-Qt4.8.5-x32.exe/download"
     download get-pip.py "https://raw.github.com/pypa/pip/master/contrib/get-pip.py"
     download pyinstaller.tar.gz "https://pypi.python.org/packages/source/P/PyInstaller/PyInstaller-2.1.tar.gz"
     download upx.zip "http://upx.sourceforge.net/download/upx391w.zip"
     download 7z-inst.exe "http://downloads.sourceforge.net/sevenzip/7z920.exe"
-    download qt.exe "http://download.qt-project.org/official_releases/qt/4.8/4.8.5/qt-win-opensource-4.8.5-vs2008.exe"
     
     echo "==> Installing Python..."
     wine msiexec /i python.msi
@@ -72,14 +72,8 @@ if [ ! -d _w ]; then
     mv tmp/7z.{exe,dll} .
     rm -r tmp
     
-    echo "==> Unpacking Qt..."
-    mkdir tmp
-    7z x -otmp qt.exe
-    mv 'tmp/$OUTDIR/bin/bin/'Qt{Gui,Core}4.dll .
-    rm -r tmp
-    
     echo "==> Cleaning up..."
-    rm python.msi pywin32.exe pyside.exe get-pip.py pyinstaller.tar.gz 7z-inst.exe qt.exe
+    rm python.msi pywin32.exe pyside.exe get-pip.py pyinstaller.tar.gz 7z-inst.exe
 fi
 
 echo "Building..."

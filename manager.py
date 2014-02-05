@@ -39,12 +39,13 @@ import glob
 import time
 import progress
 import util
-import fs2mod
+import fso_parser
 from qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.progress import Ui_Dialog as Ui_Progress
 from ui.modinfo import Ui_Dialog as Ui_Modinfo
 from ui.gogextract import Ui_Dialog as Ui_Gogextract
+from ui.select_list import Ui_Dialog as Ui_SelectList
 from fs2mod import ModInfo2
 
 VERSION = '0.1-alpha'
@@ -470,11 +471,7 @@ def init_fs2_tab():
     
     if settings['fs2_path'] is not None:
         if settings['fs2_bin'] is None or not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
-            QtGui.QMessageBox.warning(main_win, 'Warning', 'I somehow couldn\'t find your FS2 binary (%s). Please select it again!' % (settings['fs2_bin']))
-            
             settings['fs2_bin'] = None
-            select_fs2_path()
-            return
     
     if settings['fs2_path'] is None:
         # Disable mod tab if we don't know where fs2 is.
@@ -535,25 +532,53 @@ def do_gog_extract():
     extract_win.show()
 
 
-def select_fs2_path():
+def select_fs2_path(interact=True):
     global settings
-    
-    if sys.platform.startswith('win'):
-        mask = 'Executable (*.exe)'
+
+    if interact:
+        if settings['fs2_path'] is None:
+            path = os.path.expanduser('~')
+        else:
+            path = settings['fs2_path']
+
+        fs2_path = QtGui.QFileDialog.getExistingDirectory(main_win, 'Please select your FS2 directory.', path)
     else:
-        mask = ''
-    
-    if settings['fs2_path'] is None:
-        path = os.path.expanduser('~')
-    else:
-        path = settings['fs2_path']
-    
-    fs2_bin = QtGui.QFileDialog.getOpenFileName(main_win, 'Please select your fs2_open_* file.', path, mask)[0]
-    
-    if fs2_bin is not None and os.path.isfile(fs2_bin):
-        settings['fs2_bin'] = os.path.basename(fs2_bin)
-        settings['fs2_path'] = os.path.dirname(fs2_bin)
-        
+        fs2_path = settings['fs2_path']
+
+    if fs2_path is not None and os.path.isdir(fs2_path):
+        settings['fs2_path'] = os.path.abspath(fs2_path)
+
+        bins = glob.glob(os.path.join(fs2_path, 'fs2_open_*'))
+        if len(bins) == 1:
+            # Found only one binary, select it by default.
+
+            settings['fs2_bin'] = os.path.basename(bins[0])
+        elif len(bins) > 1:
+            # Let the user choose.
+
+            select_win = init_ui(Ui_SelectList(), QtGui.QDialog(main_win))
+            has_default = False
+            bins.sort()
+
+            for i, path in enumerate(bins):
+                path = os.path.basename(path)
+                select_win.listWidget.addItem(path)
+
+                if not has_default and not (path.endswith('_DEBUG') or path.endswith('_DEBUG.exe')):
+                    # Select the first non-debug build as default.
+
+                    select_win.listWidget.setCurrentRow(i)
+                    has_default = True
+
+            select_win.listWidget.itemDoubleClicked.connect(select_win.accept)
+            select_win.okButton.clicked.connect(select_win.accept)
+            select_win.cancelButton.clicked.connect(select_win.reject)
+
+            if select_win.exec_() == QtGui.QDialog.Accepted:
+                settings['fs2_bin'] = select_win.listWidget.currentItem().text()
+        else:
+            settings['fs2_bin'] = None
+
         save_settings()
         init_fs2_tab()
 
@@ -702,6 +727,13 @@ def select_mod(item, col):
 
 
 def run_mod(mod):
+    if settings['fs2_bin'] is None:
+        select_fs2_path(False)
+
+        if settings['fs2_bin'] is None:
+            QtGui.QMessageBox.critical(main_win, 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
+            return
+
     modpath = os.path.join(settings['fs2_path'], mod.folder)
     ini = None
     modfolder = None
@@ -877,7 +909,7 @@ def main():
         save_settings()
     
     if settings['hash_cache'] is not None:
-        fs2mod.HASH_CACHE = settings['hash_cache']
+        fso_parser.HASH_CACHE = settings['hash_cache']
     
     app = QtGui.QApplication([])
 
@@ -923,7 +955,7 @@ def main():
     app.exec_()
     
     settings['hash_cache'] = dict()
-    for path, info in fs2mod.HASH_CACHE.items():
+    for path, info in fso_parser.HASH_CACHE.items():
         # Skip deleted files
         if os.path.exists(path):
             settings['hash_cache'][path] = info

@@ -80,6 +80,16 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Select mods to install them or deselect them to uninstall them. Click on a mod's name to get more information about it.</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QTreeWidget" name="modTree">
           <property name="editTriggers">
            <set>QAbstractItemView::NoEditTriggers</set>
@@ -121,14 +131,14 @@
           <item>
            <widget class="QPushButton" name="update">
             <property name="text">
-             <string>Update</string>
+             <string>Update List</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QPushButton" name="apply_sel">
             <property name="text">
-             <string>Apply</string>
+             <string>Install/Uninstall</string>
             </property>
            </widget>
           </item>

@@ -166,5 +166,5 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
     if hasattr(sys.stdout, 'fileno'):
         output = sys.stdout
     else:
-        output = None
+        output = subprocess.DEVNULL
     return subprocess.call(cmd, stdout=output, stderr=output) == 0
