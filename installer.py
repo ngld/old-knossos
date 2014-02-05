@@ -20,6 +20,10 @@ class UserStream(object):
         if self._wrapped is not None:
             self._wrapped.flush()
 
+    def fileno(self):
+        # TODO: Is there any *easy* way of intercepting data passed through this FD?
+        return self._wrapped.fileno()
+
 sys.stdout = UserStream(sys.stdout)
 sys.stderr = UserStream(sys.stderr)
 
@@ -30,6 +34,7 @@ import json
 import subprocess
 import tempfile
 import shutil
+import stat
 import glob
 import time
 import progress
@@ -39,6 +44,7 @@ from qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.progress import Ui_Dialog as Ui_Progress
 from ui.modinfo import Ui_Dialog as Ui_Modinfo
+from ui.gogextract import Ui_Dialog as Ui_Gogextract
 from fs2mod import ModInfo2
 
 VERSION = '0.1-alpha'
@@ -211,8 +217,8 @@ class GOGExtractTask(progress.Task):
     def work(self, paths):
         gog_path, dest_path = paths
         
-        progress.start_task(0, 1/10, 'Looking for InnoExtract...')
-        data = util.get(settings['innoextract_link']).read()
+        progress.start_task(0, 0.03, 'Looking for InnoExtract...')
+        data = util.get(settings['innoextract_link']).read().decode('utf8', 'replace')
         progress.finish_task()
         
         try:
@@ -236,31 +242,58 @@ class GOGExtractTask(progress.Task):
         with tempfile.TemporaryDirectory() as tempdir:
             archive = os.path.join(tempdir, os.path.basename(link))
             
-            progress.start_task(1/10, 3/10, 'Downloading InnoExtract...')
+            progress.start_task(0.03, 0.10, 'Downloading InnoExtract...')
             with open(os.path.join(dest_path, archive), 'wb') as dl:
                 util.download(link, dl)
             
             progress.finish_task()
-            progress.update(4/10, 'Extracting InnoExtract...')
+            progress.update(0.13, 'Extracting InnoExtract...')
             
             util.extract_archive(archive, tempdir)
             shutil.move(os.path.join(tempdir, path), inno)
-            progress.finish_task()
         
-        progress.start_task(5/10, 3/10, 'Extracting FS2...')
+        # Make it executable
+        mode = os.stat(inno).st_mode
+        os.chmod(inno, mode | stat.S_IXUSR)
+
+        progress.start_task(0.15, 0.75, 'Extracting FS2: %s')
         try:
-            # TODO: Actually read the progress and call progress.update()
-            progress.update(0, '')
-            subprocess.call([inno, '-L', '-s', '--progress=true', '-e', dest_path])
+            cmd = [inno, '-L', '-s', '-p', '-e', gog_path]
+            logging.info('Running %s...', ' '.join(cmd))
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=sys.stderr, cwd=dest_path)
+
+            while p.poll() is None:
+                buf = ''
+                while '\r' not in buf:
+                    line = p.stdout.read(128)
+                    if not line:
+                        break
+                    buf += line.decode('utf8', 'replace')
+
+                buf = buf.split('\r')
+                line = buf.pop(0)
+                buf = '\r'.join(buf)
+
+                if 'MiB/s' in line:
+                    try:
+                        line = line.split(']')[1].strip().split('MiB/s')[0] + 'MiB/s'
+                        percent = float(line.split('%')[0]) / 100
+
+                        progress.update(percent, line)
+                    except:
+                        logging.exception('Failed to process InnoExtract output!')
+                else:
+                    logging.info('InnoExtract: %s', line)
         except:
             logging.exception('InnoExtract failed!')
             # TODO: Cleanup
             return
         progress.finish_task()
         
-        progress.update(8/10, 'Arranging files...')
-        os.mkdir(os.path.join(dest_path, 'players'))
-        os.mkdir(os.path.join(dest_path, 'movies'))
+        progress.update(0.95, 'Arranging files...')
+        os.mkdir(os.path.join(dest_path, 'data'))
+        os.mkdir(os.path.join(dest_path, 'data/players'))
+        os.mkdir(os.path.join(dest_path, 'data/movies'))
         
         for item in glob.glob(os.path.join(dest_path, 'app', '*.vp')):
             shutil.move(item, os.path.join(dest_path, 'data', os.path.basename(item)))
@@ -274,8 +307,10 @@ class GOGExtractTask(progress.Task):
         for item in glob.glob(os.path.join(dest_path, 'app/data3', '*.mve')):
             shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
         
-        progress.update(9/10, 'Cleanup...')
+        progress.update(0.99, 'Cleanup...')
         os.unlink(inno)
+        shutil.rmtree(os.path.join(dest_path, 'app'))
+        shutil.rmtree(os.path.join(dest_path, 'tmp'))
         
         # TODO: Test & improve
         self.post(dest_path)
@@ -283,7 +318,14 @@ class GOGExtractTask(progress.Task):
     def finish(self):
         global settings
         
-        fs2_path = self.get_results()[0]
+        results = self.get_results()
+        if len(results) < 1:
+            QtGui.QMessageBox.critical(main_win, 'Error', 'The Installer failed! Please read the log for more details...')
+            return
+        else:
+            QtGui.QMessageBox.information(main_win, 'Done', 'FS2 was successfully installed.')
+
+        fs2_path = results[0]
         settings['fs2_path'] = fs2_path
         settings['fs2_bin'] = None
         
@@ -361,7 +403,11 @@ class ProgressDisplay(object):
             label.setText(item[1])
             bar.setValue(item[0] * 100)
         
-        self.win.progressBar.setValue(total * 100)
+        if len(self._threads) == 1:
+            self.win.progressBar.hide()
+        else:
+            self.win.progressBar.setValue(total * 100)
+            self.win.progressBar.show()
     
     @run_in_qt
     def show_line(self, data):
@@ -443,8 +489,50 @@ def init_fs2_tab():
 
 
 def do_gog_extract():
-    QtGui.QMessageBox.warning(main_win, 'Info', 'Not yet implemented!', QtGui.QMessageBox.Ok)
-    pass
+    extract_win = init_ui(Ui_Gogextract(), QtGui.QDialog(main_win))
+
+    def select_installer():
+        path = QtGui.QFileDialog.getOpenFileName(extract_win, 'Please select the setup_freespace2_*.exe file.',
+                                                 os.path.expanduser('~/Downloads'), 'Executable (*.exe)')[0]
+
+        if path is not None:
+            if not os.path.isfile(path):
+                QtGui.QMessageBox.critical(extract_win, 'Not a file', 'Please select a proper file!')
+                return
+
+            extract_win.gogPath.setText(os.path.abspath(path))
+
+    def select_dest():
+        path = QtGui.QFileDialog.getExistingDirectory(extract_win, 'Please select the destination directory.')
+
+        if path is not None:
+            if not os.path.isdir(path):
+                QtGui.QMessageBox.critical(extract_win, 'Not a directory', 'Please select a proper directory!')
+                return
+
+            extract_win.destPath.setText(os.path.abspath(path))
+
+    def validate():
+        if os.path.isfile(extract_win.gogPath.text()) and os.path.isdir(extract_win.destPath.text()):
+            extract_win.installButton.setEnabled(True)
+        else:
+            extract_win.installButton.setEnabled(False)
+
+    def do_install():
+        # Just to be sure...
+        if os.path.isfile(extract_win.gogPath.text()) and os.path.isdir(extract_win.destPath.text()):
+            run_task(GOGExtractTask(extract_win.gogPath.text(), extract_win.destPath.text()))
+            extract_win.close()
+
+    extract_win.gogPath.textChanged.connect(validate)
+    extract_win.destPath.textChanged.connect(validate)
+
+    extract_win.gogButton.clicked.connect(select_installer)
+    extract_win.destButton.clicked.connect(select_dest)
+    extract_win.cancelButton.clicked.connect(extract_win.close)
+    extract_win.installButton.clicked.connect(do_install)
+
+    extract_win.show()
 
 
 def select_fs2_path():
@@ -471,8 +559,14 @@ def select_fs2_path():
 
 
 def run_fs2():
-    p = subprocess.Popen([os.path.join(settings['fs2_path'], settings['fs2_bin'])], cwd=settings['fs2_path'])
-    
+    fs2_bin = os.path.join(settings['fs2_path'], settings['fs2_bin'])
+    mode = os.stat(fs2_bin).st_mode
+    if mode & stat.S_IXUSR != stat.S_IXUSR:
+        # Make it executable.
+        os.chmod(fs2_bin, mode | stat.S_IXUSR)
+
+    p = subprocess.Popen([fs2_bin], cwd=settings['fs2_path'])
+
     time.sleep(0.5)
     if p.poll() is not None:
         QtGui.QMessageBox.critical(main_win, 'Failed', 'Starting FS2 Open (%s) failed! (return code: %d)' % (os.path.join(settings['fs2_path'], settings['fs2_bin']), p.returncode))
@@ -691,8 +785,6 @@ def read_tree(parent, items=None):
             items.append((item, None))
             
             read_tree(item, items)
-        
-        print(items)
     else:
         for i in range(0, parent.childCount()):
             item = parent.child(i)
@@ -793,8 +885,8 @@ def main():
         QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
         return
 
-    progress_win = ProgressDisplay()
     main_win = init_ui(Ui_MainWindow(), QtGui.QMainWindow())
+    progress_win = ProgressDisplay()
 
     if hasattr(sys, 'frozen'):
         # Add note about bundled content.

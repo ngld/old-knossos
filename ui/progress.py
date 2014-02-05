@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui/progress.ui'
+# Form implementation generated from reading ui file 'progress.ui'
 #
-# Created: Sun Feb  2 23:42:52 2014
-#      by: pyside-uic 0.2.15 running on qt 1.2.1
+# Created: Wed Feb  5 04:58:08 2014
+#      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
 

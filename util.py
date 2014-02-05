@@ -1,7 +1,7 @@
+import sys
 import os
 import logging
 import shutil
-import tempfile
 import subprocess
 import six
 import progress
@@ -122,14 +122,14 @@ def ipath(path):
 
 def test_7z():
     try:
-        return subprocess.call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL) == 0
+        return subprocess.call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL, stderr=sys.stdout) == 0
     except:
         logging.exception('Call to 7z failed!')
         return False
 
 
 def is_archive(path):
-    return subprocess.call([SEVEN_PATH, 'l', path], stdout=subprocess.DEVNULL) == 0
+    return subprocess.call([SEVEN_PATH, 'l', path], stdout=subprocess.DEVNULL, stderr=sys.stdout) == 0
 
 
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
@@ -161,4 +161,6 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
     if files is not None:
         cmd.extend(files)
 
-    return subprocess.call(cmd) == 0
+    # Redirect its stdout to sys.stdout so its output is logged.
+    # (installer.py redirects sys.stdout.)
+    return subprocess.call(cmd, stdout=sys.stdout, stderr=sys.stdout) == 0
