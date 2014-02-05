@@ -1,6 +1,7 @@
 from __future__ import print_function
 import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
+logging.getLogger().addHandler(logging.FileHandler('converter.log'))
 
 import sys
 import os
@@ -159,7 +160,7 @@ def main(args):
         task.done.connect(finish)
         
         def core():
-            signal.signal(signal.SIGINT, lambda a, b: sys.exit(2))
+            signal.signal(signal.SIGINT, lambda a, b: master.stop_workers())
             master.start_workers(5)
             master.add_task(task)
             app.exec_()
@@ -190,8 +191,6 @@ def main(args):
 
             if mod.parent is not None:
                 mods[mod.name]['parent'] = mod.parent.name
-        
-        print(mods)
         
         if args.pretty:
             json.dump(mods, args.outpath, indent=4)

@@ -41,7 +41,7 @@ if variant == 'PyQt4':
 
 if variant == 'headless':
     if env_api != 'headless':
-        logging.warning('Switching into headless mode. This will most likely fail, if you want to use the manager!')
+        logging.warning('Falling back to headless mode. This will most likely fail if you want to use the mod manager!')
 
     # This is just a dummy implementation of the Qt.Signal() system. Nothing else is provided by this variant.
     import threading

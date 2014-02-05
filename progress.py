@@ -15,8 +15,6 @@ except ImportError:
 
 if six.PY2:
     threading.get_ident = lambda: threading.current_thread().ident
-else:
-    from imp import reload
 
 _progress = threading.local()
 
@@ -324,8 +322,7 @@ class Textbox(object):
             self.content[-1] = text.pop(0)
             
             self.win.addstr(y + height - 1, x, self.content[-1])
-            for line in text:
-                self.appendln(line)
+            self.appendln('\n'.join(text))
     
     def set_text(self, text):
         with self.lock:
@@ -364,16 +361,13 @@ class CursesOutput(object):
     def write(self, data):
         with self.lock:
             self.win.append(data)
-            #self.other_win.redrawwin()
+            self.other_win.redrawwin()
             
             if self.log is not None:
                 self.log.write(data)
     
     def flush(self):
         with self.lock:
-            #self.win.win.refresh()
-            #self.other_win.redrawwin()
-            
             if self.log is not None:
                 self.log.flush()
 
@@ -385,7 +379,6 @@ def _init_curses(scr, cb, log):
     statusw = Textbox(curses.newwin(0, 0, 0, 0), clock)
     statusw.border = True
     win = Textbox(scr, clock)
-    clock = threading.Lock()
     
     def show_status(prog, text):
         h, w = statusw.win.getmaxyx()
@@ -405,14 +398,7 @@ def _init_curses(scr, cb, log):
                 handlers.append((handler, handler.stream))
                 handler.stream = sys.stdout
     
-    # patool.util caches sys.stdout
-    if 'patoolib.util' in sys.modules:
-        reload(sys.modules['patoolib.util'])
-    
     cb()
-    
-    if 'patoolib.util' in sys.modules:
-        reload(sys.modules['patoolib.util'])
     
     for handler, stream in handlers:
         handler.stream = stream
