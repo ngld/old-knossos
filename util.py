@@ -1,6 +1,7 @@
 import os
 import logging
 import shutil
+import tempfile
 import subprocess
 import six
 import progress
@@ -131,7 +132,26 @@ def is_archive(path):
     return subprocess.call([SEVEN_PATH, 'l', path], stdout=subprocess.DEVNULL) == 0
 
 
-def extract_archive(archive, outpath, overwrite=False, files=None):
+def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
+    if '.tar.' in archive and not _rec:
+        # This is a file like whatever.tar.gz. We have to call 7z two times for this kind of file:
+        # First to get whatever.tar and second to extract that tar archive.
+        
+        if not extract_archive(archive, os.path.dirname(archive), True, None, True):
+            return False
+        
+        unc_archive = archive.split('.')
+        # Remove the .gz or .bz2 or whatever ending...
+        unc_archive.pop()
+        
+        # ... and put it together again.
+        unc_archive = '.'.join(unc_archive)
+        res = extract_archive(unc_archive, outpath, overwrite, files)
+        
+        # Cleanup
+        os.unlink(unc_archive)
+        return res
+        
     cmd = [SEVEN_PATH, 'x', '-o' + outpath]
     if overwrite:
         cmd.append('-y')

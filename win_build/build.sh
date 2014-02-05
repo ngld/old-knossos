@@ -75,7 +75,7 @@ if [ ! -d _w ]; then
     echo "==> Unpacking Qt..."
     mkdir tmp
     7z x -otmp qt.exe
-    mv 'tmp/$OUTDIR/bin/lib/'Qt{Gui,Core}4.dll .
+    mv 'tmp/$OUTDIR/bin/bin/'Qt{Gui,Core}4.dll .
     rm -r tmp
     
     echo "==> Cleaning up..."

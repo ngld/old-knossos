@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui/main.ui'
 #
-# Created: Mon Feb  3 17:22:59 2014
+# Created: Tue Feb  4 23:51:14 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -43,8 +43,10 @@ class Ui_MainWindow(object):
         self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.modTree = QtGui.QTreeWidget(self.mods)
         self.modTree.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+        self.modTree.setProperty("showDropIndicator", False)
         self.modTree.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
         self.modTree.setAnimated(True)
+        self.modTree.setExpandsOnDoubleClick(False)
         self.modTree.setObjectName("modTree")
         self.verticalLayout_3.addWidget(self.modTree)
         self.horizontalLayout = QtGui.QHBoxLayout()
@@ -85,6 +87,7 @@ class Ui_MainWindow(object):
         self.select.setText(QtGui.QApplication.translate("MainWindow", "Select installed FS2 (Open)", None, QtGui.QApplication.UnicodeUTF8))
         self.fs2_bin.setText(QtGui.QApplication.translate("MainWindow", "Selected FS2: ...", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.fs2), QtGui.QApplication.translate("MainWindow", "FS2", None, QtGui.QApplication.UnicodeUTF8))
+        self.modTree.setSortingEnabled(True)
         self.modTree.headerItem().setText(0, QtGui.QApplication.translate("MainWindow", "Name", None, QtGui.QApplication.UnicodeUTF8))
         self.modTree.headerItem().setText(1, QtGui.QApplication.translate("MainWindow", "Version", None, QtGui.QApplication.UnicodeUTF8))
         self.modTree.headerItem().setText(2, QtGui.QApplication.translate("MainWindow", "Status", None, QtGui.QApplication.UnicodeUTF8))
