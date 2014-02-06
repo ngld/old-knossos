@@ -1,0 +1,211 @@
+diff -ru innoextract-1.4/src/cli/main.cpp innoextract-1.4-patched/src/cli/main.cpp
+--- innoextract-1.4/src/cli/main.cpp	2013-03-11 16:24:33 +0000
++++ innoextract-1.4-patched/src/cli/main.cpp	2014-02-06 20:15:32 +0000
+@@ -482,6 +482,7 @@
+ 		("silent,s", "Output only error/warning information")
+ 		("color,c", po::value<bool>()->implicit_value(true), "Enable/disable color output")
+ 		("progress,p", po::value<bool>()->implicit_value(true), "Enable/disable the progress bar")
++		("no-bar", "Display progress in percent not as a bar.")
+ 		#ifdef DEBUG
+ 			("debug,g", "Output debug information")
+ 		#endif
+@@ -539,7 +540,7 @@
+ 	} else {
+ 		progress_e = progress_i->second.as<bool>() ? color::enable : color::disable;
+ 	}
+-	color::init(color_e, progress_e);
++	color::init(color_e, progress_e, options.count("no-bar") == 0);
+ 	
+ 	// Help output.
+ 	if(options.count("help") != 0) {
+diff -ru innoextract-1.4/src/util/console.cpp innoextract-1.4-patched/src/util/console.cpp
+--- innoextract-1.4/src/util/console.cpp	2013-03-11 16:24:33 +0000
++++ innoextract-1.4-patched/src/util/console.cpp	2014-02-06 20:15:32 +0000
+@@ -50,6 +50,7 @@
+ #include "util/output.hpp"
+ 
+ static bool show_progress = true;
++static bool show_bar = true;
+ 
+ #if defined(SIGWINCH)
+ 
+@@ -149,7 +150,8 @@
+ 
+ shell_command current = reset;
+ 
+-void init(is_enabled color, is_enabled progress) {
++void init(is_enabled color, is_enabled progress, bool bar) {
++	show_bar = bar;
+ 	
+ 	bool is_tty = false;
+ 	#if INNOEXTRACT_HAVE_ISATTY
+@@ -166,7 +168,7 @@
+ 	} else {
+ 		is_tty = false;
+ 		color = disable;
+-		progress = disable;
++		show_bar = false;
+ 	}
+ 	#endif
+ 	
+@@ -274,7 +276,7 @@
+ 	
+ 	int width = get_screen_width();
+ 	
+-	if(!show_progress) {
++	if(!show_progress || !show_bar) {
+ 		return width;
+ 	}
+ 	
+@@ -315,27 +317,33 @@
+ 	
+ 	std::ios_base::fmtflags flags = std::cout.flags();
+ 	
+-	int progress_length = width - int(label.length()) - 6 - 2 - 2 - 1;
+-	
+-	if(progress_length > 10) {
+-		
+-		size_t progress = size_t(std::ceil(float(progress_length) * value));
++	if(show_bar) {
++		int progress_length = width - int(label.length()) - 6 - 2 - 2 - 1;
+ 		
+-		std::cout << '[';
+-		for(size_t i = 0; i < progress; i++) {
+-			std::cout << '=';
++		if(progress_length > 10) {
++			
++			size_t progress = size_t(std::ceil(float(progress_length) * value));
++			
++			std::cout << '[';
++			for(size_t i = 0; i < progress; i++) {
++				std::cout << '=';
++			}
++			std::cout << '>';
++			for(size_t i = progress; i < size_t(progress_length); i++) {
++				std::cout << ' ';
++			}
++			std::cout << ']';
++			
+ 		}
+-		std::cout << '>';
+-		for(size_t i = progress; i < size_t(progress_length); i++) {
+-			std::cout << ' ';
+-		}
+-		std::cout << ']';
+ 		
++		std::cout << std::right << std::fixed << std::setprecision(1) << std::setfill(' ')
++		          << std::setw(5) << (value * 100) << "% " << label;
++		
++		std::cout.flush();
++	} else {
++		std::cout << std::setprecision(1) << (value * 100) << "% " << label << std::endl;
+ 	}
+ 	
+-	std::cout << std::right << std::fixed << std::setprecision(1) << std::setfill(' ')
+-	          << std::setw(5) << (value * 100) << "% " << label;
+-	std::cout.flush();
+ 	
+ 	std::cout.flags(flags);
+ 	
+@@ -352,23 +360,25 @@
+ 	
+ 	std::ios_base::fmtflags flags = std::cout.flags();
+ 	
+-	int progress_length = width - int(label.length()) - 2 - 2 - 6;
+-	
+-	if(progress_length > 10) {
+-		
+-		size_t progress = std::min(size_t(std::ceil(float(progress_length) * value)),
+-		                  size_t(progress_length - 1));
++	if(show_bar) {
++		int progress_length = width - int(label.length()) - 2 - 2 - 6;
+ 		
+-		std::cout << '[';
+-		for(size_t i = 0; i < progress; i++) {
+-			std::cout << ' ';
++		if(progress_length > 10) {
++			
++			size_t progress = std::min(size_t(std::ceil(float(progress_length) * value)),
++			                  size_t(progress_length - 1));
++			
++			std::cout << '[';
++			for(size_t i = 0; i < progress; i++) {
++				std::cout << ' ';
++			}
++			std::cout << "<===>";
++			for(size_t i = progress; i < size_t(progress_length); i++) {
++				std::cout << ' ';
++			}
++			std::cout << ']';
++			
+ 		}
+-		std::cout << "<===>";
+-		for(size_t i = progress; i < size_t(progress_length); i++) {
+-			std::cout << ' ';
+-		}
+-		std::cout << ']';
+-		
+ 	}
+ 	
+ 	std::cout << ' ' << label;
+diff -ru innoextract-1.4/src/util/console.hpp innoextract-1.4-patched/src/util/console.hpp
+--- innoextract-1.4/src/util/console.hpp	2013-03-11 16:24:33 +0000
++++ innoextract-1.4-patched/src/util/console.hpp	2014-02-06 20:15:32 +0000
+@@ -93,7 +93,7 @@
+  * \param color    Enable or disable color output.
+  * \param progress Enable or disable progress bar output.
+  */
+-void init(is_enabled color = automatic, is_enabled progress = automatic);
++void init(is_enabled color = automatic, is_enabled progress = automatic, bool bar = true);
+ 
+ } // namespace color
+ 
+diff -ru innoextract-1.4/src/util/time.cpp innoextract-1.4-patched/src/util/time.cpp
+--- innoextract-1.4/src/util/time.cpp	2013-03-11 16:24:33 +0000
++++ innoextract-1.4-patched/src/util/time.cpp	2014-02-06 20:15:32 +0000
+@@ -51,9 +51,13 @@
+ 	const char * variable = "TZ";
+ 	
+ #if defined(_WIN32)
++	wchar_t * w_value = new wchar_t[128];
++	mbstowcs(w_value, value, 128);
+ 	
+-	SetEnvironmentVariable(variable, value);
+-	_tzset();
++	SetEnvironmentVariable(L"TZ", w_value);
++	delete w_value;
++	// TODO: Figure out how this should be called because MinGW doesn't declare _tzset() .
++	//_tzset();
+ 	
+ #else
+ 	
+diff -ru innoextract-1.4/src/util/windows.cpp innoextract-1.4-patched/src/util/windows.cpp
+--- innoextract-1.4/src/util/windows.cpp	2013-03-11 16:24:33 +0000
++++ innoextract-1.4-patched/src/util/windows.cpp	2014-02-06 20:17:10 +0000
+@@ -44,7 +44,7 @@
+ 
+ // We really want main here, not utf8_main.
+ #undef main
+-int main() {
++int main(int argc, char ** argv) {
+ 	
+ 	// We use UTF-8 for everything internally, as almost all modern operating systems
+ 	// have standardized on that. However, as usual, Windows has to do its own thing
+@@ -52,17 +52,6 @@
+ 	
+ 	std::setlocale(LC_ALL, "");
+ 	
+-	// Get the UTF-16 command-line parameters and convert it them to UTF-8 ourself.
+-	int argc = __argc;
+-	wchar_t ** wargv = __wargv;
+-	char ** argv = new char *[argc + 1];
+-	argv[argc] = NULL;
+-	for(int i = 0; i < argc; i++) {
+-		int n = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, NULL, 0,  NULL, NULL);
+-		argv[i] = new char[n];
+-		WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, argv[i], n, NULL, NULL);
+-	}
+-	
+ 	// Tell boost::filesystem to interpret our path strings as UTF-8.
+ 	std::locale global_locale = std::locale();
+ 	std::locale utf8_locale(global_locale, new utf8_codecvt);
