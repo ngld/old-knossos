@@ -160,10 +160,11 @@ def main(args):
         task.done.connect(finish)
         
         def core():
-            signal.signal(signal.SIGINT, lambda a, b: master.stop_workers())
+            signal.signal(signal.SIGINT, lambda a, b: app.quit())
             master.start_workers(5)
             master.add_task(task)
             app.exec_()
+            master.stop_workers()
         
         out = StringIO()
         progress.init_curses(core, out)

@@ -1,0 +1,180 @@
+diff -ru innoextract-1.4/src/cli/main.cpp innoextract-1.4-patched/src/cli/main.cpp
+--- innoextract-1.4/src/cli/main.cpp    2013-03-11 17:24:33.000000000 +0100
++++ innoextract-1.4-patched/src/cli/main.cpp    2014-02-06 11:07:51.251888250 +0100
+@@ -482,6 +482,7 @@
+                ("silent,s", "Output only error/warning information")
+                ("color,c", po::value<bool>()->implicit_value(true), "Enable/disable color output")
+                ("progress,p", po::value<bool>()->implicit_value(true), "Enable/disable the progress bar")
++               ("no-bar", "Display progress in percent not as a bar.")
+                #ifdef DEBUG
+                        ("debug,g", "Output debug information")
+                #endif
+@@ -539,7 +540,7 @@
+        } else {
+                progress_e = progress_i->second.as<bool>() ? color::enable : color::disable;
+        }
+-       color::init(color_e, progress_e);
++       color::init(color_e, progress_e, options.count("no-bar") == 0);
+ 
+        // Help output.
+        if(options.count("help") != 0) {
+diff -ru innoextract-1.4/src/util/console.cpp innoextract-1.4-patched/src/util/console.cpp
+--- innoextract-1.4/src/util/console.cpp        2013-03-11 17:24:33.000000000 +0100
++++ innoextract-1.4-patched/src/util/console.cpp        2014-02-06 11:16:05.780841872 +0100
+@@ -50,6 +50,7 @@
+ #include "util/output.hpp"
+ 
+ static bool show_progress = true;
++static bool show_bar = true;
+ 
+ #if defined(SIGWINCH)
+ 
+@@ -149,8 +150,9 @@
+ 
+ shell_command current = reset;
+ 
+-void init(is_enabled color, is_enabled progress) {
+-
++void init(is_enabled color, is_enabled progress, bool bar) {
++       show_bar = bar;
++
+        bool is_tty = false;
+        #if INNOEXTRACT_HAVE_ISATTY
+        is_tty = isatty(1) && isatty(2);
+@@ -166,7 +168,7 @@
+        } else {
+                is_tty = false;
+                color = disable;
+-               progress = disable;
++               show_bar = false;
+        }
+        #endif
+ 
+@@ -274,7 +276,7 @@
+ 
+        int width = get_screen_width();
+ 
+-       if(!show_progress) {
++       if(!show_bar || !show_progress) {
+                return width;
+        }
+ 
+@@ -310,33 +312,37 @@
+        if(!show_progress) {
+                return;
+        }
+-
++
+        int width = clear();
+ 
+        std::ios_base::fmtflags flags = std::cout.flags();
+ 
+-       int progress_length = width - int(label.length()) - 6 - 2 - 2 - 1;
+-
+-       if(progress_length > 10) {
++       if(show_bar) {
++               int progress_length = width - int(label.length()) - 6 - 2 - 2 - 1;
+ 
+-               size_t progress = size_t(std::ceil(float(progress_length) * value));
+-
+-               std::cout << '[';
+-               for(size_t i = 0; i < progress; i++) {
+-                       std::cout << '=';
+-               }
+-               std::cout << '>';
+-               for(size_t i = progress; i < size_t(progress_length); i++) {
+-                       std::cout << ' ';
++               if(progress_length > 10) {
++
++                       size_t progress = size_t(std::ceil(float(progress_length) * value));
++
++                       std::cout << '[';
++                       for(size_t i = 0; i < progress; i++) {
++                               std::cout << '=';
++                       }
++                       std::cout << '>';
++                       for(size_t i = progress; i < size_t(progress_length); i++) {
++                               std::cout << ' ';
++                       }
++                       std::cout << ']';
++
+                }
+-               std::cout << ']';
+-
++
++               std::cout << std::setprecision(1) << std::setfill(' ')
++                         << std::setw(5) << (value * 100) << "% " << label;
++               std::cout.flush();
++       } else {
++               std::cout << std::setprecision(1) << (value * 100) << "% " << label << std::endl;
+        }
+ 
+-       std::cout << std::right << std::fixed << std::setprecision(1) << std::setfill(' ')
+-                 << std::setw(5) << (value * 100) << "% " << label;
+-       std::cout.flush();
+-
+        std::cout.flags(flags);
+ 
+        progress_cleared = false;
+@@ -352,28 +358,32 @@
+ 
+        std::ios_base::fmtflags flags = std::cout.flags();
+ 
+-       int progress_length = width - int(label.length()) - 2 - 2 - 6;
+-
+-       if(progress_length > 10) {
++       if(show_bar) {
++               int progress_length = width - int(label.length()) - 2 - 2 - 6;
+ 
+-               size_t progress = std::min(size_t(std::ceil(float(progress_length) * value)),
+-                                 size_t(progress_length - 1));
+-
+-               std::cout << '[';
+-               for(size_t i = 0; i < progress; i++) {
+-                       std::cout << ' ';
+-               }
+-               std::cout << "<===>";
+-               for(size_t i = progress; i < size_t(progress_length); i++) {
+-                       std::cout << ' ';
++               if(progress_length > 10) {
++
++                       size_t progress = std::min(size_t(std::ceil(float(progress_length) * value)),
++                                         size_t(progress_length - 1));
++
++                       std::cout << '[';
++                       for(size_t i = 0; i < progress; i++) {
++                               std::cout << ' ';
++                       }
++                       std::cout << "<===>";
++                       for(size_t i = progress; i < size_t(progress_length); i++) {
++                               std::cout << ' ';
++                       }
++                       std::cout << ']';
++
+                }
+-               std::cout << ']';
+-
++
++               std::cout << ' ' << label;
++               std::cout.flush();
++       } else {
++               std::cout << label << std::endl;
+        }
+ 
+-       std::cout << ' ' << label;
+-       std::cout.flush();
+-
+        std::cout.flags(flags);
+ 
+        progress_cleared = false;
+diff -ru innoextract-1.4/src/util/console.hpp innoextract-1.4-patched/src/util/console.hpp
+--- innoextract-1.4/src/util/console.hpp        2013-03-11 17:24:33.000000000 +0100
++++ innoextract-1.4-patched/src/util/console.hpp        2014-02-06 11:10:47.674266013 +0100
+@@ -93,7 +93,7 @@
+  * \param color    Enable or disable color output.
+  * \param progress Enable or disable progress bar output.
+  */
+-void init(is_enabled color = automatic, is_enabled progress = automatic);
++void init(is_enabled color = automatic, is_enabled progress = automatic, bool bar = true);
+ 
+ } // namespace color

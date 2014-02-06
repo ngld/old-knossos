@@ -258,15 +258,25 @@ class GOGExtractTask(progress.Task):
         os.chmod(inno, mode | stat.S_IXUSR)
 
         progress.start_task(0.15, 0.75, 'Extracting FS2: %s')
+        output = None
         try:
             cmd = [inno, '-L', '-s', '-p', '-e', gog_path]
             logging.info('Running %s...', ' '.join(cmd))
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=sys.stderr, cwd=dest_path)
+
+            if sys.platform.startswith('win'):
+                output_buf = tempfile.NamedTemporaryFile()
+                p = subprocess.Popen(cmd, stdout=output_buf, stderr=subprocess.STDOUT, cwd=dest_path, shell=True, bufsize=0)
+                output = open(output_buf.name, 'r')
+            else:
+                p = subprocess.Popen(cmd, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT, cwd=dest_path)
+                output = p.stdout
 
             while p.poll() is None:
                 buf = ''
                 while '\r' not in buf:
-                    line = p.stdout.read(128)
+                    print('Reading line...')
+                    line = output.read(10)
+                    print(repr(line))
                     if not line:
                         break
                     buf += line.decode('utf8', 'replace')
@@ -289,6 +299,10 @@ class GOGExtractTask(progress.Task):
             logging.exception('InnoExtract failed!')
             # TODO: Cleanup
             return
+        finally:
+            if output:
+                output.close()
+
         progress.finish_task()
         
         progress.update(0.95, 'Arranging files...')

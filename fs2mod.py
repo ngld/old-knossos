@@ -2,7 +2,6 @@ import os
 import logging
 import tempfile
 import zipfile
-import hashlib
 import subprocess
 import six
 import progress
@@ -17,8 +16,11 @@ try:
 except ImportError:
     Image = None
 
+_has_convert = None
 
 def convert_img(path, outfmt):
+    global _has_convert
+
     fd, dest = tempfile.mkstemp('.' + outfmt)
     os.close(fd)
     if Image is not None:
@@ -27,11 +29,16 @@ def convert_img(path, outfmt):
         
         return dest
     else:
-        try:
-            subprocess.check_call(['which', 'convert'], stdout=subprocess.DEVNULL)
-        except subprocess.CalledProcessError:
-            # Well, this failed, too. Is there any other way to convert an image?
-            # For now I'll just abort.
+        if _has_convert is None:
+            try:
+                subprocess.check_call(['which', 'convert'], stdout=subprocess.DEVNULL)
+                _has_convert = True
+            except subprocess.CalledProcessError:
+                # Well, this failed, too. Is there any other way to convert an image?
+                # For now I'll just abort.
+                _has_convert = False
+                return None
+        elif _has_convert == False:
             return None
         
         subprocess.check_call(['convert', path, dest])
