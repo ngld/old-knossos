@@ -33,7 +33,8 @@ if ! has cmake; then
     rm -r cmake.zip cmake-*
 fi
 
-[ -d /build ] || mkdir /build/
+[ -d /build ] && rm -r /build
+mkdir /build
 cd /build
 
 echo "Downloading zlib..."
@@ -93,7 +94,7 @@ patch -p1 < "$(echo "$mypath"/innoextract-*.patch)"
 
 mkdir build
 cd build
-# Force cmake to use mingw32's libiconv not msys's.
-[ -f /lib/libiconv.a ] && rm /lib/libiconv.a
-cmake -G"MSYS Makefiles" .. -DLZMA_INCLUDE_DIR=/include -DBOOST_INCLUDEDIR="$(echo /build/boost_*/)" -DZLIB_INCLUDE_DIR="$(echo /build/zlib-*/)" -DBZIP2_INCLUDE_DIR="$(echo /build/bzip2-*/)" -DBZIP2_LIBRARIES="$(echo /build/bzip2-*/*.a)"
+cmake -G"MSYS Makefiles" .. -DLZMA_INCLUDE_DIR=/include -Diconv_INCLUDE_DIR=/mingw/include \
+    -DBOOST_INCLUDEDIR="$(echo /build/boost_*/)" -DZLIB_INCLUDE_DIR="$(echo /build/zlib-*/)" \
+    -DBZIP2_INCLUDE_DIR="$(echo /build/bzip2-*/)" -DBZIP2_LIBRARIES="$(echo /build/bzip2-*/*.a)"
 make

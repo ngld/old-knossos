@@ -1,11 +1,10 @@
 # -*- mode: python -*-
 import os
 
-#path = os.path.abspath(os.path.dirname(__file__))
 onefile = True
 
 a = Analysis(['../manager.py'],
-             pathex=['.'],
+             pathex=[os.path.abspath('.')],
              hiddenimports=['urllib2', 'bisect'],
              hookspath=['.'],
              runtime_hooks=['PySide-rthook.py'])
@@ -34,23 +33,23 @@ for i in reversed(idx):
 
 pyz = PYZ(a.pure)
 
-a.datas += [('7z.exe', '7z.exe', 'BINARY'), ('7z.dll', '7z.dll', 'BINARY'), ('commit', 'commit', 'DATA')]
+a.datas += [('7z.exe', '7z.exe', 'BINARY'), ('7z.dll', '7z.dll', 'BINARY'), ('commit', 'commit', 'DATA'), ('hlp.png', '../hlp.png', 'DATA')]
 
 if onefile:
   exe = EXE(pyz, a.scripts, a.binaries, a.zipfiles, a.datas,
             exclude_binaries=False,
             name='fs2mod-py.exe',
-            icon='hlp.ico',
+            icon='../hlp.ico',
             debug=False,
             strip=None,
             upx=True,
-            console=True)
+            console=False )
 else:
   exe = EXE(pyz,
             a.scripts,
             exclude_binaries=True,
             name='fs2mod-py.exe',
-            icon='hlp.ico',
+            icon='../hlp.ico',
             debug=False,
             strip=None,
             upx=True,

@@ -98,7 +98,7 @@ diff -ru innoextract-1.4/src/util/console.cpp innoextract-1.4-patched/src/util/c
 +		
 +		std::cout.flush();
 +	} else {
-+		std::cout << std::setprecision(1) << (value * 100) << "% " << label << std::endl;
++		std::cout << std::fixed << std::setprecision(1) << (value * 100) << "% " << label << std::endl;
  	}
  	
 -	std::cout << std::right << std::fixed << std::setprecision(1) << std::setfill(' ')

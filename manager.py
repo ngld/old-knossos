@@ -53,6 +53,7 @@ VERSION = '0.1-alpha'
 main_win = None
 progress_win = None
 installed = []
+shared_files = {}
 pmaster = progress.Master()
 settings = {
     'fs2_bin': None,
@@ -201,8 +202,19 @@ class UninstallTask(progress.Task):
         self.add_work(mods)
     
     def work(self, modname):
+        global shared_files, installed
+        skip_files = []
         mod = ModInfo2(settings['mods'][modname])
-        mod.remove(os.path.join(settings['fs2_path'], mod.folder))
+        
+        for path, mods in shared_files.items():
+            if path.startswith(mod.folder) and set(mods).issubset(set(installed)):
+                # Strip the mod folder away.
+                skip_files.append(path[len(mod.folder):].lstrip('/'))
+        
+        if len(skip_files) > 0:
+            logging.info('Will skip the following files: %s', ', '.join(skip_files))
+        
+        mod.remove(os.path.join(settings['fs2_path'], mod.folder), skip_files)
     
     def finish(self):
         update_list()
@@ -258,25 +270,28 @@ class GOGExtractTask(progress.Task):
         os.chmod(inno, mode | stat.S_IXUSR)
 
         progress.start_task(0.15, 0.75, 'Extracting FS2: %s')
-        output = None
         try:
             cmd = [inno, '-L', '-s', '-p', '-e', gog_path]
             logging.info('Running %s...', ' '.join(cmd))
-
+            
+            opts = dict()
             if sys.platform.startswith('win'):
-                output_buf = tempfile.NamedTemporaryFile()
-                p = subprocess.Popen(cmd, stdout=output_buf, stderr=subprocess.STDOUT, cwd=dest_path, shell=True, bufsize=0)
-                output = open(output_buf.name, 'r')
-            else:
-                p = subprocess.Popen(cmd, stdout=subprocess.STDOUT, stderr=subprocess.STDOUT, cwd=dest_path)
-                output = p.stdout
-
+                si = subprocess.STARTUPINFO()
+                si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+                si.wShowWindow = subprocess.SW_HIDE
+                
+                opts['startupinfo'] = si
+                opts['stdin'] = subprocess.PIPE
+            
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=dest_path, **opts)
+            
+            if sys.platform.startswith('win'):
+                p.stdin.close()
+            
+            buf = ''
             while p.poll() is None:
-                buf = ''
                 while '\r' not in buf:
-                    print('Reading line...')
-                    line = output.read(10)
-                    print(repr(line))
+                    line = p.stdout.read(10)
                     if not line:
                         break
                     buf += line.decode('utf8', 'replace')
@@ -284,31 +299,33 @@ class GOGExtractTask(progress.Task):
                 buf = buf.split('\r')
                 line = buf.pop(0)
                 buf = '\r'.join(buf)
-
+                
                 if 'MiB/s' in line:
                     try:
-                        line = line.split(']')[1].strip().split('MiB/s')[0] + 'MiB/s'
+                        if ']' in line:
+                            line = line.split(']')[1]
+                        
+                        line = line.strip().split('MiB/s')[0] + 'MiB/s'
                         percent = float(line.split('%')[0]) / 100
 
                         progress.update(percent, line)
                     except:
                         logging.exception('Failed to process InnoExtract output!')
                 else:
+                    if line.strip() == 'not a supported Inno Setup installer':
+                        self.post(-1)
+                        return
+                    
                     logging.info('InnoExtract: %s', line)
         except:
             logging.exception('InnoExtract failed!')
-            # TODO: Cleanup
             return
-        finally:
-            if output:
-                output.close()
-
+        
         progress.finish_task()
         
         progress.update(0.95, 'Arranging files...')
-        os.mkdir(os.path.join(dest_path, 'data'))
-        os.mkdir(os.path.join(dest_path, 'data/players'))
-        os.mkdir(os.path.join(dest_path, 'data/movies'))
+        self._makedirs(os.path.join(dest_path, 'data/players'))
+        self._makedirs(os.path.join(dest_path, 'data/movies'))
         
         for item in glob.glob(os.path.join(dest_path, 'app', '*.vp')):
             shutil.move(item, os.path.join(dest_path, 'data', os.path.basename(item)))
@@ -324,11 +341,15 @@ class GOGExtractTask(progress.Task):
         
         progress.update(0.99, 'Cleanup...')
         os.unlink(inno)
-        shutil.rmtree(os.path.join(dest_path, 'app'))
-        shutil.rmtree(os.path.join(dest_path, 'tmp'))
+        shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
+        shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
         
         # TODO: Test & improve
         self.post(dest_path)
+    
+    def _makedirs(self, path):
+        if not os.path.isdir(path):
+            os.makedirs(path)
     
     def finish(self):
         global settings
@@ -336,6 +357,9 @@ class GOGExtractTask(progress.Task):
         results = self.get_results()
         if len(results) < 1:
             QtGui.QMessageBox.critical(main_win, 'Error', 'The Installer failed! Please read the log for more details...')
+            return
+        elif results[0] == -1:
+            QtGui.QMessageBox.critical(main_win, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
             return
         else:
             QtGui.QMessageBox.information(main_win, 'Done', 'FS2 was successfully installed.')
@@ -350,7 +374,7 @@ class GOGExtractTask(progress.Task):
                 break
         
         save_settings()
-        update_list()
+        init_fs2_tab()
 
 
 # Progress display
@@ -397,7 +421,11 @@ class ProgressDisplay(object):
                 # Skip 0% and 100% items, they aren't interesting...
                 if prog not in (0, 1):
                     items.append((prog, text))
-
+        
+        diff = len(self._threads) != len(items)
+        if diff:
+            spacer = layout.itemAt(layout.count() - 1)
+        
         while len(self._threads) < len(items):
             bar = QtGui.QProgressBar()
             bar.setValue(0)
@@ -413,6 +441,11 @@ class ProgressDisplay(object):
             label.deleteLater()
             bar.deleteLater()
         
+        if diff:
+            # Reappend the spacer.
+            layout.removeItem(spacer)
+            layout.addItem(spacer)
+        
         for i, item in enumerate(items):
             label, bar = self._threads[i]
             label.setText(item[1])
@@ -426,22 +459,23 @@ class ProgressDisplay(object):
     
     @run_in_qt
     def show_line(self, data):
-        data = data.split('\n')
-        if len(self._log_lines) == 0:
-            self._log_lines = data
-        else:
-            self._log_lines[-1] += data.pop(0)
-            self._log_lines.extend(data)
+        # data = data.split('\n')
+        # if len(self._log_lines) == 0:
+        #     self._log_lines = data
+        # else:
+        #     self._log_lines[-1] += data.pop(0)
+        #     self._log_lines.extend(data)
         
-        # Limit the amount of visible lines
-        if len(self._log_lines) > self.log_len:
-            self._log_lines = self._log_lines[len(self._log_lines) - self.log_len:]
+        # # Limit the amount of visible lines
+        # if len(self._log_lines) > self.log_len:
+        #     self._log_lines = self._log_lines[len(self._log_lines) - self.log_len:]
         
-        data = '\n'.join(self._log_lines).replace('<', '&lt;').replace('\n', '<br>').replace(' ', '&nbsp;')
-        self.win.textEdit.setHtml('<html><head><style type="text/css">body { background-color: #000000; }</style></head><body>' +
-                                  '<span style="color: #B2B2B2; font-family: \'DejaVu Sans Mono\', monospace;">' + data + '</span></body></html>')
-        scroller = self.win.textEdit.verticalScrollBar()
-        scroller.setValue(scroller.maximum())
+        # data = '\n'.join(self._log_lines).replace('<', '&lt;').replace('\n', '<br>').replace(' ', '&nbsp;')
+        # self.win.textEdit.setHtml('<html><head><style type="text/css">body { background-color: #000000; }</style></head><body>' +
+        #                           '<span style="color: #B2B2B2; font-family: \'DejaVu Sans Mono\', monospace;">' + data + '</span></body></html>')
+        # scroller = self.win.textEdit.verticalScrollBar()
+        # scroller.setValue(scroller.maximum())
+        pass
     
     def hide(self):
         progress.set_callback(None)
@@ -487,16 +521,22 @@ def init_fs2_tab():
         if settings['fs2_bin'] is None or not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
             settings['fs2_bin'] = None
     
-    if settings['fs2_path'] is None:
+    if settings['fs2_path'] is None or not os.path.isdir(settings['fs2_path']):
         # Disable mod tab if we don't know where fs2 is.
         main_win.tabs.setTabEnabled(1, False)
         main_win.tabs.setCurrentIndex(0)
         main_win.fs2_bin.hide()
     else:
+        fs2_path = settings['fs2_path']
+        if settings['fs2_bin'] is not None:
+            fs2_path = os.path.join(fs2_path, settings['fs2_bin'])
+        
         main_win.tabs.setTabEnabled(1, True)
         main_win.tabs.setCurrentIndex(1)
         main_win.fs2_bin.show()
-        main_win.fs2_bin.setText('Selected FS2 Open: ' + os.path.normcase(os.path.join(settings['fs2_path'], settings['fs2_bin'])))
+        main_win.fs2_bin.setText('Selected FS2 Open: ' + os.path.normcase(fs2_path))
+        
+        update_list()
 
 
 def do_gog_extract():
@@ -514,7 +554,7 @@ def do_gog_extract():
             extract_win.gogPath.setText(os.path.abspath(path))
 
     def select_dest():
-        path = QtGui.QFileDialog.getExistingDirectory(extract_win, 'Please select the destination directory.')
+        path = QtGui.QFileDialog.getExistingDirectory(extract_win, 'Please select the destination directory.', os.path.expanduser('~/Documents'))
 
         if path is not None:
             if not os.path.isdir(path):
@@ -617,19 +657,41 @@ def fetch_list():
 
 
 def _update_list(results):
-    global settings, main_win, installed
+    global settings, main_win, installed, shared_files
     
     installed = []
     rows = dict()
+    files = dict()
     
     for mod, archives, s, c, m in results:
+        for item in mod.contents.keys():
+            path = util.pjoin(mod.folder, item)
+            
+            if path in files:
+                files[path].append(mod.name)
+            else:
+                files[path] = [mod.name]
+    
+    shared_files = {}
+    for path, mods in files.items():
+        if len(mods) > 1:
+            shared_files[path] = mods
+    
+    shared_set = set(shared_files.keys())
+    
+    for mod, archives, s, c, m in results:
+        my_shared = shared_set & set([util.pjoin(mod.folder, item) for item in mod.contents.keys()])
+        
         if s == c:
             cstate = QtCore.Qt.Checked
             status = 'Installed'
             installed.append(mod.name)
-        elif s == 0:
+        elif s == 0 or s == len(my_shared):
             cstate = QtCore.Qt.Unchecked
             status = 'Not installed'
+            
+            if len(my_shared) > 0:
+                status += ' (%d shared files)' % len(my_shared)
         else:
             cstate = QtCore.Qt.PartiallyChecked
             status = '%d corrupted or updated files' % (c - s)
@@ -652,11 +714,14 @@ def update_list():
     global settings, main_win
     
     main_win.modTree.clear()
-
-    if settings['mods'] is None:
+    
+    if settings['fs2_path'] is None:
         return
-
-    run_task(CheckTask())
+    
+    if settings['mods'] is None:
+        fetch_list()
+    else:
+        run_task(CheckTask())
 
 
 def resolve_dependencies(mods):
@@ -734,6 +799,8 @@ def select_mod(item, col):
 
     if len(check_msgs) > 0 and item.data(0, QtCore.Qt.UserRole) != QtCore.Qt.Unchecked:
         infowin.note.appendPlainText('\nCheck messages:\n* ' + '\n* '.join(check_msgs))
+    
+    infowin.note.appendPlainText('\n\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.contents.keys())]))
     
     infowin.closeButton.clicked.connect(infowin.close)
     infowin.runButton.clicked.connect(do_run)
@@ -902,6 +969,8 @@ def main():
 
         if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
             util.SEVEN_PATH = os.path.abspath('7z.exe')
+    else:
+        os.chdir(os.path.dirname(__file__))
     
     if not os.path.isdir(settings_path):
         os.makedirs(settings_path)
@@ -909,7 +978,9 @@ def main():
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
     if sys.platform.startswith('win'):
         # Windows won't display a console so write our log messages to a file.
-        logging.getLogger().addHandler(logging.FileHandler(os.path.join(settings_path, 'log.txt')))
+        handler = logging.FileHandler(os.path.join(settings_path, 'log.txt'), 'w')
+        handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
+        logging.getLogger().addHandler(handler)
     
     # Try to load our settings.
     spath = os.path.join(settings_path, 'settings.pick')
@@ -926,6 +997,9 @@ def main():
         fso_parser.HASH_CACHE = settings['hash_cache']
     
     app = QtGui.QApplication([])
+    
+    #if os.path.isfile('hlp.ico'):
+    app.setWindowIcon(QtGui.QIcon('hlp.png'))
 
     if not util.test_7z():
         QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)

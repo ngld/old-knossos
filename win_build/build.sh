@@ -80,7 +80,7 @@ echo "Building..."
 git log | head -1 | cut -d " " -f 2 | cut -b -7 > ./commit
 
 if [ -d PyInstaller-* ]; then
-    wine python PyInstaller-*/pyinstaller.py fs2mod-py.spec
+    wine python -OO PyInstaller-*/pyinstaller.py fs2mod-py.spec
 else
     wine _w/drive_c/Python27/Scripts/pyinstaller fs2mod-py.spec
 fi

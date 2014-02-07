@@ -18,6 +18,7 @@ except ImportError:
 
 _has_convert = None
 
+
 def convert_img(path, outfmt):
     global _has_convert
 
@@ -38,7 +39,7 @@ def convert_img(path, outfmt):
                 # For now I'll just abort.
                 _has_convert = False
                 return None
-        elif _has_convert == False:
+        elif _has_convert is False:
             return None
         
         subprocess.check_call(['convert', path, dest])
@@ -233,19 +234,26 @@ class ModInfo2(ModInfo):
         
         return archives, success, count, msgs
     
-    def remove(self, path):
+    def remove(self, path, keep_files=None):
         count = len(self.contents)
         checked = 0
         folders = set()
+        if keep_files is None:
+            keep_files = set()
+        else:
+            keep_files = set(keep_files)
         
         for item, info in self.contents.items():
-            mypath = os.path.join(path, item)
-            if os.path.isfile(mypath):
-                progress.update(checked / count, 'Removing "%s"...' % (item))
-                logging.info('Deleting "%s"...', os.path.join(path, item))
+            if item not in keep_files:
+                mypath = os.path.join(path, item)
+                if os.path.isfile(mypath):
+                    progress.update(checked / count, 'Removing "%s"...' % (item))
+                    logging.info('Deleting "%s"...', os.path.join(path, item))
 
-                os.unlink(mypath)
-                folders.add(os.path.dirname(mypath))
+                    os.unlink(mypath)
+                    folders.add(os.path.dirname(mypath))
+            else:
+                logging.info('Skipping "%s"...', os.path.join(path, item))
             
             checked += 1
         

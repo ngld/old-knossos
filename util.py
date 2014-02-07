@@ -11,6 +11,27 @@ from six.moves.urllib.request import urlopen
 SEVEN_PATH = '7z'
 
 
+def call(*args, **kwargs):
+    if sys.platform.startswith('win'):
+        # Provide the called program with proper I/O on Windows.
+        if 'stdin' not in kwargs:
+            kwargs['stdin'] = subprocess.DEVNULL
+        
+        if 'stdout' not in kwargs:
+            kwargs['stdout'] = subprocess.DEVNULL
+        
+        if 'stderr' not in kwargs:
+            kwargs['stderr'] = subprocess.DEVNULL
+        
+        si = subprocess.STARTUPINFO()
+        si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = subprocess.SW_HIDE
+        
+        kwargs['startupinfo'] = si
+    
+    return subprocess.call(*args, **kwargs)
+
+
 def get(link):
     try:
         logging.info('Retrieving "%s"...', link)
@@ -92,6 +113,7 @@ def movetree(src, dest, ifix=False):
             shutil.move(spath, dpath)
 
 
+# Actually transforms a given path into a platform-specific one.
 def normpath(path):
     return os.path.normcase(path.replace('\\', '/'))
 
@@ -120,16 +142,33 @@ def ipath(path):
     return path
 
 
+def pjoin(*args):
+    path = ''
+    for arg in args:
+        if arg.startswith('/'):
+            path = arg
+        elif path == '' or path.endswith('/'):
+            path += arg
+        else:
+            path += '/' + arg
+    
+    return path
+
+
 def test_7z():
     try:
-        return subprocess.call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL) == 0
+        return call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL) == 0
     except:
         logging.exception('Call to 7z failed!')
         return False
 
 
 def is_archive(path):
-    return subprocess.call([SEVEN_PATH, 'l', path], stdout=subprocess.DEVNULL) == 0
+    if path.endswith('.dll'):
+        # Uh, well...
+        return False
+    
+    return call([SEVEN_PATH, 'l', path], stdout=subprocess.DEVNULL) == 0
 
 
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
@@ -161,10 +200,4 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
     if files is not None:
         cmd.extend(files)
 
-    # Redirect its stdout to sys.stdout so its output is logged.
-    # (installer.py redirects sys.stdout.)
-    if hasattr(sys.stdout, 'fileno'):
-        output = sys.stdout
-    else:
-        output = subprocess.DEVNULL
-    return subprocess.call(cmd, stdout=output, stderr=output) == 0
+    return call(cmd) == 0

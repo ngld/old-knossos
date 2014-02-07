@@ -29,18 +29,42 @@
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="tasks">
-     <property name="title">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
       <string>Tasks</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_3"/>
     </widget>
    </item>
    <item>
-    <widget class="QTextEdit" name="textEdit">
-     <property name="readOnly">
+    <widget class="QScrollArea" name="tasksArea">
+     <property name="widgetResizable">
       <bool>true</bool>
      </property>
+     <widget class="QWidget" name="tasks">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>576</width>
+        <height>360</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <spacer name="taskSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
   </layout>
