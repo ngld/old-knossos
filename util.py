@@ -23,6 +23,11 @@ from six.moves.urllib.request import urlopen
 
 
 SEVEN_PATH = '7z'
+# Copied from http://sourceforge.net/p/sevenzipjbind/code/ci/master/tree/jbinding-java/src/net/sf/sevenzipjbinding/ArchiveFormat.java
+# to conform to the FSO Installer.
+ARCHIVE_FORMATS = ('zip', 'tar', 'split', 'rar', 'lzma', 'iso', 'hfs', 'gzip', 'gz',
+                   'cpio', 'bzip2', 'bz2', '7z', 'z', 'arj', 'cab', 'lzh', 'chm',
+                   'nsis', 'deb', 'rpm', 'udf', 'wim', 'xar')
 QUIET = False
 
 
@@ -179,11 +184,13 @@ def test_7z():
 
 
 def is_archive(path):
-    if path.endswith('.dll'):
-        # Uh, well...
-        return False
+    path = path.lower()
     
-    return call([SEVEN_PATH, 'l', path], stdout=subprocess.DEVNULL) == 0
+    for ext in ARCHIVE_FORMATS:
+        if path.endswith('.' + ext):
+            return True
+    
+    return False
 
 
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):

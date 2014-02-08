@@ -13,34 +13,6 @@
 ## limitations under the License.
 
 import sys
-
-
-# Redirect sys.stdout and sys.stderr
-class UserStream(object):
-    _wrapped = None
-    callback = None
-    
-    def __init__(self, wrapped=None):
-        self._wrapped = wrapped
-    
-    def write(self, data):
-        if self.callback is not None:
-            self.callback(data)
-        
-        if self._wrapped is not None:
-            self._wrapped.write(data)
-    
-    def flush(self):
-        if self._wrapped is not None:
-            self._wrapped.flush()
-
-    def fileno(self):
-        # TODO: Is there any *easy* way of intercepting data passed through this FD?
-        return self._wrapped.fileno()
-
-sys.stdout = UserStream(sys.stdout)
-sys.stderr = UserStream(sys.stderr)
-
 import os
 import logging
 import pickle
@@ -73,7 +45,6 @@ settings = {
     'fs2_bin': None,
     'fs2_path': None,
     'mods': None,
-    'installed_mods': None,
     'hash_cache': None,
     'repos': ['http://dev.tproxy.de/fs2/repo.txt'],
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt'
@@ -177,7 +148,6 @@ class InstallTask(progress.Task):
         
         if action == 'install':
             mod = ModInfo2(settings['mods'][mod])
-            #self.add_work([('install', d, None) for d in mod.dependencies])
             
             if not os.path.exists(os.path.join(settings['fs2_path'], mod.folder)):
                 mod.setup(settings['fs2_path'])
@@ -400,7 +370,7 @@ class ProgressDisplay(object):
     log_len = 50
     
     def __init__(self):
-        self._threads = []
+        self._task_bars = []
         self._tasks = []
         self._log_lines = []
         
@@ -408,14 +378,11 @@ class ProgressDisplay(object):
         self.win.setModal(True)
     
     def show(self):
-        self.win.show()
         progress.reset()
         
         progress.set_callback(self.update_prog)
         progress.update(0, 'Working...')
-        
-        sys.stdout.callback = self.show_line
-        sys.stderr.callback = self.show_line
+        self.win.show()
     
     def update_prog(self, percent, text):
         self.win.progressBar.setValue(percent * 100)
@@ -436,21 +403,20 @@ class ProgressDisplay(object):
                 if prog not in (0, 1):
                     items.append((prog, text))
         
-        diff = len(self._threads) != len(items)
+        diff = len(self._task_bars) != len(items)
         if diff:
             spacer = layout.itemAt(layout.count() - 1)
         
-        while len(self._threads) < len(items):
+        while len(self._task_bars) < len(items):
             bar = QtGui.QProgressBar()
-            bar.setValue(0)
             label = QtGui.QLabel()
             
             layout.addWidget(label)
             layout.addWidget(bar)
-            self._threads.append((label, bar))
+            self._task_bars.append((label, bar))
         
-        while len(self._threads) > len(items):
-            label, bar = self._threads.pop()
+        while len(self._task_bars) > len(items):
+            label, bar = self._task_bars.pop()
             
             label.deleteLater()
             bar.deleteLater()
@@ -461,41 +427,18 @@ class ProgressDisplay(object):
             layout.addItem(spacer)
         
         for i, item in enumerate(items):
-            label, bar = self._threads[i]
+            label, bar = self._task_bars[i]
             label.setText(item[1])
             bar.setValue(item[0] * 100)
         
-        if len(self._threads) == 1:
+        if len(self._task_bars) == 1:
             self.win.progressBar.hide()
         else:
             self.win.progressBar.setValue(total * 100)
             self.win.progressBar.show()
     
-    @run_in_qt
-    def show_line(self, data):
-        # data = data.split('\n')
-        # if len(self._log_lines) == 0:
-        #     self._log_lines = data
-        # else:
-        #     self._log_lines[-1] += data.pop(0)
-        #     self._log_lines.extend(data)
-        
-        # # Limit the amount of visible lines
-        # if len(self._log_lines) > self.log_len:
-        #     self._log_lines = self._log_lines[len(self._log_lines) - self.log_len:]
-        
-        # data = '\n'.join(self._log_lines).replace('<', '&lt;').replace('\n', '<br>').replace(' ', '&nbsp;')
-        # self.win.textEdit.setHtml('<html><head><style type="text/css">body { background-color: #000000; }</style></head><body>' +
-        #                           '<span style="color: #B2B2B2; font-family: \'DejaVu Sans Mono\', monospace;">' + data + '</span></body></html>')
-        # scroller = self.win.textEdit.verticalScrollBar()
-        # scroller.setValue(scroller.maximum())
-        pass
-    
     def hide(self):
         progress.set_callback(None)
-        sys.stdout.callback = None
-        sys.stderr.callback = None
-        
         self.win.hide()
     
     def add_task(self, task):
@@ -1012,8 +955,8 @@ def main():
     
     app = QtGui.QApplication([])
     
-    #if os.path.isfile('hlp.ico'):
-    app.setWindowIcon(QtGui.QIcon('hlp.png'))
+    if os.path.isfile('hlp.png'):
+        app.setWindowIcon(QtGui.QIcon('hlp.png'))
 
     if not util.test_7z():
         QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
@@ -1025,7 +968,7 @@ def main():
     if hasattr(sys, 'frozen'):
         # Add note about bundled content.
         # NOTE: This will appear even when this script is bundled with py2exe or a similiar program.
-        main_win.aboutLabel.setText(main_win.aboutLabel.text().replace('</body>', '<br><p>' +
+        main_win.aboutLabel.setText(main_win.aboutLabel.text().replace('</body>', '<p>' +
                                     'This bundle was created with <a href="http://pyinstaller.org">PyInstaller</a>' +
                                     ' and contains a 7z executable.</p></body>'))
         
