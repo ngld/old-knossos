@@ -188,7 +188,7 @@ class ModInfo2(ModInfo):
                         break
                 
                 # Just pick the first URL for now...
-                download.append(chksum + ';' + filename + ';' + url + filename)
+                download.append(chksum + ';' + filename + ';' + url[0] + filename)
         
         # vp file
         vp = []
@@ -208,11 +208,11 @@ class ModInfo2(ModInfo):
         
         # Now build the actual archive.
         archive = zipfile.ZipFile(zpath, 'w')
-        archive.writestr('download', '\n'.join(download))
-        archive.writestr('vp', '\n'.join(vp))
-        archive.writestr('title', self.name)
-        archive.writestr('update', 'PLEASE CHANGE')
-        archive.writestr('dep', ';CHANGEME'.join(self.dependencies))
+        archive.writestr('root/download', '\n'.join(download))
+        archive.writestr('root/vp', '\n'.join(vp))
+        archive.writestr('root/title', self.name)
+        archive.writestr('root/update', 'PLEASE CHANGE')
+        archive.writestr('root/dep', ';CHANGEME'.join(self.dependencies))
         archive.close()
     
     def check_files(self, path):
