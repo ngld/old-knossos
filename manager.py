@@ -927,7 +927,9 @@ def main():
         if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
             util.SEVEN_PATH = os.path.abspath('7z.exe')
     else:
-        os.chdir(os.path.dirname(__file__))
+        my_path = os.path.dirname(__file__)
+        if my_path != '':
+            os.chdir(my_path)
     
     if not os.path.isdir(settings_path):
         os.makedirs(settings_path)
