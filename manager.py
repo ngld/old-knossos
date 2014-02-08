@@ -618,7 +618,7 @@ def select_fs2_path(interact=True):
                 path = os.path.basename(path)
                 select_win.listWidget.addItem(path)
 
-                if not has_default and not (path.endswith('_DEBUG') or path.endswith('_DEBUG.exe')):
+                if not has_default and not (path.endswith('_DEBUG') or path.endswith('-DEBUG.exe')):
                     # Select the first non-debug build as default.
 
                     select_win.listWidget.setCurrentRow(i)

@@ -12,6 +12,7 @@ import json
 import time
 import datetime
 import signal
+import util
 import progress
 from fso_parser import EntryPoint
 from fs2mod import convert_modtree, find_mod, ModInfo2
@@ -166,6 +167,7 @@ def main(args):
             app.exec_()
             master.stop_workers()
         
+        util.QUIET = True
         out = StringIO()
         progress.init_curses(core, out)
         sys.stdout.write(out.getvalue())

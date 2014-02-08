@@ -9,6 +9,7 @@ from six.moves.urllib.request import urlopen
 
 
 SEVEN_PATH = '7z'
+QUIET = False
 
 
 def call(*args, **kwargs):
@@ -199,5 +200,8 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
 
     if files is not None:
         cmd.extend(files)
-
-    return call(cmd) == 0
+    
+    if QUIET:
+        return call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    else:
+        return call(cmd) == 0
