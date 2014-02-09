@@ -103,9 +103,6 @@ def download(link, dest):
 # This function will move the contents of src inside dest so that src/a/r/z.dat ends up as dest/a/r/z.dat.
 # It will overwrite everything already present in the destination directory!
 def movetree(src, dest, ifix=False):
-    if ifix:
-        dest = ipath(dest)
-    
     if not os.path.isdir(dest):
         os.makedirs(dest)
 
@@ -145,7 +142,7 @@ def normpath(path):
 def ipath(path):
     if os.path.exists(path):
         return path
-    
+
     parent = os.path.dirname(path)
     if not os.path.exists(parent):
         parent = ipath(parent)
@@ -157,14 +154,11 @@ def ipath(path):
     siblings = os.listdir(parent)
     l_siblings = [s.lower() for s in siblings]
     
-    oitem = item = os.path.basename(path)
+    item = os.path.basename(path)
     if item.lower() in l_siblings:
         item = siblings[l_siblings.index(item.lower())]
         path = os.path.join(parent, item)
-    
-    if item != oitem:
-        logging.debug('Picking "%s" for "%s".', item, oitem)
-    
+
     return path
 
 

@@ -167,9 +167,9 @@ class ModParser(Parser):
                 if mod.folder == '/':
                     mod.folder = ''
             elif line == 'DELETE':
-                mod.delete.append(self._read().replace('\\', '/'))
+                mod.delete.append(normpath(self._read()))
             elif line == 'RENAME':
-                mod.rename.append((self._read().replace('\\', '/'), self._read().replace('\\', '/')))
+                mod.rename.append((normpath(self._read()), normpath(self._read())))
             elif line == 'URL':
                 mod.urls.append(([self._read()], []))
             elif line == 'MULTIURL':
@@ -178,9 +178,9 @@ class ModParser(Parser):
                 line = self._read()
                 parts = re.split('\s+', line)
                 if len(parts) == 3:
-                    mod.hashes.append((parts[0], parts[1].replace('\\', '/'), parts[2]))
+                    mod.hashes.append((parts[0], normpath(parts[1]), parts[2]))
                 else:
-                    mod.hashes.append((line, self._read().replace('\\', '/'), self._read()))
+                    mod.hashes.append((line, normpath(self._read()), self._read()))
             elif line == 'VERSION':
                 mod.version = self._read()
             elif line == 'NOTE':
@@ -370,7 +370,7 @@ class ModInfo(object):
                 i += 1
 
     def setup(self, fs2_path):
-        modpath = ipath(os.path.join(fs2_path, self.folder))
+        modpath = os.path.join(fs2_path, self.folder)
 
         if not os.path.isdir(modpath):
             os.mkdir(modpath)
