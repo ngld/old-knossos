@@ -20,7 +20,7 @@ import subprocess
 import six
 import progress
 from fso_parser import ModInfo
-from util import ipath, is_archive, extract_archive
+from util import ipath, pjoin, is_archive, extract_archive
 
 if six.PY2:
     import py2_compat
@@ -64,6 +64,7 @@ class ModInfo2(ModInfo):
     contents = None
     dependencies = None
     logo = None
+    update = None
 
     def __init__(self, values=None):
         super(ModInfo2, self).__init__()
@@ -171,10 +172,10 @@ class ModInfo2(ModInfo):
             # Now look for the primarylist and secondarylist lines...
             for line in stream:
                 line = [p.strip() for p in line.split('=')]
-                if line[0] == 'primarylist' or line[0] == 'secondarylist':
+                if line[0] in ('secondrylist', 'secondarylist', 'primarylist'):
                     deps.extend(filter(lambda x: x != '', line[1].strip(';').split(',')))
         
-        self.dependencies = deps
+        self.dependencies = [('lookup', item) for item in deps]
 
     def generate_zip(self, zpath):
         # download file
@@ -214,6 +215,74 @@ class ModInfo2(ModInfo):
         archive.writestr('root/update', 'PLEASE CHANGE')
         archive.writestr('root/dep', ';CHANGEME'.join(self.dependencies))
         archive.close()
+    
+    def read_zip(self, zpath):
+        archive = zipfile.ZipFile(zpath, 'r')
+        self.name = archive.open('root/title').read().strip()
+        self.update = ('fs2mod', archive.open('root/update').read().strip())
+        
+        dl_names = dict()
+        
+        for line in archive.open('root/download'):
+            line = line.strip().split(';')
+            link = line[2]
+            dl_names[line[1]] = os.path.basename(link)
+            
+            self.urls.append(([os.path.dirname(link)], [os.path.basename(link)]))
+            self.hashes.append(('MD5', os.path.basename(link), line[0]))
+        
+        for line in archive.open('root/vp'):
+            line = line.strip().split(';')
+            
+            self.contents[line[1]] = {
+                'archive': dl_names[line[2]],
+                'md5sum': line[0]
+            }
+        
+        try:
+            deps = archive.open('root/dep')
+        except KeyError:
+            deps = []
+        
+        for line in deps:
+            line = line.strip().split(';')
+            self.dependencies.append(('fs2mod', line[0], line[1]))
+    
+    def lookup_deps(self, modlist, skip=None):
+        needed = [self.name]
+        provided = dict()
+        
+        if skip is None:
+            skip = set()
+
+        while len(needed) > 0:
+            mod = modlist[needed.pop(0)]
+
+            for dep in mod.dependencies:
+                if dep[0] not in ('lookup', 'fs2mod'):
+                    logging.warning('Unknown dependency type "%s"! Skipping "%s" of "%s"...', dep[0], dep[1], mod.name)
+                    continue
+                
+                dep_path = (dep[1] + '/mod.ini').lower()
+                if not dep_path in provided:
+                    for omod in modlist.values():
+                        if omod.name in skip:
+                            continue
+                        
+                        for path in omod.contents:
+                            if pjoin(omod.folder, path).lower().startswith(dep_path) and omod.name != mod.name:
+                                provided[dep_path] = omod.name
+                                needed.append(omod.name)
+
+                                break
+
+                        if dep_path in provided:
+                            break
+
+                    if dep_path not in provided:
+                        logging.warning('Dependency "%s" of "%s" wasn\'t found!', dep_path, mod.name)
+        
+        return set(provided.values()) - set([self.name])
     
     def check_files(self, path):
         count = len(self.contents)

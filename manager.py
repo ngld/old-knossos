@@ -46,7 +46,7 @@ settings = {
     'fs2_path': None,
     'mods': None,
     'hash_cache': None,
-    'repos': ['http://dev.tproxy.de/fs2/repo.txt'],
+    'repos': [('json', 'http://dev.tproxy.de/fs2/all.json', 'ngld\'s HLP Mirror')],
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt'
 }
 settings_path = os.path.expanduser('~/.fs2mod-py')
@@ -90,23 +90,37 @@ class FetchTask(progress.Task):
         self.add_work(settings['repos'])
     
     def work(self, link):
-        data = util.get(link).read().decode('utf8', 'replace')
-        
-        try:
-            data = json.loads(data)
-        except:
-            logging.exception('Failed to decode "%s"!', link)
-            return
-        
-        if '#include' in data:
-            self.add_work(data['#include'])
-            del data['#include']
-        
-        for mod in data.values():
-            if 'logo' in mod:
-                mod['logo'] = util.get(os.path.dirname(link) + '/' + mod['logo']).read()
-        
-        self.post(data)
+        if link[0] == 'json':
+            data = util.get(link[1]).read().decode('utf8', 'replace')
+            
+            try:
+                data = json.loads(data)
+            except:
+                logging.exception('Failed to decode "%s"!', link)
+                return
+            
+            if '#include' in data:
+                self.add_work(data['#include'])
+                del data['#include']
+            
+            base_path = os.path.dirname(link[1])
+            for mod in data.values():
+                if 'logo' in mod:
+                    mod['logo'] = util.get(base_path + '/' + mod['logo']).read()
+            
+            self.post(data)
+        elif link[0] == 'fs2mod':
+            with tempfile.TemporaryFile() as dl:
+                util.download(link[1], dl)
+                
+                dl.seek(0)
+                mod = ModInfo2()
+                mod.read_zip(dl)
+            
+            self.add_work([item[2] for item in mod.dependencies if item[0] == 'fs2mod'])
+            self.post(mod.__dict__)
+        else:
+            logging.error('Fetch type "%s" isn\'t implemented (yet)!', link[0])
     
     def finish(self):
         global settings
@@ -681,34 +695,30 @@ def update_list():
         run_task(CheckTask())
 
 
-def resolve_dependencies(mods):
+def resolve_deps(mods):
     global installed
 
-    needed = mods[:]
-    provided = dict()
+    deps = set()
+    modlist = settings['mods'].copy()
+    
+    for name, data in modlist.items():
+        modlist[name] = ModInfo2(data)
+    
+    for name in mods:
+        deps |= modlist[name].lookup_deps(modlist, installed)
+    
+    return list(deps - set(mods))
 
-    while len(needed) > 0:
-        mod = settings['mods'][needed.pop(0)]
 
-        for dep in mod['dependencies']:
-            dep = (dep + '/mod.ini').lower()
-            if not dep in provided:
-                for omod in settings['mods'].values():
-                    for path in omod['contents']:
-                        if (omod['folder'] + '/' + path).lstrip('/').lower().startswith(dep) and omod['name'] != mod['name']:
-                            provided[dep] = omod['name']
-                            needed.append(omod['name'])
-
-                            break
-
-                    if dep in provided:
-                        break
-
-                if dep not in provided:
-                    logging.warning('Dependency "%s" of "%s" wasn\'t found!', dep, mod['name'])
-
-    deps = set(provided.values()) - set(mods) - set(installed)
-    return list(deps)
+def autoselect_deps(item, col):
+    if col != 0 or item.checkState(0) != QtCore.Qt.Checked:
+        return
+    
+    deps = resolve_deps([item.text(0)])
+    items = read_tree(main_win.modTree)
+    for row, parent in items:
+        if row.text(0) in deps and row.checkState(0) == QtCore.Qt.Unchecked:
+            row.setCheckState(0, QtCore.Qt.Checked)
 
 
 def select_mod(item, col):
@@ -722,7 +732,7 @@ def select_mod(item, col):
         if installed:
             run_mod(mod)
         else:
-            deps = resolve_dependencies([mod.name])
+            deps = resolve_deps([mod.name])
 
             msg = QtGui.QMessageBox()
             msg.setIcon(QtGui.QMessageBox.Question)
@@ -772,7 +782,7 @@ def run_mod(mod):
             QtGui.QMessageBox.critical(main_win, 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
             return
 
-    modpath = os.path.join(settings['fs2_path'], mod.folder)
+    modpath = util.ipath(os.path.join(settings['fs2_path'], mod.folder))
     ini = None
     modfolder = None
     
@@ -805,14 +815,14 @@ def run_mod(mod):
                 line = [p.strip(' ;\n\r') for p in line.split('=')]
                 if line[0] == 'primarylist':
                     primlist = line[1].split(',')
-                elif line[0] == 'secondarylist':
+                elif line[0] in ('secondrylist', 'secondarylist'):
                     seclist = line[1].split(',')
         
         if ini == 'mod.ini':
-            ini = mod.folder + '/' + ini
+            ini = os.path.basename(modpath) + '/' + ini
 
         # Build the whole list for -mod
-        modfolder = ','.join(primlist + [ini.split('/')[0]] + seclist).strip(',')
+        modfolder = ','.join(primlist + [ini.split('/')[0]] + seclist).strip(',').replace(',,', ',')
     
     # Now look for the user directory...
     if sys.platform in ('linux2', 'linux'):
@@ -891,7 +901,7 @@ def apply_selection():
         return
     
     if len(install) > 0:
-        install = install + resolve_dependencies(install)
+        install = install + resolve_deps(install)
 
         msg = QtGui.QMessageBox()
         msg.setIcon(QtGui.QMessageBox.Question)
@@ -992,6 +1002,7 @@ def main():
     main_win.update.clicked.connect(fetch_list)
     
     main_win.modTree.itemActivated.connect(select_mod)
+    main_win.modTree.itemChanged.connect(autoselect_deps)
     main_win.modTree.sortItems(0, QtCore.Qt.AscendingOrder)
     main_win.modTree.header().setResizeMode(QtGui.QHeaderView.ResizeToContents)
     
