@@ -123,13 +123,7 @@ def do_gog_extract():
             extract_win.gogPath.setText(os.path.abspath(path))
 
     def select_dest():
-        flags = QtGui.QFileDialog.ShowDirsOnly
-        if sys.platform.startswith('linux'):
-            # Fix a weird case in which the dialog fails with "FIXME: handle dialog start.".
-            # See http://www.hard-light.net/forums/index.php?topic=86364.msg1734670#msg1734670
-            flags |= QtGui.QFileDialog.DontUseNativeDialog
-        
-        path = QtGui.QFileDialog.getExistingDirectory(extract_win, 'Please select the destination directory.', os.path.expanduser('~/Documents'), flags)
+        path = QtGui.QFileDialog.getExistingDirectory(extract_win, 'Please select the destination directory.', os.path.expanduser('~/Documents'))
 
         if path is not None and path != '':
             if not os.path.isdir(path):
@@ -163,20 +157,14 @@ def do_gog_extract():
 
 def select_fs2_path(interact=True):
     global settings
-
+    
     if interact:
         if settings['fs2_path'] is None:
             path = os.path.expanduser('~')
         else:
             path = settings['fs2_path']
         
-        flags = QtGui.QFileDialog.ShowDirsOnly
-        if sys.platform.startswith('linux'):
-            # Fix a weird case in which the dialog fails with "FIXME: handle dialog start.".
-            # See http://www.hard-light.net/forums/index.php?topic=86364.msg1734670#msg1734670
-            flags |= QtGui.QFileDialog.DontUseNativeDialog
-        
-        fs2_path = QtGui.QFileDialog.getExistingDirectory(main_win, 'Please select your FS2 directory.', path, flags)
+        fs2_path = QtGui.QFileDialog.getExistingDirectory(main_win, 'Please select your FS2 directory.', path)
     else:
         fs2_path = settings['fs2_path']
 
@@ -199,7 +187,7 @@ def select_fs2_path(interact=True):
                 path = os.path.basename(path)
                 select_win.listWidget.addItem(path)
 
-                if not has_default and not (path.endswith('_DEBUG') and '-DEBUG.' not in path):
+                if not has_default and not (path.endswith('_DEBUG') and '-DEBUG' not in path):
                     # Select the first non-debug build as default.
 
                     select_win.listWidget.setCurrentRow(i)
@@ -216,6 +204,10 @@ def select_fs2_path(interact=True):
 
         save_settings()
         init_fs2_tab()
+
+
+def select_fs2_path_handler():
+    select_fs2_path()
 
 
 def run_fs2():
@@ -575,7 +567,8 @@ def apply_selection():
         return
     
     if len(install) > 0:
-        install = install + resolve_deps(install)
+        # NOTE: Dependencies are auto-selected now. Don't force them on the user.
+        # install = install + resolve_deps(install)
 
         msg = QtGui.QMessageBox()
         msg.setIcon(QtGui.QMessageBox.Question)
@@ -812,7 +805,7 @@ def main():
     main_win.aboutLabel.linkActivated.connect(QtGui.QDesktopServices.openUrl)
     
     main_win.gogextract.clicked.connect(do_gog_extract)
-    main_win.select.clicked.connect(select_fs2_path)
+    main_win.select.clicked.connect(select_fs2_path_handler)
 
     main_win.apply_sel.clicked.connect(apply_selection)
     main_win.update.clicked.connect(fetch_list)
@@ -827,7 +820,7 @@ def main():
     main_win.removeSource.clicked.connect(remove_repo)
     main_win.sourceList.itemDoubleClicked.connect(edit_repo)
     
-    QtCore.QTimer.singleShot(300, init_fs2_tab)
+    QtCore.QTimer.singleShot(1, init_fs2_tab)
 
     main_win.show()
     app.exec_()

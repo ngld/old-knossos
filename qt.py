@@ -49,6 +49,7 @@ if variant == 'PyQt4':
         
         QtCore.Signal = QtCore.pyqtSignal
         QtCore.QString = str
+        
     except ImportError:
         # Fallback to headless
         variant = 'headless'

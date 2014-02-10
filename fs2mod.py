@@ -272,13 +272,23 @@ class ModInfo2(ModInfo):
         if self.update is None:
             return
         elif self.update[0] == 'fs2mod':
+            path = None
             try:
-                with open(self.update[2], 'wb') as stream:
+                # Don't overwrite the original file.
+                with tempfile.NamedTemporaryFile(delete=False) as stream:
+                    path = stream.name
                     download(self.update[1], stream)
                 
-                self.read_zip(self.update[2])
+                    stream.seek(0)
+                    self.read_zip(stream, self.update[2])
+                
+                # Download and reading suceeded. Now we can replace the original file.
+                shutil.move(path, self.update[2])
             except:
                 logging.exception('Failed to update %s!', self.name)
+                
+                if path is not None and os.path.isfile(path):
+                    os.unlink(path)
         else:
             logging.error('Unknown update type "%s"!', self.update[0])
     

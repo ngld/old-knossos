@@ -64,6 +64,10 @@ class FetchTask(progress.Task):
                     progress.update(0.1 + i / len(data), 'Loading logos...')
                     mod['logo'] = util.get(base_path + '/' + mod['logo']).read()
             
+            if '' in data:
+                logging.warning('Source "%s" contains a mod with an empty name!', link[1])
+                del data['']
+                
             self.post(data)
         elif link[0] == 'fs2mod':
             with self._fs2mod_lock:
@@ -89,8 +93,11 @@ class FetchTask(progress.Task):
                 
                 mod.update_info()
             
-            self.add_work([('fs2mod', item[2]) for item in mod.dependencies if item[0] == 'fs2mod'])
-            self.post({ mod.name: mod.__dict__ })
+            if mod.name == '':
+                logging.warning('The name for "%s" is empty! Did I really read this file? Skipping it!', link[1])
+            else:
+                self.add_work([('fs2mod', item[2]) for item in mod.dependencies if item[0] == 'fs2mod'])
+                self.post({ mod.name: mod.__dict__ })
         else:
             logging.error('Fetch type "%s" isn\'t implemented (yet)!', link[0])
     
