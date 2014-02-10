@@ -215,6 +215,8 @@ class ModInfo2(ModInfo):
         archive.writestr('root/title', self.name)
         archive.writestr('root/update', 'PLEASE CHANGE')
         archive.writestr('root/dep', ';CHANGEME'.join(self.dependencies))
+        archive.writestr('root/version', self.version)
+        
         archive.close()
     
     def read_zip(self, zobj, path=None):
@@ -273,6 +275,8 @@ class ModInfo2(ModInfo):
             try:
                 with open(self.update[2], 'wb') as stream:
                     download(self.update[1], stream)
+                
+                self.read_zip(self.update[2])
             except:
                 logging.exception('Failed to update %s!', self.name)
         else:
@@ -288,7 +292,8 @@ class ModInfo2(ModInfo):
             for dep in mod.dependencies:
                 if dep[0] == 'mod_name':
                     if dep[1] in modlist:
-                        needed.append(modlist[dep[1]])
+                        provided['name://' + dep[1]] = dep[1]
+                        needed.append(dep[1])
                     else:
                         logging.warning('Dependency "%s" (a mod\'s name) of "%s" wasn\'t found.', dep[1], mod.name)
                     

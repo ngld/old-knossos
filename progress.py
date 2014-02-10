@@ -162,7 +162,7 @@ class Master(object):
     
     def add_task(self, task):
         if not task._has_work():
-            logging.warning('Added an empty task of type "%s". Ignoring it!', str(task.__class__.__name__))
+            logging.warning('Added an empty task of type "%s". Ignoring it!', task.__class__.__name__)
             return
         
         with self._tasks_lock:

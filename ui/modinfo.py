@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'modinfo.ui'
 #
-# Created: Sun Feb  9 21:30:06 2014
+# Created: Mon Feb 10 14:44:50 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -22,11 +22,12 @@ class Ui_Dialog(object):
         font.setBold(True)
         self.modname.setFont(font)
         self.modname.setAlignment(QtCore.Qt.AlignCenter)
+        self.modname.setWordWrap(True)
         self.modname.setObjectName("modname")
         self.verticalLayout.addWidget(self.modname)
         self.logo = QtGui.QLabel(Dialog)
         self.logo.setMinimumSize(QtCore.QSize(255, 112))
-        self.logo.setMaximumSize(QtCore.QSize(255, 112))
+        self.logo.setAlignment(QtCore.Qt.AlignCenter)
         self.logo.setObjectName("logo")
         self.verticalLayout.addWidget(self.logo)
         self.label = QtGui.QLabel(Dialog)

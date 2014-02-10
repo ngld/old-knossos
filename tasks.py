@@ -101,27 +101,46 @@ class FetchTask(progress.Task):
         
         for part in self.get_results():
             for name, mod in part.items():
-                if name not in modlist or 'update' in mod:
+                if name not in modlist:
                     modlist[name] = mod
+                elif 'version' in mod:
+                    if 'version' not in modlist[name] or util.vercmp(mod['version'], modlist[name]['version']) == 1 or 'update' in mod:
+                        modlist[name] = mod
+        
+        filelist = manager.settings['known_files'] = {}
+        for mod in modlist.values():
+            for item in mod['contents']:
+                filelist[util.pjoin(mod['folder'], item).lower()] = mod
         
         manager.save_settings()
-        manager.update_list()
+        manager.signals.list_updated.emit()
 
 
 class CheckTask(progress.Task):
     def __init__(self, mods):
         super(CheckTask, self).__init__()
         
-        self.done.connect(self.finish)
         self.add_work(mods)
 
     def work(self, mod):
         mod = ModInfo2(mod)
-        a, s, c, m = mod.check_files(os.path.join(manager.settings['fs2_path'], mod.folder))
+        modpath = os.path.join(manager.settings['fs2_path'], mod.folder)
+        a, s, c, m = mod.check_files(modpath)
+        
+        if mod.folder != '':
+            prefix = len(manager.settings['fs2_path'])
+            filelist = manager.settings['known_files']
+            lines = []
+            for sub_path, dirs, files in os.walk(modpath):
+                for name in files:
+                    my_path = os.path.join(sub_path[prefix:], name).replace('\\', '/').lower().lstrip('/')
+                    if my_path not in filelist:
+                        lines.append('  * %s' % my_path)
+            
+            if len(lines) > 0:
+                m.append('User-added files:\n' + '\n'.join(lines))
+        
         self.post((mod, a, s, c, m))
-
-    def finish(self):
-        manager._update_list(self.get_results())
 
 
 class InstallTask(progress.Task):
