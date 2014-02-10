@@ -858,7 +858,7 @@ def scheme_handler(o_link, app=None):
         app.exec_()
         return
     
-    if not o_link.startswith('fs2://'):
+    if not o_link.startswith(('fs2://', 'fso://')):
         QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I don\'t know how to handle "%s"! I only know fs2:// .' % (o_link))
         app.quit()
         return
