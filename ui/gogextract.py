@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'gogextract.ui'
 #
-# Created: Sat Feb  8 00:33:43 2014
+# Created: Sun Feb  9 21:30:06 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!

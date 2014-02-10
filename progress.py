@@ -20,7 +20,9 @@ import sys
 import logging
 import threading
 import six
-from qt import QtCore
+import util
+from qt import QtCore, QtGui
+from ui.progress import Ui_Dialog as Ui_Progress
 
 try:
     import curses
@@ -110,8 +112,8 @@ class Worker(threading.Thread):
                 task[0].work(*task[1])
             except:
                 logging.exception('Exception in Thread!')
-            finally:
-                task[0]._deinit()
+            
+            task[0]._deinit()
 
 
 class Master(object):
@@ -159,6 +161,10 @@ class Master(object):
                 self._worker_cond.wait()
     
     def add_task(self, task):
+        if not task._has_work():
+            logging.warning('Added an empty task of type "%s". Ignoring it!', str(task.__class__.__name__))
+            return
+        
         with self._tasks_lock:
             self._tasks.append(task)
             task._master = self
@@ -200,24 +206,24 @@ class Task(QtCore.QObject):
             else:
                 return (self, (self._work.pop(0),))
     
+    def _has_work(self):
+        with self._work_lock:
+            return len(self._work) > 0
+    
     def _init(self):
-        self._running += 1
         with self._progress_lock:
             self._progress[threading.get_ident()] = (0, 'Ready')
+            self._running += 1
     
     def _deinit(self):
-        self._running -= 1
+        running = 0
+        
         with self._progress_lock:
             self._progress[threading.get_ident()] = (1, 'Done')
+            self._running -= 1
+            running = self._running
         
-        done = False
-        
-        if self._running == 0:
-            with self._work_lock:
-                if len(self._work) == 0:
-                    done = True
-        
-        if done:
+        if running == 0 and not self._has_work():
             self._done.set()
             self.done.emit()
     
@@ -385,6 +391,7 @@ class CursesOutput(object):
             if self.log is not None:
                 self.log.flush()
 
+
 def _init_curses(scr, cb, log):
     # Setup the display
     height, width = scr.getmaxyx()
@@ -423,3 +430,102 @@ def _init_curses(scr, cb, log):
 
 def init_curses(cb, log=None):
     curses.wrapper(_init_curses, cb, log)
+
+
+# Qt Display
+class ProgressDisplay(object):
+    win = None
+    _threads = None
+    _tasks = None
+    _log_lines = None
+    log_len = 50
+    
+    def __init__(self):
+        self._task_bars = []
+        self._tasks = []
+        self._log_lines = []
+        
+        self.win = util.init_ui(Ui_Progress(), QtGui.QDialog(QtGui.QApplication.activeWindow()))
+        self.win.setModal(True)
+    
+    def show(self):
+        reset()
+        
+        set_callback(self.update_prog)
+        update(0, 'Working...')
+        self.win.show()
+    
+    def update_prog(self, percent, text):
+        self.win.progressBar.setValue(percent * 100)
+        self.win.label.setText(text)
+    
+    def update_tasks(self):
+        total = 0
+        count = len(self._tasks)
+        items = []
+        layout = self.win.tasks.layout()
+        
+        for task in self._tasks:
+            t_total, t_items = task.get_progress()
+            total += t_total / count
+
+            for prog, text in t_items.values():
+                # Skip 0% and 100% items, they aren't interesting...
+                if prog not in (0, 1):
+                    items.append((prog, text))
+        
+        diff = len(self._task_bars) != len(items)
+        if diff:
+            spacer = layout.itemAt(layout.count() - 1)
+        
+        while len(self._task_bars) < len(items):
+            bar = QtGui.QProgressBar()
+            label = QtGui.QLabel()
+            
+            layout.addWidget(label)
+            layout.addWidget(bar)
+            self._task_bars.append((label, bar))
+        
+        while len(self._task_bars) > len(items):
+            label, bar = self._task_bars.pop()
+            
+            label.deleteLater()
+            bar.deleteLater()
+        
+        if diff:
+            # Reappend the spacer.
+            layout.removeItem(spacer)
+            layout.addItem(spacer)
+        
+        for i, item in enumerate(items):
+            label, bar = self._task_bars[i]
+            label.setText(item[1])
+            bar.setValue(item[0] * 100)
+        
+        if len(self._task_bars) == 1:
+            self.win.progressBar.hide()
+        else:
+            self.win.progressBar.setValue(total * 100)
+            self.win.progressBar.show()
+    
+    def hide(self):
+        set_callback(None)
+        self.win.hide()
+    
+    def add_task(self, task):
+        self._tasks.append(task)
+        task.done.connect(self._check_tasks)
+        task.progress.connect(self.update_tasks)
+        
+        if not self.win.isVisible():
+            self.show()
+    
+    def _check_tasks(self):
+        for task in self._tasks:
+            if task.is_done():
+                self._tasks.remove(task)
+        
+        if len(self._tasks) == 0:
+            # Cleanup
+            self.update_tasks()
+            self.hide()

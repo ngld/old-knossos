@@ -147,8 +147,8 @@ def main(args):
                 cur = mod
                 while cur.parent is not None:
                     cur = cur.parent
-                    if cur.folder != '':
-                        result.dependencies.append(cur.folder)
+                    if cur.name != '':
+                        result.dependencies.append(('mod_name', cur.name))
                 
                 for i, sub in enumerate(mod.submods):
                     mod.submods[i] = sub.name

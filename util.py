@@ -19,7 +19,8 @@ import shutil
 import subprocess
 import six
 import progress
-from six.moves.urllib.request import urlopen
+from six.moves.urllib.request import urlopen, Request
+from qt import QtCore
 
 
 SEVEN_PATH = '7z'
@@ -55,7 +56,7 @@ def call(*args, **kwargs):
 def get(link):
     try:
         logging.info('Retrieving "%s"...', link)
-        result = urlopen(link)
+        result = urlopen(Request(link, headers={'User-Agent': 'curl/7.22.0'}))
         if six.PY2:
             code = result.getcode()
         else:
@@ -63,6 +64,11 @@ def get(link):
 
         if code == 200:
             return result
+        elif code in (301, 302):
+            if six.PY2:
+                return get(result.info()['Location'])
+            else:
+                return get(result.getheader('Location'))
         else:
             return None
     except:
@@ -74,15 +80,31 @@ def get(link):
 def download(link, dest):
     try:
         logging.info('Downloading "%s"...', link)
-        result = urlopen(link)
+        result = urlopen(Request(link, headers={'User-Agent': 'curl/7.22.0'}))
         if six.PY2:
-            size = float(result.info()['Content-Length'])
-            if result.getcode() != 200:
+            if result.getcode() in (301, 302):
+                return download(result.info()['Location'], dest)
+            elif result.getcode() != 200:
+                logging.error('Download of "%s" failed with code %d!', link, result.getcode())
                 return False
+            
+            try:
+                size = float(result.info()['Content-Length'])
+            except:
+                logging.exception('Failed to parse Content-Length header!')
+                size = 1024 ** 4 # = 1 TB
         else:
-            size = float(result.getheader('Content-Length'))
-            if result.status != 200:
+            if result.status in (301, 302):
+                return download(result.getheader('Location'), dest)
+            elif result.status != 200:
+                logging.error('Download of "%s" failed with code %d!', link, result.status)
                 return False
+            
+            try:
+                size = float(result.getheader('Content-Length'))
+            except:
+                logging.exception('Failed to parse Content-Length header!')
+                size = 1024 ** 4 # = 1 TB
 
         start = dest.tell()
         while True:
@@ -232,3 +254,30 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
         return call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
     else:
         return call(cmd) == 0
+
+
+def init_ui(ui, win):
+    ui.setupUi(win)
+    for attr in ui.__dict__:
+        setattr(win, attr, getattr(ui, attr))
+
+    return win
+
+
+class SignalContainer(QtCore.QObject):
+    signal = QtCore.Signal(list)
+
+
+# This wrapper makes sure that the wrapped function is always run in the QT main thread.
+def run_in_qt(func):
+    signal = SignalContainer()
+    
+    def dispatcher(*args):
+        signal.signal.emit(args)
+    
+    def listener(params):
+        func(*params)
+    
+    signal.signal.connect(listener)
+    
+    return dispatcher

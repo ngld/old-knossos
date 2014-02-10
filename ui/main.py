@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Sat Feb  8 00:33:43 2014
+# Created: Sun Feb  9 21:30:06 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -63,6 +63,32 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.apply_sel)
         self.verticalLayout_3.addLayout(self.horizontalLayout)
         self.tabs.addTab(self.mods, "")
+        self.settings = QtGui.QWidget()
+        self.settings.setObjectName("settings")
+        self.verticalLayout_5 = QtGui.QVBoxLayout(self.settings)
+        self.verticalLayout_5.setObjectName("verticalLayout_5")
+        self.label_2 = QtGui.QLabel(self.settings)
+        self.label_2.setObjectName("label_2")
+        self.verticalLayout_5.addWidget(self.label_2)
+        self.sourceList = QtGui.QListWidget(self.settings)
+        self.sourceList.setObjectName("sourceList")
+        self.verticalLayout_5.addWidget(self.sourceList)
+        self.horizontalLayout_2 = QtGui.QHBoxLayout()
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.addSource = QtGui.QPushButton(self.settings)
+        self.addSource.setObjectName("addSource")
+        self.horizontalLayout_2.addWidget(self.addSource)
+        self.editSource = QtGui.QPushButton(self.settings)
+        self.editSource.setObjectName("editSource")
+        self.horizontalLayout_2.addWidget(self.editSource)
+        self.removeSource = QtGui.QPushButton(self.settings)
+        self.removeSource.setObjectName("removeSource")
+        self.horizontalLayout_2.addWidget(self.removeSource)
+        self.verticalLayout_5.addLayout(self.horizontalLayout_2)
+        self.gridLayout = QtGui.QGridLayout()
+        self.gridLayout.setObjectName("gridLayout")
+        self.verticalLayout_5.addLayout(self.gridLayout)
+        self.tabs.addTab(self.settings, "")
         self.tab = QtGui.QWidget()
         self.tab.setObjectName("tab")
         self.verticalLayout_4 = QtGui.QVBoxLayout(self.tab)
@@ -99,6 +125,11 @@ class Ui_MainWindow(object):
         self.update.setText(QtGui.QApplication.translate("MainWindow", "Update List", None, QtGui.QApplication.UnicodeUTF8))
         self.apply_sel.setText(QtGui.QApplication.translate("MainWindow", "Install/Uninstall", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.mods), QtGui.QApplication.translate("MainWindow", "Mods", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Mod Sources:", None, QtGui.QApplication.UnicodeUTF8))
+        self.addSource.setText(QtGui.QApplication.translate("MainWindow", "Add", None, QtGui.QApplication.UnicodeUTF8))
+        self.editSource.setText(QtGui.QApplication.translate("MainWindow", "Edit", None, QtGui.QApplication.UnicodeUTF8))
+        self.removeSource.setText(QtGui.QApplication.translate("MainWindow", "Remove", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabs.setTabText(self.tabs.indexOf(self.settings), QtGui.QApplication.translate("MainWindow", "Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.aboutLabel.setText(QtGui.QApplication.translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"

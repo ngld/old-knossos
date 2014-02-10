@@ -20,7 +20,7 @@ import tempfile
 import hashlib
 import six
 import progress
-from util import get, download, normpath, movetree, ipath, is_archive, extract_archive
+from util import get, download, normpath, movetree, ipath, pjoin, is_archive, extract_archive
 
 if six.PY2:
     import py2_compat
@@ -130,7 +130,7 @@ class ModParser(Parser):
                 mods.append(self._parse_sub())
             elif line in self.TOKENS:
                 logging.error('ModInfo: Found invalid token "%s" outside a mod!', line)
-                return
+                break
 
         if len(mods) < 1:
             logging.error('ModInfo: No mod found!')
@@ -163,7 +163,7 @@ class ModParser(Parser):
             if line == 'DESC':
                 mod.desc = '\n'.join(self._read_until('ENDDESC'))
             elif line == 'FOLDER':
-                mod.folder = normpath(self._read())
+                mod.folder = self._read().replace('\\', '/')
                 if mod.folder == '/':
                     mod.folder = ''
             elif line == 'DELETE':
@@ -209,6 +209,7 @@ class ModInfo(object):
     note = ''
     submods = None
     parent = None
+    ignore_subpath = False
 
     def __init__(self):
         self.delete = []
@@ -231,7 +232,7 @@ class ModInfo(object):
         h = hashlib.new(algo)
         with open(path, 'rb') as stream:
             while True:
-                chunk = stream.read(8 * 1024)
+                chunk = stream.read(16 * h.block_size)
                 if not chunk:
                     break
 
@@ -264,7 +265,7 @@ class ModInfo(object):
                 for link in urls:
                     with open(os.path.join(dest, filename), 'wb') as dl:
                         progress.start_task(float(num) / count, 1.0 / count, '%d/%d: %%s' % (num + 1, count))
-                        if download(link + filename, dl):
+                        if download(pjoin(link, filename), dl):
                             num += 1
                             done = True
                             progress.finish_task()
@@ -343,7 +344,12 @@ class ModInfo(object):
                         # to final destination to avoid "Do you want to overwrite?" questions.
                         
                         extract_archive(mypath, tempdir)
-                        movetree(tempdir, path, ifix=True)
+                        if self.ignore_subpath:
+                            for sub_path, dirs, files in os.walk(tempdir):
+                                for name in files:
+                                    shutil.move(os.path.join(sub_path, name), ipath(os.path.join(path, name)))
+                        else:
+                            movetree(tempdir, path, ifix=True)
                 
                 i += 1
     

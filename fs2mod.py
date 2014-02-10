@@ -20,7 +20,7 @@ import subprocess
 import six
 import progress
 from fso_parser import ModInfo
-from util import ipath, pjoin, is_archive, extract_archive
+from util import download, ipath, pjoin, is_archive, extract_archive
 
 if six.PY2:
     import py2_compat
@@ -65,7 +65,7 @@ class ModInfo2(ModInfo):
     dependencies = None
     logo = None
     update = None
-
+    
     def __init__(self, values=None):
         super(ModInfo2, self).__init__()
 
@@ -216,23 +216,33 @@ class ModInfo2(ModInfo):
         archive.writestr('root/dep', ';CHANGEME'.join(self.dependencies))
         archive.close()
     
-    def read_zip(self, zpath):
-        archive = zipfile.ZipFile(zpath, 'r')
-        self.name = archive.open('root/title').read().strip()
-        self.update = ('fs2mod', archive.open('root/update').read().strip())
+    def read_zip(self, zobj, path=None):
+        if path is None:
+            if isinstance(zobj, six.string_types):
+                path = zobj
+            else:
+                raise RuntimeError('read_zip() expects parameter 1 to be a string or to be passed a name as parameter 2!')
+        
+        archive = zipfile.ZipFile(zobj, 'r')
+        
+        # Hellzed's installer ignores paths in downloaded archives, remember this.
+        self.ignore_subpath = True
+        self.name = archive.open('root/title').read().decode('utf8', 'replace').strip()
+        self.update = ('fs2mod', archive.open('root/update').read().decode('utf8', 'replace').strip(), path)
+        self.folder = os.path.basename(path).split('.')[0]
         
         dl_names = dict()
         
         for line in archive.open('root/download'):
-            line = line.strip().split(';')
-            link = line[2]
-            dl_names[line[1]] = os.path.basename(link)
+            line = line.decode('utf8', 'replace').strip().split(';')
+            filename = os.path.basename(line[2])
+            dl_names[line[1]] = filename
             
-            self.urls.append(([os.path.dirname(link)], [os.path.basename(link)]))
-            self.hashes.append(('MD5', os.path.basename(link), line[0]))
+            self.urls.append(([os.path.dirname(line[2])], [filename]))
+            self.hashes.append(('MD5', filename, line[0]))
         
         for line in archive.open('root/vp'):
-            line = line.strip().split(';')
+            line = line.decode('utf8', 'replace').strip().split(';')
             
             self.contents[line[1]] = {
                 'archive': dl_names[line[2]],
@@ -245,20 +255,37 @@ class ModInfo2(ModInfo):
             deps = []
         
         for line in deps:
-            line = line.strip().split(';')
+            line = line.decode('utf8', 'replace').strip().split(';')
             self.dependencies.append(('fs2mod', line[0], line[1]))
     
-    def lookup_deps(self, modlist, skip=None):
+    def update_info(self):
+        if self.update is None:
+            return
+        elif self.update[0] == 'fs2mod':
+            try:
+                with open(self.update[2], 'wb') as stream:
+                    download(self.update[1], stream)
+            except:
+                logging.exception('Failed to update %s!', self.name)
+        else:
+            logging.error('Unknown update type "%s"!', self.update[0])
+    
+    def lookup_deps(self, modlist):
         needed = [self.name]
         provided = dict()
         
-        if skip is None:
-            skip = set()
-
         while len(needed) > 0:
             mod = modlist[needed.pop(0)]
 
             for dep in mod.dependencies:
+                if dep[0] == 'mod_name':
+                    if dep[1] in modlist:
+                        needed.append(modlist[dep[1]])
+                    else:
+                        logging.warning('Dependency "%s" (a mod\'s name) of "%s" wasn\'t found.', dep[1], mod.name)
+                    
+                    continue
+                
                 if dep[0] not in ('lookup', 'fs2mod'):
                     logging.warning('Unknown dependency type "%s"! Skipping "%s" of "%s"...', dep[0], dep[1], mod.name)
                     continue
@@ -266,9 +293,6 @@ class ModInfo2(ModInfo):
                 dep_path = (dep[1] + '/mod.ini').lower()
                 if not dep_path in provided:
                     for omod in modlist.values():
-                        if omod.name in skip:
-                            continue
-                        
                         for path in omod.contents:
                             if pjoin(omod.folder, path).lower().startswith(dep_path) and omod.name != mod.name:
                                 provided[dep_path] = omod.name
@@ -315,6 +339,18 @@ class ModInfo2(ModInfo):
             
             checked += 1
         
+        # If we don't know the subfolder, path will be fs2_path and thus will list way too many files.
+        # NOTE: Disabled for now, it yields too many false-positives.
+        # if self.folder != '':
+        #     mod_files = [f.lower() for f in self.contents.keys()]
+        #     for sub_path, dirs, files in os.walk(ipath(path)):
+        #         sub_path = sub_path[len(path):].lstrip('/')
+                
+        #         for item in files:
+        #             mypath = pjoin(sub_path, item)
+        #             if mypath.lower() not in mod_files:
+        #                 msgs.append('File "%s" isn\'t part of the mod.' % (mypath))
+        
         return archives, success, count, msgs
     
     def remove(self, path, keep_files=None):
@@ -349,74 +385,3 @@ class ModInfo2(ModInfo):
                 os.rmdir(path)
             else:
                 logging.info('Skipped "%s" because it still contains files.', path)
-
-
-def count_modtree(mods):
-    count = 0
-    for mod in mods:
-        count += count_modtree(mod.submods) + 1
-    
-    return count
-
-
-def convert_modtree(mods, complete=0):
-    mod2s = []
-    count = len(mods)  # count_modtree(mods)
-    
-    for mod in mods:
-        m = ModInfo2()
-        progress.start_task(complete / count, 1 / count, 'Converting "%s": %%s' % mod.name)
-        m.read(mod)
-        progress.finish_task()
-        
-        mod2s.append(m)
-        complete += 1
-        
-        m.submods = convert_modtree(m.submods, complete)
-        for i, sm in enumerate(m.submods):
-            if m.folder == '':
-                for item in m.contents:
-                    if '/' in item:
-                        sm.dependencies.append(item.split('/')[0])
-                        break
-            else:
-                sm.dependencies.append(m.folder)
-            
-            mod2s.append(sm)
-            m.submods[i] = sm.name
-    
-    return mod2s
-
-
-def find_mod(mods, needle):
-    for mod in mods:
-        if mod.name == needle:
-            return mod
-        
-        res = find_mod(mod.submods, needle)
-        if res is not None:
-            return res
-    
-    return None
-
-
-def _resolve_dependencies(deps, modtree):
-    d_mods = []
-    
-    for mod in modtree:
-        for item in mod.contents:
-            path = mod.folder + '/' + item
-            if path in deps:
-                deps.remove(path)
-                d_mods.append(mod)
-                
-                if len(deps) == 0:
-                    return d_mods
-            
-        d_mods.extend(_resolve_dependencies(deps, mod.submods))
-    
-    return d_mods
-
-
-def resolve_dependencies(mod, modtree):
-    return _resolve_dependencies(mod.dependencies[:], modtree)

@@ -13,13 +13,14 @@
 ## limitations under the License.
 
 import sys
+if __name__ == '__main__':
+    # Allow other modules to user "import manager"
+    sys.modules['manager'] = sys.modules['__main__']
+
 import os
 import logging
 import pickle
-import json
 import subprocess
-import tempfile
-import shutil
 import stat
 import glob
 import time
@@ -28,11 +29,12 @@ import util
 import fso_parser
 from qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
-from ui.progress import Ui_Dialog as Ui_Progress
 from ui.modinfo import Ui_Dialog as Ui_Modinfo
 from ui.gogextract import Ui_Dialog as Ui_Gogextract
 from ui.select_list import Ui_Dialog as Ui_SelectList
+from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from fs2mod import ModInfo2
+from tasks import *
 
 VERSION = '0.1'
 
@@ -52,426 +54,6 @@ settings = {
 settings_path = os.path.expanduser('~/.fs2mod-py')
 if sys.platform.startswith('win'):
     settings_path = os.path.expandvars('$APPDATA/fs2mod-py')
-
-
-def init_ui(ui, win):
-    ui.setupUi(win)
-    for attr in ui.__dict__:
-        setattr(win, attr, getattr(ui, attr))
-
-    return win
-
-
-# This wrapper makes sure that the wrapped function is always run in the QT main thread.
-def run_in_qt(func):
-    signal = SignalContainer()
-    
-    def dispatcher(*args):
-        signal.signal.emit(args)
-    
-    def listener(params):
-        func(*params)
-    
-    signal.signal.connect(listener)
-    
-    return dispatcher
-
-
-class SignalContainer(QtCore.QObject):
-    signal = QtCore.Signal(list)
-
-
-# Tasks
-class FetchTask(progress.Task):
-    def __init__(self):
-        super(FetchTask, self).__init__()
-        
-        self.done.connect(self.finish)
-        self.add_work(settings['repos'])
-    
-    def work(self, link):
-        if link[0] == 'json':
-            data = util.get(link[1]).read().decode('utf8', 'replace')
-            
-            try:
-                data = json.loads(data)
-            except:
-                logging.exception('Failed to decode "%s"!', link)
-                return
-            
-            if '#include' in data:
-                self.add_work(data['#include'])
-                del data['#include']
-            
-            base_path = os.path.dirname(link[1])
-            for mod in data.values():
-                if 'logo' in mod:
-                    mod['logo'] = util.get(base_path + '/' + mod['logo']).read()
-            
-            self.post(data)
-        elif link[0] == 'fs2mod':
-            with tempfile.TemporaryFile() as dl:
-                util.download(link[1], dl)
-                
-                dl.seek(0)
-                mod = ModInfo2()
-                mod.read_zip(dl)
-            
-            self.add_work([item[2] for item in mod.dependencies if item[0] == 'fs2mod'])
-            self.post(mod.__dict__)
-        else:
-            logging.error('Fetch type "%s" isn\'t implemented (yet)!', link[0])
-    
-    def finish(self):
-        global settings
-        
-        settings['mods'] = {}
-        
-        for part in self.get_results():
-            settings['mods'].update(part)
-        
-        save_settings()
-        update_list()
-
-
-class CheckTask(progress.Task):
-    def __init__(self, update=False):
-        super(CheckTask, self).__init__()
-        
-        self.done.connect(self.finish)
-        self.add_work(settings['mods'].values())
-
-    def work(self, mod):
-        mod = ModInfo2(mod)
-        a, s, c, m = mod.check_files(os.path.join(settings['fs2_path'], mod.folder))
-        self.post((mod, a, s, c, m))
-
-    def finish(self):
-        _update_list(self.get_results())
-
-
-class InstallTask(progress.Task):
-    def __init__(self, mods):
-        super(InstallTask, self).__init__()
-        
-        self.done.connect(self.finish)
-        self.add_work([('install', modname, None) for modname in mods])
-    
-    def work(self, params):
-        action, mod, archive = params
-        
-        if action == 'install':
-            mod = ModInfo2(settings['mods'][mod])
-            
-            if not os.path.exists(os.path.join(settings['fs2_path'], mod.folder)):
-                mod.setup(settings['fs2_path'])
-            else:
-                progress.start_task(0, 1)
-                archives, s, c, m = mod.check_files(settings['fs2_path'])
-                progress.finish_task()
-                
-                if len(archives) > 0:
-                    self.add_work([('dep', mod, a) for a in archives])
-        else:
-            progress.start_task(0, 2/3.0)
-            
-            modpath = os.path.join(settings['fs2_path'], mod.folder)
-            mod.download(modpath, set([archive]))
-            
-            progress.finish_task()
-            progress.start_task(2.0/3.0, 0.5/3.0)
-            
-            mod.extract(modpath, set([archive]))
-            progress.finish_task()
-            
-            progress.start_task(2.5/3.0, 0.5/3.0)
-            mod.cleanup(modpath, set([archive]))
-            progress.finish_task()
-    
-    def finish(self):
-        update_list()
-
-
-class UninstallTask(progress.Task):
-    def __init__(self, mods):
-        super(UninstallTask, self).__init__()
-        
-        self.done.connect(self.finish)
-        self.add_work(mods)
-    
-    def work(self, modname):
-        global shared_files, installed
-        skip_files = []
-        mod = ModInfo2(settings['mods'][modname])
-        
-        for path, mods in shared_files.items():
-            if path.startswith(mod.folder) and set(mods).issubset(set(installed)):
-                # Strip the mod folder away.
-                skip_files.append(path[len(mod.folder):].lstrip('/'))
-        
-        if len(skip_files) > 0:
-            logging.info('Will skip the following files: %s', ', '.join(skip_files))
-        
-        mod.remove(os.path.join(settings['fs2_path'], mod.folder), skip_files)
-    
-    def finish(self):
-        update_list()
-
-
-class GOGExtractTask(progress.Task):
-    def __init__(self, gog_path, dest_path):
-        super(GOGExtractTask, self).__init__()
-        
-        self.done.connect(self.finish)
-        self.add_work([(gog_path, dest_path)])
-    
-    def work(self, paths):
-        gog_path, dest_path = paths
-        
-        progress.start_task(0, 0.03, 'Looking for InnoExtract...')
-        data = util.get(settings['innoextract_link']).read().decode('utf8', 'replace')
-        progress.finish_task()
-        
-        try:
-            data = json.loads(data)
-        except:
-            logging.exception('Failed to read JSON data!')
-            return
-        
-        link = None
-        path = None
-        for plat, info in data.items():
-            if sys.platform.startswith(plat):
-                link, path = info
-                break
-        
-        if link is None:
-            logging.error('Couldn\'t find an innoextract download for "%s"!', sys.platform)
-            return
-        
-        inno = os.path.join(dest_path, os.path.basename(path))
-        with tempfile.TemporaryDirectory() as tempdir:
-            archive = os.path.join(tempdir, os.path.basename(link))
-            
-            progress.start_task(0.03, 0.10, 'Downloading InnoExtract...')
-            with open(os.path.join(dest_path, archive), 'wb') as dl:
-                util.download(link, dl)
-            
-            progress.finish_task()
-            progress.update(0.13, 'Extracting InnoExtract...')
-            
-            util.extract_archive(archive, tempdir)
-            shutil.move(os.path.join(tempdir, path), inno)
-        
-        # Make it executable
-        mode = os.stat(inno).st_mode
-        os.chmod(inno, mode | stat.S_IXUSR)
-
-        progress.start_task(0.15, 0.75, 'Extracting FS2: %s')
-        try:
-            cmd = [inno, '-L', '-s', '-p', '-e', gog_path]
-            logging.info('Running %s...', ' '.join(cmd))
-            
-            opts = dict()
-            if sys.platform.startswith('win'):
-                si = subprocess.STARTUPINFO()
-                si.dwFlags = subprocess.STARTF_USESHOWWINDOW
-                si.wShowWindow = subprocess.SW_HIDE
-                
-                opts['startupinfo'] = si
-                opts['stdin'] = subprocess.PIPE
-            
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=dest_path, **opts)
-            
-            if sys.platform.startswith('win'):
-                p.stdin.close()
-            
-            buf = ''
-            while p.poll() is None:
-                while '\r' not in buf:
-                    line = p.stdout.read(10)
-                    if not line:
-                        break
-                    buf += line.decode('utf8', 'replace')
-
-                buf = buf.split('\r')
-                line = buf.pop(0)
-                buf = '\r'.join(buf)
-                
-                if 'MiB/s' in line:
-                    try:
-                        if ']' in line:
-                            line = line.split(']')[1]
-                        
-                        line = line.strip().split('MiB/s')[0] + 'MiB/s'
-                        percent = float(line.split('%')[0]) / 100
-
-                        progress.update(percent, line)
-                    except:
-                        logging.exception('Failed to process InnoExtract output!')
-                else:
-                    if line.strip() == 'not a supported Inno Setup installer':
-                        self.post(-1)
-                        return
-                    
-                    logging.info('InnoExtract: %s', line)
-        except:
-            logging.exception('InnoExtract failed!')
-            return
-        
-        progress.finish_task()
-        
-        progress.update(0.95, 'Arranging files...')
-        self._makedirs(os.path.join(dest_path, 'data/players'))
-        self._makedirs(os.path.join(dest_path, 'data/movies'))
-        
-        for item in glob.glob(os.path.join(dest_path, 'app', '*.vp')):
-            shutil.move(item, os.path.join(dest_path, 'data', os.path.basename(item)))
-        
-        for item in glob.glob(os.path.join(dest_path, 'app/data/players', '*.hcf')):
-            shutil.move(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
-        
-        for item in glob.glob(os.path.join(dest_path, 'app/data2', '*.mve')):
-            shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
-        
-        for item in glob.glob(os.path.join(dest_path, 'app/data3', '*.mve')):
-            shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
-        
-        progress.update(0.99, 'Cleanup...')
-        os.unlink(inno)
-        shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
-        shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
-        
-        # TODO: Test & improve
-        self.post(dest_path)
-    
-    def _makedirs(self, path):
-        if not os.path.isdir(path):
-            os.makedirs(path)
-    
-    def finish(self):
-        global settings
-        
-        results = self.get_results()
-        if len(results) < 1:
-            QtGui.QMessageBox.critical(main_win, 'Error', 'The Installer failed! Please read the log for more details...')
-            return
-        elif results[0] == -1:
-            QtGui.QMessageBox.critical(main_win, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
-            return
-        else:
-            QtGui.QMessageBox.information(main_win, 'Done', 'FS2 was successfully installed.')
-
-        fs2_path = results[0]
-        settings['fs2_path'] = fs2_path
-        settings['fs2_bin'] = None
-        
-        for item in glob.glob(os.path.join(fs2_path, 'fs2_*.exe')):
-            if os.path.isfile(item):
-                settings['fs2_bin'] = os.path.basename(item)
-                break
-        
-        save_settings()
-        init_fs2_tab()
-
-
-# Progress display
-class ProgressDisplay(object):
-    win = None
-    _threads = None
-    _tasks = None
-    _log_lines = None
-    log_len = 50
-    
-    def __init__(self):
-        self._task_bars = []
-        self._tasks = []
-        self._log_lines = []
-        
-        self.win = init_ui(Ui_Progress(), QtGui.QDialog(main_win))
-        self.win.setModal(True)
-    
-    def show(self):
-        progress.reset()
-        
-        progress.set_callback(self.update_prog)
-        progress.update(0, 'Working...')
-        self.win.show()
-    
-    def update_prog(self, percent, text):
-        self.win.progressBar.setValue(percent * 100)
-        self.win.label.setText(text)
-    
-    def update_tasks(self):
-        total = 0
-        count = len(self._tasks)
-        items = []
-        layout = self.win.tasks.layout()
-        
-        for task in self._tasks:
-            t_total, t_items = task.get_progress()
-            total += t_total / count
-
-            for prog, text in t_items.values():
-                # Skip 0% and 100% items, they aren't interesting...
-                if prog not in (0, 1):
-                    items.append((prog, text))
-        
-        diff = len(self._task_bars) != len(items)
-        if diff:
-            spacer = layout.itemAt(layout.count() - 1)
-        
-        while len(self._task_bars) < len(items):
-            bar = QtGui.QProgressBar()
-            label = QtGui.QLabel()
-            
-            layout.addWidget(label)
-            layout.addWidget(bar)
-            self._task_bars.append((label, bar))
-        
-        while len(self._task_bars) > len(items):
-            label, bar = self._task_bars.pop()
-            
-            label.deleteLater()
-            bar.deleteLater()
-        
-        if diff:
-            # Reappend the spacer.
-            layout.removeItem(spacer)
-            layout.addItem(spacer)
-        
-        for i, item in enumerate(items):
-            label, bar = self._task_bars[i]
-            label.setText(item[1])
-            bar.setValue(item[0] * 100)
-        
-        if len(self._task_bars) == 1:
-            self.win.progressBar.hide()
-        else:
-            self.win.progressBar.setValue(total * 100)
-            self.win.progressBar.show()
-    
-    def hide(self):
-        progress.set_callback(None)
-        self.win.hide()
-    
-    def add_task(self, task):
-        self._tasks.append(task)
-        task.done.connect(self._check_tasks)
-        task.progress.connect(self.update_tasks)
-        
-        if not self.win.isVisible():
-            self.show()
-    
-    def _check_tasks(self):
-        for task in self._tasks:
-            if task.is_done():
-                self._tasks.remove(task)
-        
-        if len(self._tasks) == 0:
-            # Cleanup
-            self.update_tasks()
-            self.hide()
 
 
 def run_task(task):
@@ -511,7 +93,7 @@ def init_fs2_tab():
 
 
 def do_gog_extract():
-    extract_win = init_ui(Ui_Gogextract(), QtGui.QDialog(main_win))
+    extract_win = util.init_ui(Ui_Gogextract(), QtGui.QDialog(main_win))
 
     def select_installer():
         path = QtGui.QFileDialog.getOpenFileName(extract_win, 'Please select the setup_freespace2_*.exe file.',
@@ -581,7 +163,7 @@ def select_fs2_path(interact=True):
         elif len(bins) > 1:
             # Let the user choose.
 
-            select_win = init_ui(Ui_SelectList(), QtGui.QDialog(main_win))
+            select_win = util.init_ui(Ui_SelectList(), QtGui.QDialog(main_win))
             has_default = False
             bins.sort()
 
@@ -589,7 +171,7 @@ def select_fs2_path(interact=True):
                 path = os.path.basename(path)
                 select_win.listWidget.addItem(path)
 
-                if not has_default and not (path.endswith('_DEBUG') or path.endswith('-DEBUG.exe')):
+                if not has_default and not (path.endswith('_DEBUG') and '-DEBUG.' not in path):
                     # Select the first non-debug build as default.
 
                     select_win.listWidget.setCurrentRow(i)
@@ -692,10 +274,11 @@ def update_list():
     if settings['mods'] is None:
         fetch_list()
     else:
-        run_task(CheckTask())
+        if len(settings['mods']) > 0:
+            run_task(CheckTask(settings['mods'].values()))
 
 
-def resolve_deps(mods):
+def resolve_deps(mods, skip_installed=True):
     global installed
 
     deps = set()
@@ -705,7 +288,10 @@ def resolve_deps(mods):
         modlist[name] = ModInfo2(data)
     
     for name in mods:
-        deps |= modlist[name].lookup_deps(modlist, installed)
+        deps |= modlist[name].lookup_deps(modlist)
+    
+    if skip_installed:
+        deps -= set(installed)
     
     return list(deps - set(mods))
 
@@ -722,14 +308,16 @@ def autoselect_deps(item, col):
 
 
 def select_mod(item, col):
+    global installed
+    
     name = item.text(0)
-    installed = item.data(0, QtCore.Qt.UserRole) == QtCore.Qt.Checked
+    is_installed = item.data(0, QtCore.Qt.UserRole) == QtCore.Qt.Checked
     check_msgs = item.data(0, QtCore.Qt.UserRole + 1)
     mod = ModInfo2(settings['mods'][name])
     
     # NOTE: lambdas don't work with connect()
     def do_run():
-        if installed:
+        if is_installed:
             run_mod(mod)
         else:
             deps = resolve_deps([mod.name])
@@ -748,9 +336,15 @@ def select_mod(item, col):
                 infowin.close()
     
     def do_run2():
-        run_mod(mod)
+        modpath = util.ipath(os.path.join(settings['fs2_path'], mod.folder))
+        
+        # TODO: Is there a better way to check if the installation failed?
+        if not os.path.isdir(modpath):
+            QtGui.QMessageBox.critical(main_win, 'Error', 'Failed to install "%s"! Read the log for more information.' % (mod.name))
+        else:
+            run_mod(mod)
     
-    infowin = init_ui(Ui_Modinfo(), QtGui.QDialog(main_win))
+    infowin = util.init_ui(Ui_Modinfo(), QtGui.QDialog(main_win))
     infowin.setModal(True)
     infowin.modname.setText(mod.name + ' - ' + mod.version)
     
@@ -767,11 +361,25 @@ def select_mod(item, col):
     if len(check_msgs) > 0 and item.data(0, QtCore.Qt.UserRole) != QtCore.Qt.Unchecked:
         infowin.note.appendPlainText('\nCheck messages:\n* ' + '\n* '.join(check_msgs))
     
-    infowin.note.appendPlainText('\n\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.contents.keys())]))
+    deps = resolve_deps([mod.name], False)
+    if len(deps) > 0:
+        lines = []
+        for dep in deps:
+            line = '* ' + dep
+            if dep in installed:
+                line += ' (installed)'
+            
+            lines.append(line)
+        
+        infowin.note.appendPlainText('\nDependencies:\n' + '\n'.join(lines))
+    
+    infowin.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.contents.keys())]))
     
     infowin.closeButton.clicked.connect(infowin.close)
     infowin.runButton.clicked.connect(do_run)
     infowin.show()
+    
+    infowin.note.verticalScrollBar().setValue(0)
 
 
 def run_mod(mod):
@@ -792,7 +400,32 @@ def run_mod(mod):
             ini = item
             break
     
-    if ini is None:
+    if ini is not None and os.path.isfile(os.path.join(modpath, ini)):
+        # mod.ini was found, now read its "[multimod]" section.
+        primlist = []
+        seclist = []
+        
+        try:
+            with open(os.path.join(modpath, ini), 'r') as stream:
+                for line in stream:
+                    if line.strip() == '[multimod]':
+                        break
+                
+                for line in stream:
+                    line = [p.strip(' ;\n\r') for p in line.split('=')]
+                    if line[0] == 'primarylist':
+                        primlist = line[1].split(',')
+                    elif line[0] in ('secondrylist', 'secondarylist'):
+                        seclist = line[1].split(',')
+        except:
+            logging.exception('Failed to read %s!', os.path.join(modpath, ini))
+        
+        if ini == 'mod.ini':
+            ini = os.path.basename(modpath) + '/' + ini
+
+        # Build the whole list for -mod
+        modfolder = ','.join(primlist + [ini.split('/')[0]] + seclist).strip(',').replace(',,', ',')
+    else:
         # No mod.ini found, look for the first subdirectory then.
         if mod.folder == '':
             for item in mod.contents:
@@ -801,28 +434,6 @@ def run_mod(mod):
                     break
         else:
             modfolder = mod.folder.split('/')[0]
-    else:
-        # mod.ini was found, now read its "[multimod]" section.
-        primlist = []
-        seclist = []
-        
-        with open(os.path.join(modpath, ini), 'r') as stream:
-            for line in stream:
-                if line.strip() == '[multimod]':
-                    break
-            
-            for line in stream:
-                line = [p.strip(' ;\n\r') for p in line.split('=')]
-                if line[0] == 'primarylist':
-                    primlist = line[1].split(',')
-                elif line[0] in ('secondrylist', 'secondarylist'):
-                    seclist = line[1].split(',')
-        
-        if ini == 'mod.ini':
-            ini = os.path.basename(modpath) + '/' + ini
-
-        # Build the whole list for -mod
-        modfolder = ','.join(primlist + [ini.split('/')[0]] + seclist).strip(',').replace(',,', ',')
     
     # Now look for the user directory...
     if sys.platform in ('linux2', 'linux'):
@@ -831,12 +442,14 @@ def run_mod(mod):
     else:
         path = settings['fs2_path']
     
+    cmdline = []
     path = os.path.join(path, 'data/cmdline_fso.cfg')
     if os.path.exists(path):
-        with open(path, 'r') as stream:
-            cmdline = stream.read().strip().split(' ')
-    else:
-        cmdline = []
+        try:
+            with open(path, 'r') as stream:
+                cmdline = stream.read().strip().split(' ')
+        except:
+            logging.exception('Failed to read "%s", assuming empty cmdline.', path)
     
     mod_found = False
     for i, part in enumerate(cmdline):
@@ -849,10 +462,15 @@ def run_mod(mod):
         cmdline.append('-mod')
         cmdline.append(modfolder)
     
-    with open(path, 'w') as stream:
-        stream.write(' '.join(cmdline))
-    
-    run_fs2()
+    try:
+        with open(path, 'w') as stream:
+            stream.write(' '.join(cmdline))
+    except:
+        logging.exception('Failed to modify "%s". Not starting FS2!!', path)
+        
+        QtGui.QMessageBox.critical(main_win, 'Error', 'Failed to edit "%s"! I can\'t change the current MOD!' % path)
+    else:
+        run_fs2()
 
 
 def read_tree(parent, items=None):
@@ -925,6 +543,97 @@ def apply_selection():
             run_task(UninstallTask(uninstall))
 
 
+# Settings tab
+def update_repo_list():
+    main_win.sourceList.clear()
+    
+    for i, repo in enumerate(settings['repos']):
+        item = QtGui.QListWidgetItem(repo[2], main_win.sourceList)
+        item.setData(QtCore.Qt.UserRole, i)
+
+
+def _edit_repo(repo=None, idx=None):
+    win = util.init_ui(Ui_AddRepo(), QtGui.QDialog(main_win))
+    
+    def update_type():
+        if win.typeJson.isChecked():
+            win.sourceButton.hide()
+        else:
+            win.sourceButton.show()
+    
+    def source_select():
+        path, _ = QtGui.QFileDialog.getOpenFileName(win, 'Please select a source.', '', 'fs2mod File (*.fs2mod)')
+        
+        if path is not None and os.path.isfile(path):
+            win.source.setText(os.path.abspath(path))
+            
+            if win.typeFs2mod.isChecked():
+                try:
+                    mod = ModInfo2()
+                    mod.read_zip(path)
+                    
+                    win.title.setText(mod.name + ' (fs2mod)')
+                except:
+                    logging.exception('Failed to read "%s". Can\'t determine title.')
+    
+    win.typeJson.toggled.connect(update_type)
+    win.typeFs2mod.toggled.connect(update_type)
+    
+    win.sourceButton.clicked.connect(source_select)
+    
+    win.okButton.clicked.connect(win.accept)
+    win.cancelButton.clicked.connect(win.reject)
+    
+    if repo is not None:
+        if repo[0] == 'json':
+            win.typeJson.setChecked(True)
+        else:
+            win.typeFs2mod.setChecked(True)
+        
+        win.source.setText(repo[1])
+        win.title.setText(repo[2])
+    
+    if win.exec_() == QtGui.QMessageBox.Accepted:
+        if win.typeJson.isChecked():
+            type_ = 'json'
+        else:
+            type_ = 'fs2mod'
+        
+        if idx is None:
+            settings['repos'].append((type_, win.source.text(), win.title.text()))
+        else:
+            settings['repos'][idx] = (type_, win.source.text(), win.title.text())
+        
+        save_settings()
+        update_repo_list()
+        #fetch_list()
+
+
+def add_repo():
+    _edit_repo()
+
+
+def edit_repo():
+    item = main_win.sourceList.currentItem()
+    if item is not None:
+        idx = item.data(QtCore.Qt.UserRole)
+        _edit_repo(settings['repos'][idx], idx)
+
+
+def remove_repo():
+    item = main_win.sourceList.currentItem()
+    if item is not None:
+        idx = item.data(QtCore.Qt.UserRole)
+        answer = QtGui.QMessageBox.question(main_win, 'Are you sure?', 'Do you really want to remove "%s"?' % (item.text()),
+                                            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No, QtGui.QMessageBox.No)
+        
+        if answer == QtGui.QMessageBox.Yes:
+            del settings['repos'][idx]
+            
+            save_settings()
+            update_repo_list()
+
+
 def main():
     global VERSION, settings, main_win, progress_win
     
@@ -959,7 +668,11 @@ def main():
                 settings.update(pickle.load(stream))
         except:
             logging.exception('Failed to load settings from "%s"!', spath)
-
+        
+        # Migration
+        if isinstance(settings['repos'], tuple):
+            settings['repos'] = list(settings['repos'])
+        
         save_settings()
     
     if settings['hash_cache'] is not None:
@@ -974,8 +687,8 @@ def main():
         QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
         return
 
-    main_win = init_ui(Ui_MainWindow(), QtGui.QMainWindow())
-    progress_win = ProgressDisplay()
+    main_win = util.init_ui(Ui_MainWindow(), QtGui.QMainWindow())
+    progress_win = progress.ProgressDisplay()
 
     if hasattr(sys, 'frozen'):
         # Add note about bundled content.
@@ -992,6 +705,7 @@ def main():
     main_win.tabs.setTabEnabled(tab, False)
     
     init_fs2_tab()
+    update_repo_list()
     
     main_win.aboutLabel.linkActivated.connect(QtGui.QDesktopServices.openUrl)
     
@@ -1005,6 +719,11 @@ def main():
     main_win.modTree.itemChanged.connect(autoselect_deps)
     main_win.modTree.sortItems(0, QtCore.Qt.AscendingOrder)
     main_win.modTree.header().setResizeMode(QtGui.QHeaderView.ResizeToContents)
+    
+    main_win.addSource.clicked.connect(add_repo)
+    main_win.editSource.clicked.connect(edit_repo)
+    main_win.removeSource.clicked.connect(remove_repo)
+    main_win.sourceList.itemDoubleClicked.connect(edit_repo)
     
     pmaster.start_workers(10)
     QtCore.QTimer.singleShot(300, update_list)
