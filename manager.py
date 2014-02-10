@@ -807,7 +807,6 @@ def main():
     main_win.tabs.setTabEnabled(tab, False)
     
     signals.list_updated.connect(update_list)
-    init_fs2_tab()
     update_repo_list()
     
     main_win.aboutLabel.linkActivated.connect(QtGui.QDesktopServices.openUrl)
@@ -828,7 +827,7 @@ def main():
     main_win.removeSource.clicked.connect(remove_repo)
     main_win.sourceList.itemDoubleClicked.connect(edit_repo)
     
-    QtCore.QTimer.singleShot(300, update_list)
+    QtCore.QTimer.singleShot(300, init_fs2_tab)
 
     main_win.show()
     app.exec_()

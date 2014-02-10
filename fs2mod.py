@@ -352,18 +352,6 @@ class ModInfo2(ModInfo):
             
             checked += 1
         
-        # If we don't know the subfolder, path will be fs2_path and thus will list way too many files.
-        # NOTE: Disabled for now, it yields too many false-positives.
-        # if self.folder != '':
-        #     mod_files = [f.lower() for f in self.contents.keys()]
-        #     for sub_path, dirs, files in os.walk(ipath(path)):
-        #         sub_path = sub_path[len(path):].lstrip('/')
-                
-        #         for item in files:
-        #             mypath = pjoin(sub_path, item)
-        #             if mypath.lower() not in mod_files:
-        #                 msgs.append('File "%s" isn\'t part of the mod.' % (mypath))
-        
         return archives, success, count, msgs
     
     def remove(self, path, keep_files=None):

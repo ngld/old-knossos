@@ -155,12 +155,13 @@ class InstallTask(progress.Task):
         
         if action == 'install':
             mod = ModInfo2(manager.settings['mods'][mod])
+            modpath = util.ipath(os.path.join(manager.settings['fs2_path'], mod.folder))
             
-            if not os.path.exists(os.path.join(manager.settings['fs2_path'], mod.folder)):
+            if not os.path.exists(modpath):
                 mod.setup(manager.settings['fs2_path'])
             else:
                 progress.start_task(0, 1)
-                archives, s, c, m = mod.check_files(manager.settings['fs2_path'])
+                archives, s, c, m = mod.check_files(modpath)
                 progress.finish_task()
                 
                 if len(archives) > 0:
@@ -168,7 +169,7 @@ class InstallTask(progress.Task):
         else:
             progress.start_task(0, 2/3.0)
             
-            modpath = os.path.join(manager.settings['fs2_path'], mod.folder)
+            modpath = util.ipath(os.path.join(manager.settings['fs2_path'], mod.folder))
             mod.download(modpath, set([archive]))
             
             progress.finish_task()
