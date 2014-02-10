@@ -99,7 +99,7 @@ def do_gog_extract():
         path = QtGui.QFileDialog.getOpenFileName(extract_win, 'Please select the setup_freespace2_*.exe file.',
                                                  os.path.expanduser('~/Downloads'), 'Executable (*.exe)')[0]
 
-        if path is not None:
+        if path is not None and path != '':
             if not os.path.isfile(path):
                 QtGui.QMessageBox.critical(extract_win, 'Not a file', 'Please select a proper file!')
                 return
@@ -107,9 +107,15 @@ def do_gog_extract():
             extract_win.gogPath.setText(os.path.abspath(path))
 
     def select_dest():
-        path = QtGui.QFileDialog.getExistingDirectory(extract_win, 'Please select the destination directory.', os.path.expanduser('~/Documents'))
+        flags = QtGui.QFileDialog.ShowDirsOnly
+        if sys.platform.startswith('linux'):
+            # Fix a weird case in which the dialog fails with "FIXME: handle dialog start.".
+            # See http://www.hard-light.net/forums/index.php?topic=86364.msg1734670#msg1734670
+            flags |= QtGui.QFileDialog.DontUseNativeDialog
+        
+        path = QtGui.QFileDialog.getExistingDirectory(extract_win, 'Please select the destination directory.', os.path.expanduser('~/Documents'), flags)
 
-        if path is not None:
+        if path is not None and path != '':
             if not os.path.isdir(path):
                 QtGui.QMessageBox.critical(extract_win, 'Not a directory', 'Please select a proper directory!')
                 return
@@ -147,8 +153,14 @@ def select_fs2_path(interact=True):
             path = os.path.expanduser('~')
         else:
             path = settings['fs2_path']
-
-        fs2_path = QtGui.QFileDialog.getExistingDirectory(main_win, 'Please select your FS2 directory.', path)
+        
+        flags = QtGui.QFileDialog.ShowDirsOnly
+        if sys.platform.startswith('linux'):
+            # Fix a weird case in which the dialog fails with "FIXME: handle dialog start.".
+            # See http://www.hard-light.net/forums/index.php?topic=86364.msg1734670#msg1734670
+            flags |= QtGui.QFileDialog.DontUseNativeDialog
+        
+        fs2_path = QtGui.QFileDialog.getExistingDirectory(main_win, 'Please select your FS2 directory.', path, flags)
     else:
         fs2_path = settings['fs2_path']
 
@@ -663,6 +675,8 @@ def main():
     # Try to load our settings.
     spath = os.path.join(settings_path, 'settings.pick')
     if os.path.exists(spath):
+        defaults = settings.copy()
+        
         try:
             with open(spath, 'rb') as stream:
                 settings.update(pickle.load(stream))
@@ -671,8 +685,9 @@ def main():
         
         # Migration
         if isinstance(settings['repos'], tuple):
-            settings['repos'] = list(settings['repos'])
+            settings['repos'] = defaults['repos']
         
+        del defaults
         save_settings()
     
     if settings['hash_cache'] is not None:
