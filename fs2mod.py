@@ -65,6 +65,7 @@ class ModInfo2(ModInfo):
     dependencies = None
     logo = None
     update = None
+    version = None
     
     def __init__(self, values=None):
         super(ModInfo2, self).__init__()
@@ -248,6 +249,13 @@ class ModInfo2(ModInfo):
                 'archive': dl_names[line[2]],
                 'md5sum': line[0]
             }
+        
+        try:
+            version = archive.open('root/version').read().decode('utf8', 'replace').strip()
+        except KeyError:
+            version = ''
+        
+        self.version = version
         
         try:
             deps = archive.open('root/dep')
