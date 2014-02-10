@@ -385,3 +385,51 @@ class ModInfo2(ModInfo):
                 os.rmdir(path)
             else:
                 logging.info('Skipped "%s" because it still contains files.', path)
+
+
+def count_modtree(mods):
+    count = 0
+    for mod in mods:
+        count += count_modtree(mod.submods) + 1
+    
+    return count
+
+
+def convert_modtree(mods, complete=0):
+    mod2s = []
+    count = len(mods) # count_modtree(mods)
+    
+    for mod in mods:
+        m = ModInfo2()
+        progress.start_task(complete / count, 1 / count, 'Converting "%s": %%s' % mod.name)
+        m.read(mod)
+        progress.finish_task()
+        
+        mod2s.append(m)
+        complete += 1
+        
+        m.submods = convert_modtree(m.submods, complete)
+        for i, sm in enumerate(m.submods):
+            if m.folder == '':
+                for item in m.contents:
+                    if '/' in item:
+                        sm.dependencies.append(item.split('/')[0])
+                        break
+            else:
+                sm.dependencies.append(m.folder)
+            
+            mod2s.append(sm)
+            m.submods[i] = sm.name
+    
+    return mod2s
+
+def find_mod(mods, needle):
+    for mod in mods:
+        if mod.name == needle:
+            return mod
+        
+        res = find_mod(mod.submods, needle)
+        if res is not None:
+            return res
+    
+    return None
