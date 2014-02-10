@@ -80,7 +80,7 @@ def run_task(task, cb=None):
 # FS2 tab
 def save_settings():
     with open(os.path.join(settings_path, 'settings.pick'), 'wb') as stream:
-        pickle.dump(settings, stream)
+        pickle.dump(settings, stream, 2)
 
 
 def init_fs2_tab():
