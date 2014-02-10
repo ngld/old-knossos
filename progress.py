@@ -468,10 +468,10 @@ class ProgressDisplay(object):
         for task in self._tasks:
             t_total, t_items = task.get_progress()
             total += t_total / count
-
+            
             for prog, text in t_items.values():
                 # Skip 0% and 100% items, they aren't interesting...
-                if prog not in (0, 1):
+                if text not in ('Done', 'Ready'):
                     items.append((prog, text))
         
         diff = len(self._task_bars) != len(items)

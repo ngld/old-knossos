@@ -61,7 +61,7 @@ class FetchTask(progress.Task):
             base_path = os.path.dirname(link[1])
             for i, mod in enumerate(data.values()):
                 if 'logo' in mod:
-                    progress.update(0.1 + i / len(data), 'Loading logos...')
+                    progress.update(0.1 + float(i) / len(data), 'Loading logos...')
                     mod['logo'] = util.get(base_path + '/' + mod['logo']).read()
             
             if '' in data:

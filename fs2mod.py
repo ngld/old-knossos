@@ -332,7 +332,7 @@ class ModInfo2(ModInfo):
         return set(provided.values()) - set([self.name])
     
     def check_files(self, path):
-        count = len(self.contents)
+        count = float(len(self.contents))
         success = 0
         checked = 0
         
@@ -365,7 +365,7 @@ class ModInfo2(ModInfo):
         return archives, success, count, msgs
     
     def remove(self, path, keep_files=None):
-        count = len(self.contents)
+        count = float(len(self.contents))
         checked = 0
         folders = set()
         if keep_files is None:
