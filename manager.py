@@ -416,6 +416,7 @@ def run_mod(mod):
         if not os.path.isdir(modpath):
             QtGui.QMessageBox.critical(main_win, 'Error', 'Failed to install "%s"! Read the log for more information.' % (mod.name))
         else:
+            installed.append(mod.name)
             run_mod(mod)
     
     if settings['fs2_bin'] is None:
@@ -689,6 +690,36 @@ def remove_repo():
             update_repo_list()
 
 
+def install_scheme_handler():
+    tpl = r"""Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\fs2]
+"URLProtocol"=""
+
+[HKEY_CLASSES_ROOT\fs2\shell]
+
+[HKEY_CLASSES_ROOT\fs2\shell\open]
+
+[HKEY_CLASSES_ROOT\fs2\shell\open\command]
+@="{PATH} \"%1\""
+"""
+    if hasattr(sys, 'frozen'):
+        my_path = os.path.abspath(sys.executable)
+    else:
+        my_path = os.path.abspath(__file__)
+    
+    fd, path = tempfile.mkstemp('.reg')
+    os.write(fd, tpl.replace('{PATH}', my_path.replace('\\', '\\\\')).replace('\n', '\r\n'))
+    os.close(fd)
+    
+    try:
+        subprocess.call(['regedit', path])
+    except:
+        logging.exception('Failed!')
+    
+    os.unlink(path)
+
+
 def init():
     global settings
     
@@ -767,6 +798,11 @@ def main():
             with open('commit', 'r') as data:
                 VERSION += '-' + data.read().strip()
     
+    if sys.platform.startswith('win'):
+        main_win.schemeHandler.clicked.connect(install_scheme_handler)
+    else:
+        main_win.schemeHandler.hide()
+    
     tab = main_win.tabs.addTab(QtGui.QWidget(), 'Version: ' + VERSION)
     main_win.tabs.setTabEnabled(tab, False)
     
@@ -806,11 +842,11 @@ def main():
     save_settings()
 
 
-def protocol_handler(o_link, app=None):
+def scheme_handler(o_link, app=None):
     global progress_win
     
     def recall():
-        protocol_handler(o_link, app)
+        scheme_handler(o_link, app)
     
     if app is None:
         app = init()
@@ -824,7 +860,7 @@ def protocol_handler(o_link, app=None):
         return
     
     if not o_link.startswith('fs2://'):
-        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I don\'t know how to handle "%s"! I only know fs2:// .')
+        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I don\'t know how to handle "%s"! I only know fs2:// .' % (o_link))
         app.quit()
         return
     
@@ -875,15 +911,15 @@ def protocol_handler(o_link, app=None):
                 task.done.connect(app.quit)
                 run_task(task)
         else:
-            QtGui.QMessageBox.infomation(None, 'fs2mod-py', 'MOD "%s" is already installed!')
+            QtGui.QMessageBox.infomation(None, 'fs2mod-py', 'MOD "%s" is already installed!' % (mod.name))
             app.quit()
     else:
-        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'The action "%s" is unknown!')
+        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'The action "%s" is unknown!' % (action))
         app.quit()
 
 
 if __name__ == '__main__':
     if len(sys.argv) > 1 and '://' in sys.argv[1]:
-        protocol_handler(sys.argv[1])
+        scheme_handler(sys.argv[1])
     else:
         main()
