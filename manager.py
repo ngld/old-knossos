@@ -113,8 +113,10 @@ def do_gog_extract():
 
     def select_installer():
         path = QtGui.QFileDialog.getOpenFileName(extract_win, 'Please select the setup_freespace2_*.exe file.',
-                                                 os.path.expanduser('~/Downloads'), 'Executable (*.exe)')[0]
-
+                                                 os.path.expanduser('~/Downloads'), 'Executable (*.exe)')
+        if isinstance(path, tuple):
+            path = path[0]
+        
         if path is not None and path != '':
             if not os.path.isfile(path):
                 QtGui.QMessageBox.critical(extract_win, 'Not a file', 'Please select a proper file!')
@@ -611,7 +613,9 @@ def _edit_repo(repo=None, idx=None):
             win.sourceButton.show()
     
     def source_select():
-        path, _ = QtGui.QFileDialog.getOpenFileName(win, 'Please select a source.', '', 'fs2mod File (*.fs2mod)')
+        path = QtGui.QFileDialog.getOpenFileName(win, 'Please select a source.', '', 'fs2mod File (*.fs2mod)')
+        if isinstance(path, tuple):
+            path = path[0]
         
         if path is not None and os.path.isfile(path):
             win.source.setText(os.path.abspath(path))
