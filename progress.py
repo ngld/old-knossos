@@ -25,10 +25,10 @@ from qt import QtCore, QtGui
 from ui.progress import Ui_Dialog as Ui_Progress
 
 try:
-  from gi.repository import Unity, Dbusmenu
+    from gi.repository import Unity
 except ImportError:
-  # Can't find Unity.
-  Unity = None
+    # Can't find Unity.
+    Unity = None
 
 try:
     import curses
@@ -454,9 +454,9 @@ class ProgressDisplay(object):
         
         self.win = util.init_ui(Ui_Progress(), QtGui.QDialog(QtGui.QApplication.activeWindow()))
         self.win.setModal(True)
-        if Unity:
-            self.unity_launcher = Unity.LauncherEntry.get_for_desktop_id ("fs2mod-py.desktop")
         
+        if Unity:
+            self.unity_launcher = Unity.LauncherEntry.get_for_desktop_id('fs2mod-py.desktop')
     
     def show(self):
         reset()
@@ -464,17 +464,17 @@ class ProgressDisplay(object):
         set_callback(self.update_prog)
         update(0, 'Working...')
         self.win.show()
-        if Unity:
-            self.unity_launcher.set_property("progress_visible", True)
         
+        if Unity:
+            self.unity_launcher.set_property('progress_visible', True)
     
     def update_prog(self, percent, text):
         self.win.progressBar.setValue(percent * 100)
         self.win.label.setText(text)
-        if Unity:
-            self.unity_launcher.set_property("progress", percent)
         
-            
+        if Unity:
+            self.unity_launcher.set_property('progress', percent)
+    
     def update_tasks(self):
         total = 0
         count = len(self._tasks)
@@ -522,15 +522,16 @@ class ProgressDisplay(object):
             self.win.progressBar.hide()
         else:
             self.win.progressBar.setValue(total * 100)
-            if Unity:
-                self.unity_launcher.set_property("progress", total)
             self.win.progressBar.show()
+        
+        if Unity:
+            self.unity_launcher.set_property('progress', total)
     
     def hide(self):
         set_callback(None)
         
         if Unity:
-            self.unity_launcher.set_property("progress_visible", False)
+            self.unity_launcher.set_property('progress_visible', False)
         
         self.win.hide()
     
