@@ -39,9 +39,16 @@ from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from fs2mod import ModInfo2
 from tasks import *
 
+try:
+  from gi.repository import Unity, Dbusmenu
+except ImportError:
+  # Can't find Unity.
+  Unity = None
+
 VERSION = '0.1'
 main_win = None
 progress_win = None
+unity_launcher = None
 installed = None
 shared_files = {}
 pmaster = progress.Master()
@@ -109,6 +116,10 @@ def init_fs2_tab():
         
         update_list()
 
+def show_tab(a,b,tab):
+    global main_win
+    main_win.tabs.setCurrentIndex(tab)
+    main_win.activateWindow()
 
 def do_gog_extract():
     extract_win = util.init_ui(Ui_Gogextract(), QtGui.QDialog(main_win))
@@ -669,6 +680,10 @@ def _edit_repo(repo=None, idx=None):
         update_repo_list()
         #fetch_list()
 
+def ql_add_repo(a,b,tab):
+    main_win.tabs.setCurrentIndex(tab)
+    main_win.activateWindow()
+    add_repo()
 
 def add_repo():
     _edit_repo()
@@ -696,7 +711,13 @@ def remove_repo():
 
 
 def install_scheme_handler():
-    tpl = r"""Windows Registry Editor Version 5.00
+    if hasattr(sys, 'frozen'):
+        my_path = os.path.abspath(sys.executable)
+    else:
+        my_path = os.path.abspath(__file__)
+            
+    if sys.platform.startswith('win'):
+        tpl = r"""Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\fs2]
 "URLProtocol"=""
@@ -708,22 +729,45 @@ def install_scheme_handler():
 [HKEY_CLASSES_ROOT\fs2\shell\open\command]
 @="{PATH} \"%1\""
 """
-    if hasattr(sys, 'frozen'):
-        my_path = os.path.abspath(sys.executable)
-    else:
-        my_path = os.path.abspath(__file__)
-    
-    fd, path = tempfile.mkstemp('.reg')
-    os.write(fd, tpl.replace('{PATH}', my_path.replace('\\', '\\\\')).replace('\n', '\r\n'))
-    os.close(fd)
-    
-    try:
-        subprocess.call(['regedit', path])
-    except:
-        logging.exception('Failed!')
-    
-    os.unlink(path)
+        
+        fd, path = tempfile.mkstemp('.reg')
+        os.write(fd, tpl.replace('{PATH}', my_path.replace('\\', '\\\\')).replace('\n', '\r\n'))
+        os.close(fd)
+        
+        try:
+            subprocess.call(['regedit', path])
+        except:
+            logging.exception('Failed!')
+        
+        os.unlink(path)
+        
+    elif sys.platform in ('linux2', 'linux'):
+        tpl_desktop = r"""[Desktop Entry]
+Name=fs2mod-py
+Exec=python {PATH} %U
+Icon={ICON_PATH}
+Type=Application
+Terminal=false
+MimeType=x-scheme-handler/fso;
+"""
 
+        tpl_mime_type = r"""x-scheme-handler/fso=fs2mod-py.desktop;"""
+
+        applications_path = os.path.expanduser('~')+"/.local/share/applications/"
+        desktop_file = applications_path+"fs2mod-py.desktop"
+        mime_types_file = applications_path+"mimeapps.list"
+        
+        with open(desktop_file, 'w') as output_file:
+            output_file.write(tpl_desktop.replace('{PATH}', os.path.abspath(__file__)).replace('{ICON_PATH}', os.path.dirname(os.path.abspath(__file__))+"/hlp.png"))
+        
+        found = False
+        for line in file(mime_types_file):
+            if "x-scheme-handler/fso=fs2mod-py.desktop;" in line:
+                found = True
+                
+        if found == False:
+            with open(mime_types_file, 'a') as output_file:
+                output_file.write(tpl_mime_type)
 
 def init():
     global settings
@@ -789,7 +833,7 @@ def init():
 
 
 def main():
-    global VERSION, main_win, progress_win
+    global VERSION, main_win, progress_win, unity_launcher
     
     app = init()
     main_win = util.init_ui(Ui_MainWindow(), QtGui.QMainWindow())
@@ -806,7 +850,7 @@ def main():
             with open('commit', 'r') as data:
                 VERSION += '-' + data.read().strip()
     
-    if sys.platform.startswith('win'):
+    if sys.platform.startswith('win') or sys.platform in ('linux2', 'linux'):
         main_win.schemeHandler.clicked.connect(install_scheme_handler)
     else:
         main_win.schemeHandler.hide()
@@ -837,9 +881,41 @@ def main():
     main_win.sourceList.itemDoubleClicked.connect(edit_repo)
     
     QtCore.QTimer.singleShot(1, init_fs2_tab)
+    
+    if Unity:
+        unity_launcher = Unity.LauncherEntry.get_for_desktop_id ("fs2mod-py.desktop")
+        # We also want a quicklist 
+        ql = Dbusmenu.Menuitem.new ()
+        item_fs2 = Dbusmenu.Menuitem.new ()
+        item_fs2.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "FS2")
+        item_fs2.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_mods = Dbusmenu.Menuitem.new ()
+        item_mods.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "Mods")
+        item_mods.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_settings = Dbusmenu.Menuitem.new ()
+        item_settings.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "Settings")
+        item_settings.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_add_repo = Dbusmenu.Menuitem.new ()
+        item_add_repo.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "Add Source")
+        item_add_repo.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        
+        item_fs2.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 0)
+        item_mods.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 1)
+        item_settings.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 2)
+        item_add_repo.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, ql_add_repo, 2)
+        
+        ql.child_append (item_fs2)
+        ql.child_append (item_mods)
+        ql.child_append (item_settings)
+        ql.child_append (item_add_repo)
+        
+        unity_launcher.set_property("quicklist", ql)
+        
+        
 
     main_win.show()
     app.exec_()
+    
     
     settings['hash_cache'] = dict()
     for path, info in fso_parser.HASH_CACHE.items():
