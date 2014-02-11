@@ -14,12 +14,15 @@
 ## limitations under the License.
 
 import sys
+import logging
 if __name__ == '__main__':
-    # Allow other modules to user "import manager"
+    # Allow other modules to use "import manager"
     sys.modules['manager'] = sys.modules['__main__']
 
+# Do the logging config here because gi.repository will use it already on import.
+logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
+
 import os
-import logging
 import pickle
 import subprocess
 import stat
@@ -761,7 +764,7 @@ MimeType=x-scheme-handler/fso;
         desktop_file = applications_path + 'fs2mod-py.desktop'
         mime_types_file = applications_path + 'mimeapps.list'
         
-        tpl_desktop = tpl_desktop.replace('{PYTHON}', os.path.abspath(sys.exception))
+        tpl_desktop = tpl_desktop.replace('{PYTHON}', os.path.abspath(sys.executable))
         tpl_desktop = tpl_desktop.replace('{PATH}', my_path)
         tpl_desktop = tpl_desktop.replace('{ICON_PATH}', os.path.abspath(os.path.join(os.path.dirname(__file__), 'hlp.png')))
         
@@ -799,7 +802,6 @@ def init():
     if not os.path.isdir(settings_path):
         os.makedirs(settings_path)
     
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
     if sys.platform.startswith('win'):
         # Windows won't display a console so write our log messages to a file.
         handler = logging.FileHandler(os.path.join(settings_path, 'log.txt'), 'w')
