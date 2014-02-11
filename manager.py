@@ -705,7 +705,13 @@ def remove_repo():
 
 
 def install_scheme_handler():
-    tpl = r"""Windows Registry Editor Version 5.00
+    if hasattr(sys, 'frozen'):
+        my_path = os.path.abspath(sys.executable)
+    else:
+        my_path = os.path.abspath(__file__)
+            
+    if sys.platform.startswith('win'):
+        tpl = r"""Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\fs2]
 "URLProtocol"=""
@@ -717,22 +723,45 @@ def install_scheme_handler():
 [HKEY_CLASSES_ROOT\fs2\shell\open\command]
 @="{PATH} \"%1\""
 """
-    if hasattr(sys, 'frozen'):
-        my_path = os.path.abspath(sys.executable)
-    else:
-        my_path = os.path.abspath(__file__)
-    
-    fd, path = tempfile.mkstemp('.reg')
-    os.write(fd, tpl.replace('{PATH}', my_path.replace('\\', '\\\\')).replace('\n', '\r\n'))
-    os.close(fd)
-    
-    try:
-        subprocess.call(['regedit', path])
-    except:
-        logging.exception('Failed!')
-    
-    os.unlink(path)
-    
+        
+        fd, path = tempfile.mkstemp('.reg')
+        os.write(fd, tpl.replace('{PATH}', my_path.replace('\\', '\\\\')).replace('\n', '\r\n'))
+        os.close(fd)
+        
+        try:
+            subprocess.call(['regedit', path])
+        except:
+            logging.exception('Failed!')
+        
+        os.unlink(path)
+        
+    elif sys.platform in ('linux2', 'linux'):
+        tpl_desktop = r"""[Desktop Entry]
+Name=fs2mod-py
+Exec=python {PATH} %U
+Icon={ICON_PATH}
+Type=Application
+Terminal=false
+MimeType=x-scheme-handler/fso;
+"""
+
+        tpl_mime_type = r"""x-scheme-handler/fso=fs2mod-py.desktop;"""
+
+        applications_path = os.path.expanduser('~')+"/.local/share/applications/"
+        desktop_file = applications_path+"fs2mod-py.desktop"
+        mime_types_file = applications_path+"mimeapps.list"
+        
+        with open(desktop_file, 'w') as output_file:
+            output_file.write(tpl_desktop.replace('{PATH}', os.path.abspath(__file__)).replace('{ICON_PATH}', os.path.dirname(os.path.abspath(__file__))+"/hlp.png"))
+        
+        found = False
+        for line in file(mime_types_file):
+            if "x-scheme-handler/fso=fs2mod-py.desktop;" in line:
+                found = True
+                
+        if found == False:
+            with open(mime_types_file, 'a') as output_file:
+                output_file.write(tpl_mime_type)
 
 def init():
     global settings
@@ -815,7 +844,7 @@ def main():
             with open('commit', 'r') as data:
                 VERSION += '-' + data.read().strip()
     
-    if sys.platform.startswith('win'):
+    if sys.platform.startswith('win') or sys.platform in ('linux2', 'linux'):
         main_win.schemeHandler.clicked.connect(install_scheme_handler)
     else:
         main_win.schemeHandler.hide()
