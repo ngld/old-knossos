@@ -17,6 +17,7 @@ import logging
 import tempfile
 import zipfile
 import subprocess
+import shutil
 import six
 import progress
 from fso_parser import ModInfo

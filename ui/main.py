@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Mon Feb 10 17:27:33 2014
+# Created: Tue Feb 11 14:24:00 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -58,6 +58,9 @@ class Ui_MainWindow(object):
         self.update = QtGui.QPushButton(self.mods)
         self.update.setObjectName("update")
         self.horizontalLayout.addWidget(self.update)
+        self.reset_sel = QtGui.QPushButton(self.mods)
+        self.reset_sel.setObjectName("reset_sel")
+        self.horizontalLayout.addWidget(self.reset_sel)
         self.apply_sel = QtGui.QPushButton(self.mods)
         self.apply_sel.setObjectName("apply_sel")
         self.horizontalLayout.addWidget(self.apply_sel)
@@ -111,7 +114,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(2)
+        self.tabs.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -126,6 +129,7 @@ class Ui_MainWindow(object):
         self.modTree.headerItem().setText(1, QtGui.QApplication.translate("MainWindow", "Version", None, QtGui.QApplication.UnicodeUTF8))
         self.modTree.headerItem().setText(2, QtGui.QApplication.translate("MainWindow", "Status", None, QtGui.QApplication.UnicodeUTF8))
         self.update.setText(QtGui.QApplication.translate("MainWindow", "Update List", None, QtGui.QApplication.UnicodeUTF8))
+        self.reset_sel.setText(QtGui.QApplication.translate("MainWindow", "Reset Selection", None, QtGui.QApplication.UnicodeUTF8))
         self.apply_sel.setText(QtGui.QApplication.translate("MainWindow", "Install/Uninstall", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.mods), QtGui.QApplication.translate("MainWindow", "Mods", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Mod Sources:", None, QtGui.QApplication.UnicodeUTF8))

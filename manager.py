@@ -347,6 +347,12 @@ def autoselect_deps(item, col):
             row.setCheckState(0, QtCore.Qt.Checked)
 
 
+def reset_selection():
+    items = read_tree(main_win.modTree)
+    for row, parent in items:
+        row.setCheckState(0, QtCore.Qt.CheckState(row.data(0, QtCore.Qt.UserRole)))
+
+
 def select_mod(item, col):
     global installed
     
@@ -817,6 +823,7 @@ def main():
     main_win.select.clicked.connect(select_fs2_path_handler)
 
     main_win.apply_sel.clicked.connect(apply_selection)
+    main_win.reset_sel.clicked.connect(reset_selection)
     main_win.update.clicked.connect(fetch_list)
     
     main_win.modTree.itemActivated.connect(select_mod)

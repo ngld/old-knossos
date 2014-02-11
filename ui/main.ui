@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabs">
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="fs2">
        <attribute name="title">
@@ -132,6 +132,13 @@
            <widget class="QPushButton" name="update">
             <property name="text">
              <string>Update List</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="reset_sel">
+            <property name="text">
+             <string>Reset Selection</string>
             </property>
            </widget>
           </item>
