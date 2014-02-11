@@ -61,9 +61,13 @@ class FetchTask(progress.Task):
             base_path = os.path.dirname(link[1])
             for i, mod in enumerate(data.values()):
                 if 'logo' in mod:
-                    progress.update(0.1 + i / len(data), 'Loading logos...')
+                    progress.update(0.1 + float(i) / len(data), 'Loading logos...')
                     mod['logo'] = util.get(base_path + '/' + mod['logo']).read()
             
+            if '' in data:
+                logging.warning('Source "%s" contains a mod with an empty name!', link[1])
+                del data['']
+                
             self.post(data)
         elif link[0] == 'fs2mod':
             with self._fs2mod_lock:
@@ -89,8 +93,11 @@ class FetchTask(progress.Task):
                 
                 mod.update_info()
             
-            self.add_work([('fs2mod', item[2]) for item in mod.dependencies if item[0] == 'fs2mod'])
-            self.post({ mod.name: mod.__dict__ })
+            if mod.name == '':
+                logging.warning('The name for "%s" is empty! Did I really read this file? Skipping it!', link[1])
+            else:
+                self.add_work([('fs2mod', item[2]) for item in mod.dependencies if item[0] == 'fs2mod'])
+                self.post({ mod.name: mod.__dict__ })
         else:
             logging.error('Fetch type "%s" isn\'t implemented (yet)!', link[0])
     
@@ -101,27 +108,46 @@ class FetchTask(progress.Task):
         
         for part in self.get_results():
             for name, mod in part.items():
-                if name not in modlist or 'update' in mod:
+                if name not in modlist:
                     modlist[name] = mod
+                elif 'version' in mod:
+                    if 'version' not in modlist[name] or util.vercmp(mod['version'], modlist[name]['version']) == 1 or 'update' in mod:
+                        modlist[name] = mod
+        
+        filelist = manager.settings['known_files'] = {}
+        for mod in modlist.values():
+            for item in mod['contents']:
+                filelist[util.pjoin(mod['folder'], item).lower()] = mod
         
         manager.save_settings()
-        manager.update_list()
+        manager.signals.list_updated.emit()
 
 
 class CheckTask(progress.Task):
     def __init__(self, mods):
         super(CheckTask, self).__init__()
         
-        self.done.connect(self.finish)
         self.add_work(mods)
 
     def work(self, mod):
         mod = ModInfo2(mod)
-        a, s, c, m = mod.check_files(os.path.join(manager.settings['fs2_path'], mod.folder))
+        modpath = os.path.join(manager.settings['fs2_path'], mod.folder)
+        a, s, c, m = mod.check_files(modpath)
+        
+        if mod.folder != '':
+            prefix = len(manager.settings['fs2_path'])
+            filelist = manager.settings['known_files']
+            lines = []
+            for sub_path, dirs, files in os.walk(modpath):
+                for name in files:
+                    my_path = os.path.join(sub_path[prefix:], name).replace('\\', '/').lower().lstrip('/')
+                    if my_path not in filelist:
+                        lines.append('  * %s' % my_path)
+            
+            if len(lines) > 0:
+                m.append('User-added files:\n' + '\n'.join(lines))
+        
         self.post((mod, a, s, c, m))
-
-    def finish(self):
-        manager._update_list(self.get_results())
 
 
 class InstallTask(progress.Task):
@@ -136,12 +162,13 @@ class InstallTask(progress.Task):
         
         if action == 'install':
             mod = ModInfo2(manager.settings['mods'][mod])
+            modpath = util.ipath(os.path.join(manager.settings['fs2_path'], mod.folder))
             
-            if not os.path.exists(os.path.join(manager.settings['fs2_path'], mod.folder)):
+            if not os.path.exists(modpath):
                 mod.setup(manager.settings['fs2_path'])
             else:
                 progress.start_task(0, 1)
-                archives, s, c, m = mod.check_files(manager.settings['fs2_path'])
+                archives, s, c, m = mod.check_files(modpath)
                 progress.finish_task()
                 
                 if len(archives) > 0:
@@ -149,7 +176,7 @@ class InstallTask(progress.Task):
         else:
             progress.start_task(0, 2/3.0)
             
-            modpath = os.path.join(manager.settings['fs2_path'], mod.folder)
+            modpath = util.ipath(os.path.join(manager.settings['fs2_path'], mod.folder))
             mod.download(modpath, set([archive]))
             
             progress.finish_task()

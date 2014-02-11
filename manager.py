@@ -1,3 +1,4 @@
+#!/usr/bin/python
 ## Copyright 2014 ngld <ngld@tproxy.de>
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +25,11 @@ import subprocess
 import stat
 import glob
 import time
+import six
 import progress
 import util
 import fso_parser
+from six.moves.urllib import parse as urlparse
 from qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.modinfo import Ui_Dialog as Ui_Modinfo
@@ -37,34 +40,49 @@ from fs2mod import ModInfo2
 from tasks import *
 
 VERSION = '0.1'
-
 main_win = None
 progress_win = None
-installed = []
+installed = None
 shared_files = {}
 pmaster = progress.Master()
 settings = {
     'fs2_bin': None,
     'fs2_path': None,
     'mods': None,
+    'known_files': {},
     'hash_cache': None,
     'repos': [('json', 'http://dev.tproxy.de/fs2/all.json', 'ngld\'s HLP Mirror')],
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt'
 }
+
 settings_path = os.path.expanduser('~/.fs2mod-py')
 if sys.platform.startswith('win'):
     settings_path = os.path.expandvars('$APPDATA/fs2mod-py')
 
 
-def run_task(task):
+class _SignalContainer(QtCore.QObject):
+    fs2_launched = QtCore.Signal()
+    list_updated = QtCore.Signal()
+
+signals = _SignalContainer()
+
+
+def run_task(task, cb=None):
+    def wrapper():
+        cb(task.get_results())
+    
+    if cb is not None:
+        task.done.connect(wrapper)
+    
     progress_win.add_task(task)
     pmaster.add_task(task)
+    return task
 
 
 # FS2 tab
 def save_settings():
     with open(os.path.join(settings_path, 'settings.pick'), 'wb') as stream:
-        pickle.dump(settings, stream)
+        pickle.dump(settings, stream, 2)
 
 
 def init_fs2_tab():
@@ -97,9 +115,11 @@ def do_gog_extract():
 
     def select_installer():
         path = QtGui.QFileDialog.getOpenFileName(extract_win, 'Please select the setup_freespace2_*.exe file.',
-                                                 os.path.expanduser('~/Downloads'), 'Executable (*.exe)')[0]
-
-        if path is not None:
+                                                 os.path.expanduser('~/Downloads'), 'Executable (*.exe)')
+        if isinstance(path, tuple):
+            path = path[0]
+        
+        if path is not None and path != '':
             if not os.path.isfile(path):
                 QtGui.QMessageBox.critical(extract_win, 'Not a file', 'Please select a proper file!')
                 return
@@ -109,7 +129,7 @@ def do_gog_extract():
     def select_dest():
         path = QtGui.QFileDialog.getExistingDirectory(extract_win, 'Please select the destination directory.', os.path.expanduser('~/Documents'))
 
-        if path is not None:
+        if path is not None and path != '':
             if not os.path.isdir(path):
                 QtGui.QMessageBox.critical(extract_win, 'Not a directory', 'Please select a proper directory!')
                 return
@@ -141,13 +161,13 @@ def do_gog_extract():
 
 def select_fs2_path(interact=True):
     global settings
-
+    
     if interact:
         if settings['fs2_path'] is None:
             path = os.path.expanduser('~')
         else:
             path = settings['fs2_path']
-
+        
         fs2_path = QtGui.QFileDialog.getExistingDirectory(main_win, 'Please select your FS2 directory.', path)
     else:
         fs2_path = settings['fs2_path']
@@ -171,7 +191,7 @@ def select_fs2_path(interact=True):
                 path = os.path.basename(path)
                 select_win.listWidget.addItem(path)
 
-                if not has_default and not (path.endswith('_DEBUG') and '-DEBUG.' not in path):
+                if not has_default and not (path.endswith('_DEBUG') and '-DEBUG' not in path):
                     # Select the first non-debug build as default.
 
                     select_win.listWidget.setCurrentRow(i)
@@ -190,6 +210,10 @@ def select_fs2_path(interact=True):
         init_fs2_tab()
 
 
+def select_fs2_path_handler():
+    select_fs2_path()
+
+
 def run_fs2():
     fs2_bin = os.path.join(settings['fs2_path'], settings['fs2_bin'])
     mode = os.stat(fs2_bin).st_mode
@@ -202,11 +226,13 @@ def run_fs2():
     time.sleep(0.5)
     if p.poll() is not None:
         QtGui.QMessageBox.critical(main_win, 'Failed', 'Starting FS2 Open (%s) failed! (return code: %d)' % (os.path.join(settings['fs2_path'], settings['fs2_bin']), p.returncode))
+    
+    signals.fs2_launched.emit()
 
 
 # Mod tab
 def fetch_list():
-    run_task(FetchTask())
+    return run_task(FetchTask())
 
 
 def _update_list(results):
@@ -275,7 +301,21 @@ def update_list():
         fetch_list()
     else:
         if len(settings['mods']) > 0:
-            run_task(CheckTask(settings['mods'].values()))
+            return run_task(CheckTask(settings['mods'].values()), _update_list)
+
+
+def _get_installed(results):
+    global installed
+    
+    installed = []
+    
+    for mod, archives, s, c, m in results:
+        if s == c:
+            installed.append(mod.name)
+
+
+def get_installed():
+    return run_task(CheckTask(settings['mods'].values()), _get_installed)
 
 
 def resolve_deps(mods, skip_installed=True):
@@ -307,6 +347,12 @@ def autoselect_deps(item, col):
             row.setCheckState(0, QtCore.Qt.Checked)
 
 
+def reset_selection():
+    items = read_tree(main_win.modTree)
+    for row, parent in items:
+        row.setCheckState(0, QtCore.Qt.CheckState(row.data(0, QtCore.Qt.UserRole)))
+
+
 def select_mod(item, col):
     global installed
     
@@ -315,38 +361,16 @@ def select_mod(item, col):
     check_msgs = item.data(0, QtCore.Qt.UserRole + 1)
     mod = ModInfo2(settings['mods'][name])
     
-    # NOTE: lambdas don't work with connect()
     def do_run():
-        if is_installed:
-            run_mod(mod)
-        else:
-            deps = resolve_deps([mod.name])
-
-            msg = QtGui.QMessageBox()
-            msg.setIcon(QtGui.QMessageBox.Question)
-            msg.setText('You don\'t have %s, yet. Shall I install it?' % (mod.name))
-            msg.setInformativeText('%s will be installed.' % (', '.join([mod.name] + deps)))
-            msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-            msg.setDefaultButton(QtGui.QMessageBox.Yes)
-            
-            if msg.exec_() == QtGui.QMessageBox.Yes:
-                task = InstallTask([mod.name] + deps)
-                task.done.connect(do_run2)
-                run_task(task)
-                infowin.close()
-    
-    def do_run2():
-        modpath = util.ipath(os.path.join(settings['fs2_path'], mod.folder))
-        
-        # TODO: Is there a better way to check if the installation failed?
-        if not os.path.isdir(modpath):
-            QtGui.QMessageBox.critical(main_win, 'Error', 'Failed to install "%s"! Read the log for more information.' % (mod.name))
-        else:
-            run_mod(mod)
+        run_mod(mod)
     
     infowin = util.init_ui(Ui_Modinfo(), QtGui.QDialog(main_win))
     infowin.setModal(True)
-    infowin.modname.setText(mod.name + ' - ' + mod.version)
+    
+    if mod.version not in (None, ''):
+        infowin.modname.setText(mod.name + ' - ' + mod.version)
+    else:
+        infowin.modname.setText(mod.name)
     
     if mod.logo is None:
         infowin.logo.hide()
@@ -383,16 +407,43 @@ def select_mod(item, col):
 
 
 def run_mod(mod):
+    global installed
+    
+    modpath = util.ipath(os.path.join(settings['fs2_path'], mod.folder))
+    ini = None
+    modfolder = None
+    
+    def check_install():
+        # TODO: Is there a better way to check if the installation failed?
+        if not os.path.isdir(modpath):
+            QtGui.QMessageBox.critical(main_win, 'Error', 'Failed to install "%s"! Read the log for more information.' % (mod.name))
+        else:
+            installed.append(mod.name)
+            run_mod(mod)
+    
     if settings['fs2_bin'] is None:
         select_fs2_path(False)
 
         if settings['fs2_bin'] is None:
             QtGui.QMessageBox.critical(main_win, 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
             return
+    
+    if mod.name not in installed:
+        deps = resolve_deps([mod.name])
 
-    modpath = util.ipath(os.path.join(settings['fs2_path'], mod.folder))
-    ini = None
-    modfolder = None
+        msg = QtGui.QMessageBox()
+        msg.setIcon(QtGui.QMessageBox.Question)
+        msg.setText('You don\'t have %s, yet. Shall I install it?' % (mod.name))
+        msg.setInformativeText('%s will be installed.' % (', '.join([mod.name] + deps)))
+        msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+        msg.setDefaultButton(QtGui.QMessageBox.Yes)
+        
+        if msg.exec_() == QtGui.QMessageBox.Yes:
+            task = InstallTask([mod.name] + deps)
+            task.done.connect(check_install)
+            run_task(task)
+        
+        return
     
     # Look for the mod.ini
     for item in mod.contents:
@@ -434,6 +485,13 @@ def run_mod(mod):
                     break
         else:
             modfolder = mod.folder.split('/')[0]
+    
+    # Correct the case
+    modfolder = modfolder.split(',')
+    for i, item in enumerate(modfolder):
+        modfolder[i] = os.path.basename(util.ipath(os.path.join(settings['fs2_path'], item)))
+    
+    modfolder = ','.join(modfolder)
     
     # Now look for the user directory...
     if sys.platform in ('linux2', 'linux'):
@@ -519,7 +577,8 @@ def apply_selection():
         return
     
     if len(install) > 0:
-        install = install + resolve_deps(install)
+        # NOTE: Dependencies are auto-selected now. Don't force them on the user.
+        # install = install + resolve_deps(install)
 
         msg = QtGui.QMessageBox()
         msg.setIcon(QtGui.QMessageBox.Question)
@@ -562,7 +621,9 @@ def _edit_repo(repo=None, idx=None):
             win.sourceButton.show()
     
     def source_select():
-        path, _ = QtGui.QFileDialog.getOpenFileName(win, 'Please select a source.', '', 'fs2mod File (*.fs2mod)')
+        path = QtGui.QFileDialog.getOpenFileName(win, 'Please select a source.', '', 'fs2mod File (*.fs2mod)')
+        if isinstance(path, tuple):
+            path = path[0]
         
         if path is not None and os.path.isfile(path):
             win.source.setText(os.path.abspath(path))
@@ -634,8 +695,38 @@ def remove_repo():
             update_repo_list()
 
 
-def main():
-    global VERSION, settings, main_win, progress_win
+def install_scheme_handler():
+    tpl = r"""Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\fs2]
+"URLProtocol"=""
+
+[HKEY_CLASSES_ROOT\fs2\shell]
+
+[HKEY_CLASSES_ROOT\fs2\shell\open]
+
+[HKEY_CLASSES_ROOT\fs2\shell\open\command]
+@="{PATH} \"%1\""
+"""
+    if hasattr(sys, 'frozen'):
+        my_path = os.path.abspath(sys.executable)
+    else:
+        my_path = os.path.abspath(__file__)
+    
+    fd, path = tempfile.mkstemp('.reg')
+    os.write(fd, tpl.replace('{PATH}', my_path.replace('\\', '\\\\')).replace('\n', '\r\n'))
+    os.close(fd)
+    
+    try:
+        subprocess.call(['regedit', path])
+    except:
+        logging.exception('Failed!')
+    
+    os.unlink(path)
+
+
+def init():
+    global settings
     
     if hasattr(sys, 'frozen'):
         if hasattr(sys, '_MEIPASS'):
@@ -663,21 +754,28 @@ def main():
     # Try to load our settings.
     spath = os.path.join(settings_path, 'settings.pick')
     if os.path.exists(spath):
+        defaults = settings.copy()
+        
         try:
             with open(spath, 'rb') as stream:
-                settings.update(pickle.load(stream))
+                if six.PY3:
+                    settings.update(pickle.load(stream, encoding='utf8', errors='replace'))
+                else:
+                    settings.update(pickle.load(stream))
         except:
             logging.exception('Failed to load settings from "%s"!', spath)
         
         # Migration
         if isinstance(settings['repos'], tuple):
-            settings['repos'] = list(settings['repos'])
+            settings['repos'] = defaults['repos']
         
+        del defaults
         save_settings()
     
     if settings['hash_cache'] is not None:
         fso_parser.HASH_CACHE = settings['hash_cache']
     
+    pmaster.start_workers(10)
     app = QtGui.QApplication([])
     
     if os.path.isfile('hlp.png'):
@@ -687,6 +785,13 @@ def main():
         QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
         return
 
+    return app
+
+
+def main():
+    global VERSION, main_win, progress_win
+    
+    app = init()
     main_win = util.init_ui(Ui_MainWindow(), QtGui.QMainWindow())
     progress_win = progress.ProgressDisplay()
 
@@ -701,18 +806,24 @@ def main():
             with open('commit', 'r') as data:
                 VERSION += '-' + data.read().strip()
     
+    if sys.platform.startswith('win'):
+        main_win.schemeHandler.clicked.connect(install_scheme_handler)
+    else:
+        main_win.schemeHandler.hide()
+    
     tab = main_win.tabs.addTab(QtGui.QWidget(), 'Version: ' + VERSION)
     main_win.tabs.setTabEnabled(tab, False)
     
-    init_fs2_tab()
+    signals.list_updated.connect(update_list)
     update_repo_list()
     
     main_win.aboutLabel.linkActivated.connect(QtGui.QDesktopServices.openUrl)
     
     main_win.gogextract.clicked.connect(do_gog_extract)
-    main_win.select.clicked.connect(select_fs2_path)
+    main_win.select.clicked.connect(select_fs2_path_handler)
 
     main_win.apply_sel.clicked.connect(apply_selection)
+    main_win.reset_sel.clicked.connect(reset_selection)
     main_win.update.clicked.connect(fetch_list)
     
     main_win.modTree.itemActivated.connect(select_mod)
@@ -725,8 +836,7 @@ def main():
     main_win.removeSource.clicked.connect(remove_repo)
     main_win.sourceList.itemDoubleClicked.connect(edit_repo)
     
-    pmaster.start_workers(10)
-    QtCore.QTimer.singleShot(300, update_list)
+    QtCore.QTimer.singleShot(1, init_fs2_tab)
 
     main_win.show()
     app.exec_()
@@ -739,5 +849,85 @@ def main():
     
     save_settings()
 
+
+def scheme_handler(o_link, app=None):
+    global progress_win
+    
+    def recall():
+        scheme_handler(o_link, app)
+    
+    if app is None:
+        app = init()
+        progress_win = progress.ProgressDisplay()
+        
+        # Force an update of the mod list.
+        settings['mods'] = None
+        
+        QtCore.QTimer.singleShot(1, recall)
+        app.exec_()
+        return
+    
+    if not o_link.startswith(('fs2://', 'fso://')):
+        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I don\'t know how to handle "%s"! I only know fs2:// .' % (o_link))
+        app.quit()
+        return
+    
+    link = urlparse.unquote(o_link).split('/')
+    action = link[2]
+    params = link[3:]
+    
+    if len(params) == 0:
+        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'Not enough arguments!')
+        app.quit()
+        return
+    
+    if action in ('run', 'install'):
+        if settings['mods'] is None or len(settings['mods']) == 0:
+            task = fetch_list()
+            task.done.connect(recall)
+            return
+        
+        if installed is None:
+            task = get_installed()
+            task.done.connect(recall)
+            return
+        
+        # Look for the given mod.
+        if params[0] not in settings['mods']:
+            QtGui.QMessageBox.critical(None, 'fs2mod-py', 'MOD "%s" wasn\'t found!' % (params[0]))
+            app.quit()
+            return
+        
+        mod = ModInfo2(settings['mods'][params[0]])
+    
+    if action == 'run':
+        signals.fs2_launched.connect(app.quit)
+        run_mod(mod)
+    elif action == 'install':
+        if mod.name not in installed:
+            deps = resolve_deps([mod.name])
+
+            msg = QtGui.QMessageBox()
+            msg.setIcon(QtGui.QMessageBox.Question)
+            msg.setText('You don\'t have %s, yet. Shall I install it?' % (mod.name))
+            msg.setInformativeText('%s will be installed.' % (', '.join([mod.name] + deps)))
+            msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+            msg.setDefaultButton(QtGui.QMessageBox.Yes)
+            
+            if msg.exec_() == QtGui.QMessageBox.Yes:
+                task = InstallTask([mod.name] + deps)
+                task.done.connect(app.quit)
+                run_task(task)
+        else:
+            QtGui.QMessageBox.infomation(None, 'fs2mod-py', 'MOD "%s" is already installed!' % (mod.name))
+            app.quit()
+    else:
+        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'The action "%s" is unknown!' % (action))
+        app.quit()
+
+
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1 and '://' in sys.argv[1]:
+        scheme_handler(sys.argv[1])
+    else:
+        main()

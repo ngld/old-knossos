@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Sun Feb  9 21:30:06 2014
+# Created: Tue Feb 11 14:24:00 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -58,6 +58,9 @@ class Ui_MainWindow(object):
         self.update = QtGui.QPushButton(self.mods)
         self.update.setObjectName("update")
         self.horizontalLayout.addWidget(self.update)
+        self.reset_sel = QtGui.QPushButton(self.mods)
+        self.reset_sel.setObjectName("reset_sel")
+        self.horizontalLayout.addWidget(self.reset_sel)
         self.apply_sel = QtGui.QPushButton(self.mods)
         self.apply_sel.setObjectName("apply_sel")
         self.horizontalLayout.addWidget(self.apply_sel)
@@ -87,6 +90,9 @@ class Ui_MainWindow(object):
         self.verticalLayout_5.addLayout(self.horizontalLayout_2)
         self.gridLayout = QtGui.QGridLayout()
         self.gridLayout.setObjectName("gridLayout")
+        self.schemeHandler = QtGui.QPushButton(self.settings)
+        self.schemeHandler.setObjectName("schemeHandler")
+        self.gridLayout.addWidget(self.schemeHandler, 0, 0, 1, 1)
         self.verticalLayout_5.addLayout(self.gridLayout)
         self.tabs.addTab(self.settings, "")
         self.tab = QtGui.QWidget()
@@ -108,7 +114,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(2)
+        self.tabs.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -123,12 +129,14 @@ class Ui_MainWindow(object):
         self.modTree.headerItem().setText(1, QtGui.QApplication.translate("MainWindow", "Version", None, QtGui.QApplication.UnicodeUTF8))
         self.modTree.headerItem().setText(2, QtGui.QApplication.translate("MainWindow", "Status", None, QtGui.QApplication.UnicodeUTF8))
         self.update.setText(QtGui.QApplication.translate("MainWindow", "Update List", None, QtGui.QApplication.UnicodeUTF8))
+        self.reset_sel.setText(QtGui.QApplication.translate("MainWindow", "Reset Selection", None, QtGui.QApplication.UnicodeUTF8))
         self.apply_sel.setText(QtGui.QApplication.translate("MainWindow", "Install/Uninstall", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.mods), QtGui.QApplication.translate("MainWindow", "Mods", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Mod Sources:", None, QtGui.QApplication.UnicodeUTF8))
         self.addSource.setText(QtGui.QApplication.translate("MainWindow", "Add", None, QtGui.QApplication.UnicodeUTF8))
         self.editSource.setText(QtGui.QApplication.translate("MainWindow", "Edit", None, QtGui.QApplication.UnicodeUTF8))
         self.removeSource.setText(QtGui.QApplication.translate("MainWindow", "Remove", None, QtGui.QApplication.UnicodeUTF8))
+        self.schemeHandler.setText(QtGui.QApplication.translate("MainWindow", "Install as handler for fs2:// links", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.settings), QtGui.QApplication.translate("MainWindow", "Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.aboutLabel.setText(QtGui.QApplication.translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"

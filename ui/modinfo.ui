@@ -29,6 +29,9 @@
      <property name="alignment">
       <set>Qt::AlignCenter</set>
      </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
     </widget>
    </item>
    <item>
@@ -39,14 +42,11 @@
        <height>112</height>
       </size>
      </property>
-     <property name="maximumSize">
-      <size>
-       <width>255</width>
-       <height>112</height>
-      </size>
-     </property>
      <property name="text">
       <string>TextLabel</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
      </property>
     </widget>
    </item>

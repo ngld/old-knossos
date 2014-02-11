@@ -17,6 +17,7 @@ import logging
 import tempfile
 import zipfile
 import subprocess
+import shutil
 import six
 import progress
 from fso_parser import ModInfo
@@ -215,6 +216,8 @@ class ModInfo2(ModInfo):
         archive.writestr('root/title', self.name)
         archive.writestr('root/update', 'PLEASE CHANGE')
         archive.writestr('root/dep', ';CHANGEME'.join(self.dependencies))
+        archive.writestr('root/version', self.version)
+        
         archive.close()
     
     def read_zip(self, zobj, path=None):
@@ -270,11 +273,23 @@ class ModInfo2(ModInfo):
         if self.update is None:
             return
         elif self.update[0] == 'fs2mod':
+            path = None
             try:
-                with open(self.update[2], 'wb') as stream:
+                # Don't overwrite the original file.
+                with tempfile.NamedTemporaryFile(delete=False) as stream:
+                    path = stream.name
                     download(self.update[1], stream)
+                
+                    stream.seek(0)
+                    self.read_zip(stream, self.update[2])
+                
+                # Download and reading suceeded. Now we can replace the original file.
+                shutil.move(path, self.update[2])
             except:
                 logging.exception('Failed to update %s!', self.name)
+                
+                if path is not None and os.path.isfile(path):
+                    os.unlink(path)
         else:
             logging.error('Unknown update type "%s"!', self.update[0])
     
@@ -288,7 +303,8 @@ class ModInfo2(ModInfo):
             for dep in mod.dependencies:
                 if dep[0] == 'mod_name':
                     if dep[1] in modlist:
-                        needed.append(modlist[dep[1]])
+                        provided['name://' + dep[1]] = dep[1]
+                        needed.append(dep[1])
                     else:
                         logging.warning('Dependency "%s" (a mod\'s name) of "%s" wasn\'t found.', dep[1], mod.name)
                     
@@ -317,7 +333,7 @@ class ModInfo2(ModInfo):
         return set(provided.values()) - set([self.name])
     
     def check_files(self, path):
-        count = len(self.contents)
+        count = float(len(self.contents))
         success = 0
         checked = 0
         
@@ -347,22 +363,10 @@ class ModInfo2(ModInfo):
             
             checked += 1
         
-        # If we don't know the subfolder, path will be fs2_path and thus will list way too many files.
-        # NOTE: Disabled for now, it yields too many false-positives.
-        # if self.folder != '':
-        #     mod_files = [f.lower() for f in self.contents.keys()]
-        #     for sub_path, dirs, files in os.walk(ipath(path)):
-        #         sub_path = sub_path[len(path):].lstrip('/')
-                
-        #         for item in files:
-        #             mypath = pjoin(sub_path, item)
-        #             if mypath.lower() not in mod_files:
-        #                 msgs.append('File "%s" isn\'t part of the mod.' % (mypath))
-        
         return archives, success, count, msgs
     
     def remove(self, path, keep_files=None):
-        count = len(self.contents)
+        count = float(len(self.contents))
         checked = 0
         folders = set()
         if keep_files is None:

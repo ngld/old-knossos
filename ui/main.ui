@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabs">
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="fs2">
        <attribute name="title">
@@ -136,6 +136,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="reset_sel">
+            <property name="text">
+             <string>Reset Selection</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="apply_sel">
             <property name="text">
              <string>Install/Uninstall</string>
@@ -187,7 +194,15 @@
          </layout>
         </item>
         <item>
-         <layout class="QGridLayout" name="gridLayout"/>
+         <layout class="QGridLayout" name="gridLayout">
+          <item row="0" column="0">
+           <widget class="QPushButton" name="schemeHandler">
+            <property name="text">
+             <string>Install as handler for fs2:// links</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>

@@ -162,7 +162,7 @@ class Master(object):
     
     def add_task(self, task):
         if not task._has_work():
-            logging.warning('Added an empty task of type "%s". Ignoring it!', str(task.__class__.__name__))
+            logging.warning('Added an empty task of type "%s". Ignoring it!', task.__class__.__name__)
             return
         
         with self._tasks_lock:
@@ -468,10 +468,10 @@ class ProgressDisplay(object):
         for task in self._tasks:
             t_total, t_items = task.get_progress()
             total += t_total / count
-
+            
             for prog, text in t_items.values():
                 # Skip 0% and 100% items, they aren't interesting...
-                if prog not in (0, 1):
+                if text not in ('Done', 'Ready'):
                     items.append((prog, text))
         
         diff = len(self._task_bars) != len(items)

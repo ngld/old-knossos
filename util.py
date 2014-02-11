@@ -273,11 +273,32 @@ def run_in_qt(func):
     signal = SignalContainer()
     
     def dispatcher(*args):
-        signal.signal.emit(args)
+        signal.emit(args)
     
     def listener(params):
         func(*params)
     
-    signal.signal.connect(listener)
+    signal.connect(listener)
     
     return dispatcher
+
+
+def vercmp(a, b):
+    a = a.split('.')
+    b = b.split('.')
+    
+    while len(a) > 0 and len(b) > 0:
+        cur_a = a.pop(0)
+        cur_b = b.pop(0)
+        
+        if cur_a < cur_b:
+            return -1
+        elif cur_a > cur_b:
+            return 1
+    
+    if len(a) == 0 and len(b) == 0:
+        return 0
+    elif len(a) > len(b):
+        return 1
+    else:
+        return -1
