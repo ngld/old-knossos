@@ -25,9 +25,11 @@ import subprocess
 import stat
 import glob
 import time
+import six
 import progress
 import util
 import fso_parser
+from six.moves.urllib import parse as urlparse
 from qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.modinfo import Ui_Dialog as Ui_Modinfo
@@ -750,7 +752,10 @@ def init():
         
         try:
             with open(spath, 'rb') as stream:
-                settings.update(pickle.load(stream))
+                if six.PY3:
+                    settings.update(pickle.load(stream, encoding='utf8', errors='replace'))
+                else:
+                    settings.update(pickle.load(stream))
         except:
             logging.exception('Failed to load settings from "%s"!', spath)
         
@@ -860,7 +865,7 @@ def scheme_handler(o_link, app=None):
         app.quit()
         return
     
-    link = o_link.split('/')
+    link = urlparse.unquote(o_link).split('/')
     action = link[2]
     params = link[3:]
     
