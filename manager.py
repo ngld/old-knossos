@@ -39,9 +39,16 @@ from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from fs2mod import ModInfo2
 from tasks import *
 
+try:
+  from gi.repository import Unity, Dbusmenu
+except ImportError:
+  # Can't find Unity.
+  Unity = None
+
 VERSION = '0.1'
 main_win = None
 progress_win = None
+unity_launcher = None
 installed = None
 shared_files = {}
 pmaster = progress.Master()
@@ -109,6 +116,10 @@ def init_fs2_tab():
         
         update_list()
 
+def show_tab(a,b,tab):
+    global main_win
+    main_win.tabs.setCurrentIndex(tab)
+    main_win.activateWindow()
 
 def do_gog_extract():
     extract_win = util.init_ui(Ui_Gogextract(), QtGui.QDialog(main_win))
@@ -345,12 +356,6 @@ def autoselect_deps(item, col):
     for row, parent in items:
         if row.text(0) in deps and row.checkState(0) == QtCore.Qt.Unchecked:
             row.setCheckState(0, QtCore.Qt.Checked)
-
-
-def reset_selection():
-    items = read_tree(main_win.modTree)
-    for row, parent in items:
-        row.setCheckState(0, QtCore.Qt.CheckState(row.data(0, QtCore.Qt.UserRole)))
 
 
 def select_mod(item, col):
@@ -669,6 +674,10 @@ def _edit_repo(repo=None, idx=None):
         update_repo_list()
         #fetch_list()
 
+def ql_add_repo(a,b,tab):
+    main_win.tabs.setCurrentIndex(tab)
+    main_win.activateWindow()
+    add_repo()
 
 def add_repo():
     _edit_repo()
@@ -723,7 +732,7 @@ def install_scheme_handler():
         logging.exception('Failed!')
     
     os.unlink(path)
-
+    
 
 def init():
     global settings
@@ -789,7 +798,7 @@ def init():
 
 
 def main():
-    global VERSION, main_win, progress_win
+    global VERSION, main_win, progress_win, unity_launcher
     
     app = init()
     main_win = util.init_ui(Ui_MainWindow(), QtGui.QMainWindow())
@@ -823,7 +832,6 @@ def main():
     main_win.select.clicked.connect(select_fs2_path_handler)
 
     main_win.apply_sel.clicked.connect(apply_selection)
-    main_win.reset_sel.clicked.connect(reset_selection)
     main_win.update.clicked.connect(fetch_list)
     
     main_win.modTree.itemActivated.connect(select_mod)
@@ -837,9 +845,41 @@ def main():
     main_win.sourceList.itemDoubleClicked.connect(edit_repo)
     
     QtCore.QTimer.singleShot(1, init_fs2_tab)
+    
+    if Unity:
+        unity_launcher = Unity.LauncherEntry.get_for_desktop_id ("fs2mod-py.desktop")
+        # We also want a quicklist 
+        ql = Dbusmenu.Menuitem.new ()
+        item_fs2 = Dbusmenu.Menuitem.new ()
+        item_fs2.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "FS2")
+        item_fs2.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_mods = Dbusmenu.Menuitem.new ()
+        item_mods.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "Mods")
+        item_mods.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_settings = Dbusmenu.Menuitem.new ()
+        item_settings.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "Settings")
+        item_settings.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_add_repo = Dbusmenu.Menuitem.new ()
+        item_add_repo.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "Add Source")
+        item_add_repo.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        
+        item_fs2.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 0)
+        item_mods.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 1)
+        item_settings.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 2)
+        item_add_repo.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, ql_add_repo, 2)
+        
+        ql.child_append (item_fs2)
+        ql.child_append (item_mods)
+        ql.child_append (item_settings)
+        ql.child_append (item_add_repo)
+        
+        unity_launcher.set_property("quicklist", ql)
+        
+        
 
     main_win.show()
     app.exec_()
+    
     
     settings['hash_cache'] = dict()
     for path, info in fso_parser.HASH_CACHE.items():
