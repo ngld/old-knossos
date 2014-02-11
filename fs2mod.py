@@ -236,6 +236,7 @@ class ModInfo2(ModInfo):
         self.folder = os.path.basename(path).split('.')[0]
         
         dl_names = dict()
+        self.urls = []
         
         for line in archive.open('root/download'):
             line = line.decode('utf8', 'replace').strip().split(';')
@@ -254,11 +255,9 @@ class ModInfo2(ModInfo):
             }
         
         try:
-            version = archive.open('root/version').read().decode('utf8', 'replace').strip()
+            self.version = archive.open('root/version').read().decode('utf8', 'replace').strip()
         except KeyError:
-            version = ''
-        
-        self.version = version
+            self.version = ''
         
         try:
             deps = archive.open('root/dep')

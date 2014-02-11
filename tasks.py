@@ -165,16 +165,27 @@ class InstallTask(progress.Task):
             modpath = util.ipath(os.path.join(manager.settings['fs2_path'], mod.folder))
             
             if not os.path.exists(modpath):
-                mod.setup(manager.settings['fs2_path'])
-            else:
-                progress.start_task(0, 1)
+                os.mkdir(modpath)
+                
                 archives, s, c, m = mod.check_files(modpath)
+            else:
+                progress.start_task(0, 1/4.)
+                mod.execute_del(modpath)
                 progress.finish_task()
                 
-                if len(archives) > 0:
-                    self.add_work([('dep', mod, a) for a in archives])
+                progress.start_task(1/4., 1/4.)
+                mod.execute_rename(modpath)
+                progress.finish_task()
+                
+                progress.start_task(2/4., 2/4.)
+                archives, s, c, m = mod.check_files(modpath)
+                progress.finish_task()
+            
+            
+            if len(archives) > 0:
+                self.add_work([('dep', mod, a) for a in archives])
         else:
-            progress.start_task(0, 2/3.0)
+            progress.start_task(0, 2/3.0, 'Downloading: %s')
             
             modpath = util.ipath(os.path.join(manager.settings['fs2_path'], mod.folder))
             mod.download(modpath, set([archive]))
@@ -219,7 +230,7 @@ class UninstallTask(progress.Task):
         if len(skip_files) > 0:
             logging.info('Will skip the following files: %s', ', '.join(skip_files))
         
-        mod.remove(os.path.join(manager.settings['fs2_path'], mod.folder), skip_files)
+        mod.remove(util.ipath(os.path.join(manager.settings['fs2_path'], mod.folder)), skip_files)
     
     def finish(self):
         manager.update_list()

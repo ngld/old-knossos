@@ -258,7 +258,7 @@ class ModInfo(object):
 
             if sel_files is not None:
                 files = set(files) & sel_files
-
+            
             for filename in files:
                 done = False
 
@@ -333,7 +333,7 @@ class ModInfo(object):
         for u, files in self.urls:
             if sel_files is not None:
                 files = set(files) & sel_files
-
+            
             for item in files:
                 mypath = os.path.join(path, item)
                 if os.path.exists(mypath) and is_archive(mypath):
@@ -381,7 +381,7 @@ class ModInfo(object):
         if not os.path.isdir(modpath):
             os.mkdir(modpath)
         
-        progress.start_task(0, 1/6.0, 'Downloading: %s')
+        progress.start_task(0, 1/6.0)
         self.execute_del(modpath)
         progress.finish_task()
         
@@ -389,7 +389,7 @@ class ModInfo(object):
         self.execute_rename(modpath)
         progress.finish_task()
         
-        progress.start_task(2/6.0, 1/6.0)
+        progress.start_task(2/6.0, 1/6.0, 'Downloading: %s')
         self.download(modpath)
         progress.finish_task()
         
