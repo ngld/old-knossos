@@ -40,10 +40,11 @@ from fs2mod import ModInfo2
 from tasks import *
 
 try:
-  from gi.repository import Unity, Dbusmenu
+    from gi.repository import Unity, Dbusmenu
 except ImportError:
-  # Can't find Unity.
-  Unity = None
+    # Can't find Unity.
+    Unity = None
+
 
 VERSION = '0.1'
 main_win = None
@@ -116,10 +117,12 @@ def init_fs2_tab():
         
         update_list()
 
-def show_tab(a,b,tab):
+
+def show_tab(a, b, tab):
     global main_win
     main_win.tabs.setCurrentIndex(tab)
     main_win.activateWindow()
+
 
 def do_gog_extract():
     extract_win = util.init_ui(Ui_Gogextract(), QtGui.QDialog(main_win))
@@ -368,7 +371,6 @@ def select_mod(item, col):
     global installed
     
     name = item.text(0)
-    is_installed = item.data(0, QtCore.Qt.UserRole) == QtCore.Qt.Checked
     check_msgs = item.data(0, QtCore.Qt.UserRole + 1)
     mod = ModInfo2(settings['mods'][name])
     
@@ -680,10 +682,12 @@ def _edit_repo(repo=None, idx=None):
         update_repo_list()
         #fetch_list()
 
-def ql_add_repo(a,b,tab):
+
+def ql_add_repo(a, b, tab):
     main_win.tabs.setCurrentIndex(tab)
     main_win.activateWindow()
     add_repo()
+
 
 def add_repo():
     _edit_repo()
@@ -741,33 +745,40 @@ def install_scheme_handler():
         
         os.unlink(path)
         
-    elif sys.platform in ('linux2', 'linux'):
+    elif sys.platform.startswith('linux'):
         tpl_desktop = r"""[Desktop Entry]
 Name=fs2mod-py
-Exec=python {PATH} %U
+Exec={PYTHON} {PATH} %U
 Icon={ICON_PATH}
 Type=Application
 Terminal=false
 MimeType=x-scheme-handler/fso;
 """
 
-        tpl_mime_type = r"""x-scheme-handler/fso=fs2mod-py.desktop;"""
+        tpl_mime_type = 'x-scheme-handler/fso=fs2mod-py.desktop;'
 
-        applications_path = os.path.expanduser('~')+"/.local/share/applications/"
-        desktop_file = applications_path+"fs2mod-py.desktop"
-        mime_types_file = applications_path+"mimeapps.list"
+        applications_path = os.path.expanduser('~/.local/share/applications/')
+        desktop_file = applications_path + 'fs2mod-py.desktop'
+        mime_types_file = applications_path + 'mimeapps.list'
+        
+        tpl_desktop = tpl_desktop.replace('{PYTHON}', os.path.abspath(sys.exception))
+        tpl_desktop = tpl_desktop.replace('{PATH}', my_path)
+        tpl_desktop = tpl_desktop.replace('{ICON_PATH}', os.path.abspath(os.path.join(os.path.dirname(__file__), 'hlp.png')))
         
         with open(desktop_file, 'w') as output_file:
-            output_file.write(tpl_desktop.replace('{PATH}', os.path.abspath(__file__)).replace('{ICON_PATH}', os.path.dirname(os.path.abspath(__file__))+"/hlp.png"))
+            output_file.write(tpl_desktop)
         
         found = False
-        for line in file(mime_types_file):
-            if "x-scheme-handler/fso=fs2mod-py.desktop;" in line:
-                found = True
-                
-        if found == False:
+        with open(mime_types_file, 'r') as lines:
+            for line in lines:
+                if tpl_mime_type in line:
+                    found = True
+                    break
+        
+        if not found:
             with open(mime_types_file, 'a') as output_file:
                 output_file.write(tpl_mime_type)
+
 
 def init():
     global settings
@@ -883,39 +894,37 @@ def main():
     QtCore.QTimer.singleShot(1, init_fs2_tab)
     
     if Unity:
-        unity_launcher = Unity.LauncherEntry.get_for_desktop_id ("fs2mod-py.desktop")
-        # We also want a quicklist 
-        ql = Dbusmenu.Menuitem.new ()
-        item_fs2 = Dbusmenu.Menuitem.new ()
-        item_fs2.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "FS2")
-        item_fs2.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-        item_mods = Dbusmenu.Menuitem.new ()
-        item_mods.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "Mods")
-        item_mods.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-        item_settings = Dbusmenu.Menuitem.new ()
-        item_settings.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "Settings")
-        item_settings.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-        item_add_repo = Dbusmenu.Menuitem.new ()
-        item_add_repo.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "Add Source")
-        item_add_repo.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        unity_launcher = Unity.LauncherEntry.get_for_desktop_id('fs2mod-py.desktop')
         
-        item_fs2.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 0)
-        item_mods.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 1)
-        item_settings.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 2)
-        item_add_repo.connect (Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, ql_add_repo, 2)
+        # We also want a quicklist
+        ql = Dbusmenu.Menuitem.new()
+        item_fs2 = Dbusmenu.Menuitem.new()
+        item_fs2.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'FS2')
+        item_fs2.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_mods = Dbusmenu.Menuitem.new()
+        item_mods.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Mods')
+        item_mods.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_settings = Dbusmenu.Menuitem.new()
+        item_settings.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Settings')
+        item_settings.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_add_repo = Dbusmenu.Menuitem.new()
+        item_add_repo.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Add Source')
+        item_add_repo.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
         
-        ql.child_append (item_fs2)
-        ql.child_append (item_mods)
-        ql.child_append (item_settings)
-        ql.child_append (item_add_repo)
+        item_fs2.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 0)
+        item_mods.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 1)
+        item_settings.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 2)
+        item_add_repo.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, ql_add_repo, 2)
         
-        unity_launcher.set_property("quicklist", ql)
+        ql.child_append(item_fs2)
+        ql.child_append(item_mods)
+        ql.child_append(item_settings)
+        ql.child_append(item_add_repo)
         
-        
-
+        unity_launcher.set_property('quicklist', ql)
+    
     main_win.show()
     app.exec_()
-    
     
     settings['hash_cache'] = dict()
     for path, info in fso_parser.HASH_CACHE.items():
