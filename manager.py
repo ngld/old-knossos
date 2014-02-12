@@ -48,7 +48,6 @@ except ImportError:
     # Can't find Unity.
     Unity = None
 
-
 VERSION = '0.1'
 main_win = None
 progress_win = None
@@ -78,6 +77,17 @@ class _SignalContainer(QtCore.QObject):
 signals = _SignalContainer()
 
 
+class MainWindow(QtGui.QMainWindow):
+    def changeEvent(self, event):
+        global unity_launcher
+        if event.type() == QtCore.QEvent.Type.ActivationChange:
+            if main_win.isActiveWindow():
+                if Unity:
+                    unity_launcher.set_property("urgent", False)
+    
+        return super(MainWindow, self).changeEvent(event)
+    
+    
 def run_task(task, cb=None):
     def wrapper():
         cb(task.get_results())
@@ -307,6 +317,10 @@ def _update_list(results):
             main_win.modTree.addTopLevelItem(row)
         else:
             rows[mod.parent][0].addChild(row)
+            
+    if not main_win.isActiveWindow():
+        if Unity:
+            unity_launcher.set_property("urgent", True)
 
 
 def update_list():
@@ -873,7 +887,7 @@ def main():
     global VERSION, main_win, progress_win, unity_launcher
     
     app = init()
-    main_win = util.init_ui(Ui_MainWindow(), QtGui.QMainWindow())
+    main_win = util.init_ui(Ui_MainWindow(), MainWindow())
     progress_win = progress.ProgressDisplay()
 
     if hasattr(sys, 'frozen'):
