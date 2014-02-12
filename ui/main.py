@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Tue Feb 11 14:24:00 2014
+# Created: Wed Feb 12 20:20:16 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -74,6 +74,8 @@ class Ui_MainWindow(object):
         self.label_2.setObjectName("label_2")
         self.verticalLayout_5.addWidget(self.label_2)
         self.sourceList = QtGui.QListWidget(self.settings)
+        self.sourceList.setDragEnabled(True)
+        self.sourceList.setDragDropMode(QtGui.QAbstractItemView.InternalMove)
         self.sourceList.setObjectName("sourceList")
         self.verticalLayout_5.addWidget(self.sourceList)
         self.horizontalLayout_2 = QtGui.QHBoxLayout()
@@ -114,7 +116,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(2)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):

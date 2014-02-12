@@ -97,29 +97,31 @@ class FetchTask(progress.Task):
                 logging.warning('The name for "%s" is empty! Did I really read this file? Skipping it!', link[1])
             else:
                 self.add_work([('fs2mod', item[2]) for item in mod.dependencies if item[0] == 'fs2mod'])
-                self.post({ mod.name: mod.__dict__ })
+                self.post({mod.name: mod.__dict__})
         else:
             logging.error('Fetch type "%s" isn\'t implemented (yet)!', link[0])
     
     def finish(self):
         global settings
         
-        modlist = manager.settings['mods'] = {}
-        
-        for part in self.get_results():
-            for name, mod in part.items():
-                if name not in modlist:
-                    modlist[name] = mod
-                elif 'version' in mod:
-                    if 'version' not in modlist[name] or util.vercmp(mod['version'], modlist[name]['version']) == 1 or 'update' in mod:
+        if not self.aborted:
+            modlist = manager.settings['mods'] = {}
+            
+            for part in self.get_results():
+                for name, mod in part.items():
+                    if name not in modlist:
                         modlist[name] = mod
+                    elif 'version' in mod:
+                        if 'version' not in modlist[name] or util.vercmp(mod['version'], modlist[name]['version']) == 1 or 'update' in mod:
+                            modlist[name] = mod
+            
+            filelist = manager.settings['known_files'] = {}
+            for mod in modlist.values():
+                for item in mod['contents']:
+                    filelist[util.pjoin(mod['folder'], item).lower()] = mod
+            
+            manager.save_settings()
         
-        filelist = manager.settings['known_files'] = {}
-        for mod in modlist.values():
-            for item in mod['contents']:
-                filelist[util.pjoin(mod['folder'], item).lower()] = mod
-        
-        manager.save_settings()
         manager.signals.list_updated.emit()
 
 
@@ -181,7 +183,6 @@ class InstallTask(progress.Task):
                 archives, s, c, m = mod.check_files(modpath)
                 progress.finish_task()
             
-            
             if len(archives) > 0:
                 self.add_work([('dep', mod, a) for a in archives])
         else:
@@ -218,8 +219,8 @@ class UninstallTask(progress.Task):
         for path, mods in manager.shared_files.items():
             if path.startswith(mod.folder):
                 has_installed = False
-                for mod in mods:
-                    if mod in manager.installed:
+                for item in mods:
+                    if item in manager.installed:
                         has_installed = True
                         break
                 
