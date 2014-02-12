@@ -83,7 +83,8 @@ class MainWindow(QtGui.QMainWindow):
         if event.type() == QtCore.QEvent.Type.ActivationChange:
             if main_win.isActiveWindow():
                 if Unity:
-                    unity_launcher.set_property("urgent", False)
+                    if unity_launcher.get_property("urgent"):
+                        unity_launcher.set_property("urgent", False)
     
         return super(MainWindow, self).changeEvent(event)
     
@@ -320,7 +321,8 @@ def _update_list(results):
             
     if not main_win.isActiveWindow():
         if Unity:
-            unity_launcher.set_property("urgent", True)
+            if not unity_launcher.get_property("urgent"):
+                unity_launcher.set_property("urgent", True)
 
 
 def update_list():
