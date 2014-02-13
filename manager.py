@@ -270,6 +270,9 @@ def _update_list(results):
     rows = dict()
     files = dict()
     
+    # Make sure the mod tree is empty.
+    main_win.modTree.clear()
+    
     for mod, archives, s, c, m in results:
         for item in mod.contents.keys():
             path = util.pjoin(mod.folder, item)
@@ -332,9 +335,8 @@ def update_list():
     
     if settings['mods'] is None:
         fetch_list()
-    else:
-        if len(settings['mods']) > 0:
-            return run_task(CheckTask(settings['mods'].values()), _update_list)
+    elif len(settings['mods']) > 0:
+        return run_task(CheckTask(settings['mods'].values()), _update_list)
 
 
 def _get_installed(results):
@@ -526,7 +528,7 @@ def run_mod(mod):
     modfolder = ','.join(modfolder)
     
     # Now look for the user directory...
-    if sys.platform in ('linux2', 'linux'):
+    if sys.platform.startswith('linux'):
         # TODO: What about Mac OS ?
         path = os.path.expanduser('~/.fs2_open')
     else:
@@ -733,6 +735,28 @@ def remove_repo():
             update_repo_list()
 
 
+def reorder_repos(event):
+    global settings
+    
+    ret = super(QtGui.QListWidget, main_win.sourceList).dropEvent(event)
+    
+    repos = []
+    for row in range(0, len(settings['repos'])):
+        item = main_win.sourceList.item(row)
+        repos.append(settings['repos'][item.data(QtCore.Qt.UserRole)])
+    
+    settings['repos'] = repos
+    print(repos)
+    save_settings()
+    
+    # NOTE: This call is normally redundant but I want to make sure that
+    # the displayed list is always the same as the actual list in settings['repos'].
+    # Once this feature is stable this call can be removed.
+    update_repo_list()
+    
+    return ret
+
+
 def install_scheme_handler():
     if hasattr(sys, 'frozen'):
         my_path = os.path.abspath(sys.executable)
@@ -879,7 +903,7 @@ def main():
             with open('commit', 'r') as data:
                 VERSION += '-' + data.read().strip()
     
-    if sys.platform.startswith('win') or sys.platform in ('linux2', 'linux'):
+    if sys.platform.startswith('win') or sys.platform.startswith('linux'):
         main_win.schemeHandler.clicked.connect(install_scheme_handler)
     else:
         main_win.schemeHandler.hide()
@@ -908,6 +932,7 @@ def main():
     main_win.editSource.clicked.connect(edit_repo)
     main_win.removeSource.clicked.connect(remove_repo)
     main_win.sourceList.itemDoubleClicked.connect(edit_repo)
+    main_win.sourceList.dropEvent = reorder_repos
     
     QtCore.QTimer.singleShot(1, init_fs2_tab)
     

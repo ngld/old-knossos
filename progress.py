@@ -191,6 +191,7 @@ class Task(QtCore.QObject):
     _progress = None
     _progress_lock = None
     _running = 0
+    aborted = False
     done = QtCore.Signal()
     progress = QtCore.Signal()
     
@@ -249,6 +250,13 @@ class Task(QtCore.QObject):
         
         if not self._attached and self._master is not None:
             self._master.add_task(self)
+    
+    def abort(self):
+        # Empty the work queue, this won't stop running workers but it will
+        # stop calls to the work() method.
+        with self._work_lock:
+            self._work = []
+            self.aborted = True
     
     def get_progress(self):
         with self._progress_lock:
@@ -439,38 +447,39 @@ def init_curses(cb, log=None):
 
 
 # Qt Display
-class ProgressDisplay(object):
-    win = None
+class ProgressDisplay(QtGui.QDialog):
     unity_launcher = None
     _threads = None
     _tasks = None
-    _log_lines = None
-    log_len = 50
     
     def __init__(self):
+        super(ProgressDisplay, self).__init__(QtGui.QApplication.activeWindow())
+        
         self._task_bars = []
         self._tasks = []
-        self._log_lines = []
         
-        self.win = util.init_ui(Ui_Progress(), QtGui.QDialog(QtGui.QApplication.activeWindow()))
-        self.win.setModal(True)
+        util.init_ui(Ui_Progress(), self)
+        self.setModal(True)
         
         if Unity:
             self.unity_launcher = Unity.LauncherEntry.get_for_desktop_id('fs2mod-py.desktop')
+    
+    def closeEvent(self, event):
+        event.ignore()
     
     def show(self):
         reset()
         
         set_callback(self.update_prog)
         update(0, 'Working...')
-        self.win.show()
+        super(ProgressDisplay, self).show()
         
         if Unity:
             self.unity_launcher.set_property('progress_visible', True)
     
     def update_prog(self, percent, text):
-        self.win.progressBar.setValue(percent * 100)
-        self.win.label.setText(text)
+        self.progressBar.setValue(percent * 100)
+        self.label.setText(text)
         
         if Unity:
             self.unity_launcher.set_property('progress', percent)
@@ -479,7 +488,7 @@ class ProgressDisplay(object):
         total = 0
         count = len(self._tasks)
         items = []
-        layout = self.win.tasks.layout()
+        layout = self.tasks.layout()
         
         for task in self._tasks:
             t_total, t_items = task.get_progress()
@@ -519,10 +528,10 @@ class ProgressDisplay(object):
             bar.setValue(item[0] * 100)
         
         if len(self._task_bars) == 1:
-            self.win.progressBar.hide()
+            self.progressBar.hide()
         else:
-            self.win.progressBar.setValue(total * 100)
-            self.win.progressBar.show()
+            self.progressBar.setValue(total * 100)
+            self.progressBar.show()
         
         if Unity:
             self.unity_launcher.set_property('progress', total)
@@ -533,14 +542,14 @@ class ProgressDisplay(object):
         if Unity:
             self.unity_launcher.set_property('progress_visible', False)
         
-        self.win.hide()
+        super(ProgressDisplay, self).hide()
     
     def add_task(self, task):
         self._tasks.append(task)
         task.done.connect(self._check_tasks)
         task.progress.connect(self.update_tasks)
         
-        if not self.win.isVisible():
+        if not self.isVisible():
             self.show()
     
     def _check_tasks(self):
