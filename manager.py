@@ -39,6 +39,7 @@ from ui.modinfo import Ui_Dialog as Ui_Modinfo
 from ui.gogextract import Ui_Dialog as Ui_Gogextract
 from ui.select_list import Ui_Dialog as Ui_SelectList
 from ui.add_repo import Ui_Dialog as Ui_AddRepo
+from ui.splash import Ui_MainWindow as Ui_Splash
 from fs2mod import ModInfo2
 from tasks import *
 
@@ -694,14 +695,25 @@ def _edit_repo(repo=None, idx=None):
         else:
             type_ = 'fs2mod'
         
+        source = win.source.text()
+        title = win.title.text()
+        
         if idx is None:
-            settings['repos'].append((type_, win.source.text(), win.title.text()))
+            found = False
+            
+            for r_type_, r_source, r_title in settings['repos']:
+                if type_ == r_type_ and r_source == source:
+                    found = True
+                    QtGui.QMessageBox.critical(main_win, 'Error', 'This source is already in the list! (As "%s")' % (r_title))
+                    break
+            
+            if not found:
+                settings['repos'].append((type_, source, title))
         else:
-            settings['repos'][idx] = (type_, win.source.text(), win.title.text())
+            settings['repos'][idx] = (type_, source, title)
         
         save_settings()
         update_repo_list()
-        #fetch_list()
 
 
 def ql_add_repo(a, b, tab):
@@ -744,7 +756,6 @@ def reorder_repos(parent, s_start, s_end, d_parent, d_row):
         repos.append(settings['repos'][item.data(QtCore.Qt.UserRole)])
     
     settings['repos'] = repos
-    print(repos)
     save_settings()
     
     # NOTE: This call is normally redundant but I want to make sure that
@@ -978,8 +989,9 @@ def main():
     save_settings()
 
 
+scheme_state = {}
 def scheme_handler(o_link, app=None):
-    global progress_win
+    global progress_win, splash, scheme_state
     
     def recall():
         scheme_handler(o_link, app)
@@ -987,12 +999,23 @@ def scheme_handler(o_link, app=None):
     if app is None:
         app = init()
         progress_win = progress.ProgressDisplay()
+        splash = util.init_ui(Ui_Splash(), QtGui.QMainWindow())
         
-        # Force an update of the mod list.
-        settings['mods'] = None
+        # Center the splash window on the screen.
+        screen = app.desktop().screenGeometry()
+        splash.move((screen.width() - splash.width()) / 2, (screen.height() - splash.height()) / 2)
+        splash.show()
+        
+        # Save all important variables in scheme_state so they will be kept between calls.
+        link = urlparse.unquote(o_link).split('/')
+        scheme_state['action'] = link[2]
+        scheme_state['params'] = link[3:]
+        scheme_state['list_fetched'] = False
         
         QtCore.QTimer.singleShot(1, recall)
         app.exec_()
+        splash.hide()
+        
         return
     
     if not o_link.startswith(('fs2://', 'fso://')):
@@ -1000,17 +1023,15 @@ def scheme_handler(o_link, app=None):
         app.quit()
         return
     
-    link = urlparse.unquote(o_link).split('/')
-    action = link[2]
-    params = link[3:]
-    
-    if len(params) == 0:
+    if len(scheme_state['params']) == 0:
         QtGui.QMessageBox.critical(None, 'fs2mod-py', 'Not enough arguments!')
         app.quit()
         return
     
-    if action in ('run', 'install'):
+    if scheme_state['action'] in ('run', 'install'):
         if settings['mods'] is None or len(settings['mods']) == 0:
+            splash.label.setText('Fetching mod list...')
+            scheme_state['list_fetched'] = True
             task = fetch_list()
             task.done.connect(recall)
             return
@@ -1021,17 +1042,26 @@ def scheme_handler(o_link, app=None):
             return
         
         # Look for the given mod.
-        if params[0] not in settings['mods']:
-            QtGui.QMessageBox.critical(None, 'fs2mod-py', 'MOD "%s" wasn\'t found!' % (params[0]))
-            app.quit()
+        if scheme_state['params'][0] not in settings['mods']:
+            if scheme_state['list_fetched']:
+                QtGui.QMessageBox.critical(None, 'fs2mod-py', 'MOD "%s" wasn\'t found!' % (scheme_state['params'][0]))
+                app.quit()
+            else:
+                settings['mods'] = None
+                recall()
+                
             return
         
-        mod = ModInfo2(settings['mods'][params[0]])
+        mod = ModInfo2(settings['mods'][scheme_state['params'][0]])
     
-    if action == 'run':
+    if scheme_state['action'] == 'run':
+        splash.label.setText('Launching FS2...')
         signals.fs2_launched.connect(app.quit)
+        
+        app.processEvents()
         run_mod(mod)
-    elif action == 'install':
+    elif scheme_state['action'] == 'install':
+        splash.label.setText('Installing %s...' % (mod.name))
         if mod.name not in installed:
             deps = resolve_deps([mod.name])
 
@@ -1050,7 +1080,7 @@ def scheme_handler(o_link, app=None):
             QtGui.QMessageBox.infomation(None, 'fs2mod-py', 'MOD "%s" is already installed!' % (mod.name))
             app.quit()
     else:
-        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'The action "%s" is unknown!' % (action))
+        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'The action "%s" is unknown!' % (scheme_state['action']))
         app.quit()
 
 

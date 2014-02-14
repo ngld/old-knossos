@@ -209,7 +209,8 @@ class InstallTask(progress.Task):
             progress.finish_task()
     
     def finish(self):
-        manager.update_list()
+        if manager.main_win is not None:
+            manager.update_list()
 
 
 class UninstallTask(progress.Task):
