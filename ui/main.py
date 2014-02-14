@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Fri Feb 14 17:33:18 2014
+# Created: Fri Feb 14 22:09:37 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -94,7 +94,11 @@ class Ui_MainWindow(object):
         self.gridLayout.setObjectName("gridLayout")
         self.schemeHandler = QtGui.QPushButton(self.settings)
         self.schemeHandler.setObjectName("schemeHandler")
-        self.gridLayout.addWidget(self.schemeHandler, 0, 0, 1, 1)
+        self.gridLayout.addWidget(self.schemeHandler, 0, 1, 1, 1)
+        self.enforceDeps = QtGui.QCheckBox(self.settings)
+        self.enforceDeps.setChecked(True)
+        self.enforceDeps.setObjectName("enforceDeps")
+        self.gridLayout.addWidget(self.enforceDeps, 0, 0, 1, 1)
         self.verticalLayout_5.addLayout(self.gridLayout)
         self.tabs.addTab(self.settings, "")
         self.tab = QtGui.QWidget()
@@ -139,6 +143,7 @@ class Ui_MainWindow(object):
         self.editSource.setText(QtGui.QApplication.translate("MainWindow", "Edit", None, QtGui.QApplication.UnicodeUTF8))
         self.removeSource.setText(QtGui.QApplication.translate("MainWindow", "Remove", None, QtGui.QApplication.UnicodeUTF8))
         self.schemeHandler.setText(QtGui.QApplication.translate("MainWindow", "Install as handler for fs2:// links", None, QtGui.QApplication.UnicodeUTF8))
+        self.enforceDeps.setText(QtGui.QApplication.translate("MainWindow", "Enforce dependencies", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.settings), QtGui.QApplication.translate("MainWindow", "Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.aboutLabel.setText(QtGui.QApplication.translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"

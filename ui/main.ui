@@ -202,10 +202,20 @@
         </item>
         <item>
          <layout class="QGridLayout" name="gridLayout">
-          <item row="0" column="0">
+          <item row="0" column="1">
            <widget class="QPushButton" name="schemeHandler">
             <property name="text">
              <string>Install as handler for fs2:// links</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QCheckBox" name="enforceDeps">
+            <property name="text">
+             <string>Enforce dependencies</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
