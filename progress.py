@@ -191,6 +191,7 @@ class Task(QtCore.QObject):
     _progress = None
     _progress_lock = None
     _running = 0
+    can_abort = True
     aborted = False
     done = QtCore.Signal()
     progress = QtCore.Signal()
@@ -252,6 +253,9 @@ class Task(QtCore.QObject):
             self._master.add_task(self)
     
     def abort(self):
+        if not self.can_abort:
+            return False
+        
         # Empty the work queue, this won't stop running workers but it will
         # stop calls to the work() method.
         with self._work_lock:
@@ -460,6 +464,7 @@ class ProgressDisplay(QtGui.QDialog):
         
         util.init_ui(Ui_Progress(), self)
         self.setModal(True)
+        self.abortButton.clicked.connect(self.try_abort)
         
         if Unity:
             self.unity_launcher = Unity.LauncherEntry.get_for_desktop_id('fs2mod-py.desktop')
@@ -545,12 +550,19 @@ class ProgressDisplay(QtGui.QDialog):
         super(ProgressDisplay, self).hide()
     
     def add_task(self, task):
+        if task.can_abort:
+            self.abortButton.show()
+        
         self._tasks.append(task)
         task.done.connect(self._check_tasks)
         task.progress.connect(self.update_tasks)
         
         if not self.isVisible():
             self.show()
+    
+    def try_abort(self):
+        for task in self._tasks:
+            task.abort()
     
     def _check_tasks(self):
         for task in self._tasks:
@@ -560,4 +572,5 @@ class ProgressDisplay(QtGui.QDialog):
         if len(self._tasks) == 0:
             # Cleanup
             self.update_tasks()
+            self.abortButton.hide()
             self.hide()

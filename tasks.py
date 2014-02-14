@@ -40,13 +40,15 @@ class FetchTask(progress.Task):
         self._fs2mod_lock = threading.Lock()
         
         self.done.connect(self.finish)
-        self.add_work(manager.settings['repos'])
+        self.add_work([(i * 100, link[0], link[1]) for i, link in enumerate(manager.settings['repos'])])
     
-    def work(self, link):
-        if link[0] == 'json':
-            progress.update(0.1, 'Fetching "%s"...' % link[1])
+    def work(self, params):
+        prio, ltype, link = params
+        
+        if ltype == 'json':
+            progress.update(0.1, 'Fetching "%s"...' % link)
             
-            data = util.get(link[1]).read().decode('utf8', 'replace')
+            data = util.get(link).read().decode('utf8', 'replace')
             
             try:
                 data = json.loads(data)
@@ -55,65 +57,68 @@ class FetchTask(progress.Task):
                 return
             
             if '#include' in data:
-                self.add_work(data['#include'])
+                self.add_work([(prio + i, link[0], link[1]) for i, link in enumerate(data['#include'])])
                 del data['#include']
             
-            base_path = os.path.dirname(link[1])
+            base_path = os.path.dirname(link)
             for i, mod in enumerate(data.values()):
                 if 'logo' in mod:
                     progress.update(0.1 + float(i) / len(data), 'Loading logos...')
                     mod['logo'] = util.get(base_path + '/' + mod['logo']).read()
             
             if '' in data:
-                logging.warning('Source "%s" contains a mod with an empty name!', link[1])
+                logging.warning('Source "%s" contains a mod with an empty name!', link)
                 del data['']
-                
+            
+            data['#priority'] = prio
+            
             self.post(data)
-        elif link[0] == 'fs2mod':
+        elif ltype == 'fs2mod':
             with self._fs2mod_lock:
-                if link[1] in self._fs2mod_list:
+                if link in self._fs2mod_list:
                     return
                 else:
-                    self._fs2mod_list.append(link[1])
+                    self._fs2mod_list.append(link)
             
-            if link[1].startswith(('http://', 'https://')):
+            if link.startswith(('http://', 'https://')):
                 with tempfile.TemporaryFile() as dl:
-                    util.download(link[1], dl)
+                    util.download(link, dl)
                     
                     dl.seek(0)
                     mod = ModInfo2()
-                    mod.read_zip(dl, os.path.basename(link[1]).split('?')[0])
+                    mod.read_zip(dl, os.path.basename(link).split('?')[0])
             else:
                 mod = ModInfo2()
                 try:
-                    mod.read_zip(link[1])
+                    mod.read_zip(link)
                 except:
-                    logging.exception('Failed to read "%s"!', link[1])
+                    logging.exception('Failed to read "%s"!', link)
                     return
                 
                 mod.update_info()
             
             if mod.name == '':
-                logging.warning('The name for "%s" is empty! Did I really read this file? Skipping it!', link[1])
+                logging.warning('The name for "%s" is empty! Did I really read this file? Skipping it!', link)
             else:
-                self.add_work([('fs2mod', item[2]) for item in mod.dependencies if item[0] == 'fs2mod'])
-                self.post({mod.name: mod.__dict__})
+                self.add_work([(prio + i, 'fs2mod', item[2]) for i, item in enumerate(mod.dependencies) if item[0] in ('fs2mod', 'json')])
+                self.post({mod.name: mod.__dict__, '#priority': prio})
         else:
-            logging.error('Fetch type "%s" isn\'t implemented (yet)!', link[0])
+            logging.error('Fetch type "%s" isn\'t implemented (yet)!', ltype)
     
     def finish(self):
         global settings
         
         if not self.aborted:
             modlist = manager.settings['mods'] = {}
+            res = self.get_results()
             
-            for part in self.get_results():
+            res.sort(key=lambda x: x['#priority'])
+            
+            for part in res:
+                del part['#priority']
+                
                 for name, mod in part.items():
-                    if name not in modlist:
-                        modlist[name] = mod
-                    elif 'version' in mod:
-                        if 'version' not in modlist[name] or util.vercmp(mod['version'], modlist[name]['version']) == 1 or 'update' in mod:
-                            modlist[name] = mod
+                    modlist[name] = mod
             
             filelist = manager.settings['known_files'] = {}
             for mod in modlist.values():
@@ -126,6 +131,8 @@ class FetchTask(progress.Task):
 
 
 class CheckTask(progress.Task):
+    can_abort = False
+    
     def __init__(self, mods):
         super(CheckTask, self).__init__()
         
@@ -238,6 +245,8 @@ class UninstallTask(progress.Task):
 
 
 class GOGExtractTask(progress.Task):
+    can_abort = False
+    
     def __init__(self, gog_path, dest_path):
         super(GOGExtractTask, self).__init__()
         

@@ -80,7 +80,7 @@ signals = _SignalContainer()
 class MainWindow(QtGui.QMainWindow):
     def changeEvent(self, event):
         global unity_launcher
-        if event.type() == QtCore.QEvent.Type.ActivationChange:
+        if event.type() == QtCore.QEvent.ActivationChange:
             if main_win.isActiveWindow():
                 if Unity:
                     if unity_launcher.get_property("urgent"):
@@ -735,13 +735,11 @@ def remove_repo():
             update_repo_list()
 
 
-def reorder_repos(event):
+def reorder_repos(parent, s_start, s_end, d_parent, d_row):
     global settings
     
-    ret = super(QtGui.QListWidget, main_win.sourceList).dropEvent(event)
-    
     repos = []
-    for row in range(0, len(settings['repos'])):
+    for row in range(0, main_win.sourceList.count()):
         item = main_win.sourceList.item(row)
         repos.append(settings['repos'][item.data(QtCore.Qt.UserRole)])
     
@@ -753,8 +751,6 @@ def reorder_repos(event):
     # the displayed list is always the same as the actual list in settings['repos'].
     # Once this feature is stable this call can be removed.
     update_repo_list()
-    
-    return ret
 
 
 def install_scheme_handler():
@@ -932,7 +928,11 @@ def main():
     main_win.editSource.clicked.connect(edit_repo)
     main_win.removeSource.clicked.connect(remove_repo)
     main_win.sourceList.itemDoubleClicked.connect(edit_repo)
-    main_win.sourceList.dropEvent = reorder_repos
+    
+    # NOTE: Assign the model to a variable to prevent a segfault with PySide. (WTF?!)
+    m = main_win.sourceList.model()
+    m.rowsMoved.connect(reorder_repos)
+    del m
     
     QtCore.QTimer.singleShot(1, init_fs2_tab)
     
