@@ -62,6 +62,7 @@ settings = {
     'mods': None,
     'known_files': {},
     'hash_cache': None,
+    'enforce_deps': True,
     'repos': [('json', 'http://dev.tproxy.de/fs2/all.json', 'ngld\'s HLP Mirror')],
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt'
 }
@@ -373,14 +374,28 @@ def resolve_deps(mods, skip_installed=True):
 
 
 def autoselect_deps(item, col):
-    if col != 0 or item.checkState(0) != QtCore.Qt.Checked:
-        return
+    global settings, installed
     
-    deps = resolve_deps([item.text(0)])
-    items = read_tree(main_win.modTree)
-    for row, parent in items:
-        if row.text(0) in deps and row.checkState(0) == QtCore.Qt.Unchecked:
-            row.setCheckState(0, QtCore.Qt.Checked)
+    if settings['enforce_deps']:
+        checked = set()
+        items = read_tree(main_win.modTree)
+        for row, p in items:
+            if row.checkState(0) == QtCore.Qt.Checked:
+                checked.add(row.text(0))
+        
+        deps = resolve_deps(checked, False)
+        for row, p in items:
+            if row.text(0) in deps:
+                row.setCheckState(0, QtCore.Qt.Checked)
+    else:
+        if col != 0 or item.checkState(0) != QtCore.Qt.Checked:
+            return
+        
+        deps = resolve_deps([item.text(0)])
+        items = read_tree(main_win.modTree)
+        for row, parent in items:
+            if row.text(0) in deps and row.checkState(0) == QtCore.Qt.Unchecked:
+                row.setCheckState(0, QtCore.Qt.Checked)
 
 
 def reset_selection():
@@ -830,6 +845,13 @@ MimeType=x-scheme-handler/fso;
                 output_file.write(tpl_mime_type)
 
 
+def update_enforce_deps():
+    global settings
+    
+    settings['enforce_deps'] = main_win.enforceDeps.checkState() == QtCore.Qt.Checked
+    save_settings()
+
+
 def init():
     global settings
     
@@ -939,6 +961,9 @@ def main():
     main_win.editSource.clicked.connect(edit_repo)
     main_win.removeSource.clicked.connect(remove_repo)
     main_win.sourceList.itemDoubleClicked.connect(edit_repo)
+    
+    main_win.enforceDeps.setCheckState(QtCore.Qt.Checked if settings['enforce_deps'] else QtCore.Qt.Unchecked)
+    main_win.enforceDeps.stateChanged.connect(update_enforce_deps)
     
     # NOTE: Assign the model to a variable to prevent a segfault with PySide. (WTF?!)
     m = main_win.sourceList.model()
