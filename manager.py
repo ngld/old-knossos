@@ -28,6 +28,13 @@ import subprocess
 import stat
 import glob
 import time
+#To read and write fs2_open.ini :
+import ConfigParser
+#To get available display and joystick options :
+import pyglet
+#Sound stuff
+from pyglet.media.drivers.openal import lib_alc as alc
+
 import six
 import progress
 import util
@@ -40,8 +47,11 @@ from ui.gogextract import Ui_Dialog as Ui_Gogextract
 from ui.select_list import Ui_Dialog as Ui_SelectList
 from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from ui.splash import Ui_MainWindow as Ui_Splash
+from ui.settings import Ui_Dialog as Ui_Settings
 from fs2mod import ModInfo2
 from tasks import *
+
+
 
 try:
     from gi.repository import Unity, Dbusmenu
@@ -138,6 +148,9 @@ def show_tab(a, b, tab):
     global main_win
     main_win.tabs.setCurrentIndex(tab)
     main_win.activateWindow()
+    
+def go_to_hlp(a, b, tab):
+    QtGui.QDesktopServices.openUrl("http://www.hard-light.net/")
 
 
 def do_gog_extract():
@@ -989,16 +1002,21 @@ def main():
         item_add_repo = Dbusmenu.Menuitem.new()
         item_add_repo.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Add Source')
         item_add_repo.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_hlp = Dbusmenu.Menuitem.new()
+        item_hlp.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Browse mods online')
+        item_hlp.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
         
         item_fs2.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 0)
         item_mods.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 1)
         item_settings.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 2)
         item_add_repo.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, ql_add_repo, 2)
+        item_hlp.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, go_to_hlp, 2)
         
         ql.child_append(item_fs2)
         ql.child_append(item_mods)
         ql.child_append(item_settings)
         ql.child_append(item_add_repo)
+        ql.child_append(item_hlp)
         
         unity_launcher.set_property('quicklist', ql)
     
@@ -1016,7 +1034,7 @@ def main():
 
 scheme_state = {}
 def scheme_handler(o_link, app=None):
-    global progress_win, splash, scheme_state
+    global settings, progress_win, splash, scheme_state
     
     def recall():
         scheme_handler(o_link, app)
@@ -1053,13 +1071,13 @@ def scheme_handler(o_link, app=None):
         app.quit()
         return
     
-    if scheme_state['action'] in ('run', 'install'):
+    if scheme_state['action'] in ('run', 'install', 'settings'):
         if settings['mods'] is None or len(settings['mods']) == 0:
             splash.label.setText('Fetching mod list...')
             scheme_state['list_fetched'] = True
             task = fetch_list()
             task.done.connect(recall)
-            return
+            return            
         
         if installed is None:
             task = get_installed()
@@ -1078,7 +1096,7 @@ def scheme_handler(o_link, app=None):
             return
         
         mod = ModInfo2(settings['mods'][scheme_state['params'][0]])
-    
+        
     if scheme_state['action'] == 'run':
         splash.label.setText('Launching FS2...')
         signals.fs2_launched.connect(app.quit)
@@ -1104,6 +1122,250 @@ def scheme_handler(o_link, app=None):
         else:
             QtGui.QMessageBox.infomation(None, 'fs2mod-py', 'MOD "%s" is already installed!' % (mod.name))
             app.quit()
+    elif scheme_state['action'] == 'settings':
+        #This function should be moved as a callback somewhere else, globally accessible :
+        def write_config():
+            #Getting ready to write key=value pairs to the ini file :
+            new_res_width, new_res_height = settings_win.vid_res.currentText().split(' (')[0].split(' x ')
+            new_depth = settings_win.vid_depth.currentText().split('-')[0]
+            new_res = "OGL -({0}x{1})x{2} bit".format(new_res_width, new_res_height, new_depth)
+            config.set('Default', 'VideocardFs2open', new_res)
+            
+            new_texfilter = str(settings_win.vid_texfilter.currentIndex())
+            config.set('Default', 'TextureFilter', new_texfilter) 
+            
+            new_aa = settings_win.vid_aa.currentText().split('x')[0]
+            config.set('Default', 'OGL_AntiAliasSamples', new_aa)
+            
+            new_af = settings_win.vid_af.currentText().split('x')[0]
+            config.set('Default', 'OGL_AnisotropicFilter', new_af)
+            
+            config.write(open(os.path.join(config_path, 'fs2_open.ini'), 'w'))
+            
+            #FS2 is unable to cope with spaces around "=", and Python2 insists on putting them.
+            #Python3 is much better : config.write(file, False), and spaces are not written in the first place.
+            #This code strips these spaces :
+            s = open(os.path.join(config_path, 'fs2_open.ini')).read()
+            s = s.replace(' = ', '=')
+            f = open(os.path.join(config_path, 'fs2_open.ini'), 'w')
+            f.write(s)
+            f.close()
+        
+        #This one is needed to pass an argument to run mod (can't do that directly from the Qt callback)
+        def do_run():
+            write_config()
+            run_mod(mod)
+            
+        
+        
+        
+        #This should be moved into a function or a class, globally accessible. But where ?
+        settings_win = util.init_ui(Ui_Settings(), QtGui.QDialog(splash))
+        settings_win.setModal(True)
+        
+        settings_win.pushButton.setText("Command line flags for {0}".format(mod.name))
+        
+        #This is temporary : it will be better handled as soon as all mods use a default build
+        #Binary selection combobox logic here
+        fs2_path = settings['fs2_path']
+
+        if fs2_path is not None and os.path.isdir(fs2_path):
+            settings['fs2_path'] = os.path.abspath(fs2_path)
+
+            bins = glob.glob(os.path.join(fs2_path, 'fs2_open_*'))
+            
+            for i, path in enumerate(bins):
+                    path = os.path.basename(path)
+                    settings_win.build.addItem(path)
+                    
+            if len(bins) == 1:
+                # Found only one binary, select it by default.
+                
+                settings_win.build.setEnabled(False)
+           
+        #--Read fs2_open.ini
+        config = ConfigParser.ConfigParser()
+        
+        #Need to set ConfigParser.SafeConfigParser.optionxform() because it completely breaks the case ok FS2 ini keys :
+        config.optionxform=str
+        
+        
+        #USELESS : win* platforms will do it in a completely different way as this config is stored in the REGISTRY.
+        config_path = os.path.expanduser('~/.fs2_open')
+        config_file = os.path.join(config_path, 'fs2_open.ini')
+        
+        if sys.platform.startswith('win'):
+            config_path = os.path.expandvars('$APPDATA/fs2_open')
+            
+        if not os.path.isfile(config_file):
+            with open(config_file, 'w') as new_ini :
+                new_ini.write('[Default]')
+        else:
+            with open(config_file, 'r') as new_ini :
+                erase = True
+                for line in new_ini:
+                    if '[Default]' in line :
+                        erase = False
+        if erase:
+            with open(config_file, 'w') as new_ini :
+                new_ini.write('[Default]')
+                
+        config.read(config_file)
+                
+        rawres = None
+        res = None
+        res_width = None
+        res_height = None
+        depth = None
+        texfilter = None
+        af = None
+        aa = None
+        
+        #Check if we already have the config sections :
+        if config.has_section('Default'):
+            #Be careful with any change, they are all case sensitive
+            try:
+                rawres = config.get('Default', 'VideocardFs2open')
+                res = rawres.split('(')[1].split(')')[0]
+                res_width,res_height = res.split("x")
+                depth = rawres.split(")x")[1][0:2]
+            except ConfigParser.NoOptionError:
+                print("")
+                
+            try:
+                texfilter = config.get('Default', 'TextureFilter')
+            except ConfigParser.NoOptionError:
+                print("")
+                
+            try:  
+                af = config.get('Default', 'OGL_AnisotropicFilter')
+            except ConfigParser.NoOptionError:
+                print("")
+                
+            try:
+                aa = config.get('Default', 'OGL_AntiAliasSamples')
+            except ConfigParser.NoOptionError:
+                print("")
+
+        #---Video settings---
+        #Screen resolution
+        platform = pyglet.window.get_platform()
+        display = platform.get_default_display()
+        screen = display.get_default_screen()
+        raw_modes = screen.get_modes()
+        modes = []
+        for i, mode in enumerate(raw_modes):
+            if not (mode.width, mode.height) in modes :
+                if not ((mode.width < 800) or (mode.height < 600)):
+                    modes.append((mode.width, mode.height))
+                
+        def get_ratio(w, h):
+            ratio = (1.0*width/height)
+            ratio = "{:.1f}".format(ratio)
+            if ratio == "1.3":
+                ratio_string = "4:3"
+            elif ratio == "1.6":
+                ratio_string = "16:10"
+            elif ratio == "1.8":
+                ratio_string = "16:9"
+            else:
+                ratio_string = "custom"
+            return ratio_string
+        
+        for i, (width, height) in enumerate(modes):    
+            settings_win.vid_res.addItem("{0} x {1} ({2})".format(width, height, get_ratio(width, height)))
+            
+        index = settings_win.vid_res.findText("{0} x {1} ({2})".format(res_width, res_height, get_ratio(res_width, res_height)))
+        if index == -1:
+            index = 0
+        settings_win.vid_res.setCurrentIndex(index)
+        
+        #Screen depth
+        settings_win.vid_depth.addItems(["32-bit","16-bit"])
+        
+        index = settings_win.vid_depth.findText("{0}-bit".format(depth))
+        if index == -1:
+            index = 0
+        settings_win.vid_depth.setCurrentIndex(index)
+        
+        #Texture filter
+        settings_win.vid_texfilter.addItems(["Bilinear","Trilinear"])
+        
+        #If the SCP adds a new texture filder, we should change that part :
+        if texfilter == "1":
+            index = 1
+        elif texfilter == "0":
+            index = 0
+        else:
+            index = 0
+        settings_win.vid_texfilter.setCurrentIndex(index)
+        
+        #Antialiasing
+        settings_win.vid_aa.addItems(["Off","2x","4x","8x","16x"])
+        
+        index = settings_win.vid_aa.findText("{0}x".format(aa))
+        if index == -1:
+            index = 0        
+        settings_win.vid_aa.setCurrentIndex(index)
+        
+        #Anisotropic filtering
+        settings_win.vid_af.addItems(["Off","1x","2x","4x","8x","16x"])
+        
+        index = settings_win.vid_af.findText("{0}x".format(af))
+        if index == -1:
+            index = 0  
+        settings_win.vid_af.setCurrentIndex(index)
+        
+        #---Sound settings---
+        
+        #Use pyglet to get the devices lists :
+        
+        #(utility function)
+        def split_nul_strings(s):
+            # NUL-separated list of strings, double-NUL-terminated.
+            nul = False
+            i = 0
+            while True:
+                if s[i] == '\0':
+                    if nul:
+                        break
+                    else:
+                        nul = True
+                else:
+                    nul = False
+                i += 1
+            s = s[:i - 1]
+            return s.split('\0')
+        if alc.alcIsExtensionPresent(None, 'ALC_ENUMERATION_EXT'):
+            # Hmm, actually not allowed to pass NULL to alcIsExtension present..
+            # how is this supposed to work?
+            snd_devices = split_nul_strings(alc.alcGetString(None, alc.ALC_DEVICE_SPECIFIER))
+            for i, snd_device in enumerate(snd_devices):
+                print snd_device
+                settings_win.snd_playback.addItem("{0}".format(snd_device))
+                
+            snd_capture_devices = split_nul_strings(alc.alcGetString(None, alc.ALC_CAPTURE_DEVICE_SPECIFIER))
+            for i, snd_capture_device in enumerate(snd_capture_devices):    
+                print snd_capture_device
+                settings_win.snd_capture.addItem("{0}".format(snd_capture_device))
+                 
+        #---Joystick settings---
+        joysticks = []
+        #pygame.joystick.init()
+        #joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+        
+        #Joystick selection disabled for now
+        if joysticks == []:
+            settings_win.controller.addItem("No Joystick")
+            
+        settings_win.controller.setEnabled(False)
+        
+        settings_win.runButton.clicked.connect(do_run)
+        settings_win.destroyed.connect(app.quit)
+        
+        splash.hide()
+        settings_win.show()
+        
     else:
         QtGui.QMessageBox.critical(None, 'fs2mod-py', 'The action "%s" is unknown!' % (scheme_state['action']))
         app.quit()
