@@ -173,15 +173,18 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="snd_samplerate"/>
-     </item>
      <item row="3" column="0">
       <widget class="QCheckBox" name="snd_efx">
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
        <property name="text">
         <string>Enable EFX</string>
        </property>
       </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QSpinBox" name="snd_samplerate"/>
      </item>
     </layout>
    </item>

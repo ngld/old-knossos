@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'settings.ui'
 #
-# Created: Fri Feb 21 04:26:27 2014
+# Created: Fri Feb 21 12:07:00 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -111,12 +111,13 @@ class Ui_Dialog(object):
         self.sampleRateLabel = QtGui.QLabel(Dialog)
         self.sampleRateLabel.setObjectName("sampleRateLabel")
         self.formLayout_3.setWidget(2, QtGui.QFormLayout.LabelRole, self.sampleRateLabel)
-        self.snd_samplerate = QtGui.QLineEdit(Dialog)
-        self.snd_samplerate.setObjectName("snd_samplerate")
-        self.formLayout_3.setWidget(2, QtGui.QFormLayout.FieldRole, self.snd_samplerate)
         self.snd_efx = QtGui.QCheckBox(Dialog)
+        self.snd_efx.setLayoutDirection(QtCore.Qt.RightToLeft)
         self.snd_efx.setObjectName("snd_efx")
         self.formLayout_3.setWidget(3, QtGui.QFormLayout.LabelRole, self.snd_efx)
+        self.snd_samplerate = QtGui.QSpinBox(Dialog)
+        self.snd_samplerate.setObjectName("snd_samplerate")
+        self.formLayout_3.setWidget(2, QtGui.QFormLayout.FieldRole, self.snd_samplerate)
         self.verticalLayout.addLayout(self.formLayout_3)
         self.line_4 = QtGui.QFrame(Dialog)
         self.line_4.setFrameShape(QtGui.QFrame.HLine)
