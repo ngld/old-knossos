@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'settings.ui'
 #
-# Created: Fri Feb 21 12:07:00 2014
+# Created: Fri Feb 21 21:28:06 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -132,9 +132,9 @@ class Ui_Dialog(object):
         self.label_4.setFont(font)
         self.label_4.setObjectName("label_4")
         self.verticalLayout.addWidget(self.label_4)
-        self.controller = QtGui.QComboBox(Dialog)
-        self.controller.setObjectName("controller")
-        self.verticalLayout.addWidget(self.controller)
+        self.ctrl_joystick = QtGui.QComboBox(Dialog)
+        self.ctrl_joystick.setObjectName("ctrl_joystick")
+        self.verticalLayout.addWidget(self.ctrl_joystick)
         self.line_5 = QtGui.QFrame(Dialog)
         self.line_5.setFrameShape(QtGui.QFrame.HLine)
         self.line_5.setFrameShadow(QtGui.QFrame.Sunken)

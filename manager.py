@@ -1125,6 +1125,13 @@ def scheme_handler(o_link, app=None):
             app.quit()
     elif scheme_state['action'] == 'settings':
         #This function should be moved as a callback somewhere else, globally accessible :
+        def is_number(s):
+                try:
+                    int(s)
+                    return True
+                except ValueError:
+                    return False
+                    
         def write_config():
             #Getting ready to write key=value pairs to the ini file :
             #Set video :
@@ -1158,6 +1165,13 @@ def scheme_handler(o_link, app=None):
             new_sample_rate = "{0}".format(settings_win.snd_samplerate.value())
             config.set('Sound', 'SampleRate', new_sample_rate)
             
+            #Set joystick
+            if settings_win.ctrl_joystick.currentText() == "No Joystick":
+                new_joystick_id = "99999"
+            else:
+                new_joystick_id = "{0}".format(settings_win.ctrl_joystick.currentIndex() - 1)
+            config.set('Default', 'CurrentJoystick', new_joystick_id)
+                
             config.write(open(os.path.join(config_path, 'fs2_open.ini'), 'w'))
             
             #FS2 is unable to cope with spaces around "=", and Python2 insists on putting them.
@@ -1244,11 +1258,14 @@ def scheme_handler(o_link, app=None):
         af = None
         aa = None
         
-        #sound variable
+        #sound variables
         playback_device = None
         capture_device = None
         sample_rate = None
         enable_efx = None
+        
+        #joystick variable
+        joystick_id = None
         
         #Check if we already have the config sections :
         if config.has_section('Default'):
@@ -1296,8 +1313,13 @@ def scheme_handler(o_link, app=None):
             try:
                 sample_rate = config.get('Sound', 'SampleRate')
             except ConfigParser.NoOptionError:
-                print("")  
-            
+                print("")
+                
+            #Try to load sound settings from the INI file :
+            try:
+                joystick_id = config.get('Default', 'CurrentJoystick')
+            except ConfigParser.NoOptionError:
+                print("")
 
         #---Video settings---
         #Screen resolution
@@ -1421,13 +1443,8 @@ def scheme_handler(o_link, app=None):
             settings_win.snd_samplerate.setMinimum(0)
             settings_win.snd_samplerate.setMaximum(1000000)
             settings_win.snd_samplerate.setSingleStep(100)
-            settings_win.snd_samplerate.setSuffix("khz")
-            def is_number(s):
-                try:
-                    int(s)
-                    return True
-                except ValueError:
-                    return False
+            settings_win.snd_samplerate.setSuffix("Hz")
+            
             if is_number(sample_rate):
                 sample_rate = int(sample_rate)
                 if sample_rate>0 and sample_rate<1000000:
@@ -1445,15 +1462,37 @@ def scheme_handler(o_link, app=None):
                 settings_win.snd_efx.setChecked(False)
                  
         #---Joystick settings---
-        joysticks = []
-        #pygame.joystick.init()
         #joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+        joysticks = []
+        joysticks = pyglet.input.get_joysticks()
+        
+        settings_win.ctrl_joystick.addItem("No Joystick")  
+        for i, joystick in enumerate(joysticks):    
+            settings_win.ctrl_joystick.addItem("{0}".format(joystick.device.name).decode('utf_8'))
+        
+          
+            
+        if is_number(joystick_id):
+            if joystick_id == "99999":
+                index = settings_win.ctrl_joystick.findText("No Joystick")
+                settings_win.ctrl_joystick.setCurrentIndex(index)
+            else:
+                settings_win.ctrl_joystick.setCurrentIndex(int(joystick_id) + 1)
+                if settings_win.ctrl_joystick.currentText() == "":
+                    index = settings_win.ctrl_joystick.findText("No Joystick")
+                    settings_win.ctrl_joystick.setCurrentIndex(index)
+        else:
+            index = settings_win.ctrl_joystick.findText("No Joystick")
+            settings_win.ctrl_joystick.setCurrentIndex(index)
+        
+        
+                
         
         #Joystick selection disabled for now
         if joysticks == []:
-            settings_win.controller.addItem("No Joystick")
+            settings_win.ctrl_joystick.setEnabled(False)
             
-        settings_win.controller.setEnabled(False)
+        
         
         settings_win.runButton.clicked.connect(do_run)
         settings_win.cancelButton.clicked.connect(settings_win.close)

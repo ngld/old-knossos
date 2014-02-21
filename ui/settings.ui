@@ -210,7 +210,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QComboBox" name="controller"/>
+    <widget class="QComboBox" name="ctrl_joystick"/>
    </item>
    <item>
     <widget class="Line" name="line_5">
