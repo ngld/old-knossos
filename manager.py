@@ -33,6 +33,7 @@ import ConfigParser
 #To get available display and joystick options :
 import pyglet
 #Sound stuff
+import ctypes
 from pyglet.media.drivers.openal import lib_alc as alc
 
 import six
@@ -1126,6 +1127,7 @@ def scheme_handler(o_link, app=None):
         #This function should be moved as a callback somewhere else, globally accessible :
         def write_config():
             #Getting ready to write key=value pairs to the ini file :
+            #Set video :
             new_res_width, new_res_height = settings_win.vid_res.currentText().split(' (')[0].split(' x ')
             new_depth = settings_win.vid_depth.currentText().split('-')[0]
             new_res = "OGL -({0}x{1})x{2} bit".format(new_res_width, new_res_height, new_depth)
@@ -1139,6 +1141,22 @@ def scheme_handler(o_link, app=None):
             
             new_af = settings_win.vid_af.currentText().split('x')[0]
             config.set('Default', 'OGL_AnisotropicFilter', new_af)
+            
+            #Set sound :
+            new_playback_device = settings_win.snd_playback.currentText().encode('utf_8')
+            config.set('Sound', 'PlaybackDevice', new_playback_device)
+            
+            new_capture_device = settings_win.snd_capture.currentText().encode('utf_8')
+            config.set('Sound', 'CaptureDevice', new_capture_device)
+            
+            if settings_win.snd_efx.isChecked() == True:
+                new_enable_efx = "1"
+            else:
+                new_enable_efx = "0"
+            config.set('Sound', 'EnableEFX', new_enable_efx)
+            
+            new_sample_rate = "{0}".format(settings_win.snd_samplerate.value())
+            config.set('Sound', 'SampleRate', new_sample_rate)
             
             config.write(open(os.path.join(config_path, 'fs2_open.ini'), 'w'))
             
@@ -1163,7 +1181,7 @@ def scheme_handler(o_link, app=None):
         settings_win = util.init_ui(Ui_Settings(), QtGui.QDialog(splash))
         settings_win.setModal(True)
         
-        settings_win.pushButton.setText("Command line flags for {0}".format(mod.name))
+        settings_win.pushButton.setText("Command line flags for : {0}".format(mod.name))
         
         #This is temporary : it will be better handled as soon as all mods use a default build
         #Binary selection combobox logic here
@@ -1183,7 +1201,7 @@ def scheme_handler(o_link, app=None):
                 
                 settings_win.build.setEnabled(False)
            
-        #--Read fs2_open.ini
+        #---Read fs2_open.ini---
         config = ConfigParser.ConfigParser()
         
         #Need to set ConfigParser.SafeConfigParser.optionxform() because it completely breaks the case ok FS2 ini keys :
@@ -1196,7 +1214,8 @@ def scheme_handler(o_link, app=None):
         
         if sys.platform.startswith('win'):
             config_path = os.path.expandvars('$APPDATA/fs2_open')
-            
+        
+        #Python2 ConfigParser being unable to deal with the [Default] section, we do it manually
         if not os.path.isfile(config_file):
             with open(config_file, 'w') as new_ini :
                 new_ini.write('[Default]')
@@ -1211,7 +1230,11 @@ def scheme_handler(o_link, app=None):
                 new_ini.write('[Default]')
                 
         config.read(config_file)
-                
+        
+        if not config.has_section('Sound'):
+            config.add_section('Sound')
+        
+        #video variables
         rawres = None
         res = None
         res_width = None
@@ -1221,9 +1244,16 @@ def scheme_handler(o_link, app=None):
         af = None
         aa = None
         
+        #sound variable
+        playback_device = None
+        capture_device = None
+        sample_rate = None
+        enable_efx = None
+        
         #Check if we already have the config sections :
         if config.has_section('Default'):
             #Be careful with any change, they are all case sensitive
+            #Try to load video settings from the INI file :
             try:
                 rawres = config.get('Default', 'VideocardFs2open')
                 res = rawres.split('(')[1].split(')')[0]
@@ -1231,7 +1261,7 @@ def scheme_handler(o_link, app=None):
                 depth = rawres.split(")x")[1][0:2]
             except ConfigParser.NoOptionError:
                 print("")
-                
+            
             try:
                 texfilter = config.get('Default', 'TextureFilter')
             except ConfigParser.NoOptionError:
@@ -1246,6 +1276,28 @@ def scheme_handler(o_link, app=None):
                 aa = config.get('Default', 'OGL_AntiAliasSamples')
             except ConfigParser.NoOptionError:
                 print("")
+            
+            #Try to load sound settings from the INI file :   
+            try:
+                playback_device = config.get('Sound', 'PlaybackDevice')
+            except ConfigParser.NoOptionError:
+                print("")
+                
+            try:
+                capture_device = config.get('Sound', 'CaptureDevice')
+            except ConfigParser.NoOptionError:
+                print("")
+            
+            try:
+                enable_efx = config.get('Sound', 'EnableEFX')
+            except ConfigParser.NoOptionError:
+                print("")    
+                
+            try:
+                sample_rate = config.get('Sound', 'SampleRate')
+            except ConfigParser.NoOptionError:
+                print("")  
+            
 
         #---Video settings---
         #Screen resolution
@@ -1338,16 +1390,59 @@ def scheme_handler(o_link, app=None):
             return s.split('\0')
         if alc.alcIsExtensionPresent(None, 'ALC_ENUMERATION_EXT'):
             # Hmm, actually not allowed to pass NULL to alcIsExtension present..
-            # how is this supposed to work?
+            # how is this supposed to work? -> Hellzed : same question. Weird.
+            #Fill output device combobox :
             snd_devices = split_nul_strings(alc.alcGetString(None, alc.ALC_DEVICE_SPECIFIER))
             for i, snd_device in enumerate(snd_devices):
-                print snd_device
-                settings_win.snd_playback.addItem("{0}".format(snd_device))
+                settings_win.snd_playback.addItem("{0}".format(snd_device).decode('utf_8'))
                 
+            index = settings_win.snd_playback.findText("{0}".format(playback_device).decode('utf_8'))
+            if index == -1:
+                default_device = ctypes.cast(alc.alcGetString(None, alc.ALC_DEFAULT_DEVICE_SPECIFIER), ctypes.c_char_p).value
+                index = settings_win.snd_playback.findText("{0}".format(default_device).decode('utf_8'))
+            if index == -1:
+                index = 0
+            settings_win.snd_playback.setCurrentIndex(index)
+            
+            #Fill intput device combobox : 
             snd_capture_devices = split_nul_strings(alc.alcGetString(None, alc.ALC_CAPTURE_DEVICE_SPECIFIER))
             for i, snd_capture_device in enumerate(snd_capture_devices):    
-                print snd_capture_device
-                settings_win.snd_capture.addItem("{0}".format(snd_capture_device))
+                settings_win.snd_capture.addItem("{0}".format(snd_capture_device).decode('utf_8'))
+                
+            index = settings_win.snd_capture.findText("{0}".format(capture_device).decode('utf_8'))
+            if index == -1:
+                default_capture_device = ctypes.cast(alc.alcGetString(None, alc.ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER), ctypes.c_char_p).value
+                index = settings_win.snd_capture.findText("{0}".format(default_capture_device).decode('utf_8'))
+            if index == -1:
+                index = 0
+            settings_win.snd_capture.setCurrentIndex(index)
+            
+            #Fill sample rate textbox :
+            settings_win.snd_samplerate.setMinimum(0)
+            settings_win.snd_samplerate.setMaximum(1000000)
+            settings_win.snd_samplerate.setSingleStep(100)
+            settings_win.snd_samplerate.setSuffix("khz")
+            def is_number(s):
+                try:
+                    int(s)
+                    return True
+                except ValueError:
+                    return False
+            if is_number(sample_rate):
+                sample_rate = int(sample_rate)
+                if sample_rate>0 and sample_rate<1000000:
+                    settings_win.snd_samplerate.setValue(sample_rate)
+                else:
+                    settings_win.snd_samplerate.setValue(44100)
+            else:
+                settings_win.snd_samplerate.setValue(44100)
+                    
+            
+            #Fill EFX checkbox :
+            if enable_efx == "1":
+                settings_win.snd_efx.setChecked(True)
+            else:
+                settings_win.snd_efx.setChecked(False)
                  
         #---Joystick settings---
         joysticks = []
@@ -1361,6 +1456,7 @@ def scheme_handler(o_link, app=None):
         settings_win.controller.setEnabled(False)
         
         settings_win.runButton.clicked.connect(do_run)
+        settings_win.cancelButton.clicked.connect(settings_win.close)
         settings_win.destroyed.connect(app.quit)
         
         splash.hide()
