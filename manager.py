@@ -28,6 +28,7 @@ import subprocess
 import stat
 import glob
 import time
+
 #To read and write fs2_open.ini :
 import ConfigParser
 #To get available display and joystick options :
@@ -60,7 +61,7 @@ except ImportError:
     # Can't find Unity.
     Unity = None
 
-VERSION = '0.1'
+VERSION = '0.2-alpha'
 main_win = None
 progress_win = None
 unity_launcher = None
@@ -1099,10 +1100,8 @@ def scheme_handler(o_link, app=None):
         mod = ModInfo2(settings['mods'][scheme_state['params'][0]])
         
     if scheme_state['action'] == 'run':
-        splash.label.setText('Launching FS2...')
-        signals.fs2_launched.connect(app.quit)
         
-        app.processEvents()
+        
         run_mod(mod)
     elif scheme_state['action'] == 'install':
         splash.label.setText('Installing %s...' % (mod.name))
@@ -1151,7 +1150,11 @@ def scheme_handler(o_link, app=None):
             
             #Set sound :
             new_playback_device = settings_win.snd_playback.currentText().encode('utf_8')
+            # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device ? Why ?
+            # ^ So I do it the way openal is supposed to work, but I'm not sure FS2 really behaves that way
             config.set('Sound', 'PlaybackDevice', new_playback_device)
+            config.set('Default', 'SoundDeviceOAL', new_playback_device)
+            # ^ Useless according to SCP members, but wxlauncher does it anyway
             
             new_capture_device = settings_win.snd_capture.currentText().encode('utf_8')
             config.set('Sound', 'CaptureDevice', new_capture_device)
@@ -1186,6 +1189,7 @@ def scheme_handler(o_link, app=None):
         #This one is needed to pass an argument to run mod (can't do that directly from the Qt callback)
         def do_run():
             write_config()
+            settings_win.close()
             run_mod(mod)
             
         
@@ -1334,7 +1338,9 @@ def scheme_handler(o_link, app=None):
                     modes.append((mode.width, mode.height))
                 
         def get_ratio(w, h):
-            ratio = (1.0*width/height)
+            w = int(w)
+            h = int(h)
+            ratio = (1.0*w/h)
             ratio = "{:.1f}".format(ratio)
             if ratio == "1.3":
                 ratio_string = "4:3"
@@ -1349,7 +1355,11 @@ def scheme_handler(o_link, app=None):
         for i, (width, height) in enumerate(modes):    
             settings_win.vid_res.addItem("{0} x {1} ({2})".format(width, height, get_ratio(width, height)))
             
-        index = settings_win.vid_res.findText("{0} x {1} ({2})".format(res_width, res_height, get_ratio(res_width, res_height)))
+        if is_number(res_width) and is_number(res_height):
+            index = settings_win.vid_res.findText("{0} x {1} ({2})".format(res_width, res_height, get_ratio(res_width, res_height)))
+        else:
+            index = -1
+            
         if index == -1:
             index = 0
         settings_win.vid_res.setCurrentIndex(index)
@@ -1443,7 +1453,7 @@ def scheme_handler(o_link, app=None):
             settings_win.snd_samplerate.setMinimum(0)
             settings_win.snd_samplerate.setMaximum(1000000)
             settings_win.snd_samplerate.setSingleStep(100)
-            settings_win.snd_samplerate.setSuffix("Hz")
+            settings_win.snd_samplerate.setSuffix(" Hz")
             
             if is_number(sample_rate):
                 sample_rate = int(sample_rate)
@@ -1483,10 +1493,7 @@ def scheme_handler(o_link, app=None):
                     settings_win.ctrl_joystick.setCurrentIndex(index)
         else:
             index = settings_win.ctrl_joystick.findText("No Joystick")
-            settings_win.ctrl_joystick.setCurrentIndex(index)
-        
-        
-                
+            settings_win.ctrl_joystick.setCurrentIndex(index)        
         
         #Joystick selection disabled for now
         if joysticks == []:
