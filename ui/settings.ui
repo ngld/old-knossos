@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>458</width>
-    <height>548</height>
+    <width>438</width>
+    <height>658</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,7 +24,7 @@
       </font>
      </property>
      <property name="text">
-      <string>FreeSpace build</string>
+      <string>FreeSpace 2 Open build</string>
      </property>
      <property name="wordWrap">
       <bool>false</bool>
@@ -62,30 +62,33 @@
        <property name="fieldGrowthPolicy">
         <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
        </property>
-       <item row="1" column="0">
+       <item row="0" column="0">
         <widget class="QLabel" name="resolutionLabel">
          <property name="text">
           <string>Resolution :</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
+       <item row="0" column="1">
         <widget class="QComboBox" name="vid_res"/>
        </item>
-       <item row="2" column="0">
+       <item row="1" column="0">
         <widget class="QLabel" name="depthLabel">
          <property name="text">
           <string>Color depth :</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
+       <item row="1" column="1">
         <widget class="QComboBox" name="vid_depth"/>
        </item>
       </layout>
      </item>
      <item>
       <layout class="QFormLayout" name="formLayout">
+       <property name="fieldGrowthPolicy">
+        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+       </property>
        <item row="0" column="0">
         <widget class="QLabel" name="textureFilterLabel">
          <property name="text">
@@ -109,7 +112,7 @@
        <item row="2" column="0">
         <widget class="QLabel" name="anisotropicFilterLabel">
          <property name="text">
-          <string>Anisotropic filtering  :</string>
+          <string>Anisotropic filtering :</string>
          </property>
         </widget>
        </item>
@@ -166,24 +169,28 @@
      <item row="1" column="1">
       <widget class="QComboBox" name="snd_capture"/>
      </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="sampleRateLabel">
-       <property name="text">
-        <string>Sample rate :</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_5">
+     <item>
       <widget class="QCheckBox" name="snd_efx">
        <property name="layoutDirection">
-        <enum>Qt::RightToLeft</enum>
+        <enum>Qt::LeftToRight</enum>
        </property>
        <property name="text">
         <string>Enable EFX</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
+     <item>
+      <widget class="QLabel" name="sampleRateLabel">
+       <property name="text">
+        <string>Sample rate :</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QSpinBox" name="snd_samplerate"/>
      </item>
     </layout>
@@ -211,6 +218,85 @@
    </item>
    <item>
     <widget class="QComboBox" name="ctrl_joystick"/>
+   </item>
+   <item>
+    <widget class="Line" name="line_6">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_6">
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>Network</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <layout class="QFormLayout" name="formLayout_2">
+       <property name="fieldGrowthPolicy">
+        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+       </property>
+       <item row="0" column="0">
+        <widget class="QLabel" name="connectionTypeLabel">
+         <property name="text">
+          <string>Connection type :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="connectionTypeComboBox"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="connectionSpeedLabel">
+         <property name="text">
+          <string>Connection speed :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="connectionSpeedComboBox"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QFormLayout" name="formLayout_6">
+       <property name="fieldGrowthPolicy">
+        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+       </property>
+       <item row="0" column="0">
+        <widget class="QLabel" name="forceLocalPortLabel">
+         <property name="text">
+          <string>Force local port :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="forceLocalPortLineEdit"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="forceIPAddressLabel">
+         <property name="text">
+          <string>Force IP address :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLineEdit" name="forceIPAddressLineEdit"/>
+       </item>
+      </layout>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="Line" name="line_5">
