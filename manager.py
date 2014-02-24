@@ -1100,7 +1100,13 @@ def scheme_handler(o_link, app=None):
         mod = ModInfo2(settings['mods'][scheme_state['params'][0]])
         
     if scheme_state['action'] == 'run':
-        
+        splash.label.setText('Launching FS2...')
+
+        signals.fs2_launched.connect(app.quit)
+
+         
+
+        app.processEvents()
         
         run_mod(mod)
     elif scheme_state['action'] == 'install':
@@ -1218,8 +1224,16 @@ def scheme_handler(o_link, app=None):
         
         #This one is needed to pass an argument to run mod (can't do that directly from the Qt callback)
         def do_run():
+            splash.show()
             write_config()
             settings_win.close()
+            splash.label.setText('Launching FS2...')
+
+            signals.fs2_launched.connect(app.quit)
+
+         
+
+            app.processEvents()
             run_mod(mod)
             
         
