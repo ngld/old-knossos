@@ -1174,7 +1174,37 @@ def scheme_handler(o_link, app=None):
             else:
                 new_joystick_id = "{0}".format(settings_win.ctrl_joystick.currentIndex() - 1)
             config.set('Default', 'CurrentJoystick', new_joystick_id)
+            
+            #Set networking
+            net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
+            new_net_connection = net_types[settings_win.net_type.currentIndex()]
+            config.set('Default', 'NetworkConnection', new_net_connection)
+            
+            net_speeds = {0: 'none', 1: 'Slow', 2: '56K', 3: 'ISDN', 4: 'Cable', 5: 'Fast'}
+            new_net_speed = net_speeds[settings_win.net_speed.currentIndex()]
+            config.set('Default', 'ConnectionSpeed', new_net_speed)
+            
+            new_net_ip = settings_win.net_ip.text()
+            if new_net_ip == '...':
+                new_net_ip = ''
+            config.set('Network', 'CustomIP', new_net_ip)
+            if config.get('Network', 'CustomIP') == '':
+                config.remove_option('Network', 'CustomIP')
+            
+            new_net_port = settings_win.net_port.text()
+            if new_net_port == '0':
+                new_net_port = ''
+            config.set('Default', 'ForcePort', new_net_port)
+            if config.get('Default', 'ForcePort') == '':
+                config.remove_option('Default', 'ForcePort')
+            
+            #A bit of cleanup
+            if config.items('Sound') == []:
+                config.remove_section('Sound')
                 
+            if config.items('Network') == []:
+                config.remove_section('Network')
+            
             config.write(open(os.path.join(config_path, 'fs2_open.ini'), 'w'))
             
             #FS2 is unable to cope with spaces around "=", and Python2 insists on putting them.
@@ -1199,7 +1229,7 @@ def scheme_handler(o_link, app=None):
         settings_win = util.init_ui(Ui_Settings(), QtGui.QDialog(splash))
         settings_win.setModal(True)
         
-        settings_win.pushButton.setText("Command line flags for : {0}".format(mod.name))
+        settings_win.cmdButton.setText("Command line flags for : {0}".format(mod.name))
         
         #This is temporary : it will be better handled as soon as all mods use a default build
         #Binary selection combobox logic here
@@ -1251,6 +1281,9 @@ def scheme_handler(o_link, app=None):
         
         if not config.has_section('Sound'):
             config.add_section('Sound')
+            
+        if not config.has_section('Network'):
+            config.add_section('Network')
         
         #video variables
         rawres = None
@@ -1270,6 +1303,12 @@ def scheme_handler(o_link, app=None):
         
         #joystick variable
         joystick_id = None
+        
+        #network variables
+        net_connection = None
+        net_speed = None
+        net_ip = None
+        net_port = None
         
         #Check if we already have the config sections :
         if config.has_section('Default'):
@@ -1319,9 +1358,30 @@ def scheme_handler(o_link, app=None):
             except ConfigParser.NoOptionError:
                 print("")
                 
-            #Try to load sound settings from the INI file :
+            #Try to load joystick settings from the INI file :
             try:
                 joystick_id = config.get('Default', 'CurrentJoystick')
+            except ConfigParser.NoOptionError:
+                print("")
+                
+            #Try to load network settings from the INI file :
+            try:
+                net_connection = config.get('Default', 'NetworkConnection')
+            except ConfigParser.NoOptionError:
+                print("")
+                
+            try:
+                net_speed = config.get('Default', 'ConnectionSpeed')
+            except ConfigParser.NoOptionError:
+                print("")
+                
+            try:
+                net_port = config.get('Default', 'ForcePort')
+            except ConfigParser.NoOptionError:
+                print("")
+                
+            try:
+                net_ip = config.get('Network', 'CustomIP')
             except ConfigParser.NoOptionError:
                 print("")
 
@@ -1499,6 +1559,34 @@ def scheme_handler(o_link, app=None):
         if joysticks == []:
             settings_win.ctrl_joystick.setEnabled(False)
             
+        #---Network settings---
+        
+        settings_win.net_type.addItems(["None", "Dialup", "Broadband/LAN"])
+        net_connections_read = {"none": 0, "dialup": 1, "LAN": 2}
+        if net_connection in net_connections_read:
+            index = net_connections_read[net_connection]
+        else:
+            index = 2
+             
+        settings_win.net_type.setCurrentIndex(index)
+        
+        
+        settings_win.net_speed.addItems(["None", "28k modem", "56k modem", "ISDN", "DSL", "Cable/LAN"])
+        net_speeds_read = {"none": 0, "Slow": 1, "56K": 2, "ISDN": 3, "Cable": 4, "Fast": 5}
+        if net_speed in net_speeds_read:
+            index = net_speeds_read[net_speed]
+        else:
+            index = 5
+             
+        settings_win.net_speed.setCurrentIndex(index)
+        
+        
+        settings_win.net_ip.setInputMask('000.000.000.000')
+        settings_win.net_ip.setText(net_ip)
+        
+        
+        settings_win.net_port.setInputMask('00000')
+        settings_win.net_port.setText(net_port)
         
         
         settings_win.runButton.clicked.connect(do_run)
