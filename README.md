@@ -10,7 +10,8 @@ To run this script you'll need the following:
 * [PySide][pyside] or [PyQt4][pyqt]
 * [Six][six]
 * [7zip][7z] (IMPORTANT: This script needs the full implementation, i.e. ```p7zip-full``` _and_ ```p7zip-rar``` on Ubuntu
-* [Pyglet][pyglet]  pip install --upgrade http://pyglet.googlecode.com/archive/tip.zip )
+)
+* [Pyglet][pyglet]  ```pip install --upgrade http://pyglet.googlecode.com/archive/tip.zip```
 
 The following commands should install everything you need:
 * Ubuntu: ```apt-get install python3 python3-pyside.qtcore python3-pyside.qtgui python3-six p7zip-full p7zip-rar```
