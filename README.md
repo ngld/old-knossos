@@ -11,7 +11,7 @@ To run this script you'll need the following:
 * [Six][six]
 * [7zip][7z] (IMPORTANT: This script needs the full implementation, i.e. ```p7zip-full``` _and_ ```p7zip-rar``` on Ubuntu
 )
-* [Pyglet][pyglet]  ```pip install --upgrade http://pyglet.googlecode.com/archive/tip.zip```
+* [Pyglet][pyglet]  1.2```pip install --upgrade http://pyglet.googlecode.com/archive/tip.zip```
 
 The following commands should install everything you need:
 * Ubuntu: ```apt-get install python3 python3-pyside.qtcore python3-pyside.qtgui python3-six p7zip-full p7zip-rar```
@@ -43,6 +43,6 @@ The icon is borrowed from [Hard Light][hl].
 [six]: https://pypi.python.org/pypi/six/
 [7z]: http://www.7-zip.org/
 [pyi]: http://pyinstaller.org/
-
+[pyglet]: http://pyglet.org/download.html
 [hl]: http://www.hard-light.net/
 [onefile]: http://dev.tproxy.de/fs2/fs2mod-py.exe
