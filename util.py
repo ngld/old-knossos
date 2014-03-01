@@ -302,3 +302,11 @@ def vercmp(a, b):
         return 1
     else:
         return -1
+
+
+def is_number(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
