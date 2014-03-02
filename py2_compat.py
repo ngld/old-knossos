@@ -17,8 +17,6 @@ import warnings as _warnings
 import tempfile
 import subprocess
 import six
-import ConfigParser
-from cStringIO import StringIO
 
 if six.PY3:
     raise RuntimeError('py2_compat was imported even though we are running python 3!!!')
@@ -107,16 +105,5 @@ class TemporaryDirectory(object):
             pass
 
 
-class _ConfigParser(ConfigParser.ConfigParser):
-    def write(self, fp, spaces=True):
-        if not spaces:
-            temp = StringIO()
-            super(ConfigParser, self).write(temp)
-            fp.write(temp.getvalue())
-        else:
-            super(ConfigParser, self).write(fp)
-
-
 tempfile.TemporaryDirectory = TemporaryDirectory
-ConfigParser.ConfigParser = _ConfigParser
 subprocess.DEVNULL = open(_os.devnull, 'wb')
