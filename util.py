@@ -308,5 +308,5 @@ def is_number(s):
     try:
         int(s)
         return True
-    except ValueError:
+    except TypeError:
         return False

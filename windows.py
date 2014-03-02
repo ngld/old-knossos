@@ -1,11 +1,25 @@
+## Copyright 2014 ngld <ngld@tproxy.de>
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+
 import os
 import sys
 import glob
+import logging
 import util
 import clibs
 import manager
-from six.moves.configparser import ConfigParser
-from qt import QtGui
+from qt import QtCore, QtGui
 from ui.settings import Ui_Dialog as Ui_Settings
 
 
@@ -13,10 +27,12 @@ class SettingsWindow(object):
     win = None
     config = None
     mod = None
+    _app = None
     
     def __init__(self, mod, app=None):
         if manager.splash is not None:
             parent = manager.splash
+            self._app = app
         else:
             parent = manager.main_win
         
@@ -69,81 +85,59 @@ class SettingsWindow(object):
                 self.win.build.setEnabled(False)
         
         # ---Read fs2_open.ini---
-        # Set default_section to non-existant section to prevent special treatment for the [Default] section.
-        self.config = config = ConfigParser(inline_comment_prefixes=(';',), default_section='we_have_no_defaults', interpolation=None)
-        
-        # Need to set ConfigParser.SafeConfigParser.optionxform() because it completely breaks the case ok FS2 ini keys
-        config.optionxform = lambda x: x
         config_file = os.path.expanduser('~/.fs2_open/fs2_open.ini')
         
         # USELESS : win* platforms will do it in a completely different way as this config is stored in the REGISTRY.
         if sys.platform.startswith('win'):
             config_file = os.path.join(manager.settings['fs2_path'], 'data/fs2_open.ini')
-
-        config.read(config_file)
-
-        if not config.has_section('Sound'):
-            config.add_section('Sound')
+        
+        self.config = config = QtCore.QSettings(config_file, QtCore.QSettings.IniFormat)
+        
+        # Be careful with any change, the keys are all case sensitive.
+        config.beginGroup('Default')
+        
+        # video settings
+        if config.contains('VideocardFs2open'):
+            rawres = config.value('VideocardFs2open')
+            res = rawres.split('(')[1].split(')')[0]
+            res_width, res_height = res.split('x')
+            depth = rawres.split(')x')[1][0:2]
             
-        if not config.has_section('Network'):
-            config.add_section('Network')
-
-        # video variables
-        res_width = None
-        res_height = None
-        depth = None
-        texfilter = None
-        af = None
-        aa = None
-
-        # sound variables
-        playback_device = None
-        capture_device = None
-        sample_rate = None
-        enable_efx = None
-
-        # joystick variable
-        joystick_id = None
-
-        # network variables
-        net_connection = None
-        net_speed = None
-        net_ip = None
-        net_port = None
-
-        # Check if we already have the config sections:
-        if config.has_section('Default'):
-            # Be careful with any change, they are all case sensitive.
-            # Try to load video settings from the INI file:
-            
-            if 'VideocardFs2open' in config['Default']:
-                rawres = config.get('Default', 'VideocardFs2open')
-                res = rawres.split('(')[1].split(')')[0]
-                res_width, res_height = res.split('x')
-                depth = rawres.split(')x')[1][0:2]
-                
-                try:
-                    res_width = int(res_width)
-                    res_height = int(res_height)
-                except ValueError:
-                    res_width = res_height = None
-            
-            texfilter = config.get('Default', 'TextureFilter', fallback=None)
-            af = config.get('Default', 'OGL_AnisotropicFilter', fallback=None)
-            aa = config.get('Default', 'OGL_AntiAliasSamples', fallback=None)
-            
-            playback_device = config.get('Sound', 'PlaybackDevice', fallback=None)
-            capture_device = config.get('Sound', 'CaptureDevice', fallback=None)
-            enable_efx = config.get('Sound', 'EnableEFX', fallback=None)
-            sample_rate = config.get('Sound', 'SampleRate', fallback=None)
-                
-            joystick_id = config.get('Default', 'CurrentJoystick', fallback=None)
-                
-            net_connection = config.get('Default', 'NetworkConnection', fallback=None)
-            net_speed = config.get('Default', 'ConnectionSpeed', fallback=None)
-            net_port = config.get('Default', 'ForcePort', fallback=None)
-            net_ip = config.get('Network', 'CustomIP', fallback=None)
-
+            try:
+                res_width = int(res_width)
+                res_height = int(res_height)
+            except TypeError:
+                res_width = res_height = None
+        else:
+            res_width = None
+            res_height = None
+            depth = None
+        
+        texfilter = config.value('TextureFilter', None)
+        af = config.value('OGL_AnisotropicFilter', None)
+        aa = config.value('OGL_AntiAliasSamples', None)
+        
+        # joysticks
+        joystick_id = config.value('CurrentJoystick', None)
+        
+        # network settings
+        net_connection = config.value('NetworkConnection', None)
+        net_speed = config.value('ConnectionSpeed', None)
+        net_port = config.value('ForcePort', None)
+        
+        config.endGroup()
+        net_ip = config.value('Network/CustomIP', None)
+        
+        config.beginGroup('Sound')
+        
+        # sound settings
+        playback_device = config.value('PlaybackDevice', None)
+        capture_device = config.value('CaptureDevice', None)
+        enable_efx = config.value('EnableEFX', None)
+        sample_rate = config.value('SampleRate', None)
+        
+        config.endGroup()
+        
         # ---Video settings---
         # Screen resolution
         raw_modes = clibs.get_modes()
@@ -168,12 +162,12 @@ class SettingsWindow(object):
         # Texture filter
         self.win.vid_texfilter.addItems(['Bilinear', 'Trilinear'])
 
-        # If the SCP adds a new texture filder, we should change that part
         try:
             index = int(texfilter)
-        except ValueError:
+        except TypeError:
             index = 0
         
+        # If the SCP adds a new texture filder, we should change this part.
         if index > 1:
             index = 0
         self.win.vid_texfilter.setCurrentIndex(index)
@@ -199,22 +193,24 @@ class SettingsWindow(object):
             snd_devs, snd_default, snd_captures, snd_default_capture = clibs.list_audio_devs()
             
             for name in snd_devs:
-                self.win.snd_playback.addItem(name.decode('utf8'))
+                self.win.snd_playback.addItem(name)
             
-            index = self.win.snd_playback.findText(playback_device.decode('utf8'))
-            if index == -1:
-                index = self.win.snd_playback.findText(snd_default.decode('utf8'))
+            if playback_device is not None:
+                index = self.win.snd_playback.findText(playback_device)
+                if index == -1:
+                    index = self.win.snd_playback.findText(snd_default)
             
             if index != -1:
                 self.win.snd_playback.setCurrentIndex(index)
             
             # Fill input device combobox:
             for name in snd_captures:
-                self.win.snd_capture.addItem(name.decode('utf8'))
-                
-            index = self.win.snd_capture.findText(capture_device.decode('utf8'))
-            if index == -1:
-                index = self.win.snd_capture.findText(snd_default_capture.decode('utf8'))
+                self.win.snd_capture.addItem(name)
+            
+            if capture_device is not None:
+                index = self.win.snd_capture.findText(capture_device)
+                if index == -1:
+                    index = self.win.snd_capture.findText(snd_default_capture)
             
             if index != -1:
                 self.win.snd_capture.setCurrentIndex(index)
@@ -245,7 +241,7 @@ class SettingsWindow(object):
         
         self.win.ctrl_joystick.addItem('No Joystick')
         for joystick in joysticks:
-            self.win.ctrl_joystick.addItem(joystick.decode('utf8'))
+            self.win.ctrl_joystick.addItem(joystick)
 
         if util.is_number(joystick_id):
             if joystick_id == '99999':
@@ -257,7 +253,6 @@ class SettingsWindow(object):
         else:
             self.win.ctrl_joystick.setCurrentIndex(0)
 
-        # Joystick selection disabled for now
         if len(joysticks) == 0:
             self.win.ctrl_joystick.setEnabled(False)
             
@@ -287,85 +282,88 @@ class SettingsWindow(object):
         self.win.net_port.setInputMask('00000')
         self.win.net_port.setText(net_port)
     
-    def update_config(self):
+    def write_config(self):
         config = self.config
+        config.beginGroup('Default')
         
         # Getting ready to write key=value pairs to the ini file
         # Set video
         new_res_width, new_res_height = self.win.vid_res.currentText().split(' (')[0].split(' x ')
         new_depth = self.win.vid_depth.currentText().split('-')[0]
         new_res = 'OGL -({0}x{1})x{2} bit'.format(new_res_width, new_res_height, new_depth)
-        config.set('Default', 'VideocardFs2open', new_res)
+        config.setValue('VideocardFs2open', new_res)
         
-        new_texfilter = str(self.win.vid_texfilter.currentIndex())
-        config.set('Default', 'TextureFilter', new_texfilter)
+        new_texfilter = self.win.vid_texfilter.currentIndex()
+        config.setValue('TextureFilter', new_texfilter)
         
         new_aa = self.win.vid_aa.currentText().split('x')[0]
-        config.set('Default', 'OGL_AntiAliasSamples', new_aa)
+        config.setValue('OGL_AntiAliasSamples', new_aa)
         
         new_af = self.win.vid_af.currentText().split('x')[0]
-        config.set('Default', 'OGL_AnisotropicFilter', new_af)
+        config.setValue('OGL_AnisotropicFilter', new_af)
         
-        # Set sound :
+        config.endGroup()
+        
+        # sound
         new_playback_device = self.win.snd_playback.currentText()
         # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device ? Why ?
         # ^ So I do it the way openal is supposed to work, but I'm not sure FS2 really behaves that way
-        config.set('Sound', 'PlaybackDevice', new_playback_device)
-        config.set('Default', 'SoundDeviceOAL', new_playback_device)
+        config.setValue('Sound/PlaybackDevice', new_playback_device)
+        config.setValue('Default/SoundDeviceOAL', new_playback_device)
         # ^ Useless according to SCP members, but wxlauncher does it anyway
         
         new_capture_device = self.win.snd_capture.currentText()
-        config.set('Sound', 'CaptureDevice', new_capture_device)
+        config.setValue('Sound/CaptureDevice', new_capture_device)
         
         if self.win.snd_efx.isChecked() is True:
             new_enable_efx = '1'
         else:
             new_enable_efx = '0'
-        config.set('Sound', 'EnableEFX', new_enable_efx)
+        config.setValue('Sound/EnableEFX', new_enable_efx)
         
         new_sample_rate = self.win.snd_samplerate.value()
-        config.set('Sound', 'SampleRate', new_sample_rate)
+        config.setValue('Sound/SampleRate', new_sample_rate)
         
-        # Set joystick
+        # joystick
         if self.win.ctrl_joystick.currentText() == 'No Joystick':
             new_joystick_id = '99999'
         else:
-            new_joystick_id = str(self.win.ctrl_joystick.currentIndex() - 1)
-        config.set('Default', 'CurrentJoystick', new_joystick_id)
+            new_joystick_id = self.win.ctrl_joystick.currentIndex() - 1
+        config.setValue('Default/CurrentJoystick', new_joystick_id)
         
-        # Set networking
+        # networking
         net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
         new_net_connection = net_types[self.win.net_type.currentIndex()]
-        config.set('Default', 'NetworkConnection', new_net_connection)
+        config.setValue('Default/NetworkConnection', new_net_connection)
         
         net_speeds = {0: 'none', 1: 'Slow', 2: '56K', 3: 'ISDN', 4: 'Cable', 5: 'Fast'}
         new_net_speed = net_speeds[self.win.net_speed.currentIndex()]
-        config.set('Default', 'ConnectionSpeed', new_net_speed)
+        config.setValue('Default/ConnectionSpeed', new_net_speed)
         
         new_net_ip = self.win.net_ip.text()
         if new_net_ip == '...':
             new_net_ip = ''
-        config.set('Network', 'CustomIP', new_net_ip)
-        if config.get('Network', 'CustomIP') == '':
-            config.remove_option('Network', 'CustomIP')
+        
+        if new_net_ip == '':
+            config.remove('Network/CustomIP')
+        else:
+            config.setValue('Network/CustomIP', new_net_ip)
         
         new_net_port = self.win.net_port.text()
         if new_net_port == '0':
             new_net_port = ''
-        config.set('Default', 'ForcePort', new_net_port)
-        if config.get('Default', 'ForcePort') == '':
-            config.remove_option('Default', 'ForcePort')
         
-        # A bit of cleanup
-        if config.items('Sound') == []:
-            config.remove_section('Sound')
-            
-        if config.items('Network') == []:
-            config.remove_section('Network')
+        if new_net_port == '':
+            config.remove('Default/ForcePort')
+        else:
+            config.setValue('Default/ForcePort', new_net_port)
         
-        # TODO: Write
+        # Save the new configuration.
+        config.sync()
 
     def run_mod(self):
+        logging.info('Launching...')
+        
         if manager.splash is not None:
             manager.splash.show()
         
@@ -374,7 +372,7 @@ class SettingsWindow(object):
         
         if manager.splash is not None:
             manager.splash.label.setText('Launching FS2...')
-            manager.signals.fs2_launched.connect(manager.app.quit)
-            manager.app.processEvents()
+            manager.signals.fs2_launched.connect(self._app.quit)
+            self._app.processEvents()
         
         manager.run_mod(self.mod)

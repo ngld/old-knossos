@@ -1117,6 +1117,7 @@ def scheme_handler(o_link, app=None):
             app.quit()
     elif scheme_state['action'] == 'settings':
         swin = SettingsWindow(mod, app)
+        swin.win.exec_()
     else:
         QtGui.QMessageBox.critical(None, 'fs2mod-py', 'The action "%s" is unknown!' % (scheme_state['action']))
         app.quit()

@@ -1,5 +1,19 @@
+## Copyright 2014 ngld <ngld@tproxy.de>
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+
+import logging
 import ctypes.util
-import atexit
 
 
 class SDL_Rect(ctypes.Structure):
@@ -29,25 +43,19 @@ def load_lib(*names):
     raise Exception(names[0] + ' could not be found!')
 
 
-def check_result(val):
-    if val != 0:
-        raise sdl.SDL_GetError()
-
-
-# TODO: Fix this.
 def double_zero_string(val):
     global alc
     
-    val = ctypes.cast(val, ctypes.POINTER(ctypes.c_char))
     off = 0
     data = []
     while val and val[off]:
-        slen = alc.strlen(val[off])
-        data.append(val[off:off + slen])
+        slen = alc.strlen(val)
+        if val[off] == b'\x00':
+            break
         
+        data.append(val[off:off + slen].decode('utf8'))
         off += slen
     
-    #alc.free(val)
     return data
 
 
@@ -57,62 +65,70 @@ SDL_INIT_JOYSTICK = 0x00000200
 SDL_HWSURFACE     = 0x00000001
 SDL_FULLSCREEN    = 0x80000000
 
-# Load SDL
-sdl = load_lib('SDL', 'libSDL-1.2.so.0')
-sdl.SDL_GetError.restype = ctypes.c_char_p
-sdl.SDL_Init.restype = check_result
-sdl.SDL_ListModes.restype = ctypes.POINTER(ctypes.POINTER(SDL_Rect))
-sdl.SDL_JoystickName.restype = ctypes.c_char_p
-
-# Init SDL
-sdl.SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK)
-atexit.register(sdl.SDL_Quit)
-
 # OpenAL constants
 ALC_DEFAULT_DEVICE_SPECIFIER         = 0x1004
 ALC_DEVICE_SPECIFIER                 = 0x1005
 ALC_CAPTURE_DEVICE_SPECIFIER         = 0x310
 ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER = 0x311
 
+# Load SDL
+sdl = load_lib('SDL', 'libSDL-1.2.so.0')
+sdl.SDL_GetError.restype = ctypes.c_char_p
+sdl.SDL_ListModes.restype = ctypes.POINTER(ctypes.POINTER(SDL_Rect))
+sdl.SDL_JoystickName.restype = ctypes.c_char_p
+
 # Load OpenAL
-alc = load_lib('openal', 'OpenAL')
-#alc.alcIsExtensionPresent.argtypes = (ctypes.c_int, ctypes.c_char_p)
+alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL')
 alc.alcIsExtensionPresent.restype = ctypes.c_bool
-#alc.alcGetString.argtypes = (ctypes.c_int, ctypes.c_int)
-alc.alcGetString.restype = double_zero_string
+alc.alcGetString.restype = ctypes.POINTER(ctypes.c_char)
 
 
 def get_modes():
+    if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0:
+        logging.error('Failed to init SDL\'s video subsystem!')
+        logging.error(sdl.SDL_GetError())
+        return []
+    
     modes = sdl.SDL_ListModes(None, SDL_FULLSCREEN | SDL_HWSURFACE)
-
+    my_modes = []
+    
     for mode in modes:
         if not mode:
             break
         
         rect = mode[0]
-        yield (rect.w, rect.h)
+        my_modes.append((rect.w, rect.h))
+    
+    sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
+    return my_modes
 
 
 def list_joysticks():
+    if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
+        logging.error('Failed to init SDL\'s joystick subsystem!')
+        logging.error(sdl.SDL_GetError())
+        return []
+    
     joys = []
     for i in range(sdl.SDL_NumJoysticks()):
-        joys.append(sdl.SDL_JoystickName(i))
+        joys.append(sdl.SDL_JoystickName(i).decode('utf8'))
     
+    sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
     return joys
 
 
 def can_detect_audio():
-    # Hmm, actually not allowed to pass NULL to alcIsExtensionPresent..
-    # how is this supposed to work? -> Hellzed: same question. Weird.
-    return True #alc.alcIsExtensionPresent(None, 'ALC_ENUMERATION_EXT')
+    return True  # alc.alcIsExtensionPresent(None, 'ALC_ENUMERATION_EXT')
 
 
 def list_audio_devs():
-    devs = alc.alcGetString(None, ALC_DEVICE_SPECIFIER)
-    default = alc.alcGetString(None, ALC_DEFAULT_DEVICE_SPECIFIER)[0]
+    devs = double_zero_string(alc.alcGetString(None, ALC_DEVICE_SPECIFIER))
+    default = alc.alcGetString(None, ALC_DEFAULT_DEVICE_SPECIFIER)
     
-    captures = alc.alcGetString(None, ALC_CAPTURE_DEVICE_SPECIFIER)
-    default_capture = alc.alcGetString(None, ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)[0]
+    captures = double_zero_string(alc.alcGetString(None, ALC_CAPTURE_DEVICE_SPECIFIER))
+    default_capture = alc.alcGetString(None, ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)
     
-    print(devs, default, captures, default_capture)
+    default = ctypes.cast(default, ctypes.c_char_p).value.decode('utf8')
+    default_capture = ctypes.cast(default_capture, ctypes.c_char_p).value.decode('utf8')
+    
     return devs, default, captures, default_capture
