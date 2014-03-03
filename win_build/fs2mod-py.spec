@@ -33,7 +33,12 @@ for i in reversed(idx):
 
 pyz = PYZ(a.pure)
 
-a.datas += [('7z.exe', '7z.exe', 'BINARY'), ('7z.dll', '7z.dll', 'BINARY'), ('commit', 'commit', 'DATA'), ('hlp.png', '../hlp.png', 'DATA')]
+a.datas += [('7z.exe', '7z.exe', 'BINARY'),
+            ('7z.dll', '7z.dll', 'BINARY'),
+            ('commit', 'commit', 'DATA'),
+            ('hlp.png', '../hlp.png', 'DATA'),
+            ('SDL.dll', 'SDL.dll', 'BINARY'),
+            ('openal.dll', 'openal.dll', 'BINARY')]
 
 if onefile:
   exe = EXE(pyz, a.scripts, a.binaries, a.zipfiles, a.datas,
