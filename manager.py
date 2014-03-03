@@ -25,6 +25,7 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(m
 import os
 import pickle
 import subprocess
+import threading
 import stat
 import glob
 import time
@@ -57,6 +58,7 @@ progress_win = None
 unity_launcher = None
 installed = None
 shared_files = {}
+fs2_watcher = None
 pmaster = progress.Master()
 settings = {
     'fs2_bin': None,
@@ -76,6 +78,8 @@ if sys.platform.startswith('win'):
 
 class _SignalContainer(QtCore.QObject):
     fs2_launched = QtCore.Signal()
+    fs2_failed = QtCore.Signal(int)
+    fs2_quit = QtCore.Signal()
     list_updated = QtCore.Signal()
 
 signals = _SignalContainer()
@@ -91,7 +95,43 @@ class MainWindow(QtGui.QMainWindow):
                         unity_launcher.set_property("urgent", False)
     
         return super(MainWindow, self).changeEvent(event)
+
+
+class Fs2Watcher(threading.Thread):
+    def __init__(self):
+        super(Fs2Watcher, self).__init__()
+        
+        self.daemon = True
+        self.start()
     
+    def run(self):
+        global settings, fs2_watcher
+        
+        fs2_bin = os.path.join(settings['fs2_path'], settings['fs2_bin'])
+        mode = os.stat(fs2_bin).st_mode
+        if mode & stat.S_IXUSR != stat.S_IXUSR:
+            # Make it executable.
+            os.chmod(fs2_bin, mode | stat.S_IXUSR)
+        
+        p = subprocess.Popen([fs2_bin], cwd=settings['fs2_path'])
+
+        time.sleep(0.5)
+        if p.poll() is not None:
+            signals.fs2_failed.emit(p.returncode)
+            self.failed_msg(p)
+            return
+        
+        signals.fs2_launched.emit()
+        p.wait()
+        signals.fs2_quit.emit()
+    
+    @util.run_in_qt
+    def failed_msg(self, p):
+        global main_win, settings
+        
+        msg = 'Starting FS2 Open (%s) failed! (return code: %d)' % (os.path.join(settings['fs2_path'], settings['fs2_bin']), p.returncode)
+        QtGui.QMessageBox.critical(main_win, 'Failed', msg)
+
     
 def run_task(task, cb=None):
     def wrapper():
@@ -251,19 +291,10 @@ def select_fs2_path_handler():
 
 
 def run_fs2():
-    fs2_bin = os.path.join(settings['fs2_path'], settings['fs2_bin'])
-    mode = os.stat(fs2_bin).st_mode
-    if mode & stat.S_IXUSR != stat.S_IXUSR:
-        # Make it executable.
-        os.chmod(fs2_bin, mode | stat.S_IXUSR)
-
-    p = subprocess.Popen([fs2_bin], cwd=settings['fs2_path'])
-
-    time.sleep(0.5)
-    if p.poll() is not None:
-        QtGui.QMessageBox.critical(main_win, 'Failed', 'Starting FS2 Open (%s) failed! (return code: %d)' % (os.path.join(settings['fs2_path'], settings['fs2_bin']), p.returncode))
+    global fs2_watcher
     
-    signals.fs2_launched.emit()
+    if fs2_watcher is None or not fs2_watcher.is_alive():
+        fs2_watcher = Fs2Watcher()
 
 
 # Mod tab

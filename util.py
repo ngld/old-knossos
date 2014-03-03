@@ -270,15 +270,15 @@ class SignalContainer(QtCore.QObject):
 
 # This wrapper makes sure that the wrapped function is always run in the QT main thread.
 def run_in_qt(func):
-    signal = SignalContainer()
+    cont = SignalContainer()
     
     def dispatcher(*args):
-        signal.emit(args)
+        cont.signal.emit(args)
     
     def listener(params):
         func(*params)
     
-    signal.connect(listener)
+    cont.signal.connect(listener)
     
     return dispatcher
 

@@ -147,6 +147,8 @@ class Master(object):
         
         for w in self._workers:
             w.join()
+        
+        self._workers = []
     
     def _get_work(self):
         while True:
