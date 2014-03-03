@@ -866,10 +866,13 @@ def init():
             os.chdir(sys._MEIPASS)
         else:
             os.chdir(os.path.dirname(sys.executable))
-
+        
         if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
             util.SEVEN_PATH = os.path.abspath('7z.exe')
     else:
+        if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
+            util.SEVEN_PATH = os.path.abspath('7z.exe')
+        
         my_path = os.path.dirname(__file__)
         if my_path != '':
             os.chdir(my_path)

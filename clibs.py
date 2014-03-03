@@ -40,10 +40,9 @@ def load_lib(*names):
     
     for name in names:
         if '.' not in name:
-            name = ctypes.util.find_library(name)
-            if name is None:
-                continue
-        
+            libname = ctypes.util.find_library(name)
+            if libname is not None:
+                name = libname
         try:
             return ctypes.cdll.LoadLibrary(name)
         except OSError as e:
@@ -59,14 +58,17 @@ def double_zero_string(val):
     off = 0
     data = []
     while val and val[off]:
-        slen = alc.strlen(val)
         if val[off] == b'\x00':
             break
         
+        slen = libc.strlen(val)
         data.append(val[off:off + slen].decode('utf8'))
         off += slen
     
     return data
+
+
+libc = load_lib('c')
 
 # Load SDL
 try:
