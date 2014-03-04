@@ -28,15 +28,6 @@ import subprocess
 import stat
 import glob
 import time
-
-#To read and write fs2_open.ini :
-import ConfigParser
-#To get available display and joystick options :
-import pyglet
-#Sound stuff
-import ctypes
-from pyglet.media.drivers.openal import lib_alc as alc
-
 import six
 import progress
 import util
@@ -49,10 +40,9 @@ from ui.gogextract import Ui_Dialog as Ui_Gogextract
 from ui.select_list import Ui_Dialog as Ui_SelectList
 from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from ui.splash import Ui_MainWindow as Ui_Splash
-from ui.settings import Ui_Dialog as Ui_Settings
 from fs2mod import ModInfo2
 from tasks import *
-
+from windows import SettingsWindow
 
 
 try:
@@ -150,6 +140,7 @@ def show_tab(a, b, tab):
     global main_win
     main_win.tabs.setCurrentIndex(tab)
     main_win.activateWindow()
+
     
 def go_to_hlp(a, b, tab):
     QtGui.QDesktopServices.openUrl("http://www.hard-light.net/")
@@ -875,10 +866,13 @@ def init():
             os.chdir(sys._MEIPASS)
         else:
             os.chdir(os.path.dirname(sys.executable))
-
+        
         if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
             util.SEVEN_PATH = os.path.abspath('7z.exe')
     else:
+        if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
+            util.SEVEN_PATH = os.path.abspath('7z.exe')
+        
         my_path = os.path.dirname(__file__)
         if my_path != '':
             os.chdir(my_path)
@@ -1079,7 +1073,7 @@ def scheme_handler(o_link, app=None):
             scheme_state['list_fetched'] = True
             task = fetch_list()
             task.done.connect(recall)
-            return            
+            return
         
         if installed is None:
             task = get_installed()
@@ -1101,11 +1095,7 @@ def scheme_handler(o_link, app=None):
         
     if scheme_state['action'] == 'run':
         splash.label.setText('Launching FS2...')
-
         signals.fs2_launched.connect(app.quit)
-
-         
-
         app.processEvents()
         
         run_mod(mod)
@@ -1129,487 +1119,8 @@ def scheme_handler(o_link, app=None):
             QtGui.QMessageBox.infomation(None, 'fs2mod-py', 'MOD "%s" is already installed!' % (mod.name))
             app.quit()
     elif scheme_state['action'] == 'settings':
-        #This function should be moved as a callback somewhere else, globally accessible :
-        def is_number(s):
-                try:
-                    int(s)
-                    return True
-                except ValueError:
-                    return False
-                    
-        def write_config():
-            #Getting ready to write key=value pairs to the ini file :
-            #Set video :
-            new_res_width, new_res_height = settings_win.vid_res.currentText().split(' (')[0].split(' x ')
-            new_depth = settings_win.vid_depth.currentText().split('-')[0]
-            new_res = "OGL -({0}x{1})x{2} bit".format(new_res_width, new_res_height, new_depth)
-            config.set('Default', 'VideocardFs2open', new_res)
-            
-            new_texfilter = str(settings_win.vid_texfilter.currentIndex())
-            config.set('Default', 'TextureFilter', new_texfilter) 
-            
-            new_aa = settings_win.vid_aa.currentText().split('x')[0]
-            config.set('Default', 'OGL_AntiAliasSamples', new_aa)
-            
-            new_af = settings_win.vid_af.currentText().split('x')[0]
-            config.set('Default', 'OGL_AnisotropicFilter', new_af)
-            
-            #Set sound :
-            new_playback_device = settings_win.snd_playback.currentText().encode('utf_8')
-            # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device ? Why ?
-            # ^ So I do it the way openal is supposed to work, but I'm not sure FS2 really behaves that way
-            config.set('Sound', 'PlaybackDevice', new_playback_device)
-            config.set('Default', 'SoundDeviceOAL', new_playback_device)
-            # ^ Useless according to SCP members, but wxlauncher does it anyway
-            
-            new_capture_device = settings_win.snd_capture.currentText().encode('utf_8')
-            config.set('Sound', 'CaptureDevice', new_capture_device)
-            
-            if settings_win.snd_efx.isChecked() == True:
-                new_enable_efx = "1"
-            else:
-                new_enable_efx = "0"
-            config.set('Sound', 'EnableEFX', new_enable_efx)
-            
-            new_sample_rate = "{0}".format(settings_win.snd_samplerate.value())
-            config.set('Sound', 'SampleRate', new_sample_rate)
-            
-            #Set joystick
-            if settings_win.ctrl_joystick.currentText() == "No Joystick":
-                new_joystick_id = "99999"
-            else:
-                new_joystick_id = "{0}".format(settings_win.ctrl_joystick.currentIndex() - 1)
-            config.set('Default', 'CurrentJoystick', new_joystick_id)
-            
-            #Set networking
-            net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
-            new_net_connection = net_types[settings_win.net_type.currentIndex()]
-            config.set('Default', 'NetworkConnection', new_net_connection)
-            
-            net_speeds = {0: 'none', 1: 'Slow', 2: '56K', 3: 'ISDN', 4: 'Cable', 5: 'Fast'}
-            new_net_speed = net_speeds[settings_win.net_speed.currentIndex()]
-            config.set('Default', 'ConnectionSpeed', new_net_speed)
-            
-            new_net_ip = settings_win.net_ip.text()
-            if new_net_ip == '...':
-                new_net_ip = ''
-            config.set('Network', 'CustomIP', new_net_ip)
-            if config.get('Network', 'CustomIP') == '':
-                config.remove_option('Network', 'CustomIP')
-            
-            new_net_port = settings_win.net_port.text()
-            if new_net_port == '0':
-                new_net_port = ''
-            config.set('Default', 'ForcePort', new_net_port)
-            if config.get('Default', 'ForcePort') == '':
-                config.remove_option('Default', 'ForcePort')
-            
-            #A bit of cleanup
-            if config.items('Sound') == []:
-                config.remove_section('Sound')
-                
-            if config.items('Network') == []:
-                config.remove_section('Network')
-            
-            config.write(open(os.path.join(config_path, 'fs2_open.ini'), 'w'))
-            
-            #FS2 is unable to cope with spaces around "=", and Python2 insists on putting them.
-            #Python3 is much better : config.write(file, False), and spaces are not written in the first place.
-            #This code strips these spaces :
-            s = open(os.path.join(config_path, 'fs2_open.ini')).read()
-            s = s.replace(' = ', '=')
-            f = open(os.path.join(config_path, 'fs2_open.ini'), 'w')
-            f.write(s)
-            f.close()
-        
-        #This one is needed to pass an argument to run mod (can't do that directly from the Qt callback)
-        def do_run():
-            splash.show()
-            write_config()
-            settings_win.close()
-            splash.label.setText('Launching FS2...')
-
-            signals.fs2_launched.connect(app.quit)
-
-         
-
-            app.processEvents()
-            run_mod(mod)
-            
-        
-        
-        
-        #This should be moved into a function or a class, globally accessible. But where ?
-        settings_win = util.init_ui(Ui_Settings(), QtGui.QDialog(splash))
-        settings_win.setModal(True)
-        
-        settings_win.cmdButton.setText("Command line flags for : {0}".format(mod.name))
-        
-        #This is temporary : it will be better handled as soon as all mods use a default build
-        #Binary selection combobox logic here
-        fs2_path = settings['fs2_path']
-
-        if fs2_path is not None and os.path.isdir(fs2_path):
-            settings['fs2_path'] = os.path.abspath(fs2_path)
-
-            bins = glob.glob(os.path.join(fs2_path, 'fs2_open_*'))
-            
-            for i, path in enumerate(bins):
-                    path = os.path.basename(path)
-                    settings_win.build.addItem(path)
-                    
-            if len(bins) == 1:
-                # Found only one binary, select it by default.
-                
-                settings_win.build.setEnabled(False)
-           
-        #---Read fs2_open.ini---
-        config = ConfigParser.ConfigParser()
-        
-        #Need to set ConfigParser.SafeConfigParser.optionxform() because it completely breaks the case ok FS2 ini keys :
-        config.optionxform=str
-        
-        
-        #USELESS : win* platforms will do it in a completely different way as this config is stored in the REGISTRY.
-        config_path = os.path.expanduser('~/.fs2_open')
-        config_file = os.path.join(config_path, 'fs2_open.ini')
-        
-        if sys.platform.startswith('win'):
-            config_path = os.path.expandvars('$APPDATA/fs2_open')
-        
-        #Python2 ConfigParser being unable to deal with the [Default] section, we do it manually
-        if not os.path.isfile(config_file):
-            with open(config_file, 'w') as new_ini :
-                new_ini.write('[Default]')
-        else:
-            with open(config_file, 'r') as new_ini :
-                erase = True
-                for line in new_ini:
-                    if '[Default]' in line :
-                        erase = False
-        if erase:
-            with open(config_file, 'w') as new_ini :
-                new_ini.write('[Default]')
-                
-        config.read(config_file)
-        
-        if not config.has_section('Sound'):
-            config.add_section('Sound')
-            
-        if not config.has_section('Network'):
-            config.add_section('Network')
-        
-        #video variables
-        rawres = None
-        res = None
-        res_width = None
-        res_height = None
-        depth = None
-        texfilter = None
-        af = None
-        aa = None
-        
-        #sound variables
-        playback_device = None
-        capture_device = None
-        sample_rate = None
-        enable_efx = None
-        
-        #joystick variable
-        joystick_id = None
-        
-        #network variables
-        net_connection = None
-        net_speed = None
-        net_ip = None
-        net_port = None
-        
-        #Check if we already have the config sections :
-        if config.has_section('Default'):
-            #Be careful with any change, they are all case sensitive
-            #Try to load video settings from the INI file :
-            try:
-                rawres = config.get('Default', 'VideocardFs2open')
-                res = rawres.split('(')[1].split(')')[0]
-                res_width,res_height = res.split("x")
-                depth = rawres.split(")x")[1][0:2]
-            except ConfigParser.NoOptionError:
-                print("")
-            
-            try:
-                texfilter = config.get('Default', 'TextureFilter')
-            except ConfigParser.NoOptionError:
-                print("")
-                
-            try:  
-                af = config.get('Default', 'OGL_AnisotropicFilter')
-            except ConfigParser.NoOptionError:
-                print("")
-                
-            try:
-                aa = config.get('Default', 'OGL_AntiAliasSamples')
-            except ConfigParser.NoOptionError:
-                print("")
-            
-            #Try to load sound settings from the INI file :   
-            try:
-                playback_device = config.get('Sound', 'PlaybackDevice')
-            except ConfigParser.NoOptionError:
-                print("")
-                
-            try:
-                capture_device = config.get('Sound', 'CaptureDevice')
-            except ConfigParser.NoOptionError:
-                print("")
-            
-            try:
-                enable_efx = config.get('Sound', 'EnableEFX')
-            except ConfigParser.NoOptionError:
-                print("")    
-                
-            try:
-                sample_rate = config.get('Sound', 'SampleRate')
-            except ConfigParser.NoOptionError:
-                print("")
-                
-            #Try to load joystick settings from the INI file :
-            try:
-                joystick_id = config.get('Default', 'CurrentJoystick')
-            except ConfigParser.NoOptionError:
-                print("")
-                
-            #Try to load network settings from the INI file :
-            try:
-                net_connection = config.get('Default', 'NetworkConnection')
-            except ConfigParser.NoOptionError:
-                print("")
-                
-            try:
-                net_speed = config.get('Default', 'ConnectionSpeed')
-            except ConfigParser.NoOptionError:
-                print("")
-                
-            try:
-                net_port = config.get('Default', 'ForcePort')
-            except ConfigParser.NoOptionError:
-                print("")
-                
-            try:
-                net_ip = config.get('Network', 'CustomIP')
-            except ConfigParser.NoOptionError:
-                print("")
-
-        #---Video settings---
-        #Screen resolution
-        platform = pyglet.window.get_platform()
-        display = platform.get_default_display()
-        screen = display.get_default_screen()
-        raw_modes = screen.get_modes()
-        modes = []
-        for i, mode in enumerate(raw_modes):
-            if not (mode.width, mode.height) in modes :
-                if not ((mode.width < 800) or (mode.height < 600)):
-                    modes.append((mode.width, mode.height))
-                
-        def get_ratio(w, h):
-            w = int(w)
-            h = int(h)
-            ratio = (1.0*w/h)
-            ratio = "{:.1f}".format(ratio)
-            if ratio == "1.3":
-                ratio_string = "4:3"
-            elif ratio == "1.6":
-                ratio_string = "16:10"
-            elif ratio == "1.8":
-                ratio_string = "16:9"
-            else:
-                ratio_string = "custom"
-            return ratio_string
-        
-        for i, (width, height) in enumerate(modes):    
-            settings_win.vid_res.addItem("{0} x {1} ({2})".format(width, height, get_ratio(width, height)))
-            
-        if is_number(res_width) and is_number(res_height):
-            index = settings_win.vid_res.findText("{0} x {1} ({2})".format(res_width, res_height, get_ratio(res_width, res_height)))
-        else:
-            index = -1
-            
-        if index == -1:
-            index = 0
-        settings_win.vid_res.setCurrentIndex(index)
-        
-        #Screen depth
-        settings_win.vid_depth.addItems(["32-bit","16-bit"])
-        
-        index = settings_win.vid_depth.findText("{0}-bit".format(depth))
-        if index == -1:
-            index = 0
-        settings_win.vid_depth.setCurrentIndex(index)
-        
-        #Texture filter
-        settings_win.vid_texfilter.addItems(["Bilinear","Trilinear"])
-        
-        #If the SCP adds a new texture filder, we should change that part :
-        if texfilter == "1":
-            index = 1
-        elif texfilter == "0":
-            index = 0
-        else:
-            index = 0
-        settings_win.vid_texfilter.setCurrentIndex(index)
-        
-        #Antialiasing
-        settings_win.vid_aa.addItems(["Off","2x","4x","8x","16x"])
-        
-        index = settings_win.vid_aa.findText("{0}x".format(aa))
-        if index == -1:
-            index = 0        
-        settings_win.vid_aa.setCurrentIndex(index)
-        
-        #Anisotropic filtering
-        settings_win.vid_af.addItems(["Off","1x","2x","4x","8x","16x"])
-        
-        index = settings_win.vid_af.findText("{0}x".format(af))
-        if index == -1:
-            index = 0  
-        settings_win.vid_af.setCurrentIndex(index)
-        
-        #---Sound settings---
-        
-        #Use pyglet to get the devices lists :
-        
-        #(utility function)
-        def split_nul_strings(s):
-            # NUL-separated list of strings, double-NUL-terminated.
-            nul = False
-            i = 0
-            while True:
-                if s[i] == '\0':
-                    if nul:
-                        break
-                    else:
-                        nul = True
-                else:
-                    nul = False
-                i += 1
-            s = s[:i - 1]
-            return s.split('\0')
-        if alc.alcIsExtensionPresent(None, 'ALC_ENUMERATION_EXT'):
-            # Hmm, actually not allowed to pass NULL to alcIsExtension present..
-            # how is this supposed to work? -> Hellzed : same question. Weird.
-            #Fill output device combobox :
-            snd_devices = split_nul_strings(alc.alcGetString(None, alc.ALC_DEVICE_SPECIFIER))
-            for i, snd_device in enumerate(snd_devices):
-                settings_win.snd_playback.addItem("{0}".format(snd_device).decode('utf_8'))
-                
-            index = settings_win.snd_playback.findText("{0}".format(playback_device).decode('utf_8'))
-            if index == -1:
-                default_device = ctypes.cast(alc.alcGetString(None, alc.ALC_DEFAULT_DEVICE_SPECIFIER), ctypes.c_char_p).value
-                index = settings_win.snd_playback.findText("{0}".format(default_device).decode('utf_8'))
-            if index == -1:
-                index = 0
-            settings_win.snd_playback.setCurrentIndex(index)
-            
-            #Fill intput device combobox : 
-            snd_capture_devices = split_nul_strings(alc.alcGetString(None, alc.ALC_CAPTURE_DEVICE_SPECIFIER))
-            for i, snd_capture_device in enumerate(snd_capture_devices):    
-                settings_win.snd_capture.addItem("{0}".format(snd_capture_device).decode('utf_8'))
-                
-            index = settings_win.snd_capture.findText("{0}".format(capture_device).decode('utf_8'))
-            if index == -1:
-                default_capture_device = ctypes.cast(alc.alcGetString(None, alc.ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER), ctypes.c_char_p).value
-                index = settings_win.snd_capture.findText("{0}".format(default_capture_device).decode('utf_8'))
-            if index == -1:
-                index = 0
-            settings_win.snd_capture.setCurrentIndex(index)
-            
-            #Fill sample rate textbox :
-            settings_win.snd_samplerate.setMinimum(0)
-            settings_win.snd_samplerate.setMaximum(1000000)
-            settings_win.snd_samplerate.setSingleStep(100)
-            settings_win.snd_samplerate.setSuffix(" Hz")
-            
-            if is_number(sample_rate):
-                sample_rate = int(sample_rate)
-                if sample_rate>0 and sample_rate<1000000:
-                    settings_win.snd_samplerate.setValue(sample_rate)
-                else:
-                    settings_win.snd_samplerate.setValue(44100)
-            else:
-                settings_win.snd_samplerate.setValue(44100)
-                    
-            
-            #Fill EFX checkbox :
-            if enable_efx == "1":
-                settings_win.snd_efx.setChecked(True)
-            else:
-                settings_win.snd_efx.setChecked(False)
-                 
-        #---Joystick settings---
-        #joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
-        joysticks = []
-        joysticks = pyglet.input.get_joysticks()
-        
-        settings_win.ctrl_joystick.addItem("No Joystick")  
-        for i, joystick in enumerate(joysticks):    
-            settings_win.ctrl_joystick.addItem("{0}".format(joystick.device.name).decode('utf_8'))
-        
-          
-            
-        if is_number(joystick_id):
-            if joystick_id == "99999":
-                index = settings_win.ctrl_joystick.findText("No Joystick")
-                settings_win.ctrl_joystick.setCurrentIndex(index)
-            else:
-                settings_win.ctrl_joystick.setCurrentIndex(int(joystick_id) + 1)
-                if settings_win.ctrl_joystick.currentText() == "":
-                    index = settings_win.ctrl_joystick.findText("No Joystick")
-                    settings_win.ctrl_joystick.setCurrentIndex(index)
-        else:
-            index = settings_win.ctrl_joystick.findText("No Joystick")
-            settings_win.ctrl_joystick.setCurrentIndex(index)        
-        
-        #Joystick selection disabled for now
-        if joysticks == []:
-            settings_win.ctrl_joystick.setEnabled(False)
-            
-        #---Network settings---
-        
-        settings_win.net_type.addItems(["None", "Dialup", "Broadband/LAN"])
-        net_connections_read = {"none": 0, "dialup": 1, "LAN": 2}
-        if net_connection in net_connections_read:
-            index = net_connections_read[net_connection]
-        else:
-            index = 2
-             
-        settings_win.net_type.setCurrentIndex(index)
-        
-        
-        settings_win.net_speed.addItems(["None", "28k modem", "56k modem", "ISDN", "DSL", "Cable/LAN"])
-        net_speeds_read = {"none": 0, "Slow": 1, "56K": 2, "ISDN": 3, "Cable": 4, "Fast": 5}
-        if net_speed in net_speeds_read:
-            index = net_speeds_read[net_speed]
-        else:
-            index = 5
-             
-        settings_win.net_speed.setCurrentIndex(index)
-        
-        
-        settings_win.net_ip.setInputMask('000.000.000.000')
-        settings_win.net_ip.setText(net_ip)
-        
-        
-        settings_win.net_port.setInputMask('00000')
-        settings_win.net_port.setText(net_port)
-        
-        
-        settings_win.runButton.clicked.connect(do_run)
-        settings_win.cancelButton.clicked.connect(settings_win.close)
-        settings_win.destroyed.connect(app.quit)
-        
-        splash.hide()
-        settings_win.show()
-        
+        swin = SettingsWindow(mod, app)
+        swin.win.exec_()
     else:
         QtGui.QMessageBox.critical(None, 'fs2mod-py', 'The action "%s" is unknown!' % (scheme_state['action']))
         app.quit()

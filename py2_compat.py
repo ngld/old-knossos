@@ -104,5 +104,6 @@ class TemporaryDirectory(object):
         except self._os_error:
             pass
 
+
 tempfile.TemporaryDirectory = TemporaryDirectory
 subprocess.DEVNULL = open(_os.devnull, 'wb')
