@@ -83,18 +83,17 @@ class SettingsWindow(object):
             if len(bins) == 1:
                 # Found only one binary, select it by default.
                 self.win.build.setEnabled(False)
-        
-        # ---Read fs2_open.ini---
-        config_file = os.path.expanduser('~/.fs2_open/fs2_open.ini')
-        
-        # USELESS : win* platforms will do it in a completely different way as this config is stored in the REGISTRY.
+
+        # ---Read fs2_open.ini or the registry---
         if sys.platform.startswith('win'):
-            config_file = os.path.join(manager.settings['fs2_path'], 'data/fs2_open.ini')
-        
-        self.config = config = QtCore.QSettings(config_file, QtCore.QSettings.IniFormat)
+            self.config = config = QtCore.QSettings("HKEY_LOCAL_MACHINE\\Software\\Volition\\Freespace2", QtCore.QSettings.NativeFormat)
+        else:
+            config_file = os.path.expanduser('~/.fs2_open/fs2_open.ini')
+            self.config = config = QtCore.QSettings(config_file, QtCore.QSettings.IniFormat)
         
         # Be careful with any change, the keys are all case sensitive.
-        config.beginGroup('Default')
+        if not sys.platform.startswith('win'):
+            config.beginGroup('Default')
         
         # video settings
         if config.contains('VideocardFs2open'):
@@ -124,8 +123,9 @@ class SettingsWindow(object):
         net_connection = config.value('NetworkConnection', None)
         net_speed = config.value('ConnectionSpeed', None)
         net_port = config.value('ForcePort', None)
+        if not sys.platform.startswith('win'):
+            config.endGroup()
         
-        config.endGroup()
         net_ip = config.value('Network/CustomIP', None)
         
         config.beginGroup('Sound')
@@ -284,7 +284,12 @@ class SettingsWindow(object):
     
     def write_config(self):
         config = self.config
-        config.beginGroup('Default')
+        
+        if sys.platform.startswith('win'):
+            section = ''
+        else:
+            config.beginGroup('Default')
+            section = 'Default/'
         
         # Getting ready to write key=value pairs to the ini file
         # Set video
@@ -302,23 +307,24 @@ class SettingsWindow(object):
         new_af = self.win.vid_af.currentText().split('x')[0]
         config.setValue('OGL_AnisotropicFilter', new_af)
         
-        config.endGroup()
+        if not sys.platform.startswith('win'):
+            config.endGroup()
         
         # sound
         new_playback_device = self.win.snd_playback.currentText()
         # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device ? Why ?
         # ^ So I do it the way openal is supposed to work, but I'm not sure FS2 really behaves that way
         config.setValue('Sound/PlaybackDevice', new_playback_device)
-        config.setValue('Default/SoundDeviceOAL', new_playback_device)
+        config.setValue(section + 'SoundDeviceOAL', new_playback_device)
         # ^ Useless according to SCP members, but wxlauncher does it anyway
         
         new_capture_device = self.win.snd_capture.currentText()
         config.setValue('Sound/CaptureDevice', new_capture_device)
         
         if self.win.snd_efx.isChecked() is True:
-            new_enable_efx = '1'
+            new_enable_efx = 1
         else:
-            new_enable_efx = '0'
+            new_enable_efx = 0
         config.setValue('Sound/EnableEFX', new_enable_efx)
         
         new_sample_rate = self.win.snd_samplerate.value()
@@ -326,19 +332,19 @@ class SettingsWindow(object):
         
         # joystick
         if self.win.ctrl_joystick.currentText() == 'No Joystick':
-            new_joystick_id = '99999'
+            new_joystick_id = 99999
         else:
             new_joystick_id = self.win.ctrl_joystick.currentIndex() - 1
-        config.setValue('Default/CurrentJoystick', new_joystick_id)
+        config.setValue(section + 'CurrentJoystick', new_joystick_id)
         
         # networking
         net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
         new_net_connection = net_types[self.win.net_type.currentIndex()]
-        config.setValue('Default/NetworkConnection', new_net_connection)
+        config.setValue(section + 'NetworkConnection', new_net_connection)
         
         net_speeds = {0: 'none', 1: 'Slow', 2: '56K', 3: 'ISDN', 4: 'Cable', 5: 'Fast'}
         new_net_speed = net_speeds[self.win.net_speed.currentIndex()]
-        config.setValue('Default/ConnectionSpeed', new_net_speed)
+        config.setValue(section + 'ConnectionSpeed', new_net_speed)
         
         new_net_ip = self.win.net_ip.text()
         if new_net_ip == '...':
@@ -354,9 +360,9 @@ class SettingsWindow(object):
             new_net_port = ''
         
         if new_net_port == '':
-            config.remove('Default/ForcePort')
+            config.remove(section + 'ForcePort')
         else:
-            config.setValue('Default/ForcePort', new_net_port)
+            config.setValue(section + 'ForcePort', int(new_net_port))
         
         # Save the new configuration.
         config.sync()
