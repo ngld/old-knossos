@@ -42,6 +42,8 @@ from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from ui.splash import Ui_MainWindow as Ui_Splash
 from fs2mod import ModInfo2
 from tasks import *
+from windows import SettingsWindow
+
 
 try:
     from gi.repository import Unity, Dbusmenu
@@ -49,7 +51,7 @@ except ImportError:
     # Can't find Unity.
     Unity = None
 
-VERSION = '0.1'
+VERSION = '0.2-alpha'
 main_win = None
 progress_win = None
 unity_launcher = None
@@ -138,6 +140,10 @@ def show_tab(a, b, tab):
     global main_win
     main_win.tabs.setCurrentIndex(tab)
     main_win.activateWindow()
+
+    
+def go_to_hlp(a, b, tab):
+    QtGui.QDesktopServices.openUrl("http://www.hard-light.net/")
 
 
 def do_gog_extract():
@@ -860,10 +866,13 @@ def init():
             os.chdir(sys._MEIPASS)
         else:
             os.chdir(os.path.dirname(sys.executable))
-
+        
         if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
             util.SEVEN_PATH = os.path.abspath('7z.exe')
     else:
+        if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
+            util.SEVEN_PATH = os.path.abspath('7z.exe')
+        
         my_path = os.path.dirname(__file__)
         if my_path != '':
             os.chdir(my_path)
@@ -989,16 +998,21 @@ def main():
         item_add_repo = Dbusmenu.Menuitem.new()
         item_add_repo.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Add Source')
         item_add_repo.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_hlp = Dbusmenu.Menuitem.new()
+        item_hlp.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Browse mods online')
+        item_hlp.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
         
         item_fs2.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 0)
         item_mods.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 1)
         item_settings.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 2)
         item_add_repo.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, ql_add_repo, 2)
+        item_hlp.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, go_to_hlp, 2)
         
         ql.child_append(item_fs2)
         ql.child_append(item_mods)
         ql.child_append(item_settings)
         ql.child_append(item_add_repo)
+        ql.child_append(item_hlp)
         
         unity_launcher.set_property('quicklist', ql)
     
@@ -1016,7 +1030,7 @@ def main():
 
 scheme_state = {}
 def scheme_handler(o_link, app=None):
-    global progress_win, splash, scheme_state
+    global settings, progress_win, splash, scheme_state
     
     def recall():
         scheme_handler(o_link, app)
@@ -1053,7 +1067,7 @@ def scheme_handler(o_link, app=None):
         app.quit()
         return
     
-    if scheme_state['action'] in ('run', 'install'):
+    if scheme_state['action'] in ('run', 'install', 'settings'):
         if settings['mods'] is None or len(settings['mods']) == 0:
             splash.label.setText('Fetching mod list...')
             scheme_state['list_fetched'] = True
@@ -1078,12 +1092,12 @@ def scheme_handler(o_link, app=None):
             return
         
         mod = ModInfo2(settings['mods'][scheme_state['params'][0]])
-    
+        
     if scheme_state['action'] == 'run':
         splash.label.setText('Launching FS2...')
         signals.fs2_launched.connect(app.quit)
-        
         app.processEvents()
+        
         run_mod(mod)
     elif scheme_state['action'] == 'install':
         splash.label.setText('Installing %s...' % (mod.name))
@@ -1104,6 +1118,9 @@ def scheme_handler(o_link, app=None):
         else:
             QtGui.QMessageBox.infomation(None, 'fs2mod-py', 'MOD "%s" is already installed!' % (mod.name))
             app.quit()
+    elif scheme_state['action'] == 'settings':
+        swin = SettingsWindow(mod, app)
+        swin.win.exec_()
     else:
         QtGui.QMessageBox.critical(None, 'fs2mod-py', 'The action "%s" is unknown!' % (scheme_state['action']))
         app.quit()

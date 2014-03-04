@@ -38,6 +38,8 @@ if [ ! -d _w ]; then
     download pyinstaller.tar.gz "https://pypi.python.org/packages/source/P/PyInstaller/PyInstaller-2.1.tar.gz"
     download upx.zip "http://upx.sourceforge.net/download/upx391w.zip"
     download 7z-inst.exe "http://downloads.sourceforge.net/sevenzip/7z920.exe"
+    download SDL.zip "http://libsdl.org/release/SDL-1.2.15-win32.zip"
+    download openal.zip "http://kcat.strangesoft.net/openal-soft-1.15.1-bin.zip"
     
     echo "==> Installing Python..."
     wine msiexec /i python.msi
@@ -72,8 +74,17 @@ if [ ! -d _w ]; then
     mv tmp/7z.{exe,dll} .
     rm -r tmp
     
+    echo "==> Unpacking SDL..."
+    unzip SDL.zip
+    rm README-SDL.txt
+    
+    echo "==> Unpacking OpenAL..."
+    unzip openal.zip
+    mv openal-soft-*/Win32/soft_oal.dll openal.dll
+    rm -r openal-soft-*
+    
     echo "==> Cleaning up..."
-    rm python.msi pywin32.exe pyside.exe get-pip.py pyinstaller.tar.gz 7z-inst.exe
+    rm python.msi pywin32.exe pyside.exe get-pip.py pyinstaller.tar.gz 7z-inst.exe SDL.zip openal.zip
 fi
 
 echo "Building..."

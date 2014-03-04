@@ -12,7 +12,7 @@ To run this script you'll need the following:
 * [7zip][7z] (IMPORTANT: This script needs the full implementation, i.e. ```p7zip-full``` _and_ ```p7zip-rar``` on Ubuntu)
 
 The following commands should install everything you need:
-* Ubuntu: ```apt-get install python3 python3-pyside.qtcore python3-pyside.qtgui python3-six p7zip-full p7zip-rar```
+* Ubuntu: ```apt-get install python3 python3-pyside.qtcore python3-pyside.qtgui python3-six p7zip-full p7zip-rar libsdl1.2debian```
 * Arch Linux: ```pacman -S python python-pyqt4 python-six p7zip``` (You can replace the ```python-pyqt4``` package with the ```python-pyside``` package, if you want to.)
 
 ## Usage
