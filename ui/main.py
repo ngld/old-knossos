@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Sun Feb 23 11:46:49 2014
+# Created: Thu Mar  6 00:34:36 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -31,6 +31,9 @@ class Ui_MainWindow(object):
         self.select = QtGui.QPushButton(self.fs2)
         self.select.setObjectName("select")
         self.verticalLayout_2.addWidget(self.select)
+        self.fs2Settings = QtGui.QPushButton(self.fs2)
+        self.fs2Settings.setObjectName("fs2Settings")
+        self.verticalLayout_2.addWidget(self.fs2Settings)
         self.fs2_bin = QtGui.QLabel(self.fs2)
         self.fs2_bin.setObjectName("fs2_bin")
         self.verticalLayout_2.addWidget(self.fs2_bin)
@@ -120,13 +123,14 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(2)
+        self.tabs.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "Mod Manager", None, QtGui.QApplication.UnicodeUTF8))
         self.gogextract.setText(QtGui.QApplication.translate("MainWindow", "Install FS2 with the GOG installer", None, QtGui.QApplication.UnicodeUTF8))
         self.select.setText(QtGui.QApplication.translate("MainWindow", "Select installed FS2 (Open)", None, QtGui.QApplication.UnicodeUTF8))
+        self.fs2Settings.setText(QtGui.QApplication.translate("MainWindow", "FS2 Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.fs2_bin.setText(QtGui.QApplication.translate("MainWindow", "Selected FS2: ...", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.fs2), QtGui.QApplication.translate("MainWindow", "FS2", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("MainWindow", "Select mods to install them or deselect them to uninstall them. Click on a mod\'s name to get more information about it.", None, QtGui.QApplication.UnicodeUTF8))

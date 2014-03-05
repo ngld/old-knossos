@@ -55,6 +55,7 @@ except ImportError:
 VERSION = '0.2-alpha'
 main_win = None
 progress_win = None
+splash = None
 unity_launcher = None
 installed = None
 shared_files = {}
@@ -163,6 +164,7 @@ def init_fs2_tab():
         main_win.tabs.setTabEnabled(1, False)
         main_win.tabs.setCurrentIndex(0)
         main_win.fs2_bin.hide()
+        main_win.fs2Settings.setDisabled(True)
     else:
         fs2_path = settings['fs2_path']
         if settings['fs2_bin'] is not None:
@@ -172,6 +174,7 @@ def init_fs2_tab():
         main_win.tabs.setCurrentIndex(1)
         main_win.fs2_bin.show()
         main_win.fs2_bin.setText('Selected FS2 Open: ' + os.path.normcase(fs2_path))
+        main_win.fs2Settings.setDisabled(False)
         
         update_list()
 
@@ -495,6 +498,9 @@ def select_mod(item, col):
 
 def run_mod(mod):
     global installed
+    
+    if mod is None:
+        return run_fs2()
     
     modpath = util.ipath(os.path.join(settings['fs2_path'], mod.folder))
     ini = None
@@ -889,6 +895,10 @@ def update_enforce_deps():
     save_settings()
 
 
+def show_fs2settings():
+    SettingsWindow(None)
+
+
 def init():
     global settings
     
@@ -1004,6 +1014,7 @@ def main():
     
     main_win.enforceDeps.setCheckState(QtCore.Qt.Checked if settings['enforce_deps'] else QtCore.Qt.Unchecked)
     main_win.enforceDeps.stateChanged.connect(update_enforce_deps)
+    main_win.fs2Settings.clicked.connect(show_fs2settings)
     
     # NOTE: Assign the model to a variable to prevent a segfault with PySide. (WTF?!)
     m = main_win.sourceList.model()

@@ -23,7 +23,30 @@ from qt import QtCore, QtGui
 from ui.settings import Ui_Dialog as Ui_Settings
 
 
-class SettingsWindow(object):
+# Keep references to all open windows to prevent the GC from deleting them.
+_open_wins = []
+
+
+class Window(object):
+    win = None
+    
+    def open(self):
+        global _open_wins
+        
+        _open_wins.append(self)
+        self.win.closed.connect(self._del)
+        self.win.show()
+    
+    def close(self):
+        self.win.close()
+    
+    def _del(self):
+        global _open_wins
+        
+        _open_wins.remove(self)
+
+
+class SettingsWindow(Window):
     win = None
     config = None
     mod = None
@@ -37,10 +60,14 @@ class SettingsWindow(object):
             parent = manager.main_win
         
         self.mod = mod
-        self.win = util.init_ui(Ui_Settings(), QtGui.QDialog(parent))
+        self.win = util.init_ui(Ui_Settings(), util.QDialog(parent))
         self.win.setModal(True)
-
-        self.win.cmdButton.setText('Command line flags for : {0}'.format(mod.name))
+        
+        if mod is None:
+            self.win.cmdButton.hide()
+        else:
+            self.win.cmdButton.setText('Command line flags for : {0}'.format(mod.name))
+        
         self.read_config()
         
         self.win.runButton.clicked.connect(self.run_mod)
@@ -50,7 +77,7 @@ class SettingsWindow(object):
             self.win.destroyed.connect(app.quit)
             manager.splash.hide()
         
-        self.win.show()
+        self.open()
     
     def get_ratio(self, w, h):
         w = int(w)

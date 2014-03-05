@@ -20,7 +20,7 @@ import subprocess
 import six
 import progress
 from six.moves.urllib.request import urlopen, Request
-from qt import QtCore
+from qt import QtCore, QtGui
 
 
 SEVEN_PATH = '7z'
@@ -30,6 +30,14 @@ ARCHIVE_FORMATS = ('zip', 'tar', 'split', 'rar', 'lzma', 'iso', 'hfs', 'gzip', '
                    'cpio', 'bzip2', 'bz2', '7z', 'z', 'arj', 'cab', 'lzh', 'chm',
                    'nsis', 'deb', 'rpm', 'udf', 'wim', 'xar')
 QUIET = False
+
+
+class QDialog(QtGui.QDialog):
+    closed = QtCore.Signal()
+    
+    def closeEvent(self, e):
+        self.closed.emit()
+        e.accept()
 
 
 def call(*args, **kwargs):
