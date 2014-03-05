@@ -44,9 +44,9 @@ if [ ! -d _w ]; then
     echo "==> Installing Python..."
     wine msiexec /i python.msi
     
-    pushd _w/drive_c/windows > /dev/null
+    cd _w/drive_c/windows
     ln -s ../Python27/python.exe .
-    popd > /dev/null
+    cd ../../..
     
     echo "==> Installing pywin32..."
     wine pywin32.exe
