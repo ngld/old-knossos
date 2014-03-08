@@ -14,14 +14,16 @@
 
 import os
 import sys
-import glob
 import logging
+import glob
+import shlex
+import stat
 import util
 import clibs
 import manager
 from qt import QtCore, QtGui
 from ui.settings import Ui_Dialog as Ui_Settings
-
+from ui.flags import Ui_Dialog as Ui_Flags
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -35,19 +37,23 @@ class Window(object):
         
         _open_wins.append(self)
         self.win.closed.connect(self._del)
+        self.win.finished.connect(self._del)
         self.win.show()
     
     def close(self):
         self.win.close()
     
     def _del(self):
+        # Make sure all events are processed.
+        QtCore.QTimer.singleShot(3, self._del2)
+    
+    def _del2(self):
         global _open_wins
         
         _open_wins.remove(self)
 
 
 class SettingsWindow(Window):
-    win = None
     config = None
     mod = None
     _app = None
@@ -64,10 +70,11 @@ class SettingsWindow(Window):
         self.win.setModal(True)
         
         if mod is None:
-            self.win.cmdButton.hide()
+            self.win.cmdButton.setText('Default command line flags')
         else:
-            self.win.cmdButton.setText('Command line flags for : {0}'.format(mod.name))
+            self.win.cmdButton.setText('Command line flags for: {0}'.format(mod.name))
         
+        self.win.cmdButton.clicked.connect(self.show_flagwin)
         self.read_config()
         
         self.win.runButton.clicked.connect(self.run_mod)
@@ -409,3 +416,168 @@ class SettingsWindow(Window):
             self._app.processEvents()
         
         manager.run_mod(self.mod)
+    
+    def show_flagwin(self):
+        FlagsWindow(self.win, self.mod)
+
+
+class FlagsWindow(Window):
+    _flags = None
+    _selected = None
+    _mod = None
+    
+    def __init__(self, parent=None, mod=None):
+        super(FlagsWindow, self).__init__()
+        
+        self._selected = []
+        self._mod = mod
+        
+        self.win = util.init_ui(Ui_Flags(), util.QDialog(parent))
+        self.win.setModal(True)
+        
+        self.win.easySetup.activated.connect(self._set_easy)
+        self.win.easySetup.activated.connect(self.update_display)
+        self.win.listType.activated.connect(self._update_list)
+        self.win.customFlags.textEdited.connect(self.update_display)
+        self.win.flagList.itemClicked.connect(self.update_display)
+        
+        self.win.accepted.connect(self.save)
+        
+        self.read_flags()
+        self.open()
+        
+        if mod is None or mod.name not in manager.settings['cmdlines']:
+            if '#default' in manager.settings['cmdlines']:
+                self.set_selection(manager.settings['cmdlines']['#default'])
+        else:
+            self.set_selection(manager.settings['cmdlines'][mod.name])
+    
+    def read_flags(self):
+        fs2_bin = os.path.join(manager.settings['fs2_path'], manager.settings['fs2_bin'])
+        flags_path = os.path.join(manager.settings['fs2_path'], 'flags.lch')
+        mode = os.stat(fs2_bin).st_mode
+        
+        if mode & stat.S_IXUSR != stat.S_IXUSR:
+            # Make it executable.
+            os.chmod(fs2_bin, mode | stat.S_IXUSR)
+        
+        # TODO: Shouldn't we cache the flags?
+        # Right now FS2 will be called every time this window opens...
+        util.call([fs2_bin, '-get_flags'])
+        
+        if not os.path.isfile(flags_path):
+            logging.error('Could not find the flags file "%s"!', flags_path)
+            
+            self.win.easySetup.setDisabled(True)
+            self.win.listType.setDisabled(True)
+            self.win.flagList.setDisabled(True)
+            return None
+        
+        with open(flags_path, 'rb') as stream:
+            flags = util.FlagsReader(stream)
+        
+        for key, name in flags.easy_flags.items():
+            self.win.easySetup.addItem(name, key)
+        
+        self._flags = flags.flags
+        for name in self._flags:
+            self.win.listType.addItem(name)
+        
+        self._update_list(save_selection=False)
+    
+    def _set_easy(self):
+        if self._flags is None:
+            return
+        
+        combo = self.win.easySetup
+        cur_mode = combo.itemData(combo.currentIndex())
+        
+        # Update self._selected.
+        self.get_selection()
+        
+        for flags in self._flags.values():
+            for info in flags:
+                if info['on_flags'] & cur_mode == cur_mode and info['name'] not in self._selected:
+                    self._selected.append(info['name'])
+                
+                if info['off_flags'] & cur_mode == cur_mode and info['name'] in self._selected:
+                    self._selected.remove(info['name'])
+        
+        self._update_list(save_selection=False)
+    
+    def _update_list(self, idx=None, save_selection=True):
+        if self._flags is None:
+            return
+        
+        cur_type = self.win.listType.currentText()
+        
+        if save_selection:
+            # Remember the currently selected options.
+            self.get_selection()
+        
+        self.win.flagList.clear()
+        for flag in self._flags[cur_type]:
+            label = flag['desc']
+            if label == '':
+                label = flag['name']
+            
+            item = QtGui.QListWidgetItem(label)
+            item.setData(QtCore.Qt.UserRole, flag['name'])
+            if flag['name'] in self._selected:
+                item.setCheckState(QtCore.Qt.Checked)
+            else:
+                item.setCheckState(QtCore.Qt.Unchecked)
+            
+            self.win.flagList.addItem(item)
+    
+    def get_selection(self):
+        count = self.win.flagList.count()
+        
+        for i in range(count):
+            item = self.win.flagList.item(i)
+            flag = item.data(QtCore.Qt.UserRole)
+            if item.checkState() == QtCore.Qt.Checked:
+                if flag not in self._selected:
+                    self._selected.append(flag)
+            else:
+                if flag in self._selected:
+                    self._selected.remove(flag)
+        
+        try:
+            custom = shlex.split(self.win.customFlags.text())
+        except ValueError:
+            # Invalid user input...
+            custom = []
+        
+        return self._selected + custom
+    
+    def update_display(self):
+        fs2_bin = os.path.join(manager.settings['fs2_path'], manager.settings['fs2_bin'])
+        cmdline = ' '.join([fs2_bin] + [shlex.quote(opt) for opt in self.get_selection()])
+        self.win.cmdLine.setPlainText(cmdline)
+    
+    def set_selection(self, flags):
+        self._selected = flags[:]
+        custom = []
+        all_flags = []
+        
+        for flags in self._flags.values():
+            for info in flags:
+                all_flags.append(info['name'])
+        
+        for opt in self._selected[:]:
+            if opt not in all_flags:
+                custom.append(shlex.quote(opt))
+                self._selected.remove(opt)
+        
+        self.win.customFlags.setText(' '.join(custom))
+        self._update_list(save_selection=False)
+        self.update_display()
+    
+    def save(self):
+        if self._mod is None:
+            manager.settings['cmdlines']['#default'] = self.get_selection()
+        else:
+            manager.settings['cmdlines'][self._mod.name] = self.get_selection()
+        
+        manager.save_settings()

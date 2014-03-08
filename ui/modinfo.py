@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'modinfo.ui'
 #
-# Created: Sun Feb 23 11:46:49 2014
+# Created: Sat Mar  8 01:55:04 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -57,6 +57,9 @@ class Ui_Dialog(object):
         self.runButton = QtGui.QPushButton(Dialog)
         self.runButton.setObjectName("runButton")
         self.horizontalLayout.addWidget(self.runButton)
+        self.settingsButton = QtGui.QPushButton(Dialog)
+        self.settingsButton.setObjectName("settingsButton")
+        self.horizontalLayout.addWidget(self.settingsButton)
         self.closeButton = QtGui.QPushButton(Dialog)
         self.closeButton.setObjectName("closeButton")
         self.horizontalLayout.addWidget(self.closeButton)
@@ -72,5 +75,6 @@ class Ui_Dialog(object):
         self.label.setText(QtGui.QApplication.translate("Dialog", "Description", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("Dialog", "Notes", None, QtGui.QApplication.UnicodeUTF8))
         self.runButton.setText(QtGui.QApplication.translate("Dialog", "Launch", None, QtGui.QApplication.UnicodeUTF8))
+        self.settingsButton.setText(QtGui.QApplication.translate("Dialog", "Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.closeButton.setText(QtGui.QApplication.translate("Dialog", "Close", None, QtGui.QApplication.UnicodeUTF8))
 

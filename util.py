@@ -17,9 +17,11 @@ import os
 import logging
 import shutil
 import subprocess
+import struct
 import six
 import progress
 from six.moves.urllib.request import urlopen, Request
+from collections import OrderedDict
 from qt import QtCore, QtGui
 
 
@@ -38,6 +40,61 @@ class QDialog(QtGui.QDialog):
     def closeEvent(self, e):
         self.closed.emit()
         e.accept()
+
+
+# See code/cmdline/cmdline.cpp (in the SCP source) for details on the data structure.
+class FlagsReader(object):
+    _stream = None
+    easy_flags = None
+    flags = None
+    
+    def __init__(self, stream):
+        self._stream = stream
+        self.read()
+    
+    def unpack(self, fmt):
+        if isinstance(fmt, struct.Struct):
+            return fmt.unpack(self._stream.read(fmt.size))
+        else:
+            return struct.unpack(fmt, self._stream.read(struct.calcsize(fmt)))
+    
+    def read(self):
+        # Explanation of unpack() and Struct() parameters: http://docs.python.org/3/library/struct.html#format-characters
+        self.easy_flags = OrderedDict()
+        self.flags = OrderedDict()
+        
+        easy_size, flag_size = self.unpack('2i')
+        
+        easy_struct = struct.Struct('32s')
+        flag_struct = struct.Struct('20s40s?ii16s256s')
+        
+        if easy_size != easy_struct.size:
+            logging.error('EasyFlags size is %d but I expected %d!', easy_size, easy_struct.size)
+            return
+        
+        if flag_size != flag_struct.size:
+            logging.error('Flag size is %d but I expected %d!', flag_size, flag_struct.size)
+            return
+        
+        for i in range(self.unpack('i')[0]):
+            self.easy_flags[1 << i] = self.unpack(easy_struct)[0].decode('utf8').strip('\x00')
+        
+        for i in range(self.unpack('i')[0]):
+            flag = self.unpack(flag_struct)
+            flag = {
+                'name': flag[0].decode('utf8').strip('\x00'),
+                'desc': flag[1].decode('utf8').strip('\x00'),
+                'fso_only': flag[2],
+                'on_flags': flag[3],
+                'off_flags': flag[4],
+                'type': flag[5].decode('utf8').strip('\x00'),
+                'web_url': flag[6].decode('utf8').strip('\x00')
+            }
+            
+            if flag['type'] not in self.flags:
+                self.flags[flag['type']] = []
+            
+            self.flags[flag['type']].append(flag)
 
 
 def call(*args, **kwargs):
@@ -100,7 +157,7 @@ def download(link, dest):
                 size = float(result.info()['Content-Length'])
             except:
                 logging.exception('Failed to parse Content-Length header!')
-                size = 1024 ** 4 # = 1 TB
+                size = 1024 ** 4  # = 1 TB
         else:
             if result.status in (301, 302):
                 return download(result.getheader('Location'), dest)
@@ -112,7 +169,7 @@ def download(link, dest):
                 size = float(result.getheader('Content-Length'))
             except:
                 logging.exception('Failed to parse Content-Length header!')
-                size = 1024 ** 4 # = 1 TB
+                size = 1024 ** 4  # = 1 TB
 
         start = dest.tell()
         while True:

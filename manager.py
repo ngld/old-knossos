@@ -43,7 +43,7 @@ from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from ui.splash import Ui_MainWindow as Ui_Splash
 from fs2mod import ModInfo2
 from tasks import *
-from windows import SettingsWindow
+from windows import SettingsWindow, FlagsWindow
 
 
 try:
@@ -65,7 +65,7 @@ settings = {
     'fs2_bin': None,
     'fs2_path': None,
     'mods': None,
-    'known_files': {},
+    'cmdlines': {},
     'hash_cache': None,
     'enforce_deps': True,
     'repos': [('json', 'http://dev.tproxy.de/fs2/all.json', 'ngld\'s HLP Mirror')],
@@ -99,8 +99,15 @@ class MainWindow(QtGui.QMainWindow):
 
 
 class Fs2Watcher(threading.Thread):
-    def __init__(self):
+    _params = None
+    
+    def __init__(self, params=None):
         super(Fs2Watcher, self).__init__()
+        
+        if params is None:
+            self._params = []
+        else:
+            self._params = params
         
         self.daemon = True
         self.start()
@@ -114,9 +121,9 @@ class Fs2Watcher(threading.Thread):
             # Make it executable.
             os.chmod(fs2_bin, mode | stat.S_IXUSR)
         
-        p = subprocess.Popen([fs2_bin], cwd=settings['fs2_path'])
+        p = subprocess.Popen([fs2_bin] + self._params, cwd=settings['fs2_path'])
 
-        time.sleep(0.5)
+        time.sleep(0.3)
         if p.poll() is not None:
             signals.fs2_failed.emit(p.returncode)
             self.failed_msg(p)
@@ -148,6 +155,16 @@ def run_task(task, cb=None):
 
 # FS2 tab
 def save_settings():
+    settings['hash_cache'] = dict()
+    for path, info in fso_parser.HASH_CACHE.items():
+        # Skip deleted files
+        if os.path.exists(path):
+            settings['hash_cache'][path] = info
+    
+    for mod in settings['cmdlines'].copy():
+        if mod not in installed and mod != '#default':
+            del settings['cmdlines'][mod]
+    
     with open(os.path.join(settings_path, 'settings.pick'), 'wb') as stream:
         pickle.dump(settings, stream, 2)
 
@@ -293,11 +310,14 @@ def select_fs2_path_handler():
     select_fs2_path()
 
 
-def run_fs2():
+def run_fs2(params=None):
     global fs2_watcher
     
     if fs2_watcher is None or not fs2_watcher.is_alive():
-        fs2_watcher = Fs2Watcher()
+        fs2_watcher = Fs2Watcher(params)
+        return True
+    else:
+        return False
 
 
 # Mod tab
@@ -450,12 +470,14 @@ def select_mod(item, col):
     name = item.text(0)
     check_msgs = item.data(0, QtCore.Qt.UserRole + 1)
     mod = ModInfo2(settings['mods'][name])
+    infowin = util.init_ui(Ui_Modinfo(), QtGui.QDialog(main_win))
+    infowin.setModal(True)
     
     def do_run():
         run_mod(mod)
     
-    infowin = util.init_ui(Ui_Modinfo(), QtGui.QDialog(main_win))
-    infowin.setModal(True)
+    def show_settings():
+        FlagsWindow(infowin, mod)
     
     if mod.version not in (None, ''):
         infowin.modname.setText(mod.name + ' - ' + mod.version)
@@ -490,6 +512,7 @@ def select_mod(item, col):
     infowin.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.contents.keys())]))
     
     infowin.closeButton.clicked.connect(infowin.close)
+    infowin.settingsButton.clicked.connect(show_settings)
     infowin.runButton.clicked.connect(do_run)
     infowin.show()
     
@@ -500,7 +523,7 @@ def run_mod(mod):
     global installed
     
     if mod is None:
-        return run_fs2()
+        mod = ModInfo2()
     
     modpath = util.ipath(os.path.join(settings['fs2_path'], mod.folder))
     ini = None
@@ -521,7 +544,7 @@ def run_mod(mod):
             QtGui.QMessageBox.critical(main_win, 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
             return
     
-    if mod.name not in installed:
+    if mod.name not in installed and mod.name != '':
         deps = resolve_deps([mod.name])
 
         msg = QtGui.QMessageBox()
@@ -579,37 +602,48 @@ def run_mod(mod):
         else:
             modfolder = mod.folder.split('/')[0]
     
-    # Correct the case
-    modfolder = modfolder.split(',')
-    for i, item in enumerate(modfolder):
-        modfolder[i] = os.path.basename(util.ipath(os.path.join(settings['fs2_path'], item)))
+    if modfolder is not None:
+        # Correct the case
+        modfolder = modfolder.split(',')
+        for i, item in enumerate(modfolder):
+            modfolder[i] = os.path.basename(util.ipath(os.path.join(settings['fs2_path'], item)))
+        
+        modfolder = ','.join(modfolder)
+    mod_found = False
     
-    modfolder = ','.join(modfolder)
-    
-    # Now look for the user directory...
+    # Look for the cmdline path.
     if sys.platform.startswith('linux'):
         # TODO: What about Mac OS ?
         path = os.path.expanduser('~/.fs2_open')
     else:
         path = settings['fs2_path']
     
-    cmdline = []
     path = os.path.join(path, 'data/cmdline_fso.cfg')
-    if os.path.exists(path):
-        try:
-            with open(path, 'r') as stream:
-                cmdline = stream.read().strip().split(' ')
-        except:
-            logging.exception('Failed to read "%s", assuming empty cmdline.', path)
     
-    mod_found = False
-    for i, part in enumerate(cmdline):
-        if part.strip() == '-mod':
-            mod_found = True
-            cmdline[i + 1] = modfolder
-            break
+    if mod.name in settings['cmdlines']:
+        # We have a saved cmdline for this mod.
+        cmdline = settings['cmdlines'][mod.name][:]
+    elif '#default' in settings['cmdlines']:
+        # We have a default cmdline.
+        cmdline = settings['cmdlines']['#default'][:]
+    else:
+        # Read the current cmdline.
+        cmdline = []
+        if os.path.exists(path):
+            try:
+                with open(path, 'r') as stream:
+                    cmdline = stream.read().strip().split(' ')
+            except:
+                logging.exception('Failed to read "%s", assuming empty cmdline.', path)
+        
+        if modfolder is not None:
+            for i, part in enumerate(cmdline):
+                if part.strip() == '-mod':
+                    mod_found = True
+                    cmdline[i + 1] = modfolder
+                    break
     
-    if not mod_found:
+    if modfolder is not None and not mod_found:
         cmdline.append('-mod')
         cmdline.append(modfolder)
     
@@ -946,7 +980,6 @@ def init():
             settings['repos'] = defaults['repos']
         
         del defaults
-        save_settings()
     
     if settings['hash_cache'] is not None:
         fso_parser.HASH_CACHE = settings['hash_cache']
@@ -1061,12 +1094,6 @@ def main():
     main_win.show()
     app.exec_()
     
-    settings['hash_cache'] = dict()
-    for path, info in fso_parser.HASH_CACHE.items():
-        # Skip deleted files
-        if os.path.exists(path):
-            settings['hash_cache'][path] = info
-    
     save_settings()
 
 
@@ -1097,6 +1124,7 @@ def scheme_handler(o_link, app=None):
         app.exec_()
         splash.hide()
         
+        save_settings()
         return
     
     if not o_link.startswith(('fs2://', 'fso://')):
@@ -1138,6 +1166,7 @@ def scheme_handler(o_link, app=None):
     if scheme_state['action'] == 'run':
         splash.label.setText('Launching FS2...')
         signals.fs2_launched.connect(app.quit)
+        signals.fs2_failed.connect(app.quit)
         app.processEvents()
         
         run_mod(mod)
@@ -1158,13 +1187,16 @@ def scheme_handler(o_link, app=None):
                 task.done.connect(app.quit)
                 run_task(task)
         else:
-            QtGui.QMessageBox.infomation(None, 'fs2mod-py', 'MOD "%s" is already installed!' % (mod.name))
+            QtGui.QMessageBox.information(splash, 'fs2mod-py', 'MOD "%s" is already installed!' % (mod.name))
             app.quit()
     elif scheme_state['action'] == 'settings':
-        swin = SettingsWindow(mod, app)
-        swin.win.exec_()
+        if mod.name not in installed:
+            QtGui.QMessageBox.information(splash, 'fs2mod-py', 'MOD "%s" is not yet installed!' % (mod.name))
+            app.quit()
+        else:
+            SettingsWindow(mod, app)
     else:
-        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'The action "%s" is unknown!' % (scheme_state['action']))
+        QtGui.QMessageBox.critical(splash, 'fs2mod-py', 'The action "%s" is unknown!' % (scheme_state['action']))
         app.quit()
 
 
