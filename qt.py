@@ -17,14 +17,8 @@ import logging
 
 default_variant = 'PySide'
 
-env_api = os.environ.get('QT_API', 'pyside')
-if env_api == 'pyside':
-    variant = 'PySide'
-elif env_api == 'pyqt':
-    variant = 'PyQt4'
-elif env_api == 'headless':
-    variant = 'headless'
-else:
+variant = os.environ.get('QT_API', default_variant)
+if variant not in ('PySide', 'PyQt4', 'headless'):
     variant = default_variant
 
 if variant == 'PySide':
@@ -55,10 +49,10 @@ if variant == 'PyQt4':
         variant = 'headless'
 
 if variant == 'headless':
-    if env_api != 'headless':
-        logging.warning('Falling back to headless mode. This will most likely fail if you want to use the mod manager!')
+    if os.environ.get('QT_API') != 'headless':
+        logging.warning('Falling back to headless mode. This WILL fail if you want to use the mod manager!')
 
-    # This is just a dummy implementation of the Qt.Signal() system. Nothing else is provided by this variant.
+    # This is just a dummy implementation of the QtCore.Signal() system. Nothing else is provided by this variant.
     import threading
     import time
 
@@ -128,8 +122,6 @@ if variant == 'headless':
 
     class QtGui(object):
         QApplication = _App
+        QDialog = object
 
-if variant not in ('PySide', 'PyQt4', 'headless'):
-    raise ImportError("Python Variant not specified (%s)" % variant)
-
-__all__ = [QtGui, QtCore, variant]
+__all__ = ['QtGui', 'QtCore', 'variant']
