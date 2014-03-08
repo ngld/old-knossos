@@ -18,6 +18,7 @@ import logging
 import shutil
 import subprocess
 import struct
+import hashlib
 import six
 import progress
 from six.moves.urllib.request import urlopen, Request
@@ -32,6 +33,7 @@ ARCHIVE_FORMATS = ('zip', 'tar', 'split', 'rar', 'lzma', 'iso', 'hfs', 'gzip', '
                    'cpio', 'bzip2', 'bz2', '7z', 'z', 'arj', 'cab', 'lzh', 'chm',
                    'nsis', 'deb', 'rpm', 'udf', 'wim', 'xar')
 QUIET = False
+HASH_CACHE = dict()
 
 
 class QDialog(QtGui.QDialog):
@@ -266,6 +268,33 @@ def pjoin(*args):
             path += '/' + arg
     
     return path
+
+
+def gen_hash(path, algo='md5'):
+    global HASH_CACHE
+    
+    path = os.path.abspath(path)
+    info = os.stat(path)
+
+    if algo == 'md5' and path in HASH_CACHE:
+        chksum, mtime = HASH_CACHE[path]
+        if mtime == info.st_mtime:
+            return chksum
+    
+    h = hashlib.new(algo)
+    with open(path, 'rb') as stream:
+        while True:
+            chunk = stream.read(16 * h.block_size)
+            if not chunk:
+                break
+
+            h.update(chunk)
+
+    chksum = h.hexdigest()
+    if algo == 'md5':
+        HASH_CACHE[path] = (chksum, info.st_mtime)
+    
+    return chksum
 
 
 def test_7z():

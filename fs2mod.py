@@ -21,7 +21,7 @@ import shutil
 import six
 import progress
 from fso_parser import ModInfo
-from util import download, ipath, pjoin, is_archive, extract_archive
+from util import download, ipath, pjoin, gen_hash, is_archive, extract_archive
 
 if six.PY2:
     import py2_compat
@@ -107,7 +107,7 @@ class ModInfo2(ModInfo):
                             break
                     
                     if not found:
-                        self.hashes.append(('MD5', filename, self._hash(os.path.join(tmpdir, filename))))
+                        self.hashes.append(('MD5', filename, gen_hash(os.path.join(tmpdir, filename))))
             
             # Now check them...
             if not self.check_hashes(tmpdir):
@@ -122,7 +122,7 @@ class ModInfo2(ModInfo):
                         # This is a simple file.
                         self.contents[item] = {
                             'archive': None,
-                            'md5sum': self._hash(path)
+                            'md5sum': gen_hash(path)
                         }
                     else:
                         self._inspect_archive(path, item)
@@ -138,7 +138,7 @@ class ModInfo2(ModInfo):
                     fpath = (dpath[len(outdir):] + '/' + item).lstrip('/')
                     self.contents[fpath] = {
                         'archive': archive_name,
-                        'md5sum': self._hash(os.path.join(dpath, item))
+                        'md5sum': gen_hash(os.path.join(dpath, item))
                     }
 
                     if item == 'mod.ini':
@@ -345,7 +345,7 @@ class ModInfo2(ModInfo):
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (item))
                 
-                if self._hash(mypath) == info['md5sum']:
+                if gen_hash(mypath) == info['md5sum']:
                     success += 1
                 else:
                     msgs.append('File "%s" is corrupted. (checksum mismatch)' % (item))

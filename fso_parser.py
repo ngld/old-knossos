@@ -17,15 +17,12 @@ import os
 import re
 import shutil
 import tempfile
-import hashlib
 import six
 import progress
-from util import get, download, normpath, movetree, ipath, pjoin, is_archive, extract_archive
+from util import get, download, movetree, ipath, pjoin, gen_hash, is_archive, extract_archive
 
 if six.PY2:
     import py2_compat
-
-HASH_CACHE = dict()
 
 
 class EntryPoint(object):
@@ -218,32 +215,6 @@ class ModInfo(object):
         self.hashes = []
         self.submods = []
 
-    def _hash(self, path, algo='md5'):
-        global HASH_CACHE
-        
-        path = os.path.abspath(path)
-        info = os.stat(path)
-
-        if algo == 'md5' and path in HASH_CACHE:
-            chksum, mtime = HASH_CACHE[path]
-            if mtime == info.st_mtime:
-                return chksum
-        
-        h = hashlib.new(algo)
-        with open(path, 'rb') as stream:
-            while True:
-                chunk = stream.read(16 * h.block_size)
-                if not chunk:
-                    break
-
-                h.update(chunk)
-
-        chksum = h.hexdigest()
-        if algo == 'md5':
-            HASH_CACHE[path] = (chksum, info.st_mtime)
-        
-        return chksum
-    
     def download(self, dest, sel_files=None):
         count = 0
         num = 0
@@ -281,7 +252,7 @@ class ModInfo(object):
 
         for algo, filepath, chksum in self.hashes:
             try:
-                mysum = self._hash(ipath(os.path.join(path, filepath)), algo)
+                mysum = gen_hash(ipath(os.path.join(path, filepath)), algo)
             except:
                 logging.exception('Failed to computed checksum for "%s" with algorithm "%s"!', filepath, algo)
                 continue

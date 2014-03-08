@@ -32,7 +32,6 @@ import time
 import six
 import progress
 import util
-import fso_parser
 from six.moves.urllib import parse as urlparse
 from qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
@@ -52,7 +51,7 @@ except ImportError:
     # Can't find Unity.
     Unity = None
 
-VERSION = '0.2-alpha'
+VERSION = '0.2-packager'
 main_win = None
 progress_win = None
 splash = None
@@ -156,7 +155,7 @@ def run_task(task, cb=None):
 # FS2 tab
 def save_settings():
     settings['hash_cache'] = dict()
-    for path, info in fso_parser.HASH_CACHE.items():
+    for path, info in util.HASH_CACHE.items():
         # Skip deleted files
         if os.path.exists(path):
             settings['hash_cache'][path] = info
@@ -982,7 +981,7 @@ def init():
         del defaults
     
     if settings['hash_cache'] is not None:
-        fso_parser.HASH_CACHE = settings['hash_cache']
+        util.HASH_CACHE = settings['hash_cache']
     
     pmaster.start_workers(10)
     app = QtGui.QApplication([])
