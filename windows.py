@@ -463,7 +463,7 @@ class FlagsWindow(Window):
         
         # TODO: Shouldn't we cache the flags?
         # Right now FS2 will be called every time this window opens...
-        util.call([fs2_bin, '-get_flags'])
+        util.call([fs2_bin, '-get_flags'], cwd=os.path.dirname(fs2_bin))
         
         if not os.path.isfile(flags_path):
             logging.error('Could not find the flags file "%s"!', flags_path)
