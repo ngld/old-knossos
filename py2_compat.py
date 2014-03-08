@@ -16,6 +16,8 @@ import os as _os
 import warnings as _warnings
 import tempfile
 import subprocess
+import re
+import shlex
 import six
 
 if six.PY3:
@@ -105,5 +107,22 @@ class TemporaryDirectory(object):
             pass
 
 
+# This code is copied straight from /usr/lib/python3.3/shlex.py
+shlex_find_unsafe = re.compile(r'[^\w@%+=:,./-]').search
+
+
+def shlex_quote(s):
+    """Return a shell-escaped version of the string *s*."""
+    if not s:
+        return "''"
+    if shlex_find_unsafe(s) is None:
+        return s
+
+    # use single quotes, and put single quotes into double quotes
+    # the string $'b is then quoted as '$'"'"'b'
+    return "'" + s.replace("'", "'\"'\"'") + "'"
+
+
 tempfile.TemporaryDirectory = TemporaryDirectory
+shlex.quote = shlex_quote
 subprocess.DEVNULL = open(_os.devnull, 'wb')
