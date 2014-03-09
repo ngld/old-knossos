@@ -189,6 +189,15 @@ def download(link, dest):
     return True
 
 
+# Tries all passed links until one succeeds.
+def try_download(links, dest):
+    for url in links:
+        if download(url, dest):
+            return True
+    
+    return False
+
+
 # This function will move the contents of src inside dest so that src/a/r/z.dat ends up as dest/a/r/z.dat.
 # It will overwrite everything already present in the destination directory!
 def movetree(src, dest, ifix=False):
