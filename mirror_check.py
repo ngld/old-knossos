@@ -20,6 +20,7 @@ import sys
 import argparse
 import json
 import time
+import six
 from six.moves.urllib.request import urlopen, Request
 from six.moves.urllib.error import URLError
 
@@ -28,11 +29,20 @@ from lib import util
 
 def check(url, meth='HEAD'):
     try:
-        result = urlopen(Request(url, headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0'}, method=meth))
+        kwargs = {
+            'headers': {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0'}
+        }
+
+        if six.PY3:
+            kwargs['method'] = meth
+
+        result = urlopen(Request(url, **kwargs))
         result.close()
         return True
     except URLError:
         return False
+    except KeyboardInterrupt:
+        raise
     except:
         logging.exception('Failed to check url "%s"!', url)
         return False
