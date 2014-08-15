@@ -16,15 +16,15 @@ import os
 import logging
 import tempfile
 import zipfile
-import subprocess
 import shutil
 import six
-import progress
-from fso_parser import ModInfo
-from util import download, ipath, pjoin, gen_hash, is_archive, extract_archive, convert_img
+
+from lib import progress
+from converter.fso_parser import ModInfo
+from lib.util import download, ipath, pjoin, gen_hash, is_archive, extract_archive, convert_img
 
 if six.PY2:
-    import py2_compat
+    import lib.py2_compat
 
 
 class ModInfo2(ModInfo):

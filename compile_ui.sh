@@ -6,5 +6,5 @@ for file in *.ui; do
   
   out="$(echo "$file" | sed 's#\.ui$#.py#')"
   pyside-uic -o "$out" "$file"
-  sed -i 's#from PySide import#from qt import#' "$out"
+  sed -i 's#from PySide import#from lib.qt import#' "$out"
 done

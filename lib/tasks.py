@@ -22,11 +22,11 @@ import glob
 import stat
 import json
 import tempfile
-import util
-import progress
+
 import manager
-from fs2mod import ModInfo2
-from qt import QtGui
+from lib import util, progress
+from lib.fs2mod import ModInfo2
+from lib.qt import QtGui
 
 
 class FetchTask(progress.Task):
@@ -160,6 +160,7 @@ class CheckTask(progress.Task):
 
 
 class InstallTask(progress.Task):
+
     def __init__(self, mods):
         super(InstallTask, self).__init__()
         
@@ -214,6 +215,7 @@ class InstallTask(progress.Task):
 
 
 class UninstallTask(progress.Task):
+    
     def __init__(self, mods):
         super(UninstallTask, self).__init__()
         

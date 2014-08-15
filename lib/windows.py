@@ -18,10 +18,10 @@ import logging
 import glob
 import shlex
 import stat
-import util
-import clibs
+
 import manager
-from qt import QtCore, QtGui
+from lib import util, clibs
+from lib.qt import QtCore, QtGui
 from ui.settings import Ui_Dialog as Ui_Settings
 from ui.flags import Ui_Dialog as Ui_Flags
 

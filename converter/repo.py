@@ -15,7 +15,7 @@
 import os
 import json
 from collections import OrderedDict
-from util import pjoin, is_archive
+from lib.util import pjoin, is_archive
 
 
 class RepoConf(object):

@@ -2,12 +2,12 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Thu Mar  6 00:34:36 2014
-#      by: pyside-uic 0.2.15 running on PySide 1.2.1
+# Created: Fri Aug 15 19:35:19 2014
+#      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
 
-from qt import QtCore, QtGui
+from lib.qt import QtCore, QtGui
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):

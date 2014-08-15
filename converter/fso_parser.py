@@ -18,11 +18,12 @@ import re
 import shutil
 import tempfile
 import six
-import progress
-from util import get, download, movetree, ipath, pjoin, gen_hash, is_archive, extract_archive
+
+from lib import progress
+from lib.util import get, download, movetree, ipath, pjoin, gen_hash, is_archive, extract_archive
 
 if six.PY2:
-    import py2_compat
+    import lib.py2_compat
 
 
 class EntryPoint(object):

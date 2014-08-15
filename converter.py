@@ -1,4 +1,3 @@
-
 ## Copyright 2014 ngld <ngld@tproxy.de>
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +12,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
 logging.getLogger().addHandler(logging.FileHandler('converter.log'))
@@ -27,11 +26,11 @@ import tempfile
 import time
 import locale
 import shutil
-import util
-import progress
-from converter.fso_parser import EntryPoint
-from qt import QtCore
 from six import StringIO
+
+from lib import util, progress
+from converter.fso_parser import EntryPoint
+from lib.qt import QtCore
 from converter.repo import RepoConf
 
 

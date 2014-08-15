@@ -21,11 +21,11 @@ import struct
 import hashlib
 import six
 import tempfile
-import progress
 from six.moves.urllib.request import urlopen, Request
 from six.moves.urllib.error import HTTPError, URLError
 from collections import OrderedDict
-from qt import QtCore, QtGui
+
+from lib.qt import QtCore, QtGui
 
 try:
     from PIL import Image
@@ -164,6 +164,9 @@ def get(link, headers=None):
 
 
 def download(link, dest, headers=None):
+    # NOTE: We have to import progress here to avoid a dependency cycle.
+    from lib import progress
+
     if headers is None:
         headers = {}
 

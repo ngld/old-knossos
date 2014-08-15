@@ -13,6 +13,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+from __future__ import absolute_import, print_function
 import sys
 import logging
 if __name__ == '__main__':
@@ -30,19 +31,19 @@ import stat
 import glob
 import time
 import six
-import progress
-import util
 from six.moves.urllib import parse as urlparse
-from qt import QtCore, QtGui
+
+from lib import progress, util
+from lib.qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.modinfo import Ui_Dialog as Ui_Modinfo
 from ui.gogextract import Ui_Dialog as Ui_Gogextract
 from ui.select_list import Ui_Dialog as Ui_SelectList
 from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from ui.splash import Ui_MainWindow as Ui_Splash
-from fs2mod import ModInfo2
-from tasks import *
-from windows import SettingsWindow, FlagsWindow
+from lib.fs2mod import ModInfo2
+from lib.tasks import *
+from lib.windows import SettingsWindow, FlagsWindow
 
 
 try:
@@ -86,6 +87,7 @@ signals = _SignalContainer()
 
 
 class MainWindow(QtGui.QMainWindow):
+
     def changeEvent(self, event):
         global unity_launcher
         if event.type() == QtCore.QEvent.ActivationChange:
@@ -1097,6 +1099,8 @@ def main():
 
 
 scheme_state = {}
+
+
 def scheme_handler(o_link, app=None):
     global settings, progress_win, splash, scheme_state
     

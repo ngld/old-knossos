@@ -20,8 +20,9 @@ import sys
 import logging
 import threading
 import six
-import util
-from qt import QtCore, QtGui
+
+from lib import util
+from lib.qt import QtCore, QtGui
 from ui.progress import Ui_Dialog as Ui_Progress
 
 try:
