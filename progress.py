@@ -98,6 +98,7 @@ def update(prog, text=''):
 
 # Task scheduler
 class Worker(threading.Thread):
+
     def __init__(self, master):
         super(Worker, self).__init__()
         
@@ -400,7 +401,7 @@ class CursesOutput(object):
     
     def write(self, data):
         with self.lock:
-            self.win.append(data)
+            self.win.append(data.strip())
             self.other_win.redrawwin()
             
             if self.log is not None:

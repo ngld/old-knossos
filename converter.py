@@ -1,3 +1,4 @@
+
 ## Copyright 2014 ngld <ngld@tproxy.de>
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,146 +21,161 @@ logging.getLogger().addHandler(logging.FileHandler('converter.log'))
 import sys
 import os
 import argparse
-import pickle
-import hashlib
 import json
-import time
-import datetime
 import signal
+import tempfile
+import time
+import locale
+import shutil
 import util
 import progress
-from fso_parser import EntryPoint
-from fs2mod import convert_modtree, find_mod, ModInfo2
+from converter.fso_parser import EntryPoint
 from qt import QtCore
 from six import StringIO
+from converter.repo import RepoConf
+
+
+class ChecksumTask(progress.Task):
+
+    def work(self, item):
+        id_, links, name, archive, tstamp = item
+
+        with tempfile.TemporaryDirectory() as dest:
+            path = os.path.join(dest, name)
+
+            for link in links:
+                link = util.pjoin(link, name)
+
+                with open(path, 'wb') as stream:
+                    res = util.download(link, stream, {'If-Modified-Since': tstamp})
+
+                if res == 304:
+                    # Nothing changed.
+                    break
+                elif res:
+                    csum, content = self._inspect_file(id_, archive, dest, path)
+                    self.post((id_, csum, content))
+                    break
+
+    def _inspect_file(self, id_, archive, dest, path):
+        csum = util.gen_hash(path)
+        content = {}
+
+        if archive:
+            ar_content = os.path.join(dest, 'content')
+
+            if util.extract_archive(path, ar_content):
+                for cur_path, dirs, files in os.walk(ar_content):
+                    subpath = cur_path[len(ar_content):].replace('\\', '/').lstrip('/')
+                    if subpath != '':
+                        subpath += '/'
+
+                    for name in files:
+                        content[subpath + name] = util.gen_hash(os.path.join(cur_path, name))
+
+                        if name == 'mod.ini':
+                            self._inspect_mod_ini(os.path.join(cur_path, name), id_[0])
+
+        return csum, content
+
+    def _inspect_mod_ini(self, path, mid):
+        # Let's look for the logo.
+        
+        base_path = os.path.dirname(path)
+        img = []
+        with open(path, 'r') as stream:
+            for line in stream:
+                line = line.strip()
+                if line.startswith('image'):
+                    line = line.split('=')[1].strip(' \t\n\r;')
+                    line = os.path.join(base_path, line)
+                    info = os.stat(line)
+
+                    img.append((line, info.st_size))
+
+        # Pick the biggest.
+        img.sort(key=lambda i: i[1])
+        img = img[-1][0]
+
+        self.post(((mid, 'logo.jpg'), util.convert_img(img, 'jpg'), {}))
 
 
 def show_progress(prog, text):
     sys.stdout.write('\r %3d%% %s' % (prog * 100, text))
     sys.stdout.flush()
 
-cache = {
-    'mods': {},
-    'last_fetch': 0
-}
-cache_path = os.path.expanduser('~/.fs2mod-py/cache.pick')
-
-
-def list_modtree(mods, level=0):
-    for mod in mods:
-        print(' ' * 2 * level + mod.name)
-        list_modtree(mod.submods, 1)
-
 
 def main(args):
-    global cache, cache_path
-    
     progress.reset()
     progress.set_callback(show_progress)
     
     parser = argparse.ArgumentParser()
     subs = parser.add_subparsers(dest='action')
     
+    import_parser = subs.add_parser('import', help='import installer text files')
+    import_parser.add_argument('repofile', help='The imported files will be stored inside this file.')
+
+    checksums_parser = subs.add_parser('checksums', help='Generate checksums for all referenced files.')
+    checksums_parser.add_argument('-p', dest='pretty', help='pretty print the output', action='store_true')
+    checksums_parser.add_argument('repofile', help='The configuration used to locate the files.')
+    checksums_parser.add_argument('outfile', help='The path to the generated configuration.')
+
     list_parser = subs.add_parser('list', help='list mods')
-    list_parser.add_argument('--update', action='store_true', default=False, help='update the mod list')
-    
-    convert_parser = subs.add_parser('convert', help='generates a fs2mod file for one of the listed mods')
-    convert_parser.add_argument('modname')
-    convert_parser.add_argument('outpath', help='path to the fs2mod file')
-    
-    json_parser = subs.add_parser('json', help='generate a json file for the passed mods')
-    json_parser.add_argument('modname', nargs='+', help='several names of mods or just "all"')
-    json_parser.add_argument('-o', dest='outpath', help='output file', type=argparse.FileType('w'), default=sys.stdout)
-    json_parser.add_argument('-p', dest='pretty', help='pretty print the output', action='store_true')
-    
+    list_parser.add_argument('repofile', help='The repository configuration.')
+
     args = parser.parse_args(args)
     
-    # Load our cache
-    if os.path.exists(cache_path):
-        with open(cache_path, 'rb') as stream:
-            try:
-                cache = pickle.load(stream)
-            except:
-                logging.exception('Failed to read the cache at %s!', cache_path)
-    
-    if args.action == 'list':
-        if args.update or len(cache['mods']) == 0:
-            logging.info('Fetching current mod list...')
-            
-            cache['mods'] = EntryPoint.get_mods()
-            cache['last_fetch'] = time.time()
-            
-            # Save the updated cache.
-            if not os.path.isdir(os.path.dirname(cache_path)):
-                os.makedirs(os.path.dirname(cache_path))
-            
-            with open(cache_path, 'wb') as stream:
-                pickle.dump(cache, stream)
-        
-        ftime = datetime.datetime.fromtimestamp(cache['last_fetch'])
-        print('This list was last updated on ' + ftime.strftime('%c'))
-        list_modtree(cache['mods'])
-        
-    elif args.action == 'convert':
-        if os.path.exists(args.outpath):
-            logging.error('"%s" already exists! I won\'t overwrite it!', args.outpath)
-            return
-        
-        # Look for the mod...
-        mod = find_mod(cache['mods'], args.modname)
-        if mod is None:
-            logging.error('Couldn\'t find mod "%s"!', args.modname)
-            return
-        
-        logging.info('Converting mod...')
-        mod = convert_modtree([mod])[0]
-        
-        logging.info('Writing fs2mod file...')
-        mod.generate_zip(args.outpath)
-        
-        logging.info('Done!')
-    
-    elif args.action == 'json':
-        # Look for our mods
-        
-        if 'all' in args.modname:
-            mods = cache['mods']
+    if args.action == 'import':
+        if not os.path.isfile(args.repofile):
+            logging.warning('The file "%s" wasn\'t found. I will be creating it from scratch.', args.repofile)
+            mods = RepoConf()
         else:
-            mods = []
-            for mod in args.modname:
-                m = find_mod(cache['mods'], mod)
-                if m is None:
-                    logging.warning('Mod "%s" was not found!', mod)
-                else:
-                    mods.append(m)
-        
-        if len(mods) < 1:
-            logging.error('No mods to convert!')
-            return
-        
+            mods = RepoConf(args.repofile)
+
+        logging.info('Fetching installer text files...')
+        mod_tree = EntryPoint.get_mods()
+
+        logging.info('Converting...')
+        mods.import_tree(mod_tree)
+
+        mods.write(args.repofile, True)
+        logging.info('Done')
+    elif args.action == 'checksums':
+        logging.info('Parsing repo...')
+
+        mods = RepoConf(args.repofile)
+        mods.parse_includes()
+
+        if len(mods.mods) == 0:
+            logging.error('No mods found!')
+            return False
+
+        cache = {
+            '#generated': 0
+        }
+        start_time = time.time()
+
+        if os.path.isfile(args.outfile):
+            with open(args.outfile, 'r') as stream:
+                cache = json.load(stream)
+
         app = QtCore.QCoreApplication([])
-        
-        class ConvertTask(progress.Task):
-            def work(self, mod):
-                self.add_work(mod.submods)
-                
-                result = ModInfo2()
-                cur = mod
-                while cur.parent is not None:
-                    cur = cur.parent
-                    if cur.name != '':
-                        result.dependencies.append(('mod_name', cur.name))
-                
-                for i, sub in enumerate(mod.submods):
-                    mod.submods[i] = sub.name
-                
-                result.read(mod)
-                self.post(result)
-        
         master = progress.Master()
-        task = ConvertTask()
-        task.add_work(mods)
+        task = ChecksumTask()
         
+        # Thu, 24 Jul 2014 12:00:16 GMT
+        locale.setlocale(locale.LC_TIME, 'C')
+        tstamp = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime(cache['#generated']))
+
+        items = []
+        for mid, mod in mods.mods.items():
+            for mirrors, files in mod['files']:
+                for name, info in files.items():
+                    # id_, links, name, archive, tstamp
+                    items.append(((mid, name), mirrors, name, info.get('is_archive', True), tstamp))
+
+        task.add_work(items)
+      
         def update_progress():
             total, items = task.get_progress()
             text = []
@@ -181,38 +197,79 @@ def main(args):
             app.exec_()
             master.stop_workers()
         
+        logging.info('Updating checksums...')
+
         util.QUIET = True
         out = StringIO()
         progress.init_curses(core, out)
         sys.stdout.write(out.getvalue())
-        
-        mods = {}
-        if hasattr(args.outpath, 'name'):
-            outpath = args.outpath.name
-        else:
-            outpath = None
-        
-        for mod in task.get_results():
-            mods[mod.name] = mod.__dict__
-            
-            if mod.logo is not None:
-                if outpath is None:
-                    del mods[mod.name]['logo']
-                    logging.warning('Skipping logo for "%s" because the output is stdout.', mod.name)
-                else:
-                    dest = outpath + '.' + hashlib.md5(mod.logo).hexdigest() + '.jpg'
-                    with open(dest, 'wb') as stream:
-                        stream.write(mod.logo)
-                    
-                    mods[mod.name]['logo'] = os.path.basename(dest)
 
-            if mod.parent is not None:
-                mods[mod.name]['parent'] = mod.parent.name
-        
-        if args.pretty:
-            json.dump(mods, args.outpath, indent=4)
-        else:
-            json.dump(mods, args.outpath, separators=(',', ':'))
+        logging.info('Saving data...')
+
+        results = {}
+        logos = {}
+        for id_, csum, content in task.get_results():
+            mid, name = id_
+
+            if name == 'logo.jpg':
+                logos[mid] = csum
+            else:
+                if mid not in results:
+                    results[mid] = {}
+
+                results[mid][name] = {
+                    'md5sum': csum,
+                    'contents': content
+                }
+
+        outpath = os.path.dirname(args.outfile)
+        new_cache = {
+            '#generated': start_time
+        }
+
+        for mid, mod in mods.mods.items():
+            if mid in cache:
+                csums = cache[mid].get('checksums', {})
+
+                # Prune removed files
+                filenames = set()
+                for links, files in mod['files']:
+                    filenames |= files.keys()
+
+                for key in set(csums.keys()) - filenames:
+                    del csums[key]
+            else:
+                csums = {}
+
+            new_cache[mid] = mod.copy()
+            new_cache[mid]['checksums'] = csums
+
+            if mid in results:
+                csums.update(results[mid])
+            elif len(csums) == 0:
+                logging.warning('Checksums for "%s" are missing!', mid)
+
+            if mid in logos and new_cache[mid].get('logo', None) is None:
+                name = os.path.basename(logos[mid])
+                shutil.move(logos[mid], os.path.join(outpath, name))
+                new_cache[mid]['logo'] = name
+
+        with open(args.outfile, 'w') as stream:
+            json.dump(new_cache, stream, separators=(',', ':'))
+
+        # Cleanup
+        for path in logos.values():
+            if os.path.isfile(path):
+                os.unlink(path)
+
+        logging.info('Done')
+    elif args.action == 'list':
+        mods = RepoConf(args.repofile)
+
+        print('\n'.join(sorted(mods.mods.keys())))
+    else:
+        logging.error('You have to specify a valid action!')
+        sys.exit(1)
 
 if __name__ == '__main__':
     main(sys.argv[1:])

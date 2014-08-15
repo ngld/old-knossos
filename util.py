@@ -20,11 +20,17 @@ import subprocess
 import struct
 import hashlib
 import six
+import tempfile
 import progress
 from six.moves.urllib.request import urlopen, Request
+from six.moves.urllib.error import HTTPError, URLError
 from collections import OrderedDict
 from qt import QtCore, QtGui
 
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 SEVEN_PATH = '7z'
 # Copied from http://sourceforge.net/p/sevenzipjbind/code/ci/master/tree/jbinding-java/src/net/sf/sevenzipjbinding/ArchiveFormat.java
@@ -34,6 +40,7 @@ ARCHIVE_FORMATS = ('zip', 'tar', 'split', 'rar', 'lzma', 'iso', 'hfs', 'gzip', '
                    'nsis', 'deb', 'rpm', 'udf', 'wim', 'xar')
 QUIET = False
 HASH_CACHE = dict()
+_HAS_CONVERT = None
 
 
 class QDialog(QtGui.QDialog):
@@ -120,10 +127,15 @@ def call(*args, **kwargs):
     return subprocess.call(*args, **kwargs)
 
 
-def get(link):
+def get(link, headers=None):
+    if headers is None:
+        headers = {}
+    
+    headers['User-Agent'] = 'curl/7.22.0'
+    logging.info('Retrieving "%s"...', link)
+
     try:
-        logging.info('Retrieving "%s"...', link)
-        result = urlopen(Request(link, headers={'User-Agent': 'curl/7.22.0'}))
+        result = urlopen(Request(link, headers=headers))
         if six.PY2:
             code = result.getcode()
         else:
@@ -138,16 +150,28 @@ def get(link):
                 return get(result.getheader('Location'))
         else:
             return None
-    except:
+    except KeyboardInterrupt:
+        raise
+    except HTTPError as exc:
+        if exc.code == 304:
+            return 304
+
+        logging.exception('Failed to load "%s"!', link)
+    except URLError:
         logging.exception('Failed to load "%s"!', link)
 
     return None
 
 
-def download(link, dest):
+def download(link, dest, headers=None):
+    if headers is None:
+        headers = {}
+
+    headers['User-Agent'] = 'curl/7.22.0'
+    logging.info('Downloading "%s"...', link)
+
     try:
-        logging.info('Downloading "%s"...', link)
-        result = urlopen(Request(link, headers={'User-Agent': 'curl/7.22.0'}))
+        result = urlopen(Request(link, headers=headers))
         if six.PY2:
             if result.getcode() in (301, 302):
                 return download(result.info()['Location'], dest)
@@ -182,7 +206,16 @@ def download(link, dest):
             dest.write(chunk)
 
             progress.update((dest.tell() - start) / size, '%s: %d%%' % (os.path.basename(link), 100 * (dest.tell() - start) / size))
-    except:
+    except KeyboardInterrupt:
+        raise
+    except HTTPError as exc:
+        if exc.code == 304:
+            # 304 Not Modified
+            return 304
+
+        logging.exception('Failed to load "%s"!', link)
+        return False
+    except URLError:
         logging.exception('Failed to load "%s"!', link)
         return False
 
@@ -327,7 +360,7 @@ def is_archive(path):
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
     if '.tar.' in archive and not _rec:
         # This is a file like whatever.tar.gz. We have to call 7z two times for this kind of file:
-        # First to get whatever.tar and second to extract that tar archive.
+        # First to get whatever.tar and a second time to extract that tar archive.
         
         if not extract_archive(archive, os.path.dirname(archive), True, None, True):
             return False
@@ -357,6 +390,33 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
         return call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
     else:
         return call(cmd) == 0
+
+
+def convert_img(path, outfmt):
+    global _HAS_CONVERT
+
+    fd, dest = tempfile.mkstemp('.' + outfmt)
+    os.close(fd)
+    if Image is not None:
+        img = Image.open(path)
+        img.save(dest)
+        
+        return dest
+    else:
+        if _HAS_CONVERT is None:
+            try:
+                subprocess.check_call(['which', 'convert'], stdout=subprocess.DEVNULL)
+                _HAS_CONVERT = True
+            except subprocess.CalledProcessError:
+                # Well, this failed, too. Is there any other way to convert an image?
+                # For now I'll just abort.
+                _HAS_CONVERT = False
+                return None
+        elif _HAS_CONVERT is False:
+            return None
+        
+        subprocess.check_call(['convert', path, dest])
+        return dest
 
 
 def init_ui(ui, win):

@@ -1,0 +1,122 @@
+/* Repo configuration */
+// Most of this is similar to Goober's text files (http://www.hard-light.net/wiki/index.php/FSO_Installer_Text_Files)
+
+{
+    "<ID>": {
+        "title": "...",
+        "version": "...",
+        "description": "...",
+        "logo": "<will be extracted from the archives if null>",
+        "notes": "...",
+        "submods": ["<ID1>", "..."],
+        "dependencies": ["<ID1>", "<ID2>", "..."],
+        "source": "<only when imported otherwise null>",
+        "files": [
+            [
+                [
+                    "<link1>",
+                    "..."
+                ],
+                {
+                    "<filename>": {
+                        "is_archive": true,
+                        "dest": "<destination path>"
+                    }
+                }
+            ]
+        ],
+        "delete": ["<file1>", "..."]
+        "requirements": ["<req>"] // TODO
+    },
+    "#include": [
+        "<repo file 1>",
+        "..."
+    ]
+}
+
+/* generated repo files */
+{
+    "#generated": "<time of generation>",
+    "<ID>": {
+        /* All of the above */
+        "checksums": {
+            "<filename>": {
+                "md5sum": "<checksum>",
+
+                /* if is_archive */
+                    "contents": {
+                        "<filename>": "<checksum>"
+                    }
+                /* endif */
+            }
+        }
+    }
+}
+
+/* Example repo configuration */
+"FSOI#FreeSpace Open 3.7.0 Windows SSE": {
+    "logo": null,
+    "version": "3.7.0 Final",
+    "requirements": [],
+    "delete": [],
+    "files": [
+        [
+            [
+                "http://swc.fs2downloads.com/builds/WIN/",
+                "http://scp.fsmods.net/builds/WIN/",
+                "http://scp.indiegames.us/builds/WIN/"
+            ],
+            {
+                "fs2_open_3_7_0_SSE.zip": {
+                    "is_archive": true,
+                    "dest": ""
+                }
+            }
+        ],
+        [
+            [
+                "http://swc.fs2downloads.com/files/",
+                "http://scp.fsmods.net/builds/",
+                "http://scp.indiegames.us/builds/"
+            ],
+            {
+                "Launcher55g.zip": {
+                    "is_archive": true,
+                    "dest": ""
+                }
+            }
+        ],
+        [
+            [
+                "http://www.fsoinstaller.com/files/installer/java/"
+            ],
+            {
+                "FS2.bmp": {
+                    "is_archive": false,
+                    "dest": ""
+                },
+                "mod.ini": {
+                    "is_archive": false,
+                    "dest": ""
+                }
+            }
+        ],
+        [
+            [
+                "http://scp.indiegames.us/builds/"
+            ],
+            {
+                "scptrackir.zip": {
+                    "is_archive": true,
+                    "dest": ""
+                }
+            }
+        ]
+    ],
+    "title": "FreeSpace Open 3.7.0 Windows SSE",
+    "submods": [],
+    "description": "Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
+    "dependencies": [],
+    "source": "#FSOI",
+    "notes": ""
+}

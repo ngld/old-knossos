@@ -21,44 +21,10 @@ import shutil
 import six
 import progress
 from fso_parser import ModInfo
-from util import download, ipath, pjoin, gen_hash, is_archive, extract_archive
+from util import download, ipath, pjoin, gen_hash, is_archive, extract_archive, convert_img
 
 if six.PY2:
     import py2_compat
-
-try:
-    from PIL import Image
-except ImportError:
-    Image = None
-
-_has_convert = None
-
-
-def convert_img(path, outfmt):
-    global _has_convert
-
-    fd, dest = tempfile.mkstemp('.' + outfmt)
-    os.close(fd)
-    if Image is not None:
-        img = Image.open(path)
-        img.save(dest)
-        
-        return dest
-    else:
-        if _has_convert is None:
-            try:
-                subprocess.check_call(['which', 'convert'], stdout=subprocess.DEVNULL)
-                _has_convert = True
-            except subprocess.CalledProcessError:
-                # Well, this failed, too. Is there any other way to convert an image?
-                # For now I'll just abort.
-                _has_convert = False
-                return None
-        elif _has_convert is False:
-            return None
-        
-        subprocess.check_call(['convert', path, dest])
-        return dest
 
 
 class ModInfo2(ModInfo):
@@ -408,7 +374,7 @@ def count_modtree(mods):
 
 def convert_modtree(mods, complete=0):
     mod2s = []
-    count = len(mods) # count_modtree(mods)
+    count = len(mods)  # count_modtree(mods)
     
     for mod in mods:
         m = ModInfo2()
@@ -433,6 +399,7 @@ def convert_modtree(mods, complete=0):
             m.submods[i] = sm.name
     
     return mod2s
+
 
 def find_mod(mods, needle):
     for mod in mods:
