@@ -40,7 +40,7 @@ def check(url, meth='HEAD'):
 
 def main(args):
     parser = argparse.ArgumentParser()
-    parser.add_argument('checksumfile', help='Repo configuration with checksums.')
+    parser.add_argument('checksumfile', help='Repo configuration.')
     parser.add_argument('reportfile', help='The file that will contain the generated report.')
 
     args = parser.parse_args(args)
@@ -49,7 +49,8 @@ def main(args):
     with open(args.checksumfile, 'r') as stream:
         mods = json.load(stream)
 
-    del mods['#generated']
+    if '#generated' in mods:
+        del mods['#generated']
 
     report = {}
     for mod in mods.values():
