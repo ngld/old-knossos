@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>FSO Installer Mirror Check</title>
+        <meta charset="utf8">
+        <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css">
+        <style type="text/css">
+            .fa-check {
+                color: rgb(0, 160, 0);
+            }
+
+            .fa-times {
+                color: rgb(160, 0, 0);
+            }
+        </style>
+        <script type="text/javascript" src="//code.jquery.com/jquery.min.js"></script>
+        <script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>FSO Installer Mirror Check</h1>
+
+            <div id="content" class="panel-group">
+                Please wait...
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            function add_sorted(el, name, content) {
+                var c_list = el.data('##sorted_cont');
+                var c_keys = el.data('##sorted_keys');
+
+                if(!c_list) {
+                    el.data('##sorted_cont', c_list = {});
+                    el.data('##sorted_keys', c_keys = []);
+                }
+
+                c_list[name] = content;
+                c_keys.push(name);
+            }
+
+            function finish_sorted(el) {
+                var c_list = el.data('##sorted_cont');
+                var c_keys = el.data('##sorted_keys');
+
+                c_keys.sort();
+                $.each(c_keys, function (i, key) {
+                    el.append(c_list[key]);
+                });
+
+                el.data('##sorted_cont', null);
+                el.data('##sorted_keys', null);
+            }
+
+            var idx = 0;
+
+            $.getJSON('report.json', function (data) {
+                var disp = $('#content').html('');
+                if(data['#generated']) {
+                    disp.append('<p>Last updated: ' + data['#generated'] + '</p>');
+                    delete data['#generated'];
+                }
+
+                $.each(data, function (mod, files) {
+                    var table = $('<table class="table">');
+                    var count = 0, ok = 0;
+
+                    table.append($('<thead>').append('<tr><th width="30%">File</th><th width="20%">Status</th><th>Mirrors</th></tr>'));
+                    var tb = $('<tbody>').appendTo(table);
+                    
+                    $.each(files, function (name, mirrors) {
+                        var mcount = 0, mok = 0;
+                        var row = $('<tr>');
+                        row.append($('<td>').text(name));
+
+                        var status = $('<td>').appendTo(row);
+                        var mlinks = $('<td>').appendTo(row);
+
+                        $.each(mirrors, function (url, status) {
+                            if(status) {
+                                mok++;
+                            }
+                            mcount++;
+
+                            if(mcount > 1) mlinks.append('&nbsp;|&nbsp;');
+                            mlinks.append($('<a>').attr('href', url + name).text(url.split('/')[2]));
+                        });
+                        
+                        status.html('<i class="fa fa-' + (mok > 0 ? 'check' : 'times') + '"></i>');
+                        if(mok != mcount) {
+                            status.append(' (' + mok + '/' + mcount + ')');
+                        }
+                        if(mok > 0) {
+                            ok++;
+                        }
+                        count++;
+
+                        add_sorted(tb, name, row);
+                    });
+                    finish_sorted(tb);
+
+                    var mid = 'mod-' + idx++;
+                    var heading = $('<h4 class="panel-title">');
+                    heading.append('<i class="fa fa-' + (ok == count ? 'check' : 'times') + '"></i>&nbsp;&nbsp;');
+                    heading.append($('<a data-parent="#content" data-toggle="collapse">').attr('href', '#' + mid).text(mod));
+                    heading.append(' <small>(' + ok + '/' + count + ')</small>');
+
+                    var body = $('<div class="panel-collapse collapse">').attr('id', mid);
+                    body.append($('<div class="panel-body">').html(table));
+
+                    var cont = $('<div class="panel">');
+                    cont.append($('<div class="panel-heading">').append(heading));
+                    cont.append(body);
+
+                    add_sorted(disp, mod, cont);
+                });
+                finish_sorted(disp);
+            });
+        </script>
+    </body>
+</html>
