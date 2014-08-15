@@ -59,11 +59,11 @@ def main(args):
     with open(args.checksumfile, 'r') as stream:
         mods = json.load(stream)
 
-    if '#generated' in mods:
-        del mods['#generated']
-
     report = {}
-    for mod in mods.values():
+    for mid, mod in mods.items():
+        if mid[0] == '#':
+            continue
+
         logging.info('Checking mod "%s"...', mod['title'])
 
         mrep = report[mod['title']] = {}
