@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Fri Aug 15 19:35:19 2014
+# Created: Sat Aug 16 01:50:41 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from lib.qt import QtCore, QtGui
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(544, 656)
+        MainWindow.resize(561, 667)
         self.centralwidget = QtGui.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtGui.QVBoxLayout(self.centralwidget)
@@ -69,6 +69,9 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.apply_sel)
         self.verticalLayout_3.addLayout(self.horizontalLayout)
         self.tabs.addTab(self.mods, "")
+        self.fsoSettings = QtGui.QWidget()
+        self.fsoSettings.setObjectName("fsoSettings")
+        self.tabs.addTab(self.fsoSettings, "")
         self.settings = QtGui.QWidget()
         self.settings.setObjectName("settings")
         self.verticalLayout_5 = QtGui.QVBoxLayout(self.settings)
@@ -115,7 +118,7 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.tabs)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 544, 19))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 561, 20))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtGui.QStatusBar(MainWindow)
@@ -123,7 +126,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(2)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -142,6 +145,7 @@ class Ui_MainWindow(object):
         self.reset_sel.setText(QtGui.QApplication.translate("MainWindow", "Reset Selection", None, QtGui.QApplication.UnicodeUTF8))
         self.apply_sel.setText(QtGui.QApplication.translate("MainWindow", "Install/Uninstall", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.mods), QtGui.QApplication.translate("MainWindow", "Mods", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabs.setTabText(self.tabs.indexOf(self.fsoSettings), QtGui.QApplication.translate("MainWindow", "FSO Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Mod Sources:", None, QtGui.QApplication.UnicodeUTF8))
         self.addSource.setText(QtGui.QApplication.translate("MainWindow", "Add", None, QtGui.QApplication.UnicodeUTF8))
         self.editSource.setText(QtGui.QApplication.translate("MainWindow", "Edit", None, QtGui.QApplication.UnicodeUTF8))

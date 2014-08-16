@@ -36,8 +36,13 @@ class Window(object):
         global _open_wins
         
         _open_wins.append(self)
-        self.win.closed.connect(self._del)
-        self.win.finished.connect(self._del)
+
+        if hasattr(self.win, 'closed'):
+            self.win.closed.connect(self._del)
+
+        if hasattr(self.win, 'finished'):
+            self.win.finished.connect(self._del)
+
         self.win.show()
     
     def close(self):
@@ -105,6 +110,7 @@ class SettingsWindow(Window):
         # This is temporary: it will be better handled as soon as all mods use a default build
         # Binary selection combobox logic here
         fs2_path = manager.settings['fs2_path']
+        fs2_bin = manager.settings['fs2_bin']
 
         if fs2_path is not None and os.path.isdir(fs2_path):
             fs2_path = os.path.abspath(fs2_path)
@@ -113,10 +119,16 @@ class SettingsWindow(Window):
             for i, path in enumerate(bins):
                 path = os.path.basename(path)
                 self.win.build.addItem(path)
+
+                if path == fs2_bin:
+                    self.win.build.setCurrentIndex(i)
             
             if len(bins) == 1:
                 # Found only one binary, select it by default.
                 self.win.build.setEnabled(False)
+                self.save_build()
+            else:
+                self.win.build.currentIndexChanged.connect(self.save_build)
 
         # ---Read fs2_open.ini or the registry---
         if sys.platform.startswith('win'):
@@ -401,6 +413,10 @@ class SettingsWindow(Window):
         # Save the new configuration.
         config.sync()
 
+    def save_build(self):
+        manager.settings['fs2_bin'] = str(self.win.build.currentText())
+        manager.save_settings()
+
     def run_mod(self):
         logging.info('Launching...')
         
@@ -419,6 +435,25 @@ class SettingsWindow(Window):
     
     def show_flagwin(self):
         FlagsWindow(self.win, self.mod)
+
+
+class SettingsTab(SettingsWindow):
+
+    def __init__(self, tab):
+        super(SettingsWindow, self).__init__()
+
+        self.mod = None
+        self.win = util.init_ui(Ui_Settings(), tab)
+        
+        self.win.cmdButton.setText('Default command line flags')
+        self.win.cmdButton.clicked.connect(self.show_flagwin)
+        self.read_config()
+        
+        self.win.runButton.clicked.connect(self.run_mod)
+        self.win.cancelButton.setText('Save')
+        self.win.cancelButton.clicked.connect(self.write_config)
+        
+        self.open()
 
 
 class FlagsWindow(Window):
@@ -440,6 +475,9 @@ class FlagsWindow(Window):
         self.win.listType.activated.connect(self._update_list)
         self.win.customFlags.textEdited.connect(self.update_display)
         self.win.flagList.itemClicked.connect(self.update_display)
+        self.win.okButton.clicked.connect(self.win.accept)
+        self.win.defaultsButton.clicked.connect(self.set_defaults)
+        self.win.cancelButton.clicked.connect(self.win.reject)
         
         self.win.accepted.connect(self.save)
         
@@ -449,6 +487,8 @@ class FlagsWindow(Window):
         if mod is None or mod.name not in manager.settings['cmdlines']:
             if '#default' in manager.settings['cmdlines']:
                 self.set_selection(manager.settings['cmdlines']['#default'])
+
+            self.win.defaultsButton.hide()
         else:
             self.set_selection(manager.settings['cmdlines'][mod.name])
     
@@ -463,7 +503,7 @@ class FlagsWindow(Window):
         
         # TODO: Shouldn't we cache the flags?
         # Right now FS2 will be called every time this window opens...
-        util.call([fs2_bin, '-get_flags'])
+        util.call([fs2_bin, '-get_flags'], cwd=manager.settings['fs2_path'])
         
         if not os.path.isfile(flags_path):
             logging.error('Could not find the flags file "%s"!', flags_path)
@@ -574,6 +614,16 @@ class FlagsWindow(Window):
         self._update_list(save_selection=False)
         self.update_display()
     
+    def set_defaults(self):
+        cmdlines = manager.settings['cmdlines']
+
+        if '#default' in cmdlines:
+            self.set_selection(cmdlines['#default'])
+        else:
+            self.set_selection([])
+
+        self.save()
+
     def save(self):
         if self._mod is None:
             manager.settings['cmdlines']['#default'] = self.get_selection()

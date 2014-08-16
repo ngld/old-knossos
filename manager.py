@@ -43,7 +43,7 @@ from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from ui.splash import Ui_MainWindow as Ui_Splash
 from lib.fs2mod import ModInfo2
 from lib.tasks import *
-from lib.windows import SettingsWindow, FlagsWindow
+from lib.windows import SettingsWindow, SettingsTab, FlagsWindow
 
 
 try:
@@ -1054,6 +1054,8 @@ def main():
     m = main_win.sourceList.model()
     m.rowsMoved.connect(reorder_repos)
     del m
+
+    SettingsTab(main_win.fsoSettings)
     
     QtCore.QTimer.singleShot(1, init_fs2_tab)
     
