@@ -27,6 +27,14 @@ from six.moves.urllib.error import URLError
 from lib import util
 
 
+def compute_path(mods, item, path=[]):
+    item = mods[item]
+    item['path'] = path + [item['title']]
+
+    for sub in item['submods']:
+        compute_path(mods, sub, item['path'])
+
+
 def check(url, meth='HEAD'):
     try:
         kwargs = {
@@ -59,14 +67,23 @@ def main(args):
     with open(args.checksumfile, 'r') as stream:
         mods = json.load(stream)
 
-    report = {}
-    for mid, mod in mods.items():
-        if mid[0] == '#':
-            continue
+    for key in list(mods.keys()):
+        if key[0] == '#':
+            del mods[key]
 
+    report = {}
+    subs = set()
+    for mid, mod in mods.items():
+        subs |= set(mod['submods'])
+
+    roots = set(mods.keys()) - subs
+    for mid in roots:
+        compute_path(mods, mid)
+
+    for mid, mod in mods.items():
         logging.info('Checking mod "%s"...', mod['title'])
 
-        mrep = report[mod['title']] = {}
+        mrep = report[' > '.join(mod['path'])] = {}
 
         for urls, files in mod['files']:
             for name in files:
