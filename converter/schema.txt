@@ -12,53 +12,32 @@
             "logo": "<will be extracted from the archives if null>",
             "notes": "...",
             "submods": ["<ID1>", "..."],
-            "dependencies": [
-                {
-                    "id": "<ID>",
-                    "version": "1.2.*" // https://getcomposer.org/doc/01-basic-usage.md#package-versions
-                },
-                ...
-            ],
-            "environment": [
-                {
-                    "type": "cpu_feature",
-                    "feature": "<SSE|SSE2|AVX|...>"
-                },
-                {
-                    "type": "os",
-                    "os": "<windows|linux|macos>"
-                },
-                ...
-            ],
-            "files": [
-                [
-                    [
-                        "<link1>",
-                        "..."
-                    ],
-                    {
-                        "<filename>": {
-                            "is_archive": true,
-                            "dest": "<destination path>"
-                        }
-                    }
-                ],
-                ...
-            ],
-            "features": [
+            "packages": [
                 {
                     "name": "...",
                     "notes": "...",
                     /*
                         A feature can be:
+                        - "required" (always installed with the mod, in fact these are the base files of the mod),
                         - "recommended" (automatically selected for installation, but the user can skip them),
                         - "optional" (not automatically selected, but user can add them during the install process)
                     */
-                    "status": "<recommended|optional>",
+                    "status": "<required|recommended|optional>",
                     "dependencies": [
                         {
                             "id": "<ID>",
                             "version": "1.2.*" // https://getcomposer.org/doc/01-basic-usage.md#package-versions
+                        },
+                        ...
+                    ],
+                    "environment": [
+                        {
+                            "type": "cpu_feature",
+                            "feature": "<SSE|SSE2|AVX|...>"
+                        },
+                        {
+                            "type": "os",
+                            "os": "<windows|linux|macos>"
                         },
                         ...
                     ],
@@ -102,20 +81,25 @@
     "mods": [
         {
             /* All of the above */
-            "files": {
-                "<filename>": {
-                    "is_archive": true,
-                    "dest": "<destination path>",
-                    "md5sum": "<checksum>",
-                    "urls": ["<URL1>", "<URL2>"], // The URLs are full URLs (they contain the filename).
+            "packages": [
+                {
+                    /* All of the above */
+                    "files": {
+                        "<filename>": {
+                            "is_archive": true,
+                            "dest": "<destination path>",
+                            "md5sum": "<checksum>",
+                            "urls": ["<URL1>", "<URL2>"], // The URLs are full URLs (they contain the filename).
 
-                    /* if is_archive */
-                        "contents": {
-                            "<filename>": "<checksum>"
+                            /* if is_archive */
+                                "contents": {
+                                    "<filename>": "<checksum>"
+                                }
+                            /* endif */
                         }
-                    /* endif */
+                    }
                 }
-            }
+            ]
         }
     ]
 }
@@ -125,79 +109,165 @@
     "includes": [],
     "mods": [
         {
-            "id": "FSO-Windows-SSE",
-            "title": "FreeSpace Open 3.7.0 Windows SSE",
+            "id": "FSO",
+            "title": "FreeSpace Open",
             "version": "3.7.0",
             "logo": null,
-            "description": "Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
+            "description": "Recent builds of FreeSpace Open (the engine)",
             "notes": ""
             "submods": [],
-            "dependencies": [],
-            "environment": [
+            "actions": [],
+            "packages": [
                 {
-                    "type": "os",
-                    "os": "windows"
+                    "name": "Windows SSE",
+                    "notes": Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
+                    "status": "required",
+                    "dependencies": [],
+                    "environment": [
+                        {
+                            "type": "os",
+                            "os": "windows"
+                        },
+                        {
+                            "type": "cpu_feature",
+                            "feature": "SSE"
+                        }
+                    ],
+                    "files": [
+                        [
+                            [
+                                "http://swc.fs2downloads.com/builds/WIN/",
+                                "http://scp.fsmods.net/builds/WIN/",
+                                "http://scp.indiegames.us/builds/WIN/"
+                            ],
+                            {
+                                "fs2_open_3_7_0_SSE.zip": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ],
+                        [
+                            [
+                                "http://swc.fs2downloads.com/files/",
+                                "http://scp.fsmods.net/builds/",
+                                "http://scp.indiegames.us/builds/"
+                            ],
+                            {
+                                "Launcher55g.zip": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ]
+                    ]
                 },
                 {
-                    "type": "cpu_feature",
-                    "feature": "SSE"
-                }
-            ],
-            "actions": [],
-            "features": []
-            "files": [
-                [
-                    [
-                        "http://swc.fs2downloads.com/builds/WIN/",
-                        "http://scp.fsmods.net/builds/WIN/",
-                        "http://scp.indiegames.us/builds/WIN/"
-                    ],
-                    {
-                        "fs2_open_3_7_0_SSE.zip": {
-                            "is_archive": true,
-                            "dest": ""
-                        }
-                    }
-                ],
-                [
-                    [
-                        "http://swc.fs2downloads.com/files/",
-                        "http://scp.fsmods.net/builds/",
-                        "http://scp.indiegames.us/builds/"
-                    ],
-                    {
-                        "Launcher55g.zip": {
-                            "is_archive": true,
-                            "dest": ""
-                        }
-                    }
-                ],
-                [
-                    [
-                        "http://www.fsoinstaller.com/files/installer/java/"
-                    ],
-                    {
-                        "FS2.bmp": {
-                            "is_archive": false,
-                            "dest": ""
+                    "name": "Windows SSE2",
+                    "notes": Windows builds for FreeSpace 2 Open, compiled with SSE2 optimizations.",
+                    "status": "required",
+                    "dependencies": [],
+                    "environment": [
+                        {
+                            "type": "os",
+                            "os": "windows"
                         },
-                        "mod.ini": {
-                            "is_archive": false,
-                            "dest": ""
+                        {
+                            "type": "cpu_feature",
+                            "feature": "SSE2"
                         }
-                    }
-                ],
-                [
-                    [
-                        "http://scp.indiegames.us/builds/"
                     ],
-                    {
-                        "scptrackir.zip": {
-                            "is_archive": true,
-                            "dest": ""
+                    "files": [
+                        [
+                            [
+                                "http://swc.fs2downloads.com/builds/WIN/",
+                                "http://scp.fsmods.net/builds/WIN/",
+                                "http://scp.indiegames.us/builds/WIN/"
+                            ],
+                            {
+                                "fs2_open_3_7_0_SSE2.zip": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ],
+                        [
+                            [
+                                "http://swc.fs2downloads.com/files/",
+                                "http://scp.fsmods.net/builds/",
+                                "http://scp.indiegames.us/builds/"
+                            ],
+                            {
+                                "Launcher55g.zip": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "name": "Linux",
+                    "notes": Linux builds for FreeSpace 2 Open.",
+                    "status": "required",
+                    "dependencies": [],
+                    "environment": [
+                        {
+                            "type": "os",
+                            "os": "linux"
                         }
-                    }
-                ]
+                    ],
+                    "files": [
+                        [
+                            [
+                                "http://swc.fs2downloads.com/builds/LIN/",
+                                "http://scp.fsmods.net/builds/LIN/",
+                                "http://scp.indiegames.us/builds/LIN/"
+                            ],
+                            {
+                                "fs2_open_3_7_0.tar.gz": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "name": "Common files",
+                    "notes": "",
+                    "status": "required",
+                    "dependencies": [],
+                    "environment": [],
+                    "files": [
+                        [
+                            [
+                                "http://www.fsoinstaller.com/files/installer/java/"
+                            ],
+                            {
+                                "FS2.bmp": {
+                                    "is_archive": false,
+                                    "dest": ""
+                                },
+                                "mod.ini": {
+                                    "is_archive": false,
+                                    "dest": ""
+                                }
+                            }
+                        ],
+                        [
+                            [
+                                "http://scp.indiegames.us/builds/"
+                            ],
+                            {
+                                "scptrackir.zip": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ]
+                    ]
+                }
             ]
         }
     ]
@@ -208,49 +278,56 @@
     "generated": "1409169192",
     "mods": [
         {
-            "id": "FSO-Windows-SSE",
-            "title": "FreeSpace Open 3.7.0 Windows SSE",
+            "id": "FSO",
+            "title": "FreeSpace Open",
             "version": "3.7.0",
             "logo": null,
-            "description": "Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
+            "description": "Recent builds of FreeSpace Open (the engine)",
             "notes": ""
             "submods": [],
-            "dependencies": [],
-            "environment": [
-                {
-                    "type": "os",
-                    "os": "windows"
-                },
-                {
-                    "type": "cpu_feature",
-                    "feature": "SSE"
-                }
-            ],
             "actions": [],
-            "features": []
-            "files": {
-                "fs2_open_3_7_0_SSE.zip": {
-                    "is_archive": true,
-                    "dest": "",
-                    "md5sum": "66ded59be0187cb057a5b77a341f625f",
-                    "urls": [
-                        "http://swc.fs2downloads.com/builds/WIN/fs2_open_3_7_0_SSE.zip",
-                        "http://scp.fsmods.net/builds/WIN/fs2_open_3_7_0_SSE.zip",
-                        "http://scp.indiegames.us/builds/WIN/fs2_open_3_7_0_SSE.zip"
+            "packages": [
+                {
+                    "name": "Windows SSE",
+                    "notes": Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
+                    "status": "required",
+                    "dependencies": [],
+                    "environment": [
+                        {
+                            "type": "os",
+                            "os": "windows"
+                        },
+                        {
+                            "type": "cpu_feature",
+                            "feature": "SSE"
+                        }
                     ],
-                    "contents": {
-                        "fred2_open_3_7_0_SSE-DEBUG.exe: "df9b8b05bca52a41a02543d96f7801e8",
-                        "fred2_open_3_7_0_SSE-DEBUG.map: "a883fb1ac82e508b16b02c78e3b90c47",
-                        "fred2_open_3_7_0_SSE-DEBUG.pdb: "756ab728cec24511073f8d3b33b4e38b",
-                        "fred2_open_3_7_0_SSE.exe: "55e5b03e8acab2196670f6ba58947833",
-                        "fs2_open_3_7_0_SSE-DEBUG.exe: "d29eff2072aac561db7e742c6315d0cb",
-                        "fs2_open_3_7_0_SSE-DEBUG.map: "cf0a580b48e6aec0f2778f85c1a8dae5",
-                        "fs2_open_3_7_0_SSE-DEBUG.pdb: "af61483a93b74ac8374ed6213dca783a",
-                        "fs2_open_3_7_0_SSE.exe: "ca0bea2411f1963c726e43d85e14be90"
+                    "files": {
+                        "fs2_open_3_7_0_SSE.zip": {
+                            "is_archive": true,
+                            "dest": "",
+                            "md5sum": "66ded59be0187cb057a5b77a341f625f",
+                            "urls": [
+                                "http://swc.fs2downloads.com/builds/WIN/fs2_open_3_7_0_SSE.zip",
+                                "http://scp.fsmods.net/builds/WIN/fs2_open_3_7_0_SSE.zip",
+                                "http://scp.indiegames.us/builds/WIN/fs2_open_3_7_0_SSE.zip"
+                            ],
+                            "contents": {
+                                "fred2_open_3_7_0_SSE-DEBUG.exe: "df9b8b05bca52a41a02543d96f7801e8",
+                                "fred2_open_3_7_0_SSE-DEBUG.map: "a883fb1ac82e508b16b02c78e3b90c47",
+                                "fred2_open_3_7_0_SSE-DEBUG.pdb: "756ab728cec24511073f8d3b33b4e38b",
+                                "fred2_open_3_7_0_SSE.exe: "55e5b03e8acab2196670f6ba58947833",
+                                "fs2_open_3_7_0_SSE-DEBUG.exe: "d29eff2072aac561db7e742c6315d0cb",
+                                "fs2_open_3_7_0_SSE-DEBUG.map: "cf0a580b48e6aec0f2778f85c1a8dae5",
+                                "fs2_open_3_7_0_SSE-DEBUG.pdb: "af61483a93b74ac8374ed6213dca783a",
+                                "fs2_open_3_7_0_SSE.exe: "ca0bea2411f1963c726e43d85e14be90"
+                            }
+                        },
+                        ...
                     }
                 },
                 ...
-            }
+            ]
         }
     ]
 }
