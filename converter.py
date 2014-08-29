@@ -249,7 +249,7 @@ def main(args):
             'mods': []
         }
 
-        for mod in mods.mods.values():
+        for mid, mod in mods.mods.items():
             mod = mod.copy()
             c_pkgs = {}
             if mid in cache['mods']:
@@ -265,7 +265,7 @@ def main(args):
 
             for pkg in mod['packages']:
                 if pkg['name'] in c_pkgs:
-                    files = c_pkgs[pkg['name']]['files'].copy()
+                    files = c_pkgs[pkg['name']]['files']
 
                     # Prune removed files
                     filenames = set()
@@ -288,7 +288,7 @@ def main(args):
                         for url in mirrors:
                             urls.append(util.pjoin(url, name))
 
-                        if name not in files or True:
+                        if name not in files:
                             files[name] = {}
 
                         files[name].update({

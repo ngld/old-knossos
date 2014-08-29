@@ -288,6 +288,11 @@ class Task(QtCore.QObject):
         return total, prog
     
     def is_done(self):
+        if not self._done.is_set():
+            with self._progress_lock:
+                if self._running == 0 and not self._has_work():
+                    self._done.set()
+
         return self._done.is_set()
     
     def get_results(self):
@@ -578,6 +583,8 @@ class ProgressDisplay(QtGui.QDialog):
     def try_abort(self):
         for task in self._tasks:
             task.abort()
+
+        self._check_tasks()
     
     def _check_tasks(self):
         for task in self._tasks:

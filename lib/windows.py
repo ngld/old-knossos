@@ -77,7 +77,7 @@ class SettingsWindow(Window):
         if mod is None:
             self.win.cmdButton.setText('Default command line flags')
         else:
-            self.win.cmdButton.setText('Command line flags for: {0}'.format(mod.name))
+            self.win.cmdButton.setText('Command line flags for: {0}'.format(mod.title))
         
         self.win.cmdButton.clicked.connect(self.show_flagwin)
         self.read_config()
@@ -484,13 +484,14 @@ class FlagsWindow(Window):
         self.read_flags()
         self.open()
         
-        if mod is None or mod.name not in manager.settings['cmdlines']:
+        if mod is None:
+            self.win.defaultsButton.hide()
+
+        if mod is None or mod.mid not in manager.settings['cmdlines']:
             if '#default' in manager.settings['cmdlines']:
                 self.set_selection(manager.settings['cmdlines']['#default'])
-
-            self.win.defaultsButton.hide()
         else:
-            self.set_selection(manager.settings['cmdlines'][mod.name])
+            self.set_selection(manager.settings['cmdlines'][mod.mid])
     
     def read_flags(self):
         fs2_bin = os.path.join(manager.settings['fs2_path'], manager.settings['fs2_bin'])
@@ -628,6 +629,6 @@ class FlagsWindow(Window):
         if self._mod is None:
             manager.settings['cmdlines']['#default'] = self.get_selection()
         else:
-            manager.settings['cmdlines'][self._mod.name] = self.get_selection()
+            manager.settings['cmdlines'][self._mod.mid] = self.get_selection()
         
         manager.save_settings()

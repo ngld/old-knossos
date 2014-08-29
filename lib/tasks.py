@@ -38,6 +38,12 @@ class FetchTask(progress.Task):
         
         self._fs2mod_list = []
         self._fs2mod_lock = threading.Lock()
+
+        # Remove all logos.
+        for path in glob.glob(os.path.join(manager.settings_path, 'logo*.*')):
+            if os.path.isfile(path):
+                logging.info('Removing old logo "%s"...', path)
+                os.unlink(path)
         
         self.done.connect(self.finish)
         self.add_work([(i * 100, link[0]) for i, link in enumerate(manager.settings['repos'])])
@@ -46,10 +52,14 @@ class FetchTask(progress.Task):
         prio, link = params
         
         progress.update(0.1, 'Fetching "%s"...' % link)
-        
+
         try:
+            raw_data = util.get(link).read().decode('utf8', 'replace')
+
             data = Repo()
-            data.get(link)
+            data.is_link = True
+            data.base = os.path.dirname(link)
+            data.parse(raw_data)
         except:
             logging.exception('Failed to decode "%s"!', link)
             return
@@ -66,7 +76,7 @@ class FetchTask(progress.Task):
             res.sort(key=lambda x: x[0])
             
             for part in res:
-                modlist.merge(part)
+                modlist.merge(part[1])
             
             filelist = manager.settings['known_files'] = {}
             for mod in modlist.get_list():
@@ -74,9 +84,9 @@ class FetchTask(progress.Task):
                     for name, ar in pkg.files.items():
                         if ar['is_archive']:
                             for item in ar['contents']:
-                                filelist[util.pjoin(mod.folder, ar['dest'], item)] = (mod.id, pkg.name)
+                                filelist[util.pjoin(mod.folder, ar['dest'], item)] = (mod.mid, pkg.name)
                         else:
-                            filelist[util.pjoin(mod.folder, ar['dest'], name)] = (mod.id, pkg.name)
+                            filelist[util.pjoin(mod.folder, ar['dest'], name)] = (mod.mid, pkg.name)
 
             manager.save_settings()
         
@@ -96,7 +106,7 @@ class CheckTask(progress.Task):
         self.add_work(pkgs)
 
     def work(self, pkg):
-        modpath = os.path.join(manager.settings_path['fs2_path'], pkg.get_mod().folder)
+        modpath = os.path.join(manager.settings['fs2_path'], pkg.get_mod().folder)
         files = pkg.get_files()
         
         count = float(len(files))

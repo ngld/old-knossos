@@ -33,7 +33,7 @@ import time
 import six
 from six.moves.urllib import parse as urlparse
 
-from lib import progress, util
+from lib import progress, util, repo
 from lib.qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.modinfo import Ui_Dialog as Ui_Modinfo
@@ -163,7 +163,7 @@ def save_settings():
             settings['hash_cache'][path] = info
     
     for mod in settings['cmdlines'].copy():
-        if mod not in installed and mod != '#default':
+        if mod not in settings['installed_mods'] and mod != '#default':
             del settings['cmdlines'][mod]
     
     with open(os.path.join(settings_path, 'settings.pick'), 'wb') as stream:
@@ -335,8 +335,11 @@ def build_mod_tree(mod=None, parent_el=None):
     rows = dict()
 
     for mod in mods:
-        row = QtGui.QTreeWidgetItem((mod.name, mod.version, ''))
-        rows[mod.id] = (row, dict())
+        row = QtGui.QTreeWidgetItem((mod.title, mod.version, ''))
+        row.setData(0, QtCore.Qt.UserRole + 2, mod)
+        row.setData(0, QtCore.Qt.UserRole + 3, False)
+
+        rows[mod.mid] = (row, dict())
 
         if parent_el is None:
             main_win.modTree.addTopLevelItem(row)
@@ -357,15 +360,18 @@ def _update_list(results):
     installed = []
     rows = build_mod_tree()
     files = dict()
+
+    if settings['installed_mods'] is None:
+        settings['installed_mods'] = dict()
     
     for pkg, archives, s, c, m in results:
-        for item in mod.get_files().keys():
-            path = util.pjoin(mod.folder, item)
+        for item in pkg.get_files().keys():
+            path = util.pjoin(pkg.get_mod().folder, item)
             
             if path in files:
-                files[path].append(mod.name)
+                files[path].append(pkg.name)
             else:
-                files[path] = [mod.name]
+                files[path] = [pkg.name]
     
     shared_files = {}
     for path, mods in files.items():
@@ -375,7 +381,7 @@ def _update_list(results):
     shared_set = set(shared_files.keys())
     
     for pkg, archives, s, c, m in results:
-        my_shared = shared_set & set([util.pjoin(mod.folder, item) for item in pkg.get_files().keys()])
+        my_shared = shared_set & set([util.pjoin(pkg.get_mod().folder, item) for item in pkg.get_files().keys()])
         
         if s == c:
             cstate = QtCore.Qt.Checked
@@ -391,13 +397,17 @@ def _update_list(results):
             cstate = QtCore.Qt.PartiallyChecked
             status = '%d corrupted or updated files' % (c - s)
         
-        row = QtGui.QTreeWidgetItem((pkg.name, mod.version, status))
+        row = QtGui.QTreeWidgetItem((pkg.name, pkg.get_mod().version, status))
         row.setCheckState(0, cstate)
         row.setData(0, QtCore.Qt.UserRole, cstate)
         row.setData(0, QtCore.Qt.UserRole + 1, m)
-        #row.setData(0, QtCore.Qt.UserRole + 2, pkg)
+        row.setData(0, QtCore.Qt.UserRole + 2, pkg)
+        row.setData(0, QtCore.Qt.UserRole + 3, False)
         
-        mid = pkg.get_mod().id
+        if pkg.status == 'required':
+            row.setDisabled(True)
+
+        mid = pkg.get_mod().mid
         rows[mid][1][pkg.name] = (row, pkg)
         rows[mid][0].addChild(row)
     
@@ -413,12 +423,27 @@ def _update_list(results):
 
         if ri == 0:
             state = QtCore.Qt.Unchecked
+
+            if mod.mid in settings['installed_mods']:
+                del settings['installed_mods'][mod.mid]
         elif ri == rc:
             state = QtCore.Qt.Checked
         else:
             state = QtCore.Qt.PartiallyChecked
 
-        rows[mod.id][0].setCheckState(0, state)
+        if ri > 0:
+            if mod.mid not in settings['installed_mods']:
+                settings['installed_mods'][mid] = dict()
+
+            item = settings['installed_mods'][mid]
+            for pkg in mod.packages:
+                if pkg in installed and pkg.name not in item:
+                    item[pkg.name] = mod.version
+                elif pkg not in installed and pkg.name in item:
+                    del item[pkg.name]
+
+        rows[mod.mid][0].setCheckState(0, state)
+        rows[mod.mid][0].setData(0, QtCore.Qt.UserRole, state)
 
     if not main_win.isActiveWindow():
         if Unity:
@@ -447,7 +472,7 @@ def _get_installed(results):
     
     for mod, archives, s, c, m in results:
         if s == c:
-            installed.append(mod.name)
+            installed.append(mod.title)
 
 
 def get_installed():
@@ -455,28 +480,65 @@ def get_installed():
 
 
 def autoselect_deps(item, col):
-    global settings, installed
+    global settings
     
-    if settings['enforce_deps']:
-        checked = set()
-        items = read_tree(main_win.modTree)
-        for row, p in items:
-            if row.checkState(0) == QtCore.Qt.Checked:
-                checked.add(row.text(0))
-        
-        deps = resolve_deps(checked, False)
-        for row, p in items:
-            if row.text(0) in deps:
-                row.setCheckState(0, QtCore.Qt.Checked)
-    else:
-        if col != 0 or item.checkState(0) != QtCore.Qt.Checked:
-            return
-        
-        deps = resolve_deps([item.text(0)])
-        items = read_tree(main_win.modTree)
-        for row, parent in items:
-            if row.text(0) in deps and row.checkState(0) == QtCore.Qt.Unchecked:
-                row.setCheckState(0, QtCore.Qt.Checked)
+    item.setData(0, QtCore.Qt.UserRole + 3, False)
+    info = item.data(0, QtCore.Qt.UserRole + 2)
+    if isinstance(info, repo.Mod):
+        was_installed = item.data(0, QtCore.Qt.UserRole) in (QtCore.Qt.Checked, QtCore.Qt.PartiallyChecked)
+
+        if item.checkState(0) == QtCore.Qt.Checked:
+            # Check all required and recommended packages
+            for i in range(0, item.childCount()):
+                child = item.child(i)
+                pkg = child.data(0, QtCore.Qt.UserRole + 2)
+
+                if isinstance(pkg, repo.Package):
+                    state = QtCore.Qt.Checked
+                    if pkg.status != 'required':
+                        if was_installed:
+                            state = child.data(0, QtCore.Qt.UserRole)
+                        elif pkg.status == 'optional':
+                            state = QtCore.Qt.Unchecked
+
+                    child.setCheckState(0, state)
+
+        elif item.checkState(0) == QtCore.Qt.Unchecked:
+            # Uncheck all packages
+            for i in range(0, item.childCount()):
+                child = item.child(i)
+                pkg = child.data(0, QtCore.Qt.UserRole + 2)
+
+                if isinstance(pkg, repo.Package):
+                    child.setCheckState(0, QtCore.Qt.Unchecked)
+
+    # Cascade dependencies
+    tree = read_tree(main_win.modTree)
+    selection = []
+    for item, _ in tree:
+        if item.data(0, QtCore.Qt.UserRole + 3):
+            item.setCheckState(0, QtCore.Qt.Unchecked)
+        else:
+            pkg = item.data(0, QtCore.Qt.UserRole + 2)
+            if isinstance(pkg, repo.Package) and item.checkState(0) != QtCore.Qt.Unchecked:
+                selection.append(pkg)
+
+    try:
+        selection = settings['mods'].process_pkg_selection(selection)
+    except:
+        logging.exception('Failed to satisfy dependencies!')
+        reset_selection()
+        # TODO: Message to the user?
+        return
+
+    for item, _ in tree:
+        pkg = item.data(0, QtCore.Qt.UserRole + 2)
+        if isinstance(pkg, repo.Package) and pkg in selection:
+            if item.checkState(0) != QtCore.Qt.Checked:
+                if item.checkState(0) == QtCore.Qt.Unchecked:
+                    item.setData(0, QtCore.Qt.UserRole + 3, True)
+
+                item.setCheckState(0, QtCore.Qt.Checked)
 
 
 def reset_selection():
@@ -488,9 +550,13 @@ def reset_selection():
 def select_mod(item, col):
     global installed
     
-    name = item.text(0)
-    check_msgs = item.data(0, QtCore.Qt.UserRole + 1)
-    mod = ModInfo2(settings['mods'][name])
+    mod = item.data(0, QtCore.Qt.UserRole + 2)
+    if not isinstance(mod, repo.Mod):
+        if isinstance(mod, repo.Package):
+            # This is a package...
+            select_pkg(item, col)
+        return
+
     infowin = util.init_ui(Ui_Modinfo(), QtGui.QDialog(main_win))
     infowin.setModal(True)
     
@@ -500,37 +566,19 @@ def select_mod(item, col):
     def show_settings():
         FlagsWindow(infowin, mod)
     
-    if mod.version not in (None, ''):
-        infowin.modname.setText(mod.name + ' - ' + mod.version)
-    else:
-        infowin.modname.setText(mod.name)
+    infowin.modname.setText(mod.title + ' - ' + str(mod.version))
     
     if mod.logo is None:
         infowin.logo.hide()
     else:
         img = QtGui.QPixmap()
-        img.loadFromData(mod.logo)
+        img.load(os.path.join(settings_path, mod.logo))
         infowin.logo.setPixmap(img)
     
-    infowin.desc.setPlainText(mod.desc)
-    infowin.note.setPlainText(mod.note)
+    infowin.desc.setPlainText(mod.description)
+    infowin.note.setPlainText(mod.notes)
 
-    if len(check_msgs) > 0 and item.data(0, QtCore.Qt.UserRole) != QtCore.Qt.Unchecked:
-        infowin.note.appendPlainText('\nCheck messages:\n* ' + '\n* '.join(check_msgs))
-    
-    deps = resolve_deps([mod.name], False)
-    if len(deps) > 0:
-        lines = []
-        for dep in deps:
-            line = '* ' + dep
-            if dep in installed:
-                line += ' (installed)'
-            
-            lines.append(line)
-        
-        infowin.note.appendPlainText('\nDependencies:\n' + '\n'.join(lines))
-    
-    infowin.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.contents.keys())]))
+    infowin.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.get_files().keys())]))
     
     infowin.closeButton.clicked.connect(infowin.close)
     infowin.settingsButton.clicked.connect(show_settings)
@@ -540,11 +588,48 @@ def select_mod(item, col):
     infowin.note.verticalScrollBar().setValue(0)
 
 
-def run_mod(mod):
-    global installed
+def select_pkg(item, col):
+    check_msgs = item.data(0, QtCore.Qt.UserRole + 1)
+    pkg = item.data(0, QtCore.Qt.UserRole + 2)
+
+    if not isinstance(pkg, repo.Package):
+        if isinstance(pkg, repo.Mod):
+            select_mod(item, col)
+        return
+
+    infowin = util.init_ui(Ui_Modinfo(), QtGui.QDialog(main_win))
+    infowin.setModal(True)
+    infowin.modname.setText(pkg.name)
+    infowin.logo.hide()
+
+    infowin.desc.setPlainText(pkg.notes)
+
+    if len(check_msgs) > 0 and item.data(0, QtCore.Qt.UserRole) != QtCore.Qt.Unchecked:
+        infowin.note.appendPlainText('\nCheck messages:\n* ' + '\n* '.join(check_msgs))
     
+    deps = pkg.resolve_deps()
+    if len(deps) > 0:
+        lines = []
+        for dep in deps:
+            line = '* ' + dep.name
+            #if dep in installed:
+            #    line += ' (installed)'
+            
+            lines.append(line)
+        
+        infowin.note.appendPlainText('\nDependencies:\n' + '\n'.join(lines))
+
+    infowin.closeButton.clicked.connect(infowin.close)
+    infowin.settingsButton.hide()
+    infowin.runButton.hide()
+    infowin.show()
+    
+    infowin.note.verticalScrollBar().setValue(0)
+
+
+def run_mod(mod):
     if mod is None:
-        mod = ModInfo2()
+        mod = repo.Mod()
     
     modpath = util.ipath(os.path.join(settings['fs2_path'], mod.folder))
     ini = None
@@ -555,7 +640,6 @@ def run_mod(mod):
         if not os.path.isdir(modpath):
             QtGui.QMessageBox.critical(main_win, 'Error', 'Failed to install "%s"! Read the log for more information.' % (mod.name))
         else:
-            installed.append(mod.name)
             run_mod(mod)
     
     if settings['fs2_bin'] is None:
@@ -565,25 +649,26 @@ def run_mod(mod):
             QtGui.QMessageBox.critical(main_win, 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
             return
     
-    if mod.name not in installed and mod.name != '':
-        deps = resolve_deps([mod.name])
+    if mod.name != '' and not os.path.isdir(modpath):
+        deps = mod.resolve_deps()
+        titles = [pkg.name for pkg in deps]
 
         msg = QtGui.QMessageBox()
         msg.setIcon(QtGui.QMessageBox.Question)
-        msg.setText('You don\'t have %s, yet. Shall I install it?' % (mod.name))
-        msg.setInformativeText('%s will be installed.' % (', '.join([mod.name] + deps)))
+        msg.setText('You don\'t have %s, yet. Shall I install it?' % (mod.title))
+        msg.setInformativeText('%s will be installed.' % (', '.join(titles)))
         msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         msg.setDefaultButton(QtGui.QMessageBox.Yes)
         
         if msg.exec_() == QtGui.QMessageBox.Yes:
-            task = InstallTask([mod.name] + deps)
+            task = InstallTask(deps)
             task.done.connect(check_install)
             run_task(task)
         
         return
     
     # Look for the mod.ini
-    for item in mod.contents:
+    for item in mod.get_files():
         if os.path.basename(item).lower() == 'mod.ini':
             ini = item
             break
@@ -616,7 +701,7 @@ def run_mod(mod):
     else:
         # No mod.ini found, look for the first subdirectory then.
         if mod.folder == '':
-            for item in mod.contents:
+            for item in mod.get_files():
                 if item.lower().endswith('.vp'):
                     modfolder = item.split('/')[0]
                     break
@@ -641,9 +726,9 @@ def run_mod(mod):
     
     path = os.path.join(path, 'data/cmdline_fso.cfg')
     
-    if mod.name in settings['cmdlines']:
+    if mod.mid in settings['cmdlines']:
         # We have a saved cmdline for this mod.
-        cmdline = settings['cmdlines'][mod.name][:]
+        cmdline = settings['cmdlines'][mod.mid][:]
     elif '#default' in settings['cmdlines']:
         # We have a default cmdline.
         cmdline = settings['cmdlines']['#default'][:]

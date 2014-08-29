@@ -52,6 +52,9 @@ class Repo(object):
     mods = None
     includes = None
 
+    def __init__(self):
+        self.mods = {}
+
     def get(self, link):
         self.base = os.path.dirname(link)
         self.is_link = True
@@ -62,8 +65,11 @@ class Repo(object):
         self.parse(open(path, 'r'))
 
     def parse(self, obj):
-        with obj:
-            data = json.load(obj)
+        if isinstance(obj, str):
+            data = json.loads(obj)
+        else:
+            with obj:
+                data = json.load(obj)
 
         self.mods = {}
         self.includes = data.get('includes', [])
@@ -78,7 +84,7 @@ class Repo(object):
             self.merge(item)
 
         for mod in data.get('mods', []):
-            if mod.get('logo', None) is not None:
+            if mod.get('logo', None) is not None and self.base is not None and '://' not in mod['logo']:
                 if self.is_link:
                     mod['logo'] = util.url_join(self.base, mod['logo'])
                 else:
@@ -223,7 +229,7 @@ class Mod(object):
         self.mid = values['id']
         self.title = values['title']
         self.version = semantic_version.Version(values['version'], partial=True)
-        self.folder = values['folder']
+        self.folder = values.get('folder', '')
         self.logo = values.get('logo', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
@@ -243,17 +249,21 @@ class Mod(object):
 
         return files
 
+    def resolve_deps(self):
+        return self._repo.process_pkg_selection(self.packages)
+
     def save_logo(self, dest):
         if self.logo is None:
             return
 
-        suffix = self.logo.split('.')[-1]
+        suffix = '.' + self.logo.split('.')[-1]
         fd, path = tempfile.mkstemp(dir=dest, prefix='logo', suffix=suffix)
         os.close(fd)
 
         if '://' in self.logo:
             # That's a URL
-            util.download(self.logo, path)
+            with open(path, 'wb') as fobj:
+                util.download(self.logo, fobj)
         else:
             shutil.copyfile(self.logo, path)
 
