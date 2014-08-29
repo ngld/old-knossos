@@ -25,6 +25,7 @@ from six.moves.urllib.request import urlopen, Request
 from six.moves.urllib.error import URLError
 
 from lib import util
+from converter.repo import RepoConf
 
 
 def compute_path(mods, item, path=[]):
@@ -58,14 +59,15 @@ def check(url, meth='HEAD'):
 
 def main(args):
     parser = argparse.ArgumentParser()
-    parser.add_argument('checksumfile', help='Repo configuration.')
+    parser.add_argument('repofile', help='Repo configuration.')
     parser.add_argument('reportfile', help='The file that will contain the generated report.')
 
     args = parser.parse_args(args)
 
     logging.info('Reading repo configuration...')
-    with open(args.checksumfile, 'r') as stream:
-        mods = json.load(stream)
+    mods = RepoConf(args.repofile)
+    mods.parse_includes()
+    mods = mods.mods
 
     for key in list(mods.keys()):
         if key[0] == '#':

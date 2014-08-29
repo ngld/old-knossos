@@ -25,7 +25,7 @@ import tempfile
 
 import manager
 from lib import util, progress
-from lib.fs2mod import ModInfo2
+from lib.repo import Repo
 from lib.qt import QtGui
 
 
@@ -40,91 +40,44 @@ class FetchTask(progress.Task):
         self._fs2mod_lock = threading.Lock()
         
         self.done.connect(self.finish)
-        self.add_work([(i * 100, link[0], link[1]) for i, link in enumerate(manager.settings['repos'])])
+        self.add_work([(i * 100, link[0]) for i, link in enumerate(manager.settings['repos'])])
     
     def work(self, params):
-        prio, ltype, link = params
+        prio, link = params
         
-        if ltype == 'json':
-            progress.update(0.1, 'Fetching "%s"...' % link)
-            
-            data = util.get(link).read().decode('utf8', 'replace')
-            
-            try:
-                data = json.loads(data)
-            except:
-                logging.exception('Failed to decode "%s"!', link)
-                return
-            
-            if '#include' in data:
-                self.add_work([(prio + i, link[0], link[1]) for i, link in enumerate(data['#include'])])
-                del data['#include']
-            
-            base_path = os.path.dirname(link)
-            for i, mod in enumerate(data.values()):
-                if 'logo' in mod:
-                    progress.update(0.1 + float(i) / len(data), 'Loading logos...')
-                    mod['logo'] = util.get(base_path + '/' + mod['logo']).read()
-            
-            if '' in data:
-                logging.warning('Source "%s" contains a mod with an empty name!', link)
-                del data['']
-            
-            data['#priority'] = prio
-            
-            self.post(data)
-        elif ltype == 'fs2mod':
-            with self._fs2mod_lock:
-                if link in self._fs2mod_list:
-                    return
-                else:
-                    self._fs2mod_list.append(link)
-            
-            if link.startswith(('http://', 'https://')):
-                with tempfile.TemporaryFile() as dl:
-                    util.download(link, dl)
-                    
-                    dl.seek(0)
-                    mod = ModInfo2()
-                    mod.read_zip(dl, os.path.basename(link).split('?')[0])
-            else:
-                mod = ModInfo2()
-                try:
-                    mod.read_zip(link)
-                except:
-                    logging.exception('Failed to read "%s"!', link)
-                    return
-                
-                mod.update_info()
-            
-            if mod.name == '':
-                logging.warning('The name for "%s" is empty! Did I really read this file? Skipping it!', link)
-            else:
-                self.add_work([(prio + i, 'fs2mod', item[2]) for i, item in enumerate(mod.dependencies) if item[0] in ('fs2mod', 'json')])
-                self.post({mod.name: mod.__dict__, '#priority': prio})
-        else:
-            logging.error('Fetch type "%s" isn\'t implemented (yet)!', ltype)
+        progress.update(0.1, 'Fetching "%s"...' % link)
+        
+        try:
+            data = Repo()
+            data.get(link)
+        except:
+            logging.exception('Failed to decode "%s"!', link)
+            return
+        
+        progress.update(0.5, 'Loading logos...')
+        data.save_logos(manager.settings_path)
+        
+        self.post((prio, data))
     
     def finish(self):
-        global settings
-        
         if not self.aborted:
-            modlist = manager.settings['mods'] = {}
+            modlist = manager.settings['mods'] = Repo()
             res = self.get_results()
-            
-            res.sort(key=lambda x: x['#priority'])
+            res.sort(key=lambda x: x[0])
             
             for part in res:
-                del part['#priority']
-                
-                for name, mod in part.items():
-                    modlist[name] = mod
+                modlist.merge(part)
             
             filelist = manager.settings['known_files'] = {}
-            for mod in modlist.values():
-                for item in mod['contents']:
-                    filelist[util.pjoin(mod['folder'], item).lower()] = mod
-            
+            for mod in modlist.get_list():
+                for pkg in mod.packages:
+                    for name, ar in pkg.files.items():
+                        if ar['is_archive']:
+                            for item in ar['contents']:
+                                filelist[util.pjoin(mod.folder, ar['dest'], item)] = (mod.id, pkg.name)
+                        else:
+                            filelist[util.pjoin(mod.folder, ar['dest'], name)] = (mod.id, pkg.name)
+
             manager.save_settings()
         
         manager.signals.list_updated.emit()
@@ -136,14 +89,44 @@ class CheckTask(progress.Task):
     def __init__(self, mods):
         super(CheckTask, self).__init__()
         
-        self.add_work(mods)
+        pkgs = []
+        for mod in mods:
+            pkgs.extend(mod.packages)
 
-    def work(self, mod):
-        mod = ModInfo2(mod)
-        modpath = os.path.join(manager.settings['fs2_path'], mod.folder)
-        a, s, c, m = mod.check_files(modpath)
+        self.add_work(pkgs)
+
+    def work(self, pkg):
+        modpath = os.path.join(manager.settings_path['fs2_path'], pkg.get_mod().folder)
+        files = pkg.get_files()
         
-        if mod.folder != '':
+        count = float(len(files))
+        success = 0
+        checked = 0
+        
+        archives = set()
+        msgs = []
+        
+        for item, info in files.items():
+            mypath = util.ipath(os.path.join(modpath, item))
+            fix = False
+            if os.path.isfile(mypath):
+                progress.update(checked / count, 'Checking "%s"...' % (item))
+                
+                if util.gen_hash(mypath) == info[0]:
+                    success += 1
+                else:
+                    msgs.append('File "%s" is corrupted. (checksum mismatch)' % (item))
+                    fix = True
+            else:
+                msgs.append('File "%s" is missing.' % (item))
+                fix = True
+            
+            if fix:
+                archives.add(info[1])
+            
+            checked += 1
+        
+        if pkg.get_mod().folder != '':
             prefix = len(manager.settings['fs2_path'])
             filelist = manager.settings['known_files']
             lines = []
@@ -154,9 +137,9 @@ class CheckTask(progress.Task):
                         lines.append('  * %s' % my_path)
             
             if len(lines) > 0:
-                m.append('User-added files:\n' + '\n'.join(lines))
+                msgs.append('User-added files:\n' + '\n'.join(lines))
         
-        self.post((mod, a, s, c, m))
+        self.post((pkg, archives, success, checked, msgs))
 
 
 class InstallTask(progress.Task):
@@ -357,7 +340,7 @@ class GOGExtractTask(progress.Task):
         self._makedirs(os.path.join(dest_path, 'data/movies'))
         
         for item in glob.glob(os.path.join(dest_path, 'app', '*.vp')):
-            shutil.move(item, os.path.join(dest_path, 'data', os.path.basename(item)))
+            shutil.move(item, os.path.join(dest_path, os.path.basename(item)))
         
         for item in glob.glob(os.path.join(dest_path, 'app/data/players', '*.hcf')):
             shutil.move(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
@@ -381,11 +364,9 @@ class GOGExtractTask(progress.Task):
             os.makedirs(path)
     
     def finish(self):
-        global settings
-        
         results = self.get_results()
         if len(results) < 1:
-            QtGui.QMessageBox.critical(manager.main_win, 'Error', 'The Installer failed! Please read the log for more details...')
+            QtGui.QMessageBox.critical(manager.main_win, 'Error', 'The installer failed! Please read the log for more details...')
             return
         elif results[0] == -1:
             QtGui.QMessageBox.critical(manager.main_win, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')

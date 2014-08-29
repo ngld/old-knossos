@@ -150,7 +150,8 @@ def main(args):
             return False
 
         cache = {
-            '#generated': 0
+            'generated': 0,
+            'mods': {}
         }
         start_time = time.time()
 
@@ -158,20 +159,38 @@ def main(args):
             with open(args.outfile, 'r') as stream:
                 cache = json.load(stream)
 
+            c_mods = {}
+            for mod in cache['mods']:
+                c_mods[mod['id']] = mod
+
+            cache['mods'] = c_mods
+
         app = QtCore.QCoreApplication([])
         master = progress.Master()
         task = ChecksumTask()
         
         # Thu, 24 Jul 2014 12:00:16 GMT
         locale.setlocale(locale.LC_TIME, 'C')
-        tstamp = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime(cache['#generated']))
+        tstamp = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime(cache['generated']))
 
         items = []
         for mid, mod in mods.mods.items():
-            for mirrors, files in mod['files']:
-                for name, info in files.items():
-                    # id_, links, name, archive, tstamp
-                    items.append(((mid, name), mirrors, name, info.get('is_archive', True), tstamp))
+            c_mod = cache['mods'].get(mid, {})
+            c_pkgs = [pkg['name'] for pkg in c_mod.get('packages', [])]
+
+            for pkg in mod['packages']:
+                my_tstamp = 0
+
+                # Only download the files if we have no checksums or they changed.
+                if pkg['name'] in c_pkgs:
+                    my_tstamp = tstamp
+
+                print('tstamp', my_tstamp, tstamp, pkg['name'], c_pkgs)
+
+                for mirrors, files in pkg['files']:
+                    for name, info in files.items():
+                        # id_, links, name, archive, tstamp
+                        items.append(((mid, pkg['name'], name), mirrors, name, info.get('is_archive', True), my_tstamp))
 
         task.add_work(items)
       
@@ -208,7 +227,7 @@ def main(args):
         results = {}
         logos = {}
         for id_, csum, content in task.get_results():
-            mid, name = id_
+            mid, pkg, name = id_
 
             if name == 'logo.jpg':
                 logos[mid] = csum
@@ -216,42 +235,71 @@ def main(args):
                 if mid not in results:
                     results[mid] = {}
 
-                results[mid][name] = {
+                if pkg not in results[mid]:
+                    results[mid][pkg] = {}
+
+                results[mid][pkg][name] = {
                     'md5sum': csum,
                     'contents': content
                 }
 
         outpath = os.path.dirname(args.outfile)
         new_cache = {
-            '#generated': start_time
+            'generated': start_time,
+            'mods': []
         }
 
-        for mid, mod in mods.mods.items():
-            if mid in cache:
-                csums = cache[mid].get('checksums', {})
+        for mod in mods.mods.values():
+            mod = mod.copy()
+            c_pkgs = {}
+            if mid in cache['mods']:
+                for pkg in cache['mods'][mid]['packages']:
+                    c_pkgs[pkg['name']] = pkg
 
-                # Prune removed files
-                filenames = set()
-                for links, files in mod['files']:
-                    filenames |= files.keys()
+            if mid in logos and mod.get('logo', None) is None:
+                fd, name = tempfile.mkstemp(dir=outpath, prefix='logo', suffix='.' + logos[mid].split('.')[-1])
+                os.close(fd)
 
-                for key in set(csums.keys()) - filenames:
-                    del csums[key]
-            else:
-                csums = {}
+                shutil.move(logos[mid], name)
+                mod['logo'] = os.path.basename(name)
 
-            new_cache[mid] = mod.copy()
-            new_cache[mid]['checksums'] = csums
+            for pkg in mod['packages']:
+                if pkg['name'] in c_pkgs:
+                    files = c_pkgs[pkg['name']]['files'].copy()
 
-            if mid in results:
-                csums.update(results[mid])
-            elif len(csums) == 0:
-                logging.warning('Checksums for "%s" are missing!', mid)
+                    # Prune removed files
+                    filenames = set()
+                    for links, s_files in pkg['files']:
+                        filenames |= s_files.keys()
 
-            if mid in logos and new_cache[mid].get('logo', None) is None:
-                name = os.path.basename(logos[mid])
-                shutil.move(logos[mid], os.path.join(outpath, name))
-                new_cache[mid]['logo'] = name
+                    for key in set(files.keys()) - filenames:
+                        del files[key]
+                else:
+                    files = {}
+
+                if mid in results and pkg['name'] in results[mid]:
+                    files.update(results[mid][pkg['name']])
+                elif len(files) == 0:
+                    logging.warning('Checksums for "%s" are missing!', mid)
+
+                for mirrors, m_files in pkg['files']:
+                    for name, info in m_files.items():
+                        urls = []
+                        for url in mirrors:
+                            urls.append(util.pjoin(url, name))
+
+                        if name not in files or True:
+                            files[name] = {}
+
+                        files[name].update({
+                            'is_archive': info.get('is_archive', True),
+                            'dest': info.get('dest', '#'),
+                            'urls': urls
+                        })
+
+                pkg['files'] = files
+
+            new_cache['mods'].append(mod)
 
         with open(args.outfile, 'w') as stream:
             json.dump(new_cache, stream, separators=(',', ':'))

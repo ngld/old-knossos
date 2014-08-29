@@ -52,12 +52,11 @@ except ImportError:
     # Can't find Unity.
     Unity = None
 
-VERSION = '0.2-packager'
+VERSION = '0.3-packager'
 main_win = None
 progress_win = None
 splash = None
 unity_launcher = None
-installed = None
 shared_files = {}
 fs2_watcher = None
 pmaster = progress.Master()
@@ -65,10 +64,11 @@ settings = {
     'fs2_bin': None,
     'fs2_path': None,
     'mods': None,
+    'installed_mods': None,
     'cmdlines': {},
     'hash_cache': None,
     'enforce_deps': True,
-    'repos': [('json', 'http://dev.tproxy.de/fs2/all.json', 'ngld\'s HLP Mirror')],
+    'repos': [('http://dev.tproxy.de/fs2/all.json', 'ngld\'s Repo')],
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt'
 }
 
@@ -326,18 +326,40 @@ def fetch_list():
     return run_task(FetchTask())
 
 
-def _update_list(results):
-    global settings, main_win, installed, shared_files
-    
-    installed = []
+def build_mod_tree(mod=None, parent_el=None):
+    if mod is None:
+        mods = settings['mods'].get_tree()
+    else:
+        mods = mod.get_submods()
+
     rows = dict()
-    files = dict()
+
+    for mod in mods:
+        row = QtGui.QTreeWidgetItem((mod.name, mod.version, ''))
+        rows[mod.id] = (row, dict())
+
+        if parent_el is None:
+            main_win.modTree.addTopLevelItem(row)
+        else:
+            parent_el.addChild(row)
+
+        rows.update(build_mod_tree(mod, row))
+
+    return rows
+
+
+def _update_list(results):
+    global settings, main_win, shared_files
     
     # Make sure the mod tree is empty.
     main_win.modTree.clear()
+
+    installed = []
+    rows = build_mod_tree()
+    files = dict()
     
-    for mod, archives, s, c, m in results:
-        for item in mod.contents.keys():
+    for pkg, archives, s, c, m in results:
+        for item in mod.get_files().keys():
             path = util.pjoin(mod.folder, item)
             
             if path in files:
@@ -352,13 +374,13 @@ def _update_list(results):
     
     shared_set = set(shared_files.keys())
     
-    for mod, archives, s, c, m in results:
-        my_shared = shared_set & set([util.pjoin(mod.folder, item) for item in mod.contents.keys()])
+    for pkg, archives, s, c, m in results:
+        my_shared = shared_set & set([util.pjoin(mod.folder, item) for item in pkg.get_files().keys()])
         
         if s == c:
             cstate = QtCore.Qt.Checked
             status = 'Installed'
-            installed.append(mod.name)
+            installed.append(pkg)
         elif s == 0 or s == len(my_shared):
             cstate = QtCore.Qt.Unchecked
             status = 'Not installed'
@@ -369,19 +391,35 @@ def _update_list(results):
             cstate = QtCore.Qt.PartiallyChecked
             status = '%d corrupted or updated files' % (c - s)
         
-        row = QtGui.QTreeWidgetItem((mod.name, mod.version, status))
+        row = QtGui.QTreeWidgetItem((pkg.name, mod.version, status))
         row.setCheckState(0, cstate)
         row.setData(0, QtCore.Qt.UserRole, cstate)
         row.setData(0, QtCore.Qt.UserRole + 1, m)
+        #row.setData(0, QtCore.Qt.UserRole + 2, pkg)
         
-        rows[mod.name] = (row, mod)
+        mid = pkg.get_mod().id
+        rows[mid][1][pkg.name] = (row, pkg)
+        rows[mid][0].addChild(row)
     
-    for row, mod in rows.values():
-        if mod.parent is None or mod.parent not in rows:
-            main_win.modTree.addTopLevelItem(row)
+    for mod in settings['mods'].get_list():
+        rc = 0
+        ri = 0
+        for pkg in mod.packages:
+            if pkg.status == 'required':
+                if pkg in installed:
+                    ri += 1
+                
+                rc += 1
+
+        if ri == 0:
+            state = QtCore.Qt.Unchecked
+        elif ri == rc:
+            state = QtCore.Qt.Checked
         else:
-            rows[mod.parent][0].addChild(row)
-            
+            state = QtCore.Qt.PartiallyChecked
+
+        rows[mod.id][0].setCheckState(0, state)
+
     if not main_win.isActiveWindow():
         if Unity:
             if not unity_launcher.get_property("urgent"):
@@ -398,8 +436,8 @@ def update_list():
     
     if settings['mods'] is None:
         fetch_list()
-    elif len(settings['mods']) > 0:
-        return run_task(CheckTask(settings['mods'].values()), _update_list)
+    else:
+        return run_task(CheckTask(settings['mods'].get_list()), _update_list)
 
 
 def _get_installed(results):
@@ -414,24 +452,6 @@ def _get_installed(results):
 
 def get_installed():
     return run_task(CheckTask(settings['mods'].values()), _get_installed)
-
-
-def resolve_deps(mods, skip_installed=True):
-    global installed
-
-    deps = set()
-    modlist = settings['mods'].copy()
-    
-    for name, data in modlist.items():
-        modlist[name] = ModInfo2(data)
-    
-    for name in mods:
-        deps |= modlist[name].lookup_deps(modlist)
-    
-    if skip_installed:
-        deps -= set(installed)
-    
-    return list(deps - set(mods))
 
 
 def autoselect_deps(item, col):
@@ -735,75 +755,37 @@ def update_repo_list():
     main_win.sourceList.clear()
     
     for i, repo in enumerate(settings['repos']):
-        item = QtGui.QListWidgetItem(repo[2], main_win.sourceList)
+        item = QtGui.QListWidgetItem(repo[1], main_win.sourceList)
         item.setData(QtCore.Qt.UserRole, i)
 
 
 def _edit_repo(repo=None, idx=None):
     win = util.init_ui(Ui_AddRepo(), QtGui.QDialog(main_win))
     
-    def update_type():
-        if win.typeJson.isChecked():
-            win.sourceButton.hide()
-        else:
-            win.sourceButton.show()
-    
-    def source_select():
-        path = QtGui.QFileDialog.getOpenFileName(win, 'Please select a source.', '', 'fs2mod File (*.fs2mod)')
-        if isinstance(path, tuple):
-            path = path[0]
-        
-        if path is not None and os.path.isfile(path):
-            win.source.setText(os.path.abspath(path))
-            
-            if win.typeFs2mod.isChecked():
-                try:
-                    mod = ModInfo2()
-                    mod.read_zip(path)
-                    
-                    win.title.setText(mod.name + ' (fs2mod)')
-                except:
-                    logging.exception('Failed to read "%s". Can\'t determine title.')
-    
-    win.typeJson.toggled.connect(update_type)
-    win.typeFs2mod.toggled.connect(update_type)
-    
-    win.sourceButton.clicked.connect(source_select)
-    
     win.okButton.clicked.connect(win.accept)
     win.cancelButton.clicked.connect(win.reject)
     
     if repo is not None:
-        if repo[0] == 'json':
-            win.typeJson.setChecked(True)
-        else:
-            win.typeFs2mod.setChecked(True)
-        
-        win.source.setText(repo[1])
-        win.title.setText(repo[2])
+        win.source.setText(repo[0])
+        win.title.setText(repo[1])
     
     if win.exec_() == QtGui.QMessageBox.Accepted:
-        if win.typeJson.isChecked():
-            type_ = 'json'
-        else:
-            type_ = 'fs2mod'
-        
         source = win.source.text()
         title = win.title.text()
         
         if idx is None:
             found = False
             
-            for r_type_, r_source, r_title in settings['repos']:
-                if type_ == r_type_ and r_source == source:
+            for r_source, r_title in settings['repos']:
+                if r_source == source:
                     found = True
                     QtGui.QMessageBox.critical(main_win, 'Error', 'This source is already in the list! (As "%s")' % (r_title))
                     break
             
             if not found:
-                settings['repos'].append((type_, source, title))
+                settings['repos'].append((source, title))
         else:
-            settings['repos'][idx] = (type_, source, title)
+            settings['repos'][idx] = (source, title)
         
         save_settings()
         update_repo_list()

@@ -11,6 +11,7 @@
             "description": "...",
             "logo": "<will be extracted from the archives if null>",
             "notes": "...",
+            "folder": "<mod folder>",
             "submods": ["<ID1>", "..."],
             "packages": [
                 {
@@ -69,8 +70,12 @@
         },
         ...
     ],
-    "includes": [
+    "includes": [ // These will be processed when generating repo files and should be relative paths.
         "<repo file 1>",
+        "..."
+    ],
+    "remote_includes": [ // These will be kept and should be full URLs.
+        "<URL1>",
         "..."
     ]
 }
@@ -78,6 +83,7 @@
 /* generated repo files */
 {
     "generated": "<time of generation>",
+    "includes": ["<URL1>", "..."],
     "mods": [
         {
             /* All of the above */

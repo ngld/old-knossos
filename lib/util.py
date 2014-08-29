@@ -21,6 +21,7 @@ import struct
 import hashlib
 import six
 import tempfile
+import re
 from six.moves.urllib.request import urlopen, Request
 from six.moves.urllib.error import HTTPError, URLError
 from collections import OrderedDict
@@ -302,6 +303,7 @@ def ipath(path):
     return path
 
 
+# TODO: Shouldn't we also handle ./ and ../ here ?
 def pjoin(*args):
     path = ''
     for arg in args:
@@ -313,6 +315,28 @@ def pjoin(*args):
             path += '/' + arg
     
     return path
+
+
+def url_join(a, b):
+    if re.match(r'[a-z|A-Z]+://.*', b):
+        # A full URL
+        return b
+
+    if b == '':
+        # Umm....
+        return a
+
+    if b[0] == '/':
+        if len(b) > 1 and b[1] == '/':
+            # The second part begins with // which means we have to grab a's protocol.
+            proto = a[:a.find(':')]
+            return proto + ':' + b
+
+        # An absolute path
+        info = re.match(r'([a-z|A-Z]+://[^/]+).*')
+        return info.group(1) + b
+
+    return pjoin(a, b)
 
 
 def gen_hash(path, algo='md5'):
@@ -476,3 +500,13 @@ def is_number(s):
         return True
     except TypeError:
         return False
+
+
+def merge_dicts(a, b):
+    for k, v in b.items():
+        if k in a and isinstance(v, dict) and isinstance(a[k], dict):
+            merge_dicts(a[k], v)
+        else:
+            a[k] = v
+
+    return a

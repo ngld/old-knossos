@@ -362,9 +362,11 @@ class Textbox(object):
             text = self.wrap(self.content[-1] + text)
             y, x, height, width = self.get_coords()
             self.content[-1] = text.pop(0)
-            
+
             self.win.addstr(y + height - 1, x, self.content[-1])
-            self.appendln('\n'.join(text))
+            
+            if len(text) > 0:
+                self.appendln('\n'.join(text))
     
     def set_text(self, text):
         with self.lock:
@@ -402,7 +404,7 @@ class CursesOutput(object):
     
     def write(self, data):
         with self.lock:
-            self.win.append(data.strip())
+            self.win.append(data)
             self.other_win.redrawwin()
             
             if self.log is not None:
@@ -452,6 +454,15 @@ def _init_curses(scr, cb, log):
 
 def init_curses(cb, log=None):
     curses.wrapper(_init_curses, cb, log)
+
+    # Restore ONLCR mode. (See man tcsetattr for details)
+    try:
+        import termios
+        attr = termios.tcgetattr(sys.stdout)
+        attr[1] = attr[1] | termios.ONLCR
+        termios.tcsetattr(sys.stdout, termios.TCSAFLUSH, attr)
+    except:
+        pass
 
 
 # Qt Display
