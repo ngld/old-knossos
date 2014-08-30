@@ -117,11 +117,14 @@ class Repo(object):
         for mod in repo.get_list():
             self.add_mod(mod)
 
-    def query(self, mid, spec):
+    def query(self, mid, spec=None):
         if mid not in self.mods:
             raise ModNotFound('Mod "%s" wasn\'t found!' % (mid), mid)
 
         candidates = self.mods[mid]
+        if spec is None:
+            return candidates[0]
+
         version = spec.select([mod.version for mod in candidates])
         if not version:
             raise ModNotFound('Mod "%s" %s wasn\'t found!' % (mid, spec), mid, spec)
@@ -173,7 +176,7 @@ class Repo(object):
         for mid, deps in dep_dict.items():
             for name, variants in deps.items():
                 if len(variants) == 1:
-                    dep_list.append(variants[0])
+                    dep_list.append(variants[0][0])
                 else:
                     specs = [item[1] for item in variants]
                     remains = []
@@ -181,18 +184,18 @@ class Repo(object):
                     for v in variants:
                         ok = True
                         for spec in specs:
-                            if not spec.match(v.get_mod().version):
+                            if not spec.match(v[0].get_mod().version):
                                 ok = False
                                 break
 
                         if ok:
-                            remains.append(v)
+                            remains.append(v[0])
 
                     if len(remains) == 0:
                         raise PackageNotFound('No version of package "%s" found for these constraints: %s' % (variants[0].name, ','.join(specs)), mid, variants[0].name)
                     else:
                         # Pick the latest
-                        remains.sort(key=lambda v: v.version)
+                        remains.sort(key=lambda v: v.get_mod().version)
                         dep_list.append(remains[-1])
 
         return pkgs + dep_list
@@ -236,11 +239,14 @@ class Mod(object):
         self.submods = values.get('submods', [])
         self.actions = values.get('actions', [])
 
-        pkgs = [Package(pkg, self) for pkg in values.get('packages', [])]
-        self.packages = [pkg for pkg in pkgs if pkg.check_env()]
+        self.packages = []
+        for pkg in values.get('packages', []):
+            pkg = Package(pkg, self)
+            if pkg.check_env():
+                self.packages.append(pkg)
 
     def get_submods(self):
-        return [self._repo.query(mid, semantic_version.Spec('=*')) for mid in self.submods]
+        return [self._repo.query(mid) for mid in self.submods]
 
     def get_files(self):
         files = {}
@@ -296,6 +302,12 @@ class Package(object):
         self.environment = values.get('environment', [])
         self.files = values.get('files', {})
 
+        self.dependencies.append({
+            'id': self.get_mod().mid,
+            'version': '*',
+            'packages': []
+        })
+
     def get_mod(self):
         return self._mod
 
@@ -306,7 +318,7 @@ class Package(object):
                 for path, csum in item['contents'].items():
                     files[os.path.join(item['dest'], path)] = (csum, name)
             else:
-                files[os.path.join(item['dest'], name)] = item['md5sum']
+                files[os.path.join(item['dest'], name)] = (item['md5sum'], name)
 
         return files
 
@@ -315,7 +327,7 @@ class Package(object):
         for dep in self.dependencies:
             version = dep['version']
             if re.match('\d.*', version):
-                # Make spec out of this version
+                # Make a spec out of this version
                 version = '==' + version
 
             version = semantic_version.Spec(version)

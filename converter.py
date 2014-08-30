@@ -96,7 +96,7 @@ class ChecksumTask(progress.Task):
         img.sort(key=lambda i: i[1])
         img = img[-1][0]
 
-        self.post(((mid, 'logo.jpg'), util.convert_img(img, 'jpg'), {}))
+        self.post(((mid, 'logo', 'logo.jpg'), util.convert_img(img, 'jpg'), {}))
 
 
 def show_progress(prog, text):
@@ -184,8 +184,6 @@ def main(args):
                 # Only download the files if we have no checksums or they changed.
                 if pkg['name'] in c_pkgs:
                     my_tstamp = tstamp
-
-                print('tstamp', my_tstamp, tstamp, pkg['name'], c_pkgs)
 
                 for mirrors, files in pkg['files']:
                     for name, info in files.items():

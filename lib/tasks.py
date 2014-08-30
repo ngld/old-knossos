@@ -84,9 +84,9 @@ class FetchTask(progress.Task):
                     for name, ar in pkg.files.items():
                         if ar['is_archive']:
                             for item in ar['contents']:
-                                filelist[util.pjoin(mod.folder, ar['dest'], item)] = (mod.mid, pkg.name)
+                                filelist[util.pjoin(ar['dest'], item)] = (mod.mid, pkg.name)
                         else:
-                            filelist[util.pjoin(mod.folder, ar['dest'], name)] = (mod.mid, pkg.name)
+                            filelist[util.pjoin(ar['dest'], name)] = (mod.mid, pkg.name)
 
             manager.save_settings()
         
@@ -106,7 +106,8 @@ class CheckTask(progress.Task):
         self.add_work(pkgs)
 
     def work(self, pkg):
-        modpath = os.path.join(manager.settings['fs2_path'], pkg.get_mod().folder)
+        fs2path = manager.settings['fs2_path']
+        modpath = os.path.join(fs2path, pkg.get_mod().folder)
         files = pkg.get_files()
         
         count = float(len(files))
@@ -117,7 +118,7 @@ class CheckTask(progress.Task):
         msgs = []
         
         for item, info in files.items():
-            mypath = util.ipath(os.path.join(modpath, item))
+            mypath = util.ipath(os.path.join(fs2path, item))
             fix = False
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (item))
@@ -153,89 +154,175 @@ class CheckTask(progress.Task):
 
 
 class InstallTask(progress.Task):
+    _pkgs = None
 
-    def __init__(self, mods):
+    def __init__(self, pkgs):
         super(InstallTask, self).__init__()
-        
+
+        mods = set()
+        for pkg in pkgs:
+            mods.add(pkg.get_mod())
+
+        self._pkgs = pkgs
+
         self.done.connect(self.finish)
-        self.add_work([('install', modname, None) for modname in mods])
-    
-    def work(self, params):
-        action, mod, archive = params
+        self.add_work(mods)
+
+    def work(self, mod):
+        fs2_path = manager.settings['fs2_path']
+        modpath = os.path.join(fs2_path, mod.folder)
+        mfiles = mod.get_files()
+
+        archives = set()
         
-        if action == 'install':
-            mod = ModInfo2(manager.settings['mods'][mod])
-            modpath = util.ipath(os.path.join(manager.settings['fs2_path'], mod.folder))
-            
-            if not os.path.exists(modpath):
-                os.mkdir(modpath)
-                
-                archives, s, c, m = mod.check_files(modpath)
-            else:
-                progress.start_task(0, 1/4.)
-                mod.execute_del(modpath)
-                progress.finish_task()
-                
-                progress.start_task(1/4., 1/4.)
-                mod.execute_rename(modpath)
-                progress.finish_task()
-                
-                progress.start_task(2/4., 2/4.)
-                archives, s, c, m = mod.check_files(modpath)
-                progress.finish_task()
-            
-            if len(archives) > 0:
-                self.add_work([('dep', mod, a) for a in archives])
-        else:
-            progress.start_task(0, 2/3.0, 'Downloading: %s')
-            
-            modpath = util.ipath(os.path.join(manager.settings['fs2_path'], mod.folder))
-            mod.download(modpath, set([archive]))
-            
-            progress.finish_task()
-            progress.start_task(2.0/3.0, 0.5/3.0)
-            
-            mod.extract(modpath, set([archive]))
-            progress.finish_task()
-            
-            progress.start_task(2.5/3.0, 0.5/3.0)
-            mod.cleanup(modpath, set([archive]))
-            progress.finish_task()
-    
+        if mod.folder != '':
+            for path, dirs, files in os.walk(modpath):
+                relpath = path[len(modpath):].lstrip('/')
+                for item in files:
+                    itempath = os.path.join(relpath, item)
+                    if itempath not in mfiles:
+                        logging.info('File "%s" is left over.', itempath)
+
+        for item, info in mfiles.items():
+            itempath = util.ipath(os.path.join(fs2_path, item))
+            if not os.path.isfile(itempath) or util.gen_hash(itempath) != info[0]:
+                archives.add((mod.mid, info[1]))
+
+        self.post(archives)
+
     def finish(self):
-        if manager.main_win is not None:
-            manager.update_list()
+        archives = set()
+
+        for a in self.get_results():
+            archives |= a
+
+        manager.run_task(_InstallTask2(self._pkgs, archives))
+
+
+class _InstallTask2(progress.Task):
+    _pkgs = None
+
+    def __init__(self, pkgs, archives):
+        super(_InstallTask2, self).__init__()
+
+        self._pkgs = pkgs
+
+        self.done.connect(self.finish)
+        self.add_work([(pkg, archives) for pkg in pkgs])
+
+    def work(self, p):
+        pkg, archives = p
+        mid = pkg.get_mod().mid
+        fs2path = manager.settings['fs2_path']
+        files = []
+
+        for f_mid, fname in archives:
+            if f_mid == mid and fname in pkg.files:
+                files.append(fname)
+
+        count = float(len(files))
+        for i, fname in enumerate(files):
+            info = pkg.files[fname]
+            dest = os.path.join(fs2path, info['dest'])
+
+            progress.start_task(i / count, 1 / count)
+
+            with tempfile.TemporaryDirectory() as tpath:
+                arpath = os.path.join(tpath, fname)
+
+                with open(arpath, 'wb') as fobj:
+                    util.try_download(info['urls'], fobj)
+
+                if info['is_archive']:
+                    cpath = os.path.join(tpath, 'content')
+                    os.mkdir(cpath)
+                    util.extract_archive(arpath, cpath)
+
+                    for sub_path, dirs, files in os.walk(cpath):
+                        destpath = util.ipath(os.path.join(dest, sub_path[len(cpath):].lstrip('/')))
+
+                        if not os.path.isdir(destpath):
+                            logging.debug('Creating path "%s"...', destpath)
+                            os.makedirs(destpath)
+
+                        for item in files:
+                            spath = os.path.join(sub_path, item)
+                            dpath = util.ipath(os.path.join(destpath, item))
+
+                            logging.debug('Moving "%s" to "%s"...', spath, dpath)
+                            if os.path.isfile(dpath):
+                                os.unlink(dpath)
+                            elif os.path.isdir(dpath):
+                                logging.warning('What?! "%s" is a directory! (I was expecting a file!)', dpath)
+                                shutil.rmtree(dpath)
+
+                            shutil.move(spath, dpath)
+                else:
+                    dpath = util.ipath(os.path.join(dest, fname))
+                    if os.path.isfile(dpath):
+                        os.unlink(dpath)
+                    elif os.path.isdir(dpath):
+                        logging.warning('What?! "%s" is a directory! (I was expecting a file!)', dpath)
+                        shutil.rmtree(dpath)
+
+                    shutil.move(arpath, dpath)
+
+            progress.finish_task()
+
+    def finish(self):
+        manager.run_task(_InstallTask3(self._pkgs))
+
+
+class _InstallTask3(progress.Task):
+
+    def __init__(self, pkgs):
+        super(_InstallTask3, self).__init__()
+
+        mods = set()
+        for pkg in pkgs:
+            mods.add(pkg.get_mod())
+
+        self.done.connect(self.finish)
+        self.add_work(mods)
+
+    def work(self, mod):
+        fs2path = manager.settings['fs2_path']
+
+        for act in mod.actions:
+            if act['type'] == 'delete':
+                for item in act['files']:
+                    path = os.path.join(fs2path, item)
+                    if os.path.isfile(path):
+                        logging.debug('Removing "%s"...', path)
+                        os.unlink(path)
+            else:
+                logging.error('Unknown mod action "%s" in mod "%s" (%s)!', act['type'], mod.title, mod.mid)
+
+    def finish(self):
+        manager.update_list()
 
 
 class UninstallTask(progress.Task):
-    
-    def __init__(self, mods):
+
+    def __init__(self, pkgs):
         super(UninstallTask, self).__init__()
-        
+
         self.done.connect(self.finish)
-        self.add_work(mods)
-    
-    def work(self, modname):
-        skip_files = []
-        mod = ModInfo2(manager.settings['mods'][modname])
-        
-        for path, mods in manager.shared_files.items():
-            if path.startswith(mod.folder):
-                has_installed = False
-                for item in mods:
-                    if item in manager.installed:
-                        has_installed = True
-                        break
-                
-                if has_installed:
-                    # Strip the mod folder away.
-                    skip_files.append(path[len(mod.folder):].lstrip('/'))
-        
-        if len(skip_files) > 0:
-            logging.info('Will skip the following files: %s', ', '.join(skip_files))
-        
-        mod.remove(util.ipath(os.path.join(manager.settings['fs2_path'], mod.folder)), skip_files)
-    
+        self.add_work(pkgs)
+
+    def work(self, pkg):
+        fs2path = manager.settings['fs2_path']
+        mod = pkg.get_mod()
+
+        for item in pkg.get_files():
+            path = util.ipath(os.path.join(fs2path, item))
+            if not os.path.isfile(path):
+                logging.warning('File "%s" for mod "%s" (%s) is missing during uninstall!', item, mod.title, mod.mid)
+            else:
+                os.unlink(path)
+
+        # TODO: Remove empty directories.
+
     def finish(self):
         manager.update_list()
 

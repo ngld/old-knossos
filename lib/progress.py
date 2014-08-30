@@ -270,20 +270,18 @@ class Task(QtCore.QObject):
         with self._progress_lock:
             prog = self._progress.copy()
         
-        with self._result_lock:
-            results = len(self._results)
-        
         with self._work_lock:
             work = len(self._work)
+            results = len(self._results)
         
-        work_count = float(results + work + len(prog))
-        if work_count == 0:
+        count = float(results + work + len(prog))
+        if count == 0:
             total = 1
         else:
-            total = results / work_count
+            total = results / count
         
         for item in prog.values():
-            total += item[0] * (1.0 / work_count)
+            total += item[0] * (1.0 / count)
         
         return total, prog
     

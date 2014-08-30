@@ -60,6 +60,7 @@ unity_launcher = None
 shared_files = {}
 fs2_watcher = None
 pmaster = progress.Master()
+dep_processing = False
 settings = {
     'fs2_bin': None,
     'fs2_path': None,
@@ -480,7 +481,12 @@ def get_installed():
 
 
 def autoselect_deps(item, col):
-    global settings
+    global settings, dep_processing
+
+    if dep_processing:
+        return
+
+    dep_processing = True
     
     item.setData(0, QtCore.Qt.UserRole + 3, False)
     info = item.data(0, QtCore.Qt.UserRole + 2)
@@ -501,7 +507,7 @@ def autoselect_deps(item, col):
                         elif pkg.status == 'optional':
                             state = QtCore.Qt.Unchecked
 
-                    child.setCheckState(0, state)
+                    child.setCheckState(0, QtCore.Qt.CheckState(state))
 
         elif item.checkState(0) == QtCore.Qt.Unchecked:
             # Uncheck all packages
@@ -529,6 +535,7 @@ def autoselect_deps(item, col):
         logging.exception('Failed to satisfy dependencies!')
         reset_selection()
         # TODO: Message to the user?
+        dep_processing = False
         return
 
     for item, _ in tree:
@@ -539,6 +546,8 @@ def autoselect_deps(item, col):
                     item.setData(0, QtCore.Qt.UserRole + 3, True)
 
                 item.setCheckState(0, QtCore.Qt.Checked)
+
+    dep_processing = False
 
 
 def reset_selection():
@@ -611,7 +620,7 @@ def select_pkg(item, col):
     if len(deps) > 0:
         lines = []
         for dep in deps:
-            line = '* ' + dep.name
+            line = '* ' + dep[0].name
             #if dep in installed:
             #    line += ' (installed)'
             
@@ -794,29 +803,34 @@ def apply_selection():
     uninstall = []
     items = read_tree(main_win.modTree)
     for item, parent in items:
+        pkg = item.data(0, QtCore.Qt.UserRole + 2)
+        if not isinstance(pkg, repo.Package):
+            continue
+
         if item.checkState(0) == item.data(0, QtCore.Qt.UserRole):
             # Unchanged
             continue
         
         if item.checkState(0):
             # Install
-            install.append(item.text(0))
+            install.append(pkg)
         else:
             # Uninstall
-            uninstall.append(item.text(0))
+            uninstall.append(pkg)
     
     if len(install) == 0 and len(uninstall) == 0:
         QtGui.QMessageBox.warning(main_win, 'Warning', 'You didn\'t change anything! There\'s nothing for me to do...')
         return
     
     if len(install) > 0:
-        # NOTE: Dependencies are auto-selected now. Don't force them on the user.
-        # install = install + resolve_deps(install)
+        install_titles = set()
+        for pkg in install:
+            install_titles.add(pkg.get_mod().title)
 
         msg = QtGui.QMessageBox()
         msg.setIcon(QtGui.QMessageBox.Question)
         msg.setText('Do you really want to install these mods?')
-        msg.setInformativeText(', '.join(install) + ' will be installed.')
+        msg.setInformativeText(', '.join(install_titles) + ' will be installed.')
         msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         msg.setDefaultButton(QtGui.QMessageBox.Yes)
         
@@ -824,10 +838,14 @@ def apply_selection():
             run_task(InstallTask(install))
     
     if len(uninstall) > 0:
+        uninstall_titles = set()
+        for pkg in uninstall:
+            uninstall_titles.add(pkg.get_mod().title)
+
         msg = QtGui.QMessageBox()
         msg.setIcon(QtGui.QMessageBox.Question)
         msg.setText('Do you really want to remove these mods?')
-        msg.setInformativeText(', '.join(uninstall) + ' will be removed.')
+        msg.setInformativeText(', '.join(uninstall_titles) + ' will be removed.')
         msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         msg.setDefaultButton(QtGui.QMessageBox.Yes)
         
