@@ -43,8 +43,6 @@ class ChecksumTask(progress.Task):
             path = os.path.join(dest, name)
 
             for link in links:
-                link = util.pjoin(link, name)
-
                 with open(path, 'wb') as stream:
                     res = util.download(link, stream, {'If-Modified-Since': tstamp})
 
@@ -102,6 +100,20 @@ class ChecksumTask(progress.Task):
 def show_progress(prog, text):
     sys.stdout.write('\r %3d%% %s' % (prog * 100, text))
     sys.stdout.flush()
+
+
+def read_file_list(l):
+    if isinstance(l, dict):
+        return l
+    else:
+        res = {}
+        for urls, files in l:
+            for name, info in files.items():
+                info = info.copy()
+                info['urls'] = [util.pjoin(url, name) for url in urls]
+                res[name] = info
+
+        return res
 
 
 def main(args):
@@ -185,10 +197,9 @@ def main(args):
                 if pkg['name'] in c_pkgs:
                     my_tstamp = tstamp
 
-                for mirrors, files in pkg['files']:
-                    for name, info in files.items():
-                        # id_, links, name, archive, tstamp
-                        items.append(((mid, pkg['name'], name), mirrors, name, info.get('is_archive', True), my_tstamp))
+                for name, info in read_file_list(pkg['files']).items():
+                    # id_, links, name, archive, tstamp
+                    items.append(((mid, pkg['name'], name), info['urls'], name, info.get('is_archive', True), my_tstamp))
 
         task.add_work(items)
       
@@ -266,10 +277,7 @@ def main(args):
                     files = c_pkgs[pkg['name']]['files']
 
                     # Prune removed files
-                    filenames = set()
-                    for links, s_files in pkg['files']:
-                        filenames |= s_files.keys()
-
+                    filenames = set(read_file_list(pkg['files']).keys())
                     for key in set(files.keys()) - filenames:
                         del files[key]
                 else:
@@ -280,20 +288,15 @@ def main(args):
                 elif len(files) == 0:
                     logging.warning('Checksums for "%s" are missing!', mid)
 
-                for mirrors, m_files in pkg['files']:
-                    for name, info in m_files.items():
-                        urls = []
-                        for url in mirrors:
-                            urls.append(util.pjoin(url, name))
+                for name, info in read_file_list(pkg['files']).items():
+                    if name not in files:
+                        files[name] = {}
 
-                        if name not in files:
-                            files[name] = {}
-
-                        files[name].update({
-                            'is_archive': info.get('is_archive', True),
-                            'dest': info.get('dest', '#'),
-                            'urls': urls
-                        })
+                    files[name].update({
+                        'is_archive': info.get('is_archive', True),
+                        'dest': info.get('dest', '#'),
+                        'urls': info['urls']
+                    })
 
                 pkg['files'] = files
 
