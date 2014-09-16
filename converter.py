@@ -103,8 +103,12 @@ def show_progress(prog, text):
 
 
 def read_file_list(l):
-    if isinstance(l, dict):
-        return l
+    if len(l) > 0 and isinstance(l[0], dict):
+        res = {}
+        for item in l:
+            res[item['filename']] = item
+        
+        return res
     else:
         res = {}
         for urls, files in l:

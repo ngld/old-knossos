@@ -280,7 +280,7 @@ class Package(object):
     _mod = None
     name = ''
     notes = ''
-    status = 'required'
+    status = 'recommended'
     dependencies = None
     environment = None
     files = None
@@ -297,7 +297,7 @@ class Package(object):
     def set(self, values):
         self.name = values['name']
         self.notes = values.get('notes', '')
-        self.status = values.get('status', '')
+        self.status = values.get('status', 'recommended')
         self.dependencies = values.get('dependencies', [])
         self.environment = values.get('environment', [])
         self.files = values.get('files', {})

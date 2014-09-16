@@ -5,62 +5,73 @@
 {
     "mods": [
         {
-            "id": "...",
-            "title": "...",
-            "version": "...", // http://semver.org/
-            "description": "...",
-            "logo": "<will be extracted from the archives if null>",
-            "notes": "...",
-            "folder": "<mod folder>",
-            "submods": ["<ID1>", "..."],
-            "packages": [
+            "id": "...", // required
+            "title": "...", // required
+            "version": "...", // required, http://semver.org/
+            "description": "...", // optional
+            "logo": "<will be extracted from the archives if null>", // optional, default: null
+            "notes": "...", // optional
+            "folder": "<mod folder>", // optional, This is folder should contain the mod.ini file.
+            "submods": ["<ID1>", "..."], // optional
+            "packages": [ // optional
                 {
-                    "name": "...",
-                    "notes": "...",
+                    "name": "...", // required
+                    "notes": "...", // optional
                     /*
+                        optional, default: "recommended"
                         A feature can be:
                         - "required" (always installed with the mod, in fact these are the base files of the mod),
                         - "recommended" (automatically selected for installation, but the user can skip them),
                         - "optional" (not automatically selected, but user can add them during the install process)
                     */
                     "status": "<required|recommended|optional>",
-                    "dependencies": [
+                    "dependencies": [ // optional
                         {
-                            "id": "<ID>",
-                            "version": "1.2.*" // https://getcomposer.org/doc/01-basic-usage.md#package-versions
+                            "id": "<ID>", // required
+                            "version": "1.2.*" // required, https://getcomposer.org/doc/01-basic-usage.md#package-versions
                         },
                         ...
                     ],
-                    "environment": [
+                    "environment": [ // optional
                         {
-                            "type": "cpu_feature",
-                            "feature": "<SSE|SSE2|AVX|...>"
+                            "type": "cpu_feature", // required
+                            "feature": "<SSE|SSE2|AVX|...>" // required if type == "cpu_feature"
                         },
                         {
-                            "type": "os",
-                            "os": "<windows|linux|macos>"
+                            "type": "os", // required
+                            "os": "<windows|linux|macos>" // required if type == "os"
                         },
                         ...
                     ],
-                    "files": [
-                        [
+                    "files": [ // optional
+                        /* You can use this syntax ...
                             [
-                                "<link1>",
-                                "..."
-                            ],
-                            {
-                                "<filename>": {
-                                    "is_archive": true,
-                                    "dest": "<destination path>"
+                                [ // required
+                                    "<link1>",
+                                    "..."
+                                ],
+                                {
+                                    "<filename>": {
+                                        "is_archive": true, // optional, default: true
+                                        "dest": "<destination path>" // optional, default: ""
+                                    }
                                 }
-                            }
-                        ],
-                        ...
+                            ],
+                            ...
+                        /* ... or this one: */
+                            {
+                                "filename": "<filename>", // required
+                                "is_archive": true, // optional, default: true
+                                "dest": "<destination path>", // optional, default: ""
+                                "urls": ["<url1>", "<url2>"] // required
+                            },
+                            ...
+                        /* . */
                     ]
                 },
                 ...
             ],
-            "actions": [
+            "actions": [ // optional
                 {
                     "type": "delete",
                     "files": ["<file1>", "..."]
@@ -70,11 +81,11 @@
         },
         ...
     ],
-    "includes": [ // These will be processed when generating repo files and should be relative paths.
+    "includes": [ // optional, These will be processed when generating repo files and should be relative paths.
         "<repo file 1>",
         "..."
     ],
-    "remote_includes": [ // These will be kept and should be full URLs.
+    "remote_includes": [ // optional, These will be kept and should be full URLs.
         "<URL1>",
         "..."
     ]
