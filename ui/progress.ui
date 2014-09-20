@@ -57,6 +57,13 @@
       </spacer>
      </item>
      <item>
+      <widget class="QPushButton" name="hideButton">
+       <property name="text">
+        <string>Hide</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="abortButton">
        <property name="text">
         <string>Cancel</string>

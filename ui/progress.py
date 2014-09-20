@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'progress.ui'
 #
-# Created: Sat Aug 30 01:25:49 2014
+# Created: Sat Sep 20 02:26:35 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -31,6 +31,9 @@ class Ui_Dialog(object):
         self.horizontalLayout.addWidget(self.label_2)
         spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem)
+        self.hideButton = QtGui.QPushButton(Dialog)
+        self.hideButton.setObjectName("hideButton")
+        self.horizontalLayout.addWidget(self.hideButton)
         self.abortButton = QtGui.QPushButton(Dialog)
         self.abortButton.setObjectName("abortButton")
         self.horizontalLayout.addWidget(self.abortButton)
@@ -55,5 +58,6 @@ class Ui_Dialog(object):
         Dialog.setWindowTitle(QtGui.QApplication.translate("Dialog", "Working...", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("Dialog", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("Dialog", "Tasks", None, QtGui.QApplication.UnicodeUTF8))
+        self.hideButton.setText(QtGui.QApplication.translate("Dialog", "Hide", None, QtGui.QApplication.UnicodeUTF8))
         self.abortButton.setText(QtGui.QApplication.translate("Dialog", "Cancel", None, QtGui.QApplication.UnicodeUTF8))
 

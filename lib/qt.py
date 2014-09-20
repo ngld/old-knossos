@@ -19,11 +19,12 @@ default_variant = 'PySide'
 
 variant = os.environ.get('QT_API', default_variant)
 if variant not in ('PySide', 'PyQt4', 'headless'):
+    logging.warning('Unknown QT_API "%s"! Using default...', variant)
     variant = default_variant
 
 if variant == 'PySide':
     try:
-        from PySide import QtGui, QtCore
+        from PySide import QtCore, QtGui, QtNetwork, QtWebKit
     except ImportError:
         # Fallback to PyQt4
         variant = 'PyQt4'
@@ -39,9 +40,10 @@ if variant == 'PyQt4':
         for cl in api2_classes:
             sip.setapi(cl, 2)
 
-        from PyQt4 import QtGui, QtCore
+        from PyQt4 import QtCore, QtGui, QtNetwork, QtWebKit
         
         QtCore.Signal = QtCore.pyqtSignal
+        QtCore.Slot = QtCore.pyqtSlot
         QtCore.QString = str
         
     except ImportError:
@@ -124,4 +126,7 @@ if variant == 'headless':
         QApplication = _App
         QDialog = object
 
-__all__ = ['QtGui', 'QtCore', 'variant']
+    QtWebKit = None
+
+logging.debug('Using Qt API %s.', variant)
+__all__ = ['QtCore', 'QtGui', 'QtNetwork', 'QtWebKit', 'variant']

@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'modinfo.ui'
 #
-# Created: Sat Aug 30 01:25:49 2014
+# Created: Sat Sep 20 02:26:35 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!

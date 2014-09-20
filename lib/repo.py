@@ -160,39 +160,48 @@ class Repo(object):
     # TODO: Is this overcomplicated?
     def process_pkg_selection(self, pkgs):
         dep_dict = {}
-        for pkg in pkgs:
-            for dep, version in pkg.resolve_deps():
-                mid = dep.get_mod().mid
+        ndeps = pkgs
 
-                if mid not in dep_dict:
-                    dep_dict[mid] = {}
+        # Resolve the pkgs' dependencies
+        while len(ndeps) > 0:
+            _nd = ndeps
+            ndeps = []
 
-                if dep.name not in dep_dict[mid]:
-                    dep_dict[mid][dep.name] = []
+            for pkg in _nd:
+                for dep, version in pkg.resolve_deps():
+                    mid = dep.get_mod().mid
 
-                dep_dict[mid][dep.name].append((dep, version))
+                    if mid not in dep_dict:
+                        dep_dict[mid] = {}
+
+                    if dep.name not in dep_dict[mid]:
+                        dep_dict[mid][dep.name] = {}
+
+                    if version not in dep_dict[mid][dep.name]:
+                        dep_dict[mid][dep.name][version] = dep
+                        ndeps.append(dep)
 
         dep_list = []
         for mid, deps in dep_dict.items():
             for name, variants in deps.items():
                 if len(variants) == 1:
-                    dep_list.append(variants[0][0])
+                    dep_list.append(next(iter(variants.values())))
                 else:
-                    specs = [item[1] for item in variants]
+                    specs = variants.keys()
                     remains = []
 
-                    for v in variants:
+                    for v in variants.values():
                         ok = True
                         for spec in specs:
-                            if not spec.match(v[0].get_mod().version):
+                            if not spec.match(v.get_mod().version):
                                 ok = False
                                 break
 
                         if ok:
-                            remains.append(v[0])
+                            remains.append(v)
 
                     if len(remains) == 0:
-                        raise PackageNotFound('No version of package "%s" found for these constraints: %s' % (variants[0].name, ','.join(specs)), mid, variants[0].name)
+                        raise PackageNotFound('No version of package "%s" found for these constraints: %s' % (list(variants.values())[0].name, ','.join(specs)), mid, list(variants.values())[0].name)
                     else:
                         # Pick the latest
                         remains.sort(key=lambda v: v.get_mod().version)
@@ -217,6 +226,8 @@ class Mod(object):
     submods = None
     actions = None
     packages = None
+
+    __fields__ = ('mid', 'title', 'version', 'folder', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
 
     def __init__(self, values=None, repo=None):
         self.actions = []
@@ -244,6 +255,20 @@ class Mod(object):
             pkg = Package(pkg, self)
             if pkg.check_env():
                 self.packages.append(pkg)
+
+    def get(self):
+        return {
+            'id': self.mid,
+            'title': self.title,
+            'version': str(self.version),
+            'folder': self.folder,
+            'logo': self.logo,
+            'description': self.description,
+            'notes': self.notes,
+            'submods': self.submods,
+            'actions': self.actions,
+            'packages': [pkg.get() for pkg in self.packages]
+        }
 
     def get_submods(self):
         return [self._repo.query(mid) for mid in self.submods]
@@ -302,11 +327,30 @@ class Package(object):
         self.environment = values.get('environment', [])
         self.files = values.get('files', {})
 
-        self.dependencies.append({
-            'id': self.get_mod().mid,
-            'version': '*',
-            'packages': []
-        })
+        has_mod_dep = False
+        mid = self._mod.mid
+
+        for info in self.dependencies:
+            if info['id'] == mid:
+                has_mod_dep = True
+                break
+
+        if not has_mod_dep:
+            self.dependencies.append({
+                'id': self.get_mod().mid,
+                'version': '*',
+                'packages': []
+            })
+
+    def get(self):
+        return {
+            'name': self.name,
+            'notes': self.notes,
+            'status': self.status,
+            'dependencies': self.dependencies,
+            'environment': self.environment,
+            'files': self.files
+        }
 
     def get_mod(self):
         return self._mod
@@ -365,3 +409,157 @@ class Package(object):
                 return check['feature'] in CPU_FLAGS
 
         return True
+
+
+# Keeps track of installed mods
+class InstalledRepo(object):
+    mods = None
+
+    def __init__(self, values=None):
+        self.mods = {}
+
+        if values is not None:
+            self.set(values)
+
+    def set(self, values):
+        self.mods = {}
+
+        for d in values:
+            mod = InstalledMod(d)
+            self.mods[mod.mid] = mod
+
+    def get(self):
+        return [mod.get() for mod in self.mods.values()]
+
+    def add_pkg(self, pkg):
+        mod = pkg.get_mod()
+
+        if mod.mid not in self.mods:
+            self.mods[mod.mid] = InstalledMod.convert(mod)
+        
+        return self.mods[mod.mid].add_pkg(pkg)
+
+    def del_pkg(self, pkg):
+        mod = pkg.get_mod()
+
+        if mod.mid in self.mods:
+            m = self.mods[mod.mid]
+            m.del_pkg(pkg)
+
+            # Remove empty mods.
+            if len(m.packages) < 1:
+                del self.mods[mod.mid]
+
+    def query(self, mid, pname=None):
+        if mid not in self.mods:
+            #raise ModNotFound('The mod %s could not be found in this InstalledRepo().' % (mid))
+            return None
+
+        mod = self.mods[mid]
+        if pname is None:
+            return mod
+
+        for pkg in mod.packages:
+            if pkg.name == pname:
+                return pkg
+
+        #raise ModNotFound('The package %s of mod %s (%s) could not be found!' % (pname, mid, mod.name))
+        return None
+
+    def is_installed(self, mid, pname=None):
+        if pname is None and isinstance(mid, Package):
+            pname = mid.name
+            mid = mid.get_mod().mid
+
+        pkg = self.query(mid, pname)
+
+        return pkg is not None and pkg.state in ('installed', 'has_update')
+
+    def get_packages(self):
+        for mod in self.mods.values():
+            for pkg in mod.packages:
+                yield pkg
+
+
+class InstalledMod(Mod):
+    check_notes = ''
+
+    @staticmethod
+    def convert(mod):
+        data = mod.get()
+        data['packages'] = []
+
+        return InstalledMod(data)
+
+    def __init__(self, values=None):
+        super(InstalledMod, self).__init__(values)
+
+    def set(self, values):
+        pkgs = []
+        values = values.copy()
+        for pkg in values.get('packages', []):
+            pkgs.append(InstalledPackage(pkg, self))
+
+        values['packages'] = []
+        super(InstalledMod, self).set(values)
+
+        self.check_notes = values.get('check_notes', '')
+        self.packages = pkgs
+
+    def get(self):
+        data = super(InstalledMod, self).get()
+        data['check_notes'] = self.check_notes
+        return data
+
+    def add_pkg(self, pkg):
+        pkg = InstalledPackage.convert(pkg, self)
+        found = False
+
+        for i, p in enumerate(self.packages):
+            if p.name == pkg.name:
+                self.packages[i] = pkg
+                found = True
+                break
+
+        if not found:
+            self.packages.append(pkg)
+
+        return pkg
+
+    def del_pkg(self, pkg):
+        for i, p in enumerate(self.packages):
+            if p.name == pkg.name:
+                del self.packages[i]
+                break
+
+
+class InstalledPackage(Package):
+    state = 'unknown'  # installed, not installed, has_update, corrupted
+    check_notes = ''
+    files_ok = 0
+    files_checked = 0
+    files_shared = 0
+
+    @staticmethod
+    def convert(pkg, mod):
+        return InstalledPackage(pkg.get(), mod)
+
+    def set(self, values):
+        super(InstalledPackage, self).set(values)
+
+        self.state = values.get('state', 'installed')
+        self.check_notes = values.get('check_notes', '')
+        self.files_ok = values.get('files_ok', 0)
+        self.files_checked = values.get('files_checked', 0)
+        self.files_shared = values.get('files_shared', 0)
+
+    def get(self):
+        data = super(InstalledPackage, self).get()
+
+        data['state'] = self.state
+        data['check_notes'] = self.check_notes
+        data['files_ok'] = self.files_ok
+        data['files_checked'] = self.files_checked
+        data['files_shared'] = self.files_shared
+
+        return data

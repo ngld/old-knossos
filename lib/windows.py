@@ -73,6 +73,8 @@ class SettingsWindow(Window):
         self.mod = mod
         self.win = util.init_ui(Ui_Settings(), util.QDialog(parent))
         self.win.setModal(True)
+
+        self.win.browseButton.clicked.connect(manager.select_fs2_path_handler)
         
         if mod is None:
             self.win.cmdButton.setText('Default command line flags')
@@ -444,6 +446,8 @@ class SettingsTab(SettingsWindow):
 
         self.mod = None
         self.win = util.init_ui(Ui_Settings(), tab)
+
+        self.win.browseButton.clicked.connect(manager.select_fs2_path_handler)
         
         self.win.cmdButton.setText('Default command line flags')
         self.win.cmdButton.clicked.connect(self.show_flagwin)

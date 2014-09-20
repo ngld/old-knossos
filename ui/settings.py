@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'settings.ui'
 #
-# Created: Sat Aug 30 01:25:49 2014
+# Created: Sat Sep 20 02:26:36 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from lib.qt import QtCore, QtGui
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(426, 626)
+        Dialog.resize(425, 626)
         self.verticalLayout = QtGui.QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName("verticalLayout")
         self.label = QtGui.QLabel(Dialog)
@@ -24,9 +24,20 @@ class Ui_Dialog(object):
         self.label.setWordWrap(False)
         self.label.setObjectName("label")
         self.verticalLayout.addWidget(self.label)
+        self.horizontalLayout_3 = QtGui.QHBoxLayout()
+        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
         self.build = QtGui.QComboBox(Dialog)
         self.build.setObjectName("build")
-        self.verticalLayout.addWidget(self.build)
+        self.horizontalLayout_3.addWidget(self.build)
+        self.browseButton = QtGui.QPushButton(Dialog)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.browseButton.sizePolicy().hasHeightForWidth())
+        self.browseButton.setSizePolicy(sizePolicy)
+        self.browseButton.setObjectName("browseButton")
+        self.horizontalLayout_3.addWidget(self.browseButton)
+        self.verticalLayout.addLayout(self.horizontalLayout_3)
         self.line = QtGui.QFrame(Dialog)
         self.line.setFrameShape(QtGui.QFrame.HLine)
         self.line.setFrameShadow(QtGui.QFrame.Sunken)
@@ -227,6 +238,7 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(QtGui.QApplication.translate("Dialog", "Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("Dialog", "FreeSpace 2 Open build", None, QtGui.QApplication.UnicodeUTF8))
+        self.browseButton.setText(QtGui.QApplication.translate("Dialog", "Browse", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("Dialog", "Video", None, QtGui.QApplication.UnicodeUTF8))
         self.resolutionLabel.setText(QtGui.QApplication.translate("Dialog", "Resolution :", None, QtGui.QApplication.UnicodeUTF8))
         self.depthLabel.setText(QtGui.QApplication.translate("Dialog", "Color depth :", None, QtGui.QApplication.UnicodeUTF8))

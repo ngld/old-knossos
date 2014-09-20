@@ -25,7 +25,7 @@ import tempfile
 
 import manager
 from lib import util, progress
-from lib.repo import Repo
+from lib.repo import Repo, InstalledRepo
 from lib.qt import QtGui
 
 
@@ -90,7 +90,7 @@ class FetchTask(progress.Task):
 
             manager.save_settings()
         
-        manager.signals.list_updated.emit()
+        manager.signals.repo_updated.emit()
 
 
 class CheckTask(progress.Task):
@@ -103,6 +103,7 @@ class CheckTask(progress.Task):
         for mod in mods:
             pkgs.extend(mod.packages)
 
+        self.done.connect(self.finish)
         self.add_work(pkgs)
 
     def work(self, pkg):
@@ -152,7 +153,74 @@ class CheckTask(progress.Task):
         
         self.post((pkg, archives, success, checked, msgs))
 
+    def finish(self):
+        results = self.get_results()
 
+        installed = manager.installed = InstalledRepo()
+        files = dict()
+
+        if manager.settings['installed_mods'] is not None:
+            installed.set(manager.settings['installed_mods'])
+        
+        for pkg, archives, s, c, m in results:
+            for item in pkg.get_files().keys():
+                path = util.pjoin(pkg.get_mod().folder, item)
+                
+                if path in files:
+                    files[path].append(pkg.name)
+                else:
+                    files[path] = [pkg.name]
+        
+        shared_files = dict()
+        for path, mods in files.items():
+            if len(mods) > 1:
+                shared_files[path] = mods
+        
+        shared_set = set(shared_files.keys())
+        
+        for pkg, archives, s, c, m in results:
+            mod = pkg.get_mod()
+            my_shared = shared_set & set([util.pjoin(mod.folder, item) for item in pkg.get_files().keys()])
+            pinfo = installed.query(mod.mid, pkg.name)
+            
+            if s == c:
+                # Installed
+                if pinfo is None:
+                    pinfo = installed.add_pkg(pkg)
+
+                pinfo.state = 'installed'
+                
+            elif s == 0 or s == len(my_shared):
+                # Not Installed
+                if pinfo is not None:
+                    # What?!
+                    logging.warning('Package %s of mod %s (%s) is not installed but in the local repo.' % (pkg.name, mod.mid, mod.title))
+                    pinfo.state = 'not installed'
+
+            elif pinfo is None:
+                # Assume it's not installed.
+                logging.info('Found some weird files from package %s of mod %s (%s) but it\'s not installed.' % (pkg.name, mod.mid, mod.title))
+
+            else:
+                if pinfo.version < pkg.version:
+                    # There's an update available!
+                    pinfo.state = 'has_update'
+                else:
+                    # It's corrupted.
+                    pinfo.state = 'corrupted'
+
+            if pinfo is not None:
+                pinfo.check_notes = m
+                pinfo.files_ok = s
+                pinfo.files_checked = c
+                pinfo.files_shared = len(my_shared)
+
+        manager.settings['installed_mods'] = installed.get()
+        manager.save_settings()
+        manager.update_list()
+
+
+# TODO: Optimize
 class InstallTask(progress.Task):
     _pkgs = None
 
@@ -270,6 +338,10 @@ class _InstallTask2(progress.Task):
             progress.finish_task()
 
     def finish(self):
+        # Register installed pkgs
+        for pkg in self._pkgs:
+            manager.installed.add_pkg(pkg)
+
         manager.run_task(_InstallTask3(self._pkgs))
 
 
@@ -303,9 +375,12 @@ class _InstallTask3(progress.Task):
 
 
 class UninstallTask(progress.Task):
+    _pkgs = None
 
     def __init__(self, pkgs):
         super(UninstallTask, self).__init__()
+
+        self._pkgs = pkgs
 
         self.done.connect(self.finish)
         self.add_work(pkgs)
@@ -324,6 +399,10 @@ class UninstallTask(progress.Task):
         # TODO: Remove empty directories.
 
     def finish(self):
+        # Unregister uninstalled pkgs.
+        for pkg in self._pkgs:
+            manager.installed.del_pkg(pkg)
+
         manager.update_list()
 
 

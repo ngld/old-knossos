@@ -473,6 +473,9 @@ class ProgressDisplay(QtGui.QDialog):
     unity_launcher = None
     _threads = None
     _tasks = None
+    _status_label = None
+    _status_pbar = None
+    _status_btn = None
     
     def __init__(self):
         super(ProgressDisplay, self).__init__(QtGui.QApplication.activeWindow())
@@ -482,7 +485,12 @@ class ProgressDisplay(QtGui.QDialog):
         
         util.init_ui(Ui_Progress(), self)
         self.setModal(True)
+        self.hideButton.clicked.connect(super(ProgressDisplay, self).hide)
         self.abortButton.clicked.connect(self.try_abort)
+
+        self._status_label = QtGui.QLabel()
+        self._status_pbar = QtGui.QProgressBar()
+        self._status_pbar.setMaximum(100)
         
         if Unity:
             self.unity_launcher = Unity.LauncherEntry.get_for_desktop_id('fs2mod-py.desktop')
@@ -496,13 +504,28 @@ class ProgressDisplay(QtGui.QDialog):
         set_callback(self.update_prog)
         update(0, 'Working...')
         super(ProgressDisplay, self).show()
+        self._status_pbar.show()
+        self._status_btn.show()
         
         if Unity:
             self.unity_launcher.set_property('progress_visible', True)
     
+    def set_statusbar(self, stbar):
+        self._status_btn = QtGui.QPushButton(stbar)
+        self._status_btn.setText('Show Progress')
+        self._status_btn.clicked.connect(super(ProgressDisplay, self).show)
+        self._status_btn.hide()
+        
+        stbar.addWidget(self._status_label)
+        stbar.addWidget(self._status_pbar, True)
+        stbar.addPermanentWidget(self._status_btn)
+
     def update_prog(self, percent, text):
         self.progressBar.setValue(percent * 100)
         self.label.setText(text)
+
+        self._status_pbar.setValue(percent * 100)
+        self._status_label.setText(text)
         
         if Unity:
             self.unity_launcher.set_property('progress', percent)
@@ -555,12 +578,18 @@ class ProgressDisplay(QtGui.QDialog):
         else:
             self.progressBar.setValue(total * 100)
             self.progressBar.show()
+
+        self._status_pbar.setValue(total * 100)
         
         if Unity:
             self.unity_launcher.set_property('progress', total)
     
     def hide(self):
         set_callback(None)
+
+        self._status_label.setText('Ready.')
+        self._status_pbar.hide()
+        self._status_btn.hide()
         
         if Unity:
             self.unity_launcher.set_property('progress_visible', False)
