@@ -22,9 +22,12 @@ import hashlib
 import six
 import tempfile
 import re
+import time
+import json
 from six.moves.urllib.request import urlopen, Request
 from six.moves.urllib.error import HTTPError, URLError
 from collections import OrderedDict
+from threading import Condition
 
 from lib.qt import QtCore, QtGui
 
@@ -42,6 +45,7 @@ ARCHIVE_FORMATS = ('zip', 'tar', 'split', 'rar', 'lzma', 'iso', 'hfs', 'gzip', '
 QUIET = False
 HASH_CACHE = dict()
 _HAS_CONVERT = None
+DL_POOL = None
 
 
 class QDialog(QtGui.QDialog):
@@ -107,6 +111,67 @@ class FlagsReader(object):
             self.flags[flag['type']].append(flag)
 
 
+class ResizableSemaphore(object):
+    _capacity = 0
+    _free = 0
+    _cond = None
+
+    def __init__(self, cap):
+        self._capacity = cap
+        self._free = cap
+        self._cond = Condition()
+
+    def acquire(self, blocking=True, timeout=None):
+        if not blocking and timeout is not None:
+            raise ValueError("can't specify timeout for non-blocking acquire")
+
+        rc = False
+        endtime = None
+        with self._cond:
+            while self._free < 1:
+                if not blocking:
+                    break
+                if timeout is not None:
+                    if endtime is None:
+                        endtime = time.time() + timeout
+                    else:
+                        timeout = endtime - time.time()
+                        if timeout <= 0:
+                            break
+                self._cond.wait(timeout)
+            else:
+                self._free -= 1
+                rc = True
+        return rc
+
+    def release(self):
+        with self._cond:
+            if self._free >= self._capacity:
+                raise ValueError('Semaphore released too many times')
+
+            self._free += 1
+            if self._free > 0:
+                self._cond.notify()
+
+    __enter__ = acquire
+
+    def __exit__(self, t, v, tb):
+        self.release()
+
+    def get_capacity(self):
+        return self._capacity
+
+    def set_capacity(self, cap):
+        diff = cap - self._capacity
+        with self._cond:
+            self._capacity = cap
+            self._free += diff
+
+            self._cond.notify_all()
+
+        logging.debug('Capacity set to %d, was %d. I now have %d free slots.', self._capacity, self._capacity - diff, self._free)
+
+
 def call(*args, **kwargs):
     if sys.platform.startswith('win'):
         # Provide the called program with proper I/O on Windows.
@@ -124,8 +189,28 @@ def call(*args, **kwargs):
         si.wShowWindow = subprocess.SW_HIDE
         
         kwargs['startupinfo'] = si
-    
+
+    logging.debug('Running %s', args[0])
     return subprocess.call(*args, **kwargs)
+
+
+def check_output(*args, **kwargs):
+    if sys.platform.startswith('win'):
+        # Provide the called program with proper I/O on Windows.
+        if 'stdin' not in kwargs:
+            kwargs['stdin'] = subprocess.DEVNULL
+        
+        if 'stderr' not in kwargs:
+            kwargs['stderr'] = subprocess.DEVNULL
+        
+        si = subprocess.STARTUPINFO()
+        si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = subprocess.SW_HIDE
+        
+        kwargs['startupinfo'] = si
+
+    logging.debug('Running %s', args[0])
+    return subprocess.check_output(*args, **kwargs)
 
 
 def get(link, headers=None):
@@ -166,7 +251,7 @@ def get(link, headers=None):
 
 def download(link, dest, headers=None):
     # NOTE: We have to import progress here to avoid a dependency cycle.
-    from lib import progress
+    from . import progress
 
     if headers is None:
         headers = {}
@@ -174,54 +259,56 @@ def download(link, dest, headers=None):
     headers['User-Agent'] = 'curl/7.22.0'
     logging.info('Downloading "%s"...', link)
 
-    try:
-        result = urlopen(Request(link, headers=headers))
-        if six.PY2:
-            if result.getcode() in (301, 302):
-                return download(result.info()['Location'], dest)
-            elif result.getcode() != 200:
-                logging.error('Download of "%s" failed with code %d!', link, result.getcode())
-                return False
-            
-            try:
-                size = float(result.info()['Content-Length'])
-            except:
-                logging.exception('Failed to parse Content-Length header!')
-                size = 1024 ** 4  # = 1 TB
-        else:
-            if result.status in (301, 302):
-                return download(result.getheader('Location'), dest)
-            elif result.status != 200:
-                logging.error('Download of "%s" failed with code %d!', link, result.status)
-                return False
-            
-            try:
-                size = float(result.getheader('Content-Length'))
-            except:
-                logging.exception('Failed to parse Content-Length header!')
-                size = 1024 ** 4  # = 1 TB
+    with DL_POOL:
+        try:
+            result = urlopen(Request(link, headers=headers))
+            if six.PY2:
+                if result.getcode() in (301, 302):
+                    return download(result.info()['Location'], dest)
+                elif result.getcode() != 200:
+                    logging.error('Download of "%s" failed with code %d!', link, result.getcode())
+                    return False
+                
+                try:
+                    size = float(result.info()['Content-Length'])
+                except:
+                    logging.exception('Failed to parse Content-Length header!')
+                    size = 1024 ** 4  # = 1 TB
+            else:
+                if result.status in (301, 302):
+                    return download(result.getheader('Location'), dest)
+                elif result.status != 200:
+                    logging.error('Download of "%s" failed with code %d!', link, result.status)
+                    return False
+                
+                try:
+                    size = float(result.getheader('Content-Length'))
+                except:
+                    logging.exception('Failed to parse Content-Length header!')
+                    size = 1024 ** 4  # = 1 TB
 
-        start = dest.tell()
-        while True:
-            chunk = result.read(50 * 1024)  # Read 50KB chunks
-            if not chunk:
-                break
+            start = dest.tell()
+            while True:
+                chunk = result.read(50 * 1024)  # Read 50KB chunks
+                if not chunk:
+                    break
 
-            dest.write(chunk)
+                dest.write(chunk)
 
-            progress.update((dest.tell() - start) / size, '%s: %d%%' % (os.path.basename(link), 100 * (dest.tell() - start) / size))
-    except KeyboardInterrupt:
-        raise
-    except HTTPError as exc:
-        if exc.code == 304:
-            # 304 Not Modified
-            return 304
+                # TODO: Add time estimate
+                progress.update((dest.tell() - start) / size, '%s' % (os.path.basename(link)))
+        except KeyboardInterrupt:
+            raise
+        except HTTPError as exc:
+            if exc.code == 304:
+                # 304 Not Modified
+                return 304
 
-        logging.exception('Failed to load "%s"!', link)
-        return False
-    except URLError:
-        logging.exception('Failed to load "%s"!', link)
-        return False
+            logging.exception('Failed to load "%s"!', link)
+            return False
+        except URLError:
+            logging.exception('Failed to load "%s"!', link)
+            return False
 
     return True
 
@@ -510,3 +597,28 @@ def merge_dicts(a, b):
             a[k] = v
 
     return a
+
+
+def get_cpuinfo():
+    from launcher import launch_cmd
+
+    # Try the cpuid method first but do so in a seperate process in case it segfaults.
+    try:
+        info = check_output(launch_cmd(['--cpuinfo']))
+        info = json.loads(info.decode('utf8', 'replace').strip())
+    except subprocess.CalledProcessError:
+        info = None
+        logging.exception('The CPUID method failed!')
+    except:
+        info = None
+        logging.exception('Failed to process my CPUID output.')
+
+    if info is None:
+        from third_party import cpuinfo
+
+        info = cpuinfo.get_cpu_info()
+
+    return info
+
+
+DL_POOL = ResizableSemaphore(10)

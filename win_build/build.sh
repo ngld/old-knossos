@@ -58,7 +58,7 @@ if [ ! -d _w ]; then
     wine python get-pip.py
     
     echo "==> Installing six..."
-    wine python -mpip install six
+    wine python -mpip install six semantic_version
     
     echo "==> Unpacking PyInstaller..."
     tar -xzf pyinstaller.tar.gz

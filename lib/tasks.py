@@ -15,7 +15,6 @@
 import os
 import sys
 import logging
-import threading
 import subprocess
 import shutil
 import glob
@@ -24,20 +23,16 @@ import json
 import tempfile
 
 import manager
-from lib import util, progress
+from lib import util, progress, repo
 from lib.repo import Repo, InstalledRepo
 from lib.qt import QtGui
 
 
 class FetchTask(progress.Task):
-    _fs2mod_list = None
-    _fs2mod_lock = None
-    
+
     def __init__(self):
         super(FetchTask, self).__init__()
-        
-        self._fs2mod_list = []
-        self._fs2mod_lock = threading.Lock()
+        progress.update(0, 'Fetching mod list...')
 
         # Remove all logos.
         for path in glob.glob(os.path.join(manager.settings_path, 'logo*.*')):
@@ -46,9 +41,22 @@ class FetchTask(progress.Task):
                 os.unlink(path)
         
         self.done.connect(self.finish)
-        self.add_work([(i * 100, link[0]) for i, link in enumerate(manager.settings['repos'])])
+
+        if repo.CPU_INFO is None:
+            self.add_work(['init'])
+        else:
+            self.add_work([(i * 100, link[0]) for i, link in enumerate(manager.settings['repos'])])
     
     def work(self, params):
+        if params == 'init':
+            progress.update(0, 'Checking CPU...')
+
+            # We're doing this here because we don't want to block the UI.
+            repo.CPU_INFO = util.get_cpuinfo()
+
+            self.add_work([(i * 100, link[0]) for i, link in enumerate(manager.settings['repos'])])
+            return
+
         prio, link = params
         
         progress.update(0.1, 'Fetching "%s"...' % link)
@@ -97,7 +105,7 @@ class CheckTask(progress.Task):
     can_abort = False
     
     def __init__(self, mods):
-        super(CheckTask, self).__init__()
+        super(CheckTask, self).__init__(threads=3)
         
         pkgs = []
         for mod in mods:
@@ -105,6 +113,7 @@ class CheckTask(progress.Task):
 
         self.done.connect(self.finish)
         self.add_work(pkgs)
+        progress.update(0, 'Checking installed mods...')
 
     def work(self, pkg):
         fs2path = manager.settings['fs2_path']
@@ -221,27 +230,30 @@ class CheckTask(progress.Task):
 
 
 # TODO: Optimize
-class InstallTask(progress.Task):
+class InstallTask(progress.MultistepTask):
     _pkgs = None
+    _steps = 3
 
     def __init__(self, pkgs):
+        self._pkgs = pkgs
         super(InstallTask, self).__init__()
 
+        progress.update(0, 'Installing mods...')
+
+    def init1(self):
         mods = set()
-        for pkg in pkgs:
+        for pkg in self._pkgs:
             mods.add(pkg.get_mod())
 
-        self._pkgs = pkgs
-
-        self.done.connect(self.finish)
         self.add_work(mods)
 
-    def work(self, mod):
+    def work1(self, mod):
         fs2_path = manager.settings['fs2_path']
         modpath = os.path.join(fs2_path, mod.folder)
         mfiles = mod.get_files()
 
         archives = set()
+        progress.update(0, 'Checking %s...' % mod.title)
         
         if mod.folder != '':
             for path, dirs, files in os.walk(modpath):
@@ -258,27 +270,15 @@ class InstallTask(progress.Task):
 
         self.post(archives)
 
-    def finish(self):
+    def init2(self):
         archives = set()
 
         for a in self.get_results():
             archives |= a
 
-        manager.run_task(_InstallTask2(self._pkgs, archives))
+        self.add_work([(pkg, archives) for pkg in self._pkgs])
 
-
-class _InstallTask2(progress.Task):
-    _pkgs = None
-
-    def __init__(self, pkgs, archives):
-        super(_InstallTask2, self).__init__()
-
-        self._pkgs = pkgs
-
-        self.done.connect(self.finish)
-        self.add_work([(pkg, archives) for pkg in pkgs])
-
-    def work(self, p):
+    def work2(self, p):
         pkg, archives = p
         mid = pkg.get_mod().mid
         fs2path = manager.settings['fs2_path']
@@ -302,6 +302,8 @@ class _InstallTask2(progress.Task):
                     util.try_download(info['urls'], fobj)
 
                 if info['is_archive']:
+                    progress.update(1, 'Extracting %s...' % fname)
+
                     cpath = os.path.join(tpath, 'content')
                     os.mkdir(cpath)
                     util.extract_archive(arpath, cpath)
@@ -337,28 +339,22 @@ class _InstallTask2(progress.Task):
 
             progress.finish_task()
 
-    def finish(self):
+    def init3(self):
+        mods = set()
+
         # Register installed pkgs
         for pkg in self._pkgs:
             manager.installed.add_pkg(pkg)
-
-        manager.run_task(_InstallTask3(self._pkgs))
-
-
-class _InstallTask3(progress.Task):
-
-    def __init__(self, pkgs):
-        super(_InstallTask3, self).__init__()
-
-        mods = set()
-        for pkg in pkgs:
             mods.add(pkg.get_mod())
+
+        manager.settings['installed_mods'] = manager.installed.get()
 
         self.done.connect(self.finish)
         self.add_work(mods)
 
-    def work(self, mod):
+    def work3(self, mod):
         fs2path = manager.settings['fs2_path']
+        progress.update(0, 'Installing %s...' % (mod.title))
 
         for act in mod.actions:
             if act['type'] == 'delete':
@@ -384,6 +380,7 @@ class UninstallTask(progress.Task):
 
         self.done.connect(self.finish)
         self.add_work(pkgs)
+        progress.update(0, 'Uninstalling mods...')
 
     def work(self, pkg):
         fs2path = manager.settings['fs2_path']
@@ -403,6 +400,7 @@ class UninstallTask(progress.Task):
         for pkg in self._pkgs:
             manager.installed.del_pkg(pkg)
 
+        manager.settings['installed_mods'] = manager.installed.get()
         manager.update_list()
 
 
@@ -414,6 +412,7 @@ class GOGExtractTask(progress.Task):
         
         self.done.connect(self.finish)
         self.add_work([(gog_path, dest_path)])
+        progress.update(0, 'Installing FS2 from GOG...')
     
     def work(self, paths):
         gog_path, dest_path = paths

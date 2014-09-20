@@ -20,10 +20,11 @@ import re
 import tempfile
 import shutil
 import semantic_version
+import six
 from lib import util
 
-# You have to fill this list using https://github.com/workhorsy/py-cpuinfo .
-CPU_FLAGS = []
+# You have to fill this using https://github.com/workhorsy/py-cpuinfo .
+CPU_INFO = None
 
 
 class ModNotFound(Exception):
@@ -62,14 +63,15 @@ class Repo(object):
 
     def read(self, path):
         self.base = os.path.dirname(path)
-        self.parse(open(path, 'r'))
+        h = open(path, 'r')
+        self.parse(h)
+        h.close()
 
     def parse(self, obj):
-        if isinstance(obj, str):
+        if isinstance(obj, six.string_types):
             data = json.loads(obj)
         else:
-            with obj:
-                data = json.load(obj)
+            data = json.load(obj)
 
         self.mods = {}
         self.includes = data.get('includes', [])
@@ -330,6 +332,9 @@ class Package(object):
         has_mod_dep = False
         mid = self._mod.mid
 
+        if mid == '':
+            raise Exception('Package "%s" initialized with Mod %s which has no ID!' % (self.name, self._mod.title))
+
         for info in self.dependencies:
             if info['id'] == mid:
                 has_mod_dep = True
@@ -406,7 +411,7 @@ class Package(object):
                     return False
 
             elif check['type'] == 'cpu_feature':
-                return check['feature'] in CPU_FLAGS
+                return CPU_INFO is None or check['feature'] in CPU_INFO['flags']
 
         return True
 
@@ -495,16 +500,16 @@ class InstalledMod(Mod):
         super(InstalledMod, self).__init__(values)
 
     def set(self, values):
-        pkgs = []
+        pkgs = values.get('packages', [])
         values = values.copy()
-        for pkg in values.get('packages', []):
-            pkgs.append(InstalledPackage(pkg, self))
-
         values['packages'] = []
+        
         super(InstalledMod, self).set(values)
 
         self.check_notes = values.get('check_notes', '')
-        self.packages = pkgs
+        
+        for pkg in pkgs:
+            self.packages.append(InstalledPackage(pkg, self))
 
     def get(self):
         data = super(InstalledMod, self).get()
@@ -545,7 +550,7 @@ class InstalledPackage(Package):
         return InstalledPackage(pkg.get(), mod)
 
     def set(self, values):
-        super(InstalledPackage, self).set(values)
+        super(InstalledPackage, self).set(values.copy())
 
         self.state = values.get('state', 'installed')
         self.check_notes = values.get('check_notes', '')

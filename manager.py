@@ -16,12 +16,14 @@
 from __future__ import absolute_import, print_function
 import sys
 import logging
+
+# NOTE: This isn't necessary anymore if you start fs2mod-py with launcher.py
 if __name__ == '__main__':
     # Allow other modules to use "import manager"
     sys.modules['manager'] = sys.modules['__main__']
 
-# Do the logging config here because gi.repository will use it already on import.
-logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
+    # Do the logging config here because gi.repository will use it already on import.
+    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
 
 import os
 import pickle
@@ -50,13 +52,14 @@ except ImportError:
     # Can't find Unity.
     Unity = None
 
-VERSION = '0.0.3'
+# The version should follow the http://semver.org guidelines.
+# Only remove the -dev tag if you're making a release!
+VERSION = '0.0.3-dev'
 
 # TODO: Do we really need all these?
 main_win = None
 progress_win = None
 browser_ctrl = None
-splash = None
 unity_launcher = None
 shared_files = {}
 fs2_watcher = None
@@ -72,6 +75,7 @@ settings = {
     'cmdlines': {},
     'hash_cache': None,
     'enforce_deps': True,
+    'max_downloads': 3,
     'repos': [('http://dev.tproxy.de/fs2/all.json', 'ngld\'s Repo')],
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt',
     'nebula_link': 'http://dev.tproxy.de/fs2/mirrors/'
@@ -309,6 +313,7 @@ def select_fs2_path(interact=True):
 
         save_settings()
         init_fs2_tab()
+        check_list()
 
 
 def select_fs2_path_handler():
@@ -339,7 +344,7 @@ def build_mod_tree(mod=None, parent_el=None):
     rows = dict()
 
     for mod in mods:
-        row = QtGui.QTreeWidgetItem([mod.title, mod.version, ''])
+        row = QtGui.QTreeWidgetItem((mod.title, str(mod.version), ''))
         row.setData(0, QtCore.Qt.UserRole + 2, mod)
         row.setData(0, QtCore.Qt.UserRole + 3, False)
 
@@ -372,11 +377,6 @@ def update_list(d=None):
         rc = 0
         ri = 0
 
-        features = QtGui.QTreeWidgetItem(('Features', '', ''))
-        features.setData(0, QtCore.Qt.UserRole + 2, mod)
-        features.setData(0, QtCore.Qt.UserRole + 3, False)
-        titem.addChild(features)
-
         for pkg in mod.packages:
             pinfo = installed.query(mod.mid, pkg.name)
 
@@ -386,6 +386,7 @@ def update_list(d=None):
                 
                 if pinfo is None:
                     pinfo = repo.InstalledPackage.convert(pkg, pkg.get_mod())
+                    pinfo.state = 'not installed'
                 elif pinfo.files_shared > 0:
                     status += ' (%d shared files)' % pinfo.files_shared
             elif pinfo.state == 'installed':
@@ -398,7 +399,7 @@ def update_list(d=None):
                 cstate = QtCore.Qt.PartiallyChecked
                 status = '%d corrupted or updated files' % (pinfo.files_checked - pinfo.files_ok)
             
-            row = QtGui.QTreeWidgetItem((pkg.name, mod.version, status))
+            row = QtGui.QTreeWidgetItem((pkg.name, str(mod.version), status))
             row.setCheckState(0, cstate)
             row.setData(0, QtCore.Qt.UserRole, cstate)
             row.setData(0, QtCore.Qt.UserRole + 1, pinfo)
@@ -409,10 +410,10 @@ def update_list(d=None):
                 row.setDisabled(True)
                 rc += 1
 
-                if pinfo is not None and pinfo.state == 'installed':
+                if pinfo.state == 'installed':
                     ri += 1
 
-            features.addChild(row)
+            titem.addChild(row)
 
         if ri == 0:
             state = QtCore.Qt.Unchecked
@@ -918,6 +919,23 @@ def update_enforce_deps():
     save_settings()
 
 
+def update_max_downloads():
+    global settings
+
+    old_num = num = settings['max_downloads']
+
+    try:
+        settings['max_downloads'] = num = int(main_win.maxDownloads.text())
+    except:
+        pass
+
+    main_win.maxDownloads.setText(str(num))
+
+    if num != old_num:
+        util.DL_POOL.set_capacity(num)
+        save_settings()
+
+
 def show_fs2settings():
     SettingsWindow(None)
 
@@ -943,7 +961,8 @@ def init():
         os.makedirs(settings_path)
     
     if sys.platform.startswith('win'):
-        # Windows won't display a console so write our log messages to a file.
+        # Windows won't display a console. Let's write our log messages to a file.
+        # We truncate the log file on every start to avoid filling the user's disk with useless data.
         handler = logging.FileHandler(os.path.join(settings_path, 'log.txt'), 'w')
         handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
         logging.getLogger().addHandler(handler)
@@ -983,6 +1002,8 @@ def main():
     
     if settings['hash_cache'] is not None:
         util.HASH_CACHE = settings['hash_cache']
+
+    util.DL_POOL.set_capacity(settings['max_downloads'])
 
     installed = repo.InstalledRepo(settings.get('installed_mods', []))
     pmaster.start_workers(10)
@@ -1043,6 +1064,9 @@ def main():
     
     main_win.enforceDeps.setCheckState(QtCore.Qt.Checked if settings['enforce_deps'] else QtCore.Qt.Unchecked)
     main_win.enforceDeps.stateChanged.connect(update_enforce_deps)
+    main_win.maxDownloads.setText(str(settings['max_downloads']))
+    main_win.maxDownloads.textEdited.connect(update_max_downloads)
+    
     main_win.fs2Settings.clicked.connect(show_fs2settings)
 
     browser_ctrl = BrowserCtrl(main_win.webView)
@@ -1102,19 +1126,5 @@ def main():
     api.shutdown_ipc()
 
 
-def launcher():
-    if hasattr(sys, 'frozen') and sys.frozen == 1:
-        my_path = [os.path.abspath(sys.executable)]
-    else:
-        my_path = [os.path.abspath(sys.executable), os.path.abspath(__file__)]
-
-    subprocess.Popen(my_path)
-
-
 if __name__ == '__main__':
-    if len(sys.argv) > 1 and '://' in sys.argv[1]:
-        api.scheme_handler(sys.argv[1], init(), launcher)
-    elif api.has_instance():
-        api.scheme_handler('fso://focus', init(), launcher)
-    else:
-        main()
+    main()

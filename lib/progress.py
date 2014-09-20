@@ -118,6 +118,8 @@ class Worker(threading.Thread):
                 set_callback(task[0]._track_progress)
                 task[0]._init()
                 task[0].work(*task[1])
+            except SystemExit:
+                return
             except:
                 logging.exception('Exception in Thread!')
             
@@ -158,13 +160,10 @@ class Master(object):
                 return None
             
             with self._tasks_lock:
-                while len(self._tasks) > 0:
-                    work = self._tasks[0]._get_work()
+                for task in self._tasks:
+                    work = task._get_work()
                     if work is not None:
                         return work
-                    else:
-                        task = self._tasks.pop(0)
-                        task._attached = False
             
             # No work here... let's wait for more.
             with self._worker_cond:
@@ -179,7 +178,20 @@ class Master(object):
             self._tasks.append(task)
             task._master = self
             task._attached = True
+
+        task.done.connect(self.check_tasks)
         
+        with self._worker_cond:
+            self._worker_cond.notify_all()
+
+    def check_tasks(self):
+        with self._tasks_lock:
+            for task in self._tasks[:]:
+                if not task._has_work():
+                    self._tasks.remove(task)
+                    task._attached = False
+
+    def wake_workers(self):
         with self._worker_cond:
             self._worker_cond.notify_all()
 
@@ -195,14 +207,18 @@ class Task(QtCore.QObject):
     _progress = None
     _progress_lock = None
     _running = 0
+    _threads = 0
     can_abort = True
     aborted = False
     done = QtCore.Signal()
     progress = QtCore.Signal()
     
-    def __init__(self, work=[]):
+    def __init__(self, work=None, threads=0):
         super(Task, self).__init__()
         
+        if work is None:
+            work = []
+
         self._results = []
         self._work = work
         self._result_lock = threading.Lock()
@@ -210,10 +226,13 @@ class Task(QtCore.QObject):
         self._done = threading.Event()
         self._progress = dict()
         self._progress_lock = threading.Lock()
+        self._threads = threads
     
     def _get_work(self):
         with self._work_lock:
             if len(self._work) == 0:
+                return None
+            elif self._threads > 0 and self._running >= self._threads:
                 return None
             else:
                 return (self, (self._work.pop(0),))
@@ -299,6 +318,76 @@ class Task(QtCore.QObject):
         
         with self._result_lock:
             return self._results
+
+
+class MultistepTask(Task):
+    _steps = None
+    _sdone = False
+    _cur_step = -1
+
+    def __init__(self, steps=None, **kwargs):
+        super(MultistepTask, self).__init__(**kwargs)
+
+        if steps is None:
+            steps = self._steps
+
+        if isinstance(steps, int):
+            snum = steps
+            steps = []
+            for i in range(1, snum + 1):
+                steps.append((getattr(self, 'init' + str(i)), getattr(self, 'work' + str(i))))
+
+        self._steps = steps
+
+    def _has_work(self):
+        return not self._sdone
+
+    def _get_work(self):
+        with self._work_lock:
+            if (self._threads > 0 and self._running >= self._threads) or self._sdone or self.aborted:
+                return None
+            elif len(self._work) == 0:
+                if self._running == 0:
+                    return (self, ('###',))
+                else:
+                    return None
+            else:
+                return (self, (self._work.pop(0),))
+
+    def work(self, arg):
+        if arg == '###':
+            # Maybe we need to advance to the next step.
+            self._work_lock.acquire()
+
+            if self._running == 1 and len(self._work) == 0:
+                self._work_lock.release()
+                self._next_step()
+                return
+
+            self._work_lock.release()
+
+        # Call the current work method
+        self._steps[self._cur_step][1](arg)
+
+    def _next_step(self):
+        self._cur_step += 1
+        logging.debug('Entering step %d of %d in task %s.', self._cur_step + 1, len(self._steps), self.__class__.__name__)
+
+        if self._cur_step >= len(self._steps):
+            # That was the last one.
+            self._sdone = True
+            return
+
+        # Call the init routine.
+        self._done.set()
+        self._steps[self._cur_step][0]()
+        self._done.clear()
+
+        with self._result_lock:
+            self._results = []
+
+        # Wake all free workers.
+        self._master.wake_workers()
 
 
 # Curses display
@@ -499,10 +588,13 @@ class ProgressDisplay(QtGui.QDialog):
         event.ignore()
     
     def show(self):
-        reset()
-        
         set_callback(self.update_prog)
-        update(0, 'Working...')
+
+        if _progress.value == 1:
+            update(0, 'Working...')
+        else:
+            self.update_prog(_progress.value, _progress.text)
+        
         super(ProgressDisplay, self).show()
         self._status_pbar.show()
         self._status_btn.show()
