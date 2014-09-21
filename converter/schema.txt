@@ -73,9 +73,16 @@
             ],
             "actions": [ // optional
                 {
-                    "type": "delete",
-                    "files": ["<file1>", "..."]
+                    "type": "delete", // required
+                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required
+                    "glob": true // optional, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
                 },
+                {
+                    "type": "move", // required
+                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required
+                    "dest": "<path>", // required, specifies the destination
+                    "glob": true // optional, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                }
                 ...
             ]
         },
