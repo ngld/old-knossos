@@ -725,20 +725,29 @@ def run_mod(mod):
             for i, part in enumerate(cmdline):
                 if part.strip() == '-mod':
                     mod_found = True
-                    cmdline[i + 1] = modfolder
+
+                    if len(cmdline) <= i + 1:
+                        cmdline.append(modfolder)
+                    else:
+                        cmdline[i + 1] = modfolder
                     break
     
     if modfolder is not None and not mod_found:
         cmdline.append('-mod')
         cmdline.append(modfolder)
     
+    if not os.path.isfile(path):
+        basep = os.path.dirname(path)
+        if not os.path.isdir(basep):
+            os.makedirs(basep)
+
     try:
         with open(path, 'w') as stream:
             stream.write(' '.join(cmdline))
     except:
         logging.exception('Failed to modify "%s". Not starting FS2!!', path)
         
-        QtGui.QMessageBox.critical(main_win, 'Error', 'Failed to edit "%s"! I can\'t change the current MOD!' % path)
+        QtGui.QMessageBox.critical(main_win, 'Error', 'Failed to edit "%s"! I can\'t change the current mod!' % path)
     else:
         run_fs2()
 

@@ -15,5 +15,30 @@
                 Welcome to the new fs2mod-py!!!
             </p>
         </div>
+        <script type="text/javascript">
+            $(function () {
+                var list = $('<ul>').appendTo('body');
+                $.each(fs2mod.getInstalledMods(), function (i, mod) {
+                    var row = $('<li>').appendTo(list);
+
+                    if(mod.logo) {
+                        row.append($('<img>').attr('src', 'fsrs:///' + mod.logo));
+                    }
+                    row.append($('<span>').text(mod.title));
+
+                    var actions = $('<div>').css('float', 'right');
+                    actions.append($('<a href="#">Launch</a>').click(function (e) {
+                        e.preventDefault();
+                        fs2mod.runMod(mod.id);
+                    }));
+                    actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
+                        e.preventDefault();
+                        fs2mod.showSettings(mod.id);
+                    }));
+
+                    row.append(actions);
+                });
+            });
+        </script>
     </body>
 </html>

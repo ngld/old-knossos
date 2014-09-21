@@ -10,7 +10,7 @@ To run this script you'll need the following:
 * [PySide][pyside] or [PyQt4][pyqt]
 * [Six][six]
 * [7zip][7z] (IMPORTANT: This script needs the full implementation, i.e. ```p7zip-full``` _and_ ```p7zip-rar``` on Ubuntu)
-* [cpuinfo-py][cpuid]
+* [py-cpuinfo][cpuid]
 * [semantic_version][sv]
 
 The following commands should install everything you need:
@@ -19,7 +19,7 @@ The following commands should install everything you need:
 
 ## Usage
 
-To start the mod manager just run ```python manager.py```
+To start the mod manager just run ```python launcher.py```
 
 The converter (which can load and convert the files from fsoinstaller.com) is a console-only script. Use ```python converter.py -h``` to read its help.
 

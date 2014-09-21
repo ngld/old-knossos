@@ -348,23 +348,26 @@ class MultistepTask(Task):
                 return None
             elif len(self._work) == 0:
                 if self._running == 0:
-                    return (self, ('###',))
+                    return (self, ('MAGIC_MULTITASK_STEP_KEY_###',))
                 else:
                     return None
             else:
                 return (self, (self._work.pop(0),))
 
     def work(self, arg):
-        if arg == '###':
+        # Any better ideas for this magic key?
+        if arg == 'MAGIC_MULTITASK_STEP_KEY_###':
             # Maybe we need to advance to the next step.
             self._work_lock.acquire()
 
             if self._running == 1 and len(self._work) == 0:
                 self._work_lock.release()
                 self._next_step()
-                return
-
-            self._work_lock.release()
+            else:
+                logging.warning('Either we still have some work to do (unlikely) or there are still some other threads running (%d).', self._running)
+                self._work_lock.release()
+            
+            return
 
         # Call the current work method
         self._steps[self._cur_step][1](arg)

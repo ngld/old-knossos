@@ -167,11 +167,13 @@ class CheckTask(progress.Task):
 
         installed = manager.installed = InstalledRepo()
         files = dict()
+        mods = set()
 
         if manager.settings['installed_mods'] is not None:
             installed.set(manager.settings['installed_mods'])
         
         for pkg, archives, s, c, m in results:
+            mods.add(pkg.get_mod())
             for item in pkg.get_files().keys():
                 path = util.pjoin(pkg.get_mod().folder, item)
                 
@@ -181,9 +183,9 @@ class CheckTask(progress.Task):
                     files[path] = [pkg.name]
         
         shared_files = dict()
-        for path, mods in files.items():
-            if len(mods) > 1:
-                shared_files[path] = mods
+        for path, f_mods in files.items():
+            if len(f_mods) > 1:
+                shared_files[path] = f_mods
         
         shared_set = set(shared_files.keys())
         
@@ -223,6 +225,11 @@ class CheckTask(progress.Task):
                 pinfo.files_ok = s
                 pinfo.files_checked = c
                 pinfo.files_shared = len(my_shared)
+
+        for mod in mods:
+            if mod.mid in installed.mods:
+                im = installed.mods[mod.mid]
+                im.logo = mod.logo
 
         manager.settings['installed_mods'] = installed.get()
         manager.save_settings()

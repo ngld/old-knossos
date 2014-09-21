@@ -92,7 +92,7 @@ def scheme_handler(link):
         app.quit()
         return
     
-    link = urlparse.unquote(link).split('/')
+    link = urlparse.unquote(link.strip()).split('/')
     
     if len(link) < 3:
         QtGui.QMessageBox.critical(None, 'fs2mod-py', 'Not enough arguments!')
@@ -176,4 +176,7 @@ if __name__ == '__main__':
         del ipc
 
         from manager import main
-        main()
+        try:
+            main()
+        except:
+            logging.exception('Uncaught exeception! Quitting...')

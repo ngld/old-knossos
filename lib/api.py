@@ -18,7 +18,7 @@ import logging
 import json
 
 from .qt import QtCore, QtGui
-from .tasks import InstallTask
+from .tasks import InstallTask, UninstallTask
 from .windows import SettingsWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
@@ -72,6 +72,33 @@ def install_pkgs(pkgs, name=None, cb=None):
             task.done.connect(cb)
 
         manager.run_task(task)
+        return True
+    else:
+        return False
+
+
+def uninstall_pkgs(pkgs, name=None, cb=None):
+    titles = [pkg.name for pkg in pkgs if manager.installed.is_installed(pkg)]
+
+    if name is None:
+        name = 'these packages'
+
+    msg = QtGui.QMessageBox()
+    msg.setIcon(QtGui.QMessageBox.Question)
+    msg.setText('Do you really want to uninstall %s?' % name)
+    msg.setInformativeText('%s will be installed.' % (', '.join(titles)))
+    msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+    msg.setDefaultButton(QtGui.QMessageBox.Yes)
+    
+    if msg.exec_() == QtGui.QMessageBox.Yes:
+        task = UninstallTask(pkgs)
+        if cb is not None:
+            task.done.connect(cb)
+
+        manager.run_task(task)
+        return True
+    else:
+        return False
 
 #########
 # Tools #
@@ -79,6 +106,8 @@ def install_pkgs(pkgs, name=None, cb=None):
 
 
 def install_scheme_handler():
+    logging.info('Installing scheme handler...')
+
     if hasattr(sys, 'frozen'):
         my_path = os.path.abspath(sys.executable)
     else:
@@ -86,32 +115,24 @@ def install_scheme_handler():
             
     if sys.platform.startswith('win'):
         settings = QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', QtCore.QSettings.NativeFormat)
-        settings.setValue('URLProtocol', '')
-        settings.setValue('shell/open/command/@', my_path + ' "%1"')
+        settings.setFallbacksEnabled(False)
 
-#         tpl = r"""Windows Registry Editor Version 5.00
-
-# [HKEY_CLASSES_ROOT\fso]
-# "URLProtocol"=""
-
-# [HKEY_CLASSES_ROOT\fso\shell]
-
-# [HKEY_CLASSES_ROOT\fso\shell\open]
-
-# [HKEY_CLASSES_ROOT\fso\shell\open\command]
-# @="{PATH} \"%1\""
-# """
+        settings.setValue('Default', 'URL:fs2mod-py protocol')
+        settings.setValue('URL Protocol', '')
+        settings.setValue('DefaultIcon/Default', '"' + my_path + ',1"')
         
-#         fd, path = tempfile.mkstemp('.reg')
-#         os.write(fd, tpl.replace('{PATH}', my_path.replace('\\', '\\\\')).replace('\n', '\r\n'))
-#         os.close(fd)
-        
-#         try:
-#             subprocess.call(['regedit', path])
-#         except:
-#             logging.exception('Failed!')
-        
-#         os.unlink(path)
+        settings.setValue('shell/open/command/Default', '"' + my_path + '" "%1"')
+
+        # Check
+        # FIXME: Is there any better way to detect whether this worked or not?
+
+        settings.sync()
+        settings = QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', QtCore.QSettings.NativeFormat)
+        settings.setFallbacksEnabled(False)
+
+        if settings.value('shell/open/command/Default') != '"' + my_path + '" "%1"':
+            QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')
+            return
         
     elif sys.platform.startswith('linux'):
         tpl_desktop = r"""[Desktop Entry]
@@ -146,6 +167,8 @@ MimeType=x-scheme-handler/fso;
         if not found:
             with open(mime_types_file, 'a') as output_file:
                 output_file.write(tpl_mime_type)
+
+    QtGui.QMessageBox.information(None, 'fs2mod-py', 'Done!')
 
 
 def setup_ipc():
@@ -197,13 +220,17 @@ def handle_ipc(msg):
     elif msg[0] == 'settings':
         manager.main_win.activateWindow()
 
-        if len(msg) == 1:
+        if len(msg) == 1 or msg[1] == '':
             manager.main_win.tabs.setCurrentIndex(3)
         else:
             mod = get_mod(msg[1])
 
-            if mod.mid not in manager.installed.mods:
-                QtGui.QMessageBox.information(manager.main_win, 'fs2mod-py', 'Mod "%s" is not yet installed!' % (mod.name))
+            if mod is None or mod.mid not in manager.installed.mods:
+                if mod is None:
+                    name = msg[1]
+                else:
+                    name = mod.title
+                QtGui.QMessageBox.information(manager.main_win, 'fs2mod-py', 'Mod "%s" is not yet installed!' % (name))
             else:
                 SettingsWindow(mod)
     else:

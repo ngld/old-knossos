@@ -64,14 +64,8 @@ class SettingsWindow(Window):
     _app = None
     
     def __init__(self, mod, app=None):
-        if manager.splash is not None:
-            parent = manager.splash
-            self._app = app
-        else:
-            parent = manager.main_win
-        
         self.mod = mod
-        self.win = util.init_ui(Ui_Settings(), util.QDialog(parent))
+        self.win = util.init_ui(Ui_Settings(), util.QDialog(manager.main_win))
         self.win.setModal(True)
 
         self.win.browseButton.clicked.connect(manager.select_fs2_path_handler)
@@ -86,10 +80,6 @@ class SettingsWindow(Window):
         
         self.win.runButton.clicked.connect(self.run_mod)
         self.win.cancelButton.clicked.connect(self.win.close)
-        
-        if manager.splash is not None:
-            self.win.destroyed.connect(app.quit)
-            manager.splash.hide()
         
         self.open()
     
@@ -422,18 +412,13 @@ class SettingsWindow(Window):
     def run_mod(self):
         logging.info('Launching...')
         
-        if manager.splash is not None:
-            manager.splash.show()
-        
         self.write_config()
-        self.win.close()
-        
-        if manager.splash is not None:
-            manager.splash.label.setText('Launching FS2...')
-            manager.signals.fs2_launched.connect(self._app.quit)
-            self._app.processEvents()
-        
-        manager.run_mod(self.mod)
+
+        if self.mod is not None:
+            self.win.close()
+            manager.run_mod(self.mod)
+        else:
+            manager.run_fs2()
     
     def show_flagwin(self):
         FlagsWindow(self.win, self.mod)
