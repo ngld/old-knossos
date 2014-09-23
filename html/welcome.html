@@ -4,40 +4,71 @@
         <meta charset="utf8">
         <title>Welcome</title>
         <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+        <style type="text/css">
+            .mod-logo {
+                max-width: 200px;
+            }
+
+            .mod-actions {
+                display: none;
+            }
+
+            tr:hover .mod-actions {
+                display: block;
+            }
+        </style>
         <script type="text/javascript" src="js/jquery.min.js"></script>
         <script type="text/javascript" src="js/bootstrap.min.js"></script>
     </head>
     <body>
         <div class="container">
-            <h1>Welcome</h1>
-
-            <p>
-                Welcome to the new fs2mod-py!!!
-            </p>
+            <div id="install-note" class="hide">
+                <p>It looks like you started fs2mod-py for the first time.</p>
+                <p>
+                    You can either <a class="btn btn-default" id="sel-fso">tell me where your FS2 installation is</a><br>
+                    or I could <a class="btn btn-default" id="gog-install">install FS2 using the GOG installer</a>.
+                </p>
+            </div>
         </div>
         <script type="text/javascript">
             $(function () {
-                var list = $('<ul>').appendTo('body');
-                $.each(fs2mod.getInstalledMods(), function (i, mod) {
-                    var row = $('<li>').appendTo(list);
+                if(!fs2mod.isFsoInstalled()) {
+                    $('#install-note').removeClass('hide');
 
-                    if(mod.logo) {
-                        row.append($('<img>').attr('src', 'fsrs:///' + mod.logo));
-                    }
-                    row.append($('<span>').text(mod.title));
-
-                    var actions = $('<div>').css('float', 'right');
-                    actions.append($('<a href="#">Launch</a>').click(function (e) {
+                    $('#sel-fso').click(function (e) {
                         e.preventDefault();
-                        fs2mod.runMod(mod.id);
-                    }));
-                    actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
+                        fs2mod.selectFs2path();
+                    });
+                    $('#gog-install').click(function (e) {
                         e.preventDefault();
-                        fs2mod.showSettings(mod.id);
-                    }));
+                        fs2mod.runGogInstaller();
+                    });
+                } else {    
+                    var table = $('<table class="table">').appendTo('body');
+                    $.each(fs2mod.getInstalledMods(), function (i, mod) {
+                        var row = $('<tr>');
 
-                    row.append(actions);
-                });
+                        var title = $('<td>').appendTo(row);
+                        if(mod.logo) {
+                            title.append($('<img class="mod-logo">').attr('src', 'fsrs:///' + mod.logo));
+                            title.append('&nbsp;')
+                        }
+                        title.append($('<span>').text(mod.title));
+
+                        var actions = $('<div class="mod-actions">');
+                        actions.append($('<a href="#">Launch</a>').click(function (e) {
+                            e.preventDefault();
+                            fs2mod.runMod(mod.id);
+                        }));
+                        actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
+                            e.preventDefault();
+                            fs2mod.showSettings(mod.id);
+                        }));
+
+                        row.append($('<td>').append(actions));
+                        table.append(row);
+                    });
+                }
             });
         </script>
     </body>

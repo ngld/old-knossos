@@ -89,7 +89,7 @@ class FetchTask(progress.Task):
             filelist = manager.settings['known_files'] = {}
             for mod in modlist.get_list():
                 for pkg in mod.packages:
-                    for name, ar in pkg.files.items():
+                    for name, ar in pkg.files:
                         if ar['is_archive']:
                             for item in ar['contents']:
                                 filelist[util.pjoin(ar['dest'], item)] = (mod.mid, pkg.name)

@@ -42,9 +42,17 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(result=bool)
     def isFsoInstalled(self):
         fs2_path = manager.settings['fs2_path']
-        fs2_bin = manager.settings['fs2_bin']
+        fs2_bin = os.path.join(fs2_path, manager.settings['fs2_bin'])
 
         return os.path.isdir(fs2_path) and os.path.isfile(fs2_bin)
+
+    @QtCore.Slot()
+    def selectFs2path(self):
+        manager.select_fs2_path()
+
+    @QtCore.Slot()
+    def runGogInstaller(self):
+        manager.do_gog_extract()
 
     @QtCore.Slot(result='QVariantList')
     def getInstalledMods(self):
@@ -174,9 +182,7 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
             # Rewrite fsrs:// links.
             url = request.url()
             url.setScheme('file')
-            print(os.path.basename(url.path()))
             url.setPath(os.path.join(manager.settings_path, os.path.basename(url.path())))
-            print(url)
 
             request.setUrl(url)
         
