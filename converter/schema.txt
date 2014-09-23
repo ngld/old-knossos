@@ -27,19 +27,20 @@
                     "status": "<required|recommended|optional>",
                     "dependencies": [ // optional
                         {
-                            "id": "<ID>", // required
-                            "version": "1.2.*" // required, https://getcomposer.org/doc/01-basic-usage.md#package-versions
+                            "id": "<mod ID>", // required
+                            "version": "1.2.*", // required, https://getcomposer.org/doc/01-basic-usage.md#package-versions
+                            "packages": [] // optional, specifies which optional and recommended packages are also required
                         },
                         ...
                     ],
                     "environment": [ // optional
                         {
                             "type": "cpu_feature", // required
-                            "feature": "<SSE|SSE2|AVX|...>" // required if type == "cpu_feature"
+                            "value": "<SSE|SSE2|AVX|...>" // required
                         },
                         {
                             "type": "os", // required
-                            "os": "<windows|linux|macos>" // required if type == "os"
+                            "value": "<windows|linux|macos>" // required
                         },
                         ...
                     ],

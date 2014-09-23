@@ -398,20 +398,20 @@ class Package(object):
     def check_env(self):
         for check in self.environment:
             if check['type'] == 'os':
-                if check['os'] == 'windows':
+                if check['value'] == 'windows':
                     if sys.platform not in ('win32', 'cygwin'):
                         return False
-                elif check['os'] == 'linux':
+                elif check['value'] == 'linux':
                     if not sys.platform.startswith('linux'):
                         return False
-                elif check['os'] == 'macos':
+                elif check['value'] == 'macos':
                     if sys.platform != 'darwin':
                         return False
                 else:
                     return False
 
             elif check['type'] == 'cpu_feature':
-                return CPU_INFO is None or check['feature'] in CPU_INFO['flags']
+                return CPU_INFO is None or check['value'] in CPU_INFO['flags']
 
         return True
 
