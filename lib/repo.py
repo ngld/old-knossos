@@ -327,7 +327,10 @@ class Package(object):
         self.status = values.get('status', 'recommended')
         self.dependencies = values.get('dependencies', [])
         self.environment = values.get('environment', [])
-        self.files = values.get('files', {})
+        self.files = {}
+
+        for item in values.get('files', []):
+            self.files[item['filename']] = item
 
         has_mod_dep = False
         mid = self._mod.mid

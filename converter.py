@@ -91,6 +91,7 @@ class ChecksumTask(progress.Task):
                     img.append((line, info.st_size))
 
         # Pick the biggest.
+        # TODO: Improve
         img.sort(key=lambda i: i[1])
         img = img[-1][0]
 
@@ -297,12 +298,13 @@ def main(args):
                         files[name] = {}
 
                     files[name].update({
+                        'filename': name,
                         'is_archive': info.get('is_archive', True),
                         'dest': info.get('dest', '#'),
                         'urls': info['urls']
                     })
 
-                pkg['files'] = files
+                pkg['files'] = files.values()
 
             new_cache['mods'].append(mod)
 

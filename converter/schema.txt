@@ -1,5 +1,5 @@
 /* Repo configuration */
-// Created by ngld, improved by m!m and Hellzed
+// Created by ngld, m!m and Hellzed
 // Most of this is similar to Goober's text files (http://www.hard-light.net/wiki/index.php/FSO_Installer_Text_Files)
 
 {
@@ -8,10 +8,10 @@
             "id": "...", // required
             "title": "...", // required
             "version": "...", // required, http://semver.org/
-            "description": "...", // optional
-            "logo": "<will be extracted from the archives if null>", // optional, default: null
-            "notes": "...", // optional
-            "folder": "<mod folder>", // optional, This is folder should contain the mod.ini file.
+            "description": "...", // optional, should match the mod.ini's description
+            "logo": "<path to image>", // optional, default: null, will be extracted from the archive if null
+            "notes": "...", // optional, these will be displayed during the installation.
+            "folder": "<mod folder>", // optional, This folder will be created in the FS2 directory. default: mod title
             "submods": ["<ID1>", "..."], // optional
             "packages": [ // optional
                 {
@@ -54,7 +54,7 @@
                                 {
                                     "<filename>": {
                                         "is_archive": true, // optional, default: true
-                                        "dest": "<destination path>" // optional, default: ""
+                                        "dest": "<destination path>" // optional, default: "", relative to the mod folder 
                                     }
                                 }
                             ],
@@ -63,7 +63,7 @@
                             {
                                 "filename": "<filename>", // required
                                 "is_archive": true, // optional, default: true
-                                "dest": "<destination path>", // optional, default: ""
+                                "dest": "<destination path>", // optional, default: "", relative to the mod folder 
                                 "urls": ["<url1>", "<url2>"] // required
                             },
                             ...
@@ -75,13 +75,13 @@
             "actions": [ // optional
                 {
                     "type": "delete", // required
-                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required
+                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
                     "glob": true // optional, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
                 },
                 {
                     "type": "move", // required
-                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required
-                    "dest": "<path>", // required, specifies the destination
+                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
+                    "dest": "<path>", // required, specifies the destination relative to the mod folder
                     "glob": true // optional, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
                 }
                 ...
@@ -109,8 +109,9 @@
             "packages": [
                 {
                     /* All of the above */
-                    "files": {
-                        "<filename>": {
+                    "files": [
+                        {
+                            "filename": "<filename>",
                             "is_archive": true,
                             "dest": "<destination path>",
                             "md5sum": "<checksum>",
@@ -122,7 +123,7 @@
                                 }
                             /* endif */
                         }
-                    }
+                    ]
                 }
             ]
         }
@@ -327,8 +328,9 @@
                             "feature": "SSE"
                         }
                     ],
-                    "files": {
-                        "fs2_open_3_7_0_SSE.zip": {
+                    "files": [
+                        {
+                            "filename": "fs2_open_3_7_0_SSE.zip",
                             "is_archive": true,
                             "dest": "",
                             "md5sum": "66ded59be0187cb057a5b77a341f625f",
@@ -338,18 +340,18 @@
                                 "http://scp.indiegames.us/builds/WIN/fs2_open_3_7_0_SSE.zip"
                             ],
                             "contents": {
-                                "fred2_open_3_7_0_SSE-DEBUG.exe: "df9b8b05bca52a41a02543d96f7801e8",
-                                "fred2_open_3_7_0_SSE-DEBUG.map: "a883fb1ac82e508b16b02c78e3b90c47",
-                                "fred2_open_3_7_0_SSE-DEBUG.pdb: "756ab728cec24511073f8d3b33b4e38b",
-                                "fred2_open_3_7_0_SSE.exe: "55e5b03e8acab2196670f6ba58947833",
-                                "fs2_open_3_7_0_SSE-DEBUG.exe: "d29eff2072aac561db7e742c6315d0cb",
-                                "fs2_open_3_7_0_SSE-DEBUG.map: "cf0a580b48e6aec0f2778f85c1a8dae5",
-                                "fs2_open_3_7_0_SSE-DEBUG.pdb: "af61483a93b74ac8374ed6213dca783a",
-                                "fs2_open_3_7_0_SSE.exe: "ca0bea2411f1963c726e43d85e14be90"
+                                "fred2_open_3_7_0_SSE-DEBUG.exe": "df9b8b05bca52a41a02543d96f7801e8",
+                                "fred2_open_3_7_0_SSE-DEBUG.map": "a883fb1ac82e508b16b02c78e3b90c47",
+                                "fred2_open_3_7_0_SSE-DEBUG.pdb": "756ab728cec24511073f8d3b33b4e38b",
+                                "fred2_open_3_7_0_SSE.exe": "55e5b03e8acab2196670f6ba58947833",
+                                "fs2_open_3_7_0_SSE-DEBUG.exe": "d29eff2072aac561db7e742c6315d0cb",
+                                "fs2_open_3_7_0_SSE-DEBUG.map": "cf0a580b48e6aec0f2778f85c1a8dae5",
+                                "fs2_open_3_7_0_SSE-DEBUG.pdb": "af61483a93b74ac8374ed6213dca783a",
+                                "fs2_open_3_7_0_SSE.exe": "ca0bea2411f1963c726e43d85e14be90"
                             }
                         },
                         ...
-                    }
+                    ]
                 },
                 ...
             ]
