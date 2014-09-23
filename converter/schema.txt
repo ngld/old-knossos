@@ -5,8 +5,8 @@
 {
     "mods": [
         {
-            "id": "...", // required
-            "title": "...", // required
+            "id": "...", // required, internal *unique* identifier, should be URL friendly, never shown to the user
+            "title": "...", // required, a UTF-8 compatible string, displayed to the user
             "version": "...", // required, http://semver.org/
             "description": "...", // optional, should match the mod.ini's description
             "logo": "<path to image>", // optional, default: null, will be extracted from the archive if null

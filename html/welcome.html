@@ -23,6 +23,8 @@
     <body>
         <div class="container">
             <div id="install-note" class="hide">
+                <h1>Welcome!</h1>
+
                 <p>It looks like you started fs2mod-py for the first time.</p>
                 <p>
                     You can either <a class="btn btn-default" id="sel-fso">tell me where your FS2 installation is</a><br>
@@ -31,8 +33,42 @@
             </div>
         </div>
         <script type="text/javascript">
+            function list_mods() {
+                if(!fs2mod.isFs2PathSet()) return;
+                $('#install-note').hide();
+
+                $('table').remove();
+
+                var table = $('<table class="table">').appendTo('body');
+                $.each(fs2mod.getInstalledMods(), function (i, mod) {
+                    var row = $('<tr>');
+
+                    var title = $('<td>').appendTo(row);
+                    if(mod.logo) {
+                        title.append($('<img class="mod-logo">').attr('src', 'fsrs:///' + mod.logo));
+                        title.append('&nbsp;')
+                    }
+                    title.append($('<span>').text(mod.title));
+
+                    var actions = $('<div class="mod-actions">');
+                    actions.append($('<a href="#">Launch</a>').click(function (e) {
+                        e.preventDefault();
+                        fs2mod.runMod(mod.id);
+                    }));
+                    actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
+                        e.preventDefault();
+                        fs2mod.showSettings(mod.id);
+                    }));
+
+                    row.append($('<td>').append(actions));
+                    table.append(row);
+                });
+            }
+
             $(function () {
-                if(!fs2mod.isFsoInstalled()) {
+                fs2mod.repoUpdated.connect(list_mods);
+
+                if(!fs2mod.isFs2PathSet()) {
                     $('#install-note').removeClass('hide');
 
                     $('#sel-fso').click(function (e) {
@@ -44,30 +80,7 @@
                         fs2mod.runGogInstaller();
                     });
                 } else {    
-                    var table = $('<table class="table">').appendTo('body');
-                    $.each(fs2mod.getInstalledMods(), function (i, mod) {
-                        var row = $('<tr>');
-
-                        var title = $('<td>').appendTo(row);
-                        if(mod.logo) {
-                            title.append($('<img class="mod-logo">').attr('src', 'fsrs:///' + mod.logo));
-                            title.append('&nbsp;')
-                        }
-                        title.append($('<span>').text(mod.title));
-
-                        var actions = $('<div class="mod-actions">');
-                        actions.append($('<a href="#">Launch</a>').click(function (e) {
-                            e.preventDefault();
-                            fs2mod.runMod(mod.id);
-                        }));
-                        actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
-                            e.preventDefault();
-                            fs2mod.showSettings(mod.id);
-                        }));
-
-                        row.append($('<td>').append(actions));
-                        table.append(row);
-                    });
+                    list_mods();
                 }
             });
         </script>

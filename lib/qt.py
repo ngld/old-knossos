@@ -126,6 +126,7 @@ if variant == 'headless':
         QApplication = _App
         QDialog = object
 
+    QtNetwork = None
     QtWebKit = None
 
 logging.debug('Using Qt API %s.', variant)

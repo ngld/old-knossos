@@ -329,8 +329,18 @@ class Package(object):
         self.environment = values.get('environment', [])
         self.files = {}
 
-        for item in values.get('files', []):
-            self.files[item['filename']] = item
+        _files = values.get('files', [])
+
+        if isinstance(_files, dict):
+            self.files = _files
+            for name, item in _files.items():
+                item['filename'] = name
+
+        elif isinstance(_files, list):
+            for item in _files:
+                self.files[item['filename']] = item
+        else:
+            logging.warning('"%s"\'s file list has an unknown type.', self.name)
 
         has_mod_dep = False
         mid = self._mod.mid
@@ -357,7 +367,7 @@ class Package(object):
             'status': self.status,
             'dependencies': self.dependencies,
             'environment': self.environment,
-            'files': self.files
+            'files': list(self.files.values())
         }
 
     def get_mod(self):

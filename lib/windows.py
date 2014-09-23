@@ -20,10 +20,16 @@ import shlex
 import stat
 
 import manager
-from lib import util, clibs
+from lib import util, clibs, progress, repo
 from lib.qt import QtCore, QtGui
+from ui.main import Ui_MainWindow
+from ui.nebula import Ui_MainWindow as Ui_Nebula
+from ui.gogextract import Ui_Dialog as Ui_Gogextract
+from ui.modinfo import Ui_Dialog as Ui_Modinfo
+from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from ui.settings import Ui_Dialog as Ui_Settings
 from ui.flags import Ui_Dialog as Ui_Flags
+from lib.tasks import GOGExtractTask, FetchTask, CheckTask, InstallTask, UninstallTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -31,10 +37,12 @@ _open_wins = []
 
 class Window(object):
     win = None
+    closed = True
     
     def open(self):
         global _open_wins
         
+        self.closed = False
         _open_wins.append(self)
 
         if hasattr(self.win, 'closed'):
@@ -54,8 +62,710 @@ class Window(object):
     
     def _del2(self):
         global _open_wins
+
+        self.closed = True
+        if self in _open_wins:
+            _open_wins.remove(self)
+
+
+class MainWindow(Window):
+    progress_win = None
+    settings_tab = None
+    browser_ctrl = None
+    dep_processing = False
+
+    def __init__(self):
+        super(MainWindow, self).__init__()
+
+        self.win = util.init_ui(Ui_MainWindow(), manager.QMainWindow())
+        self.progress_win = progress.ProgressDisplay()
+
+        if hasattr(sys, 'frozen'):
+            # Add note about bundled content.
+            # NOTE: This will appear even when this script is bundled with py2exe or a similiar program.
+            self.win.aboutLabel.setText(self.win.aboutLabel.text().replace('</body>', '<p>' +
+                                        'This bundle was created with <a href="http://pyinstaller.org">PyInstaller</a>' +
+                                        ' and contains a 7z executable as well as SDL and OpenAL libraries.</p></body>'))
         
-        _open_wins.remove(self)
+        if sys.platform.startswith('win') or sys.platform.startswith('linux'):
+            from . import api
+            self.win.schemeHandler.clicked.connect(api.install_scheme_handler)
+        else:
+            self.win.schemeHandler.hide()
+        
+        # Prepare the status bar
+
+        label = QtGui.QLabel(self.win.statusbar)
+        label.setText('Version: ' + manager.VERSION)
+        self.win.statusbar.addWidget(label)
+
+        self.progress_win.set_statusbar(self.win.statusbar)
+        
+        manager.signals.repo_updated.connect(self.update_list)
+        self.update_repo_list()
+        
+        self.win.aboutLabel.linkActivated.connect(QtGui.QDesktopServices.openUrl)
+        self.win.gogextractButton.clicked.connect(self.do_gog_extract)
+
+        self.win.apply_sel.clicked.connect(self.apply_selection)
+        self.win.reset_sel.clicked.connect(self.reset_selection)
+        self.win.update.clicked.connect(self.fetch_list)
+        
+        self.win.modTree.itemActivated.connect(self.select_mod)
+        self.win.modTree.itemChanged.connect(self.autoselect_deps)
+        self.win.modTree.sortItems(0, QtCore.Qt.AscendingOrder)
+        self.win.modTree.header().setResizeMode(QtGui.QHeaderView.ResizeToContents)
+        
+        self.win.addSource.clicked.connect(self.add_repo)
+        self.win.editSource.clicked.connect(self.edit_repo)
+        self.win.removeSource.clicked.connect(self.remove_repo)
+        self.win.sourceList.itemDoubleClicked.connect(self.edit_repo)
+        
+        self.win.enforceDeps.setCheckState(QtCore.Qt.Checked if manager.settings['enforce_deps'] else QtCore.Qt.Unchecked)
+        self.win.enforceDeps.stateChanged.connect(self.update_enforce_deps)
+        self.win.maxDownloads.setText(str(manager.settings['max_downloads']))
+        self.win.maxDownloads.textEdited.connect(self.update_max_downloads)
+        self.win.uiMode.setCurrentIndex(0 if manager.settings['ui_mode'] == 'traditional' else 1)
+        self.win.uiMode.currentIndexChanged.connect(self.update_ui_mode)
+        
+        from . import web
+        self.browser_ctrl = web.BrowserCtrl(self.win.webView)
+        
+        # NOTE: Assign the model to a variable to prevent a segfault with PySide. (WTF?!)
+        m = self.win.sourceList.model()
+        m.rowsMoved.connect(self.reorder_repos)
+        del m
+
+        # TODO: I should probably get rid of the SettingsWindow() and properly embed this.
+        self.settings_tab = SettingsTab(self.win.fsoSettings)
+
+        # Fix a weird display bug
+        self.win.tabs.setCurrentIndex(2)
+        self.win.tabs.setCurrentIndex(1)
+
+        self.check_fso()
+        self.win.move(manager.app.desktop().screen().rect().center() - self.win.rect().center())
+
+    def _del(self):
+        self.settings_tab._del2()
+        super(MainWindow, self)._del()
+
+    # def init_fs2_tab():
+    #     global settings, main_win
+        
+    #     if settings['fs2_path'] is not None:
+    #         if settings['fs2_bin'] is None or not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
+    #             settings['fs2_bin'] = None
+        
+    #     if settings['fs2_path'] is None or not os.path.isdir(settings['fs2_path']):
+    #         # Disable mod tab if we don't know where fs2 is.
+    #         main_win.tabs.setTabEnabled(1, False)
+    #         main_win.tabs.setCurrentIndex(0)
+    #         main_win.fs2_bin.hide()
+    #         main_win.fs2Settings.setDisabled(True)
+    #     else:
+    #         fs2_path = settings['fs2_path']
+    #         if settings['fs2_bin'] is not None:
+    #             fs2_path = os.path.join(fs2_path, settings['fs2_bin'])
+            
+    #         main_win.tabs.setTabEnabled(1, True)
+    #         main_win.tabs.setCurrentIndex(1)
+    #         main_win.fs2_bin.show()
+    #         main_win.fs2_bin.setText('Selected FS2 Open: ' + os.path.normcase(fs2_path))
+    #         main_win.fs2Settings.setDisabled(False)
+            
+    #         update_list()
+    
+    def check_fso(self):
+        if manager.settings['fs2_path'] is None:
+            self.win.tabs.setTabEnabled(0, False)
+            self.win.tabs.setTabEnabled(2, False)
+        else:
+            self.win.tabs.setTabEnabled(0, True)
+            self.win.tabs.setTabEnabled(2, True)
+            self.settings_tab.read_config()
+
+            QtCore.QTimer.singleShot(1, self.update_list)
+
+    def do_gog_extract(self):
+        GogExtractWindow(self)
+
+    # The mod tree tab
+    
+    def build_mod_tree(self, mod=None, parent_el=None):
+        if mod is None:
+            mods = manager.settings['mods'].get_tree()
+        else:
+            mods = mod.get_submods()
+
+        rows = dict()
+
+        for mod in mods:
+            row = QtGui.QTreeWidgetItem((mod.title, str(mod.version), ''))
+            row.setData(0, QtCore.Qt.UserRole + 2, mod)
+            row.setData(0, QtCore.Qt.UserRole + 3, False)
+
+            rows[mod.mid] = row
+
+            if parent_el is None:
+                self.win.modTree.addTopLevelItem(row)
+            else:
+                parent_el.addChild(row)
+
+            rows.update(self.build_mod_tree(mod, row))
+
+        return rows
+
+    def read_tree(self, parent, items=None):
+        if items is None:
+            items = []
+        
+        if isinstance(parent, QtGui.QTreeWidget):
+            for i in range(0, parent.topLevelItemCount()):
+                item = parent.topLevelItem(i)
+                items.append((item, None))
+                
+                self.read_tree(item, items)
+        else:
+            for i in range(0, parent.childCount()):
+                item = parent.child(i)
+                items.append((item, parent))
+                
+                self.read_tree(item, items)
+        
+        return items
+
+    def fetch_list(self):
+        return manager.run_task(FetchTask())
+
+    def update_list(self):
+        if manager.settings['mods'] is None:
+            self.fetch_list()
+            return
+
+        # Make sure the mod tree is empty.
+        self.dep_processing = True
+        self.win.modTree.clear()
+        rows = self.build_mod_tree()
+        
+        for mod in manager.settings['mods'].get_list():
+            titem = rows[mod.mid]
+            rc = 0
+            ri = 0
+
+            for pkg in mod.packages:
+                pinfo = manager.installed.query(mod.mid, pkg.name)
+
+                if pinfo is None or pinfo.state == 'not installed':
+                    cstate = QtCore.Qt.Unchecked
+                    status = 'Not installed'
+                    
+                    if pinfo is None:
+                        pinfo = repo.InstalledPackage.convert(pkg, pkg.get_mod())
+                        pinfo.state = 'not installed'
+                    elif pinfo.files_shared > 0:
+                        status += ' (%d shared files)' % pinfo.files_shared
+                elif pinfo.state == 'installed':
+                    cstate = QtCore.Qt.Checked
+                    status = 'Installed'
+                elif pinfo.state == 'has_update':
+                    cstate = QtCore.Qt.PartiallyChecked
+                    status = 'Update available'
+                elif pinfo.state == 'corrupted':
+                    cstate = QtCore.Qt.PartiallyChecked
+                    status = '%d corrupted or updated files' % (pinfo.files_checked - pinfo.files_ok)
+                
+                row = QtGui.QTreeWidgetItem((pkg.name, str(mod.version), status))
+                row.setCheckState(0, cstate)
+                row.setData(0, QtCore.Qt.UserRole, cstate)
+                row.setData(0, QtCore.Qt.UserRole + 1, pinfo)
+                row.setData(0, QtCore.Qt.UserRole + 2, pkg)
+                row.setData(0, QtCore.Qt.UserRole + 3, False)
+                
+                if pkg.status == 'required':
+                    row.setDisabled(True)
+                    rc += 1
+
+                    if pinfo.state == 'installed':
+                        ri += 1
+
+                titem.addChild(row)
+
+            if ri == 0:
+                state = QtCore.Qt.Unchecked
+            elif ri == rc:
+                state = QtCore.Qt.Checked
+            else:
+                state = QtCore.Qt.PartiallyChecked
+
+            titem.setCheckState(0, state)
+            titem.setData(0, QtCore.Qt.UserRole, state)
+
+        self.dep_processing = False
+
+        if manager.Unity and not self.win.isActiveWindow() and not manager.unity_launcher.get_property('urgent'):
+            manager.unity_launcher.set_property('urgent', True)
+
+    def check_list(self):
+        self.win.modTree.clear()
+        
+        if manager.settings['fs2_path'] is None:
+            return
+        
+        if manager.settings['mods'] is None:
+            self.fetch_list()
+        else:
+            return manager.run_task(CheckTask(manager.settings['mods'].get_list()))
+
+    def autoselect_deps(self, item, col):
+        if self.dep_processing:
+            return
+
+        self.dep_processing = True
+        
+        item.setData(0, QtCore.Qt.UserRole + 3, False)
+        info = item.data(0, QtCore.Qt.UserRole + 2)
+        if isinstance(info, repo.Mod):
+            was_installed = item.data(0, QtCore.Qt.UserRole) in (QtCore.Qt.Checked, QtCore.Qt.PartiallyChecked)
+
+            if item.checkState(0) == QtCore.Qt.Checked:
+                # Check all required and recommended packages
+                for i in range(0, item.childCount()):
+                    child = item.child(i)
+                    pkg = child.data(0, QtCore.Qt.UserRole + 2)
+
+                    if isinstance(pkg, repo.Package):
+                        state = QtCore.Qt.Checked
+                        if pkg.status != 'required':
+                            if was_installed:
+                                state = child.data(0, QtCore.Qt.UserRole)
+                            elif pkg.status == 'optional':
+                                state = QtCore.Qt.Unchecked
+
+                        child.setCheckState(0, QtCore.Qt.CheckState(state))
+
+            elif item.checkState(0) == QtCore.Qt.Unchecked:
+                # Uncheck all packages
+                for i in range(0, item.childCount()):
+                    child = item.child(i)
+                    pkg = child.data(0, QtCore.Qt.UserRole + 2)
+
+                    if isinstance(pkg, repo.Package):
+                        child.setCheckState(0, QtCore.Qt.Unchecked)
+
+        # Cascade dependencies
+        tree = self.read_tree(self.win.modTree)
+        selection = []
+        for item, _ in tree:
+            if item.data(0, QtCore.Qt.UserRole + 3):
+                item.setCheckState(0, QtCore.Qt.Unchecked)
+            else:
+                pkg = item.data(0, QtCore.Qt.UserRole + 2)
+                if isinstance(pkg, repo.Package) and item.checkState(0) != QtCore.Qt.Unchecked:
+                    selection.append(pkg)
+
+        try:
+            selection = manager.settings['mods'].process_pkg_selection(selection)
+        except:
+            logging.exception('Failed to satisfy dependencies!')
+            self.reset_selection()
+            # TODO: Message to the user?
+            self.dep_processing = False
+            return
+
+        for item, _ in tree:
+            pkg = item.data(0, QtCore.Qt.UserRole + 2)
+            if isinstance(pkg, repo.Package) and pkg in selection:
+                if item.checkState(0) != QtCore.Qt.Checked:
+                    if item.checkState(0) == QtCore.Qt.Unchecked:
+                        item.setData(0, QtCore.Qt.UserRole + 3, True)
+
+                    item.setCheckState(0, QtCore.Qt.Checked)
+
+        self.dep_processing = False
+
+    def apply_selection(self):
+        if manager.settings['mods'] is None:
+            return
+        
+        install = []
+        uninstall = []
+        items = self.read_tree(self.win.modTree)
+        for item, parent in items:
+            pkg = item.data(0, QtCore.Qt.UserRole + 2)
+            if not isinstance(pkg, repo.Package):
+                continue
+
+            if item.checkState(0) == item.data(0, QtCore.Qt.UserRole):
+                # Unchanged
+                continue
+            
+            if item.checkState(0):
+                # Install
+                install.append(pkg)
+            else:
+                # Uninstall
+                uninstall.append(pkg)
+        
+        if len(install) == 0 and len(uninstall) == 0:
+            QtGui.QMessageBox.warning(self.win, 'Warning', 'You didn\'t change anything! There\'s nothing for me to do...')
+            return
+        
+        if len(install) > 0:
+            install_titles = set()
+            for pkg in install:
+                install_titles.add(pkg.get_mod().title)
+
+            msg = QtGui.QMessageBox()
+            msg.setIcon(QtGui.QMessageBox.Question)
+            msg.setText('Do you really want to install these mods?')
+            msg.setInformativeText(', '.join(install_titles) + ' will be installed.')
+            msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+            msg.setDefaultButton(QtGui.QMessageBox.Yes)
+            
+            if msg.exec_() == QtGui.QMessageBox.Yes:
+                manager.run_task(InstallTask(install))
+        
+        if len(uninstall) > 0:
+            uninstall_titles = set()
+            for pkg in uninstall:
+                uninstall_titles.add(pkg.get_mod().title)
+
+            msg = QtGui.QMessageBox()
+            msg.setIcon(QtGui.QMessageBox.Question)
+            msg.setText('Do you really want to remove these mods?')
+            msg.setInformativeText(', '.join(uninstall_titles) + ' will be removed.')
+            msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+            msg.setDefaultButton(QtGui.QMessageBox.Yes)
+            
+            if msg.exec_() == QtGui.QMessageBox.Yes:
+                manager.run_task(UninstallTask(uninstall))
+
+    def reset_selection(self):
+        items = self.read_tree(self.win.modTree)
+        for row, parent in items:
+            value = row.data(0, QtCore.Qt.UserRole)
+            if value is not None:
+                row.setCheckState(0, QtCore.Qt.CheckState(value))
+
+    def select_mod(self, item, col):
+        mod = item.data(0, QtCore.Qt.UserRole + 2)
+        if not isinstance(mod, repo.Mod):
+            if isinstance(mod, repo.Package):
+                # This is a package...
+                self.select_pkg(item, col)
+            return
+
+        ModInfoWindow(self, mod)
+
+    def select_pkg(self, item, col):
+        pkg = item.data(0, QtCore.Qt.UserRole + 2)
+        pinfo = item.data(0, QtCore.Qt.UserRole + 1)
+
+        if not isinstance(pkg, repo.Package):
+            if isinstance(pkg, repo.Mod):
+                self.select_mod(item, col)
+            return
+
+        PkgInfoWindow(self, pkg, pinfo)
+
+    # Settings tab
+    def update_repo_list(self):
+        self.win.sourceList.clear()
+        
+        for i, r in enumerate(manager.settings['repos']):
+            item = QtGui.QListWidgetItem(r[1], self.win.sourceList)
+            item.setData(QtCore.Qt.UserRole, i)
+
+    def _edit_repo(self, repo=None, idx=None):
+        win = util.init_ui(Ui_AddRepo(), util.QDialog(self.win))
+        
+        win.okButton.clicked.connect(win.accept)
+        win.cancelButton.clicked.connect(win.reject)
+        
+        if repo is not None:
+            win.source.setText(repo[0])
+            win.title.setText(repo[1])
+        
+        if win.exec_() == QtGui.QMessageBox.Accepted:
+            source = win.source.text()
+            title = win.title.text()
+            
+            if idx is None:
+                found = False
+                
+                for r_source, r_title in manager.settings['repos']:
+                    if r_source == source:
+                        found = True
+                        QtGui.QMessageBox.critical(self.win, 'Error', 'This source is already in the list! (As "%s")' % (r_title))
+                        break
+                
+                if not found:
+                    manager.settings['repos'].append((source, title))
+            else:
+                manager.settings['repos'][idx] = (source, title)
+            
+            manager.save_settings()
+            self.update_repo_list()
+
+    def add_repo(self):
+        self._edit_repo()
+
+    def edit_repo(self):
+        item = self.win.sourceList.currentItem()
+        if item is not None:
+            idx = item.data(QtCore.Qt.UserRole)
+            self._edit_repo(manager.settings['repos'][idx], idx)
+
+    def remove_repo(self):
+        item = self.win.sourceList.currentItem()
+        if item is not None:
+            idx = item.data(QtCore.Qt.UserRole)
+            answer = QtGui.QMessageBox.question(self.win, 'Are you sure?', 'Do you really want to remove "%s"?' % (item.text()),
+                                                QtGui.QMessageBox.Yes | QtGui.QMessageBox.No, QtGui.QMessageBox.No)
+            
+            if answer == QtGui.QMessageBox.Yes:
+                del manager.settings['repos'][idx]
+                
+                manager.save_settings()
+                self.update_repo_list()
+
+    def reorder_repos(self, parent, s_start, s_end, d_parent, d_row):
+        repos = []
+        for row in range(0, self.win.sourceList.count()):
+            item = self.win.sourceList.item(row)
+            repos.append(manager.settings['repos'][item.data(QtCore.Qt.UserRole)])
+        
+        manager.settings['repos'] = repos
+        manager.save_settings()
+        
+        # NOTE: This call is normally redundant but I want to make sure that
+        # the displayed list is always the same as the actual list in settings['repos'].
+        # Once this feature is stable this call can be removed.
+        self.update_repo_list()
+
+    def update_enforce_deps(self):
+        manager.settings['enforce_deps'] = self.win.enforceDeps.checkState() == QtCore.Qt.Checked
+        manager.save_settings()
+
+    def update_max_downloads(self):
+        old_num = num = manager.settings['max_downloads']
+
+        try:
+            manager.settings['max_downloads'] = num = int(self.win.maxDownloads.text())
+        except:
+            pass
+
+        self.win.maxDownloads.setText(str(num))
+
+        if num != old_num:
+            util.DL_POOL.set_capacity(num)
+            manager.save_settings()
+
+    def update_ui_mode(self, idx):
+        if idx == 0:
+            manager.settings['ui_mode'] = 'traditional'
+        else:
+            manager.settings['ui_mode'] = 'nebula'
+
+        manager.save_settings()
+        manager.switch_ui_mode(manager.settings['ui_mode'])
+
+        print(_open_wins)
+
+
+class NebulaWindow(Window):
+    browser_ctrl = None
+    support_win = None
+    progress_win = None
+
+    def __init__(self):
+        super(NebulaWindow, self).__init__()
+
+        self.support_win = MainWindow()
+        self.progress_win = self.support_win.progress_win
+        self.win = util.init_ui(Ui_Nebula(), manager.QMainWindow())
+
+        label = QtGui.QLabel(self.win.statusbar)
+        label.setText('Version: ' + manager.VERSION)
+        self.win.statusbar.addWidget(label)
+        self.progress_win.set_statusbar(self.win.statusbar)
+
+        self.win.modlistButton.clicked.connect(self.show_mod_list)
+        self.win.nebulaButton.clicked.connect(self.show_nebula)
+        self.win.fsoSettingsButton.clicked.connect(self.show_fso_settings)
+        self.win.settingsButton.clicked.connect(self.show_settings)
+        self.win.modtreeButton.clicked.connect(self.show_mod_tree)
+        self.win.aboutButton.clicked.connect(self.show_about)
+
+        from . import web
+        self.browser_ctrl = web.BrowserCtrl(self.win.webView)
+        self.show_mod_list()
+
+    def _del(self):
+        self.support_win.close()
+        super(NebulaWindow, self)._del()
+
+    def check_fso(self):
+        pass
+
+    def open_support(self):
+        if self.support_win is None:
+            self.support_win = MainWindow()
+            self.support_win.open()
+        elif self.support_win.closed:
+            self.support_win.open()
+        else:
+            self.support_win.win.activateWindow()
+
+    def show_mod_list(self):
+        self.win.webView.load('./html/welcome.html')
+
+    def show_nebula(self):
+        self.win.webView.load(manager.settings['nebula_link'])
+
+    def show_fso_settings(self):
+        self.open_support()
+        self.support_win.win.tabs.setCurrentIndex(2)
+
+    def show_settings(self):
+        self.open_support()
+        self.support_win.win.tabs.setCurrentIndex(3)
+
+    def show_mod_tree(self):
+        self.open_support()
+        self.support_win.win.tabs.setCurrentIndex(0)
+
+    def show_about(self):
+        self.open_support()
+        self.support_win.win.tabs.setCurrentIndex(4)
+
+
+class GogExtractWindow(Window):
+
+    def __init__(self, main_win):
+        super(GogExtractWindow, self).__init__()
+
+        self.win = util.init_ui(Ui_Gogextract(), util.QDialog(main_win.win))
+
+        self.win.gogPath.textChanged.connect(self.validate)
+        self.win.destPath.textChanged.connect(self.validate)
+
+        self.win.gogButton.clicked.connect(self.select_installer)
+        self.win.destButton.clicked.connect(self.select_dest)
+        self.win.cancelButton.clicked.connect(self.win.close)
+        self.win.installButton.clicked.connect(self.do_install)
+
+        self.open()
+
+    def select_installer(self):
+        path = QtGui.QFileDialog.getOpenFileName(self.win, 'Please select the setup_freespace2_*.exe file.',
+                                                 os.path.expanduser('~/Downloads'), 'Executable (*.exe)')
+        if isinstance(path, tuple):
+            path = path[0]
+        
+        if path is not None and path != '':
+            if not os.path.isfile(path):
+                QtGui.QMessageBox.critical(self.win, 'Not a file', 'Please select a proper file!')
+                return
+
+            self.win.gogPath.setText(os.path.abspath(path))
+
+    def select_dest(self):
+        path = QtGui.QFileDialog.getExistingDirectory(self.win, 'Please select the destination directory.', os.path.expanduser('~/Documents'))
+
+        if path is not None and path != '':
+            if not os.path.isdir(path):
+                QtGui.QMessageBox.critical(self.win, 'Not a directory', 'Please select a proper directory!')
+                return
+
+            self.win.destPath.setText(os.path.abspath(path))
+
+    def validate(self):
+        if os.path.isfile(self.win.gogPath.text()) and os.path.isdir(self.win.destPath.text()):
+            self.win.installButton.setEnabled(True)
+        else:
+            self.win.installButton.setEnabled(False)
+
+    def do_install(self):
+        # Just to be sure...
+        if os.path.isfile(self.win.gogPath.text()) and os.path.isdir(self.win.destPath.text()):
+            manager.run_task(GOGExtractTask(self.win.gogPath.text(), self.win.destPath.text()))
+            self.close()
+
+
+class ModInfoWindow(Window):
+    _mod = None
+
+    def __init__(self, main_win, mod):
+        super(ModInfoWindow, self).__init__()
+
+        self._mod = mod
+
+        self.win = util.init_ui(Ui_Modinfo(), util.QDialog(main_win.win))
+        self.win.setModal(True)
+        
+        self.win.modname.setText(mod.title + ' - ' + str(mod.version))
+        
+        if mod.logo is None:
+            self.win.logo.hide()
+        else:
+            img = QtGui.QPixmap()
+            img.load(os.path.join(manager.settings_path, mod.logo))
+            self.win.logo.setPixmap(img)
+        
+        self.win.desc.setPlainText(mod.description)
+        self.win.note.setPlainText(mod.notes)
+
+        self.win.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.get_files().keys())]))
+        
+        self.win.closeButton.clicked.connect(self.win.close)
+        self.win.settingsButton.clicked.connect(self.show_settings)
+        self.win.runButton.clicked.connect(self.do_run)
+        self.win.show()
+        
+        self.win.note.verticalScrollBar().setValue(0)
+
+    def do_run(self):
+        manager.run_mod(self._mod)
+    
+    def show_settings(self):
+        FlagsWindow(self.win, self._mod)
+
+
+class PkgInfoWindow(Window):
+    
+    def __init__(self, main_win, pkg, pinfo=None):
+        super(PkgInfoWindow, self).__init__()
+
+        self.win = util.init_ui(Ui_Modinfo(), util.QDialog(main_win.win))
+        self.win.setModal(True)
+        self.win.modname.setText(pkg.name)
+        self.win.logo.hide()
+
+        self.win.desc.setPlainText(pkg.notes)
+
+        if pinfo is not None and len(pinfo.check_notes) > 0:
+            self.win.note.appendPlainText('\nCheck messages:\n* ' + '\n* '.join(pinfo.check_notes))
+        
+        deps = pkg.resolve_deps()
+        if len(deps) > 0:
+            lines = []
+            for dep in deps:
+                line = '* ' + dep[0].name
+                if manager.installed.is_installed(dep[0]):
+                    line += ' (installed)'
+                
+                lines.append(line)
+            
+            self.win.note.appendPlainText('\nDependencies:\n' + '\n'.join(lines))
+
+        self.win.closeButton.clicked.connect(self.win.close)
+        self.win.settingsButton.hide()
+        self.win.runButton.hide()
+        self.win.show()
+        
+        self.win.note.verticalScrollBar().setValue(0)
 
 
 class SettingsWindow(Window):
@@ -68,7 +778,7 @@ class SettingsWindow(Window):
         self.win = util.init_ui(Ui_Settings(), util.QDialog(manager.main_win))
         self.win.setModal(True)
 
-        self.win.browseButton.clicked.connect(manager.select_fs2_path_handler)
+        self.win.browseButton.clicked.connect(manager.select_fs2_path)
         
         if mod is None:
             self.win.cmdButton.setText('Default command line flags')
@@ -103,6 +813,8 @@ class SettingsWindow(Window):
         # Binary selection combobox logic here
         fs2_path = manager.settings['fs2_path']
         fs2_bin = manager.settings['fs2_bin']
+
+        self.win.build.clear()
 
         if fs2_path is not None and os.path.isdir(fs2_path):
             fs2_path = os.path.abspath(fs2_path)
@@ -178,6 +890,8 @@ class SettingsWindow(Window):
         
         # ---Video settings---
         # Screen resolution
+        self.win.vid_res.clear()
+
         raw_modes = clibs.get_modes()
         modes = []
         for mode in raw_modes:
@@ -191,6 +905,7 @@ class SettingsWindow(Window):
                 self.win.vid_res.setCurrentIndex(i)
         
         # Screen depth
+        self.win.vid_depth.clear()
         self.win.vid_depth.addItems(['32-bit', '16-bit'])
 
         index = self.win.vid_depth.findText('{0}-bit'.format(depth))
@@ -198,6 +913,7 @@ class SettingsWindow(Window):
             self.win.vid_depth.setCurrentIndex(index)
 
         # Texture filter
+        self.win.vid_texfilter.clear()
         self.win.vid_texfilter.addItems(['Bilinear', 'Trilinear'])
 
         try:
@@ -211,6 +927,7 @@ class SettingsWindow(Window):
         self.win.vid_texfilter.setCurrentIndex(index)
 
         # Antialiasing
+        self.win.vid_aa.clear()
         self.win.vid_aa.addItems(['Off', '2x', '4x', '8x', '16x'])
 
         index = self.win.vid_aa.findText('{0}x'.format(aa))
@@ -219,6 +936,7 @@ class SettingsWindow(Window):
         self.win.vid_aa.setCurrentIndex(index)
 
         # Anisotropic filtering
+        self.win.vid_af.clear()
         self.win.vid_af.addItems(['Off', '1x', '2x', '4x', '8x', '16x'])
 
         index = self.win.vid_af.findText('{0}x'.format(af))
@@ -229,7 +947,9 @@ class SettingsWindow(Window):
         # ---Sound settings---
         if clibs.can_detect_audio():
             snd_devs, snd_default, snd_captures, snd_default_capture = clibs.list_audio_devs()
-            
+            self.win.snd_playback.clear()
+            self.win.snd_capture.clear()
+
             for name in snd_devs:
                 self.win.snd_playback.addItem(name)
             
@@ -277,6 +997,7 @@ class SettingsWindow(Window):
         # ---Joystick settings---
         joysticks = clibs.list_joysticks()
         
+        self.win.ctrl_joystick.clear()
         self.win.ctrl_joystick.addItem('No Joystick')
         for joystick in joysticks:
             self.win.ctrl_joystick.addItem(joystick)
@@ -295,7 +1016,7 @@ class SettingsWindow(Window):
             self.win.ctrl_joystick.setEnabled(False)
             
         #---Network settings---
-
+        self.win.net_type.clear()
         self.win.net_type.addItems(['None', 'Dialup', 'Broadband/LAN'])
         net_connections_read = {'none': 0, 'dialup': 1, 'LAN': 2}
         if net_connection in net_connections_read:
@@ -305,6 +1026,7 @@ class SettingsWindow(Window):
              
         self.win.net_type.setCurrentIndex(index)
 
+        self.win.net_speed.clear()
         self.win.net_speed.addItems(['None', '28k modem', '56k modem', 'ISDN', 'DSL', 'Cable/LAN'])
         net_speeds_read = {'none': 0, 'Slow': 1, '56K': 2, 'ISDN': 3, 'Cable': 4, 'Fast': 5}
         if net_speed in net_speeds_read:
@@ -432,7 +1154,7 @@ class SettingsTab(SettingsWindow):
         self.mod = None
         self.win = util.init_ui(Ui_Settings(), tab)
 
-        self.win.browseButton.clicked.connect(manager.select_fs2_path_handler)
+        self.win.browseButton.clicked.connect(manager.select_fs2_path)
         
         self.win.cmdButton.setText('Default command line flags')
         self.win.cmdButton.clicked.connect(self.show_flagwin)

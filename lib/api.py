@@ -32,6 +32,14 @@ ipc_block = None
 ##############
 
 
+def is_fso_installed():
+    fs2_path = manager.settings['fs2_path']
+    if fs2_path is not None:
+        fs2_bin = os.path.join(fs2_path, manager.settings['fs2_bin'])
+
+    return fs2_path is not None and fs2_bin is not None and os.path.isdir(fs2_path) and os.path.isfile(fs2_bin)
+
+
 def get_mod(mid, version=None):
     if manager.settings['mods'] is None:
         QtGui.QMessageBox.critical(None, 'fs2mod-py', 'Hmm... I never got a mod list. Get a coder!')
@@ -195,7 +203,10 @@ def handle_ipc(msg):
         return
 
     if msg[0] == 'focus':
-        manager.main_win.activateWindow()
+        manager.main_win.win.activateWindow()
+    if msg[0] == 'mode':
+        if msg[1] in ('traditional', 'nebula'):
+            manager.switch_ui_mode(msg[1])
     elif msg[0] == 'run':
         mod = get_mod(msg[1])
 
@@ -211,17 +222,17 @@ def handle_ipc(msg):
                     if pkg.name == pname:
                         pkgs.append(pkg)
 
-        manager.main_win.activateWindow()
+        manager.main_win.win.activateWindow()
 
         if mod.mid not in manager.installed.mods:
             install_pkgs(mod.resolve_deps() + pkgs, mod.name)
         else:
-            QtGui.QMessageBox.information(manager.main_win, 'fs2mod-py', 'Mod "%s" is already installed!' % (mod.name))
+            QtGui.QMessageBox.information(manager.main_win.win, 'fs2mod-py', 'Mod "%s" is already installed!' % (mod.name))
     elif msg[0] == 'settings':
-        manager.main_win.activateWindow()
+        manager.main_win.win.activateWindow()
 
         if len(msg) == 1 or msg[1] == '':
-            manager.main_win.tabs.setCurrentIndex(3)
+            manager.main_win.show_fso_settings()
         else:
             mod = get_mod(msg[1])
 
@@ -230,8 +241,8 @@ def handle_ipc(msg):
                     name = msg[1]
                 else:
                     name = mod.title
-                QtGui.QMessageBox.information(manager.main_win, 'fs2mod-py', 'Mod "%s" is not yet installed!' % (name))
+                QtGui.QMessageBox.information(manager.main_win.win, 'fs2mod-py', 'Mod "%s" is not yet installed!' % (name))
             else:
                 SettingsWindow(mod)
     else:
-        QtGui.QMessageBox.critical(manager.main_win, 'fs2mod-py', 'The action "%s" is unknown!' % (msg[0]))
+        QtGui.QMessageBox.critical(manager.main_win.win, 'fs2mod-py', 'The action "%s" is unknown!' % (msg[0]))

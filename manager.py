@@ -27,23 +27,18 @@ if __name__ == '__main__':
 
 import os
 import pickle
+import glob
 import subprocess
 import threading
 import stat
-import glob
 import time
 import six
 
 from lib import progress, util, repo, api
 from lib.qt import QtCore, QtGui
-from ui.main import Ui_MainWindow
-from ui.modinfo import Ui_Dialog as Ui_Modinfo
-from ui.gogextract import Ui_Dialog as Ui_Gogextract
+from lib.tasks import FetchTask, InstallTask
+from lib.windows import MainWindow, NebulaWindow, SettingsWindow
 from ui.select_list import Ui_Dialog as Ui_SelectList
-from ui.add_repo import Ui_Dialog as Ui_AddRepo
-from lib.tasks import *
-from lib.windows import SettingsWindow, SettingsTab, FlagsWindow
-from lib.web import BrowserCtrl
 
 
 try:
@@ -56,15 +51,12 @@ except ImportError:
 # Only remove the -dev tag if you're making a release!
 VERSION = '0.0.3-dev'
 
-# TODO: Do we really need all these?
+app = None
 main_win = None
-progress_win = None
-browser_ctrl = None
 unity_launcher = None
 shared_files = {}
 fs2_watcher = None
 pmaster = progress.Master()
-dep_processing = False
 installed = None
 
 settings = {
@@ -78,7 +70,8 @@ settings = {
     'max_downloads': 3,
     'repos': [('http://dev.tproxy.de/fs2/all.json', 'ngld\'s Repo')],
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt',
-    'nebula_link': 'http://dev.tproxy.de/fs2/mirrors/'
+    'nebula_link': 'http://dev.tproxy.de/fs2/mirrors/',
+    'ui_mode': 'nebula'
 }
 
 settings_path = os.path.expanduser('~/.fs2mod-py')
@@ -96,15 +89,20 @@ class _SignalContainer(QtCore.QObject):
 signals = _SignalContainer()
 
 
-class MainWindow(QtGui.QMainWindow):
+class QMainWindow(QtGui.QMainWindow):
+    closed = QtCore.Signal()
+    
+    def closeEvent(self, e):
+        self.closed.emit()
+        e.accept()
 
     def changeEvent(self, event):
         global unity_launcher
         if event.type() == QtCore.QEvent.ActivationChange:
-            if Unity and main_win.isActiveWindow() and unity_launcher.get_property('urgent'):
+            if Unity and self.isActiveWindow() and unity_launcher.get_property('urgent'):
                 unity_launcher.set_property('urgent', False)
     
-        return super(MainWindow, self).changeEvent(event)
+        return super(QMainWindow, self).changeEvent(event)
 
 
 class Fs2Watcher(threading.Thread):
@@ -147,7 +145,7 @@ class Fs2Watcher(threading.Thread):
         global main_win, settings
         
         msg = 'Starting FS2 Open (%s) failed! (return code: %d)' % (os.path.join(settings['fs2_path'], settings['fs2_bin']), p.returncode)
-        QtGui.QMessageBox.critical(main_win, 'Failed', msg)
+        QtGui.QMessageBox.critical(main_win.win, 'Failed', msg)
 
     
 def run_task(task, cb=None):
@@ -157,12 +155,11 @@ def run_task(task, cb=None):
     if cb is not None:
         task.done.connect(wrapper)
     
-    progress_win.add_task(task)
+    main_win.progress_win.add_task(task)
     pmaster.add_task(task)
     return task
 
 
-# FS2 tab
 def save_settings():
     settings['hash_cache'] = dict()
     for path, info in util.HASH_CACHE.items():
@@ -178,35 +175,11 @@ def save_settings():
         pickle.dump(settings, stream, 2)
 
 
-def init_fs2_tab():
-    global settings, main_win
-    
-    if settings['fs2_path'] is not None:
-        if settings['fs2_bin'] is None or not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
-            settings['fs2_bin'] = None
-    
-    if settings['fs2_path'] is None or not os.path.isdir(settings['fs2_path']):
-        # Disable mod tab if we don't know where fs2 is.
-        main_win.tabs.setTabEnabled(1, False)
-        main_win.tabs.setCurrentIndex(0)
-        main_win.fs2_bin.hide()
-        main_win.fs2Settings.setDisabled(True)
-    else:
-        fs2_path = settings['fs2_path']
-        if settings['fs2_bin'] is not None:
-            fs2_path = os.path.join(fs2_path, settings['fs2_bin'])
-        
-        main_win.tabs.setTabEnabled(1, True)
-        main_win.tabs.setCurrentIndex(1)
-        main_win.fs2_bin.show()
-        main_win.fs2_bin.setText('Selected FS2 Open: ' + os.path.normcase(fs2_path))
-        main_win.fs2Settings.setDisabled(False)
-        
-        update_list()
-
-
 def show_tab(a, b, tab):
     global main_win
+    return
+
+    # TODO: If we're in Nebula mode, we'll have to open the traditional window for this.
     main_win.tabs.setCurrentIndex(tab)
     main_win.activateWindow()
 
@@ -215,72 +188,26 @@ def go_to_hlp(a, b, tab):
     QtGui.QDesktopServices.openUrl("http://www.hard-light.net/")
 
 
-def do_gog_extract():
-    extract_win = util.init_ui(Ui_Gogextract(), QtGui.QDialog(main_win))
-
-    def select_installer():
-        path = QtGui.QFileDialog.getOpenFileName(extract_win, 'Please select the setup_freespace2_*.exe file.',
-                                                 os.path.expanduser('~/Downloads'), 'Executable (*.exe)')
-        if isinstance(path, tuple):
-            path = path[0]
-        
-        if path is not None and path != '':
-            if not os.path.isfile(path):
-                QtGui.QMessageBox.critical(extract_win, 'Not a file', 'Please select a proper file!')
-                return
-
-            extract_win.gogPath.setText(os.path.abspath(path))
-
-    def select_dest():
-        path = QtGui.QFileDialog.getExistingDirectory(extract_win, 'Please select the destination directory.', os.path.expanduser('~/Documents'))
-
-        if path is not None and path != '':
-            if not os.path.isdir(path):
-                QtGui.QMessageBox.critical(extract_win, 'Not a directory', 'Please select a proper directory!')
-                return
-
-            extract_win.destPath.setText(os.path.abspath(path))
-
-    def validate():
-        if os.path.isfile(extract_win.gogPath.text()) and os.path.isdir(extract_win.destPath.text()):
-            extract_win.installButton.setEnabled(True)
-        else:
-            extract_win.installButton.setEnabled(False)
-
-    def do_install():
-        # Just to be sure...
-        if os.path.isfile(extract_win.gogPath.text()) and os.path.isdir(extract_win.destPath.text()):
-            run_task(GOGExtractTask(extract_win.gogPath.text(), extract_win.destPath.text()))
-            extract_win.close()
-
-    extract_win.gogPath.textChanged.connect(validate)
-    extract_win.destPath.textChanged.connect(validate)
-
-    extract_win.gogButton.clicked.connect(select_installer)
-    extract_win.destButton.clicked.connect(select_dest)
-    extract_win.cancelButton.clicked.connect(extract_win.close)
-    extract_win.installButton.clicked.connect(do_install)
-
-    extract_win.show()
-
-
 def select_fs2_path(interact=True):
-    global settings
-    
     if interact:
         if settings['fs2_path'] is None:
             path = os.path.expanduser('~')
         else:
             path = settings['fs2_path']
         
-        fs2_path = QtGui.QFileDialog.getExistingDirectory(main_win, 'Please select your FS2 directory.', path)
+        fs2_path = QtGui.QFileDialog.getExistingDirectory(main_win.win, 'Please select your FS2 directory.', path)
     else:
         fs2_path = settings['fs2_path']
 
     if fs2_path is not None and os.path.isdir(fs2_path):
         settings['fs2_path'] = os.path.abspath(fs2_path)
 
-        bins = glob.glob(os.path.join(fs2_path, 'fs2_open_*'))
+        if sys.platform.startswith('win'):
+            pattern = 'fs2_open_*.exe'
+        else:
+            pattern = 'fs2_open_*'
+
+        bins = glob.glob(os.path.join(fs2_path, pattern))
         if len(bins) == 1:
             # Found only one binary, select it by default.
 
@@ -288,13 +215,16 @@ def select_fs2_path(interact=True):
         elif len(bins) > 1:
             # Let the user choose.
 
-            select_win = util.init_ui(Ui_SelectList(), QtGui.QDialog(main_win))
+            select_win = util.init_ui(Ui_SelectList(), util.QDialog(main_win.win))
             has_default = False
             bins.sort()
 
             for i, path in enumerate(bins):
                 path = os.path.basename(path)
                 select_win.listWidget.addItem(path)
+
+                if path.endswith('.exe'):
+                    path = path[:-4]
 
                 if not has_default and not (path.endswith('_DEBUG') and '-DEBUG' not in path):
                     # Select the first non-debug build as default.
@@ -311,13 +241,7 @@ def select_fs2_path(interact=True):
         else:
             settings['fs2_bin'] = None
 
-        save_settings()
-        init_fs2_tab()
-        check_list()
-
-
-def select_fs2_path_handler():
-    select_fs2_path()
+        main_win.check_fso()
 
 
 def run_fs2(params=None):
@@ -332,277 +256,7 @@ def run_fs2(params=None):
 
 # Mod tab
 def fetch_list():
-    return run_task(FetchTask(), check_list)
-
-
-def build_mod_tree(mod=None, parent_el=None):
-    if mod is None:
-        mods = settings['mods'].get_tree()
-    else:
-        mods = mod.get_submods()
-
-    rows = dict()
-
-    for mod in mods:
-        row = QtGui.QTreeWidgetItem((mod.title, str(mod.version), ''))
-        row.setData(0, QtCore.Qt.UserRole + 2, mod)
-        row.setData(0, QtCore.Qt.UserRole + 3, False)
-
-        rows[mod.mid] = row
-
-        if parent_el is None:
-            main_win.modTree.addTopLevelItem(row)
-        else:
-            parent_el.addChild(row)
-
-        rows.update(build_mod_tree(mod, row))
-
-    return rows
-
-
-def update_list(d=None):
-    global settings, main_win, shared_files, dep_processing
-    
-    if settings['mods'] is None:
-        run_task(FetchTask(), lambda x: update_list())
-        return
-
-    # Make sure the mod tree is empty.
-    dep_processing = True
-    main_win.modTree.clear()
-    rows = build_mod_tree()
-    
-    for mod in settings['mods'].get_list():
-        titem = rows[mod.mid]
-        rc = 0
-        ri = 0
-
-        for pkg in mod.packages:
-            pinfo = installed.query(mod.mid, pkg.name)
-
-            if pinfo is None or pinfo.state == 'not installed':
-                cstate = QtCore.Qt.Unchecked
-                status = 'Not installed'
-                
-                if pinfo is None:
-                    pinfo = repo.InstalledPackage.convert(pkg, pkg.get_mod())
-                    pinfo.state = 'not installed'
-                elif pinfo.files_shared > 0:
-                    status += ' (%d shared files)' % pinfo.files_shared
-            elif pinfo.state == 'installed':
-                cstate = QtCore.Qt.Checked
-                status = 'Installed'
-            elif pinfo.state == 'has_update':
-                cstate = QtCore.Qt.PartiallyChecked
-                status = 'Update available'
-            elif pinfo.state == 'corrupted':
-                cstate = QtCore.Qt.PartiallyChecked
-                status = '%d corrupted or updated files' % (pinfo.files_checked - pinfo.files_ok)
-            
-            row = QtGui.QTreeWidgetItem((pkg.name, str(mod.version), status))
-            row.setCheckState(0, cstate)
-            row.setData(0, QtCore.Qt.UserRole, cstate)
-            row.setData(0, QtCore.Qt.UserRole + 1, pinfo)
-            row.setData(0, QtCore.Qt.UserRole + 2, pkg)
-            row.setData(0, QtCore.Qt.UserRole + 3, False)
-            
-            if pkg.status == 'required':
-                row.setDisabled(True)
-                rc += 1
-
-                if pinfo.state == 'installed':
-                    ri += 1
-
-            titem.addChild(row)
-
-        if ri == 0:
-            state = QtCore.Qt.Unchecked
-        elif ri == rc:
-            state = QtCore.Qt.Checked
-        else:
-            state = QtCore.Qt.PartiallyChecked
-
-        titem.setCheckState(0, state)
-        titem.setData(0, QtCore.Qt.UserRole, state)
-
-    dep_processing = False
-
-    if Unity and not main_win.isActiveWindow() and not unity_launcher.get_property('urgent'):
-        unity_launcher.set_property('urgent', True)
-
-    signals.list_updated.emit()
-
-
-def check_list(d=None):
-    global settings, main_win
-    
-    main_win.modTree.clear()
-    
-    if settings['fs2_path'] is None:
-        return
-    
-    if settings['mods'] is None:
-        fetch_list()
-    else:
-        return run_task(CheckTask(settings['mods'].get_list()), update_list)
-
-
-def autoselect_deps(item, col):
-    global settings, dep_processing
-
-    if dep_processing:
-        return
-
-    dep_processing = True
-    
-    item.setData(0, QtCore.Qt.UserRole + 3, False)
-    info = item.data(0, QtCore.Qt.UserRole + 2)
-    if isinstance(info, repo.Mod):
-        was_installed = item.data(0, QtCore.Qt.UserRole) in (QtCore.Qt.Checked, QtCore.Qt.PartiallyChecked)
-
-        if item.checkState(0) == QtCore.Qt.Checked:
-            # Check all required and recommended packages
-            for i in range(0, item.childCount()):
-                child = item.child(i)
-                pkg = child.data(0, QtCore.Qt.UserRole + 2)
-
-                if isinstance(pkg, repo.Package):
-                    state = QtCore.Qt.Checked
-                    if pkg.status != 'required':
-                        if was_installed:
-                            state = child.data(0, QtCore.Qt.UserRole)
-                        elif pkg.status == 'optional':
-                            state = QtCore.Qt.Unchecked
-
-                    child.setCheckState(0, QtCore.Qt.CheckState(state))
-
-        elif item.checkState(0) == QtCore.Qt.Unchecked:
-            # Uncheck all packages
-            for i in range(0, item.childCount()):
-                child = item.child(i)
-                pkg = child.data(0, QtCore.Qt.UserRole + 2)
-
-                if isinstance(pkg, repo.Package):
-                    child.setCheckState(0, QtCore.Qt.Unchecked)
-
-    # Cascade dependencies
-    tree = read_tree(main_win.modTree)
-    selection = []
-    for item, _ in tree:
-        if item.data(0, QtCore.Qt.UserRole + 3):
-            item.setCheckState(0, QtCore.Qt.Unchecked)
-        else:
-            pkg = item.data(0, QtCore.Qt.UserRole + 2)
-            if isinstance(pkg, repo.Package) and item.checkState(0) != QtCore.Qt.Unchecked:
-                selection.append(pkg)
-
-    try:
-        selection = settings['mods'].process_pkg_selection(selection)
-    except:
-        logging.exception('Failed to satisfy dependencies!')
-        reset_selection()
-        # TODO: Message to the user?
-        dep_processing = False
-        return
-
-    for item, _ in tree:
-        pkg = item.data(0, QtCore.Qt.UserRole + 2)
-        if isinstance(pkg, repo.Package) and pkg in selection:
-            if item.checkState(0) != QtCore.Qt.Checked:
-                if item.checkState(0) == QtCore.Qt.Unchecked:
-                    item.setData(0, QtCore.Qt.UserRole + 3, True)
-
-                item.setCheckState(0, QtCore.Qt.Checked)
-
-    dep_processing = False
-
-
-def reset_selection():
-    items = read_tree(main_win.modTree)
-    for row, parent in items:
-        value = row.data(0, QtCore.Qt.UserRole)
-        if value is not None:
-            row.setCheckState(0, QtCore.Qt.CheckState(value))
-
-
-def select_mod(item, col):
-    global installed
-    
-    mod = item.data(0, QtCore.Qt.UserRole + 2)
-    if not isinstance(mod, repo.Mod):
-        if isinstance(mod, repo.Package):
-            # This is a package...
-            select_pkg(item, col)
-        return
-
-    infowin = util.init_ui(Ui_Modinfo(), QtGui.QDialog(main_win))
-    infowin.setModal(True)
-    
-    def do_run():
-        run_mod(mod)
-    
-    def show_settings():
-        FlagsWindow(infowin, mod)
-    
-    infowin.modname.setText(mod.title + ' - ' + str(mod.version))
-    
-    if mod.logo is None:
-        infowin.logo.hide()
-    else:
-        img = QtGui.QPixmap()
-        img.load(os.path.join(settings_path, mod.logo))
-        infowin.logo.setPixmap(img)
-    
-    infowin.desc.setPlainText(mod.description)
-    infowin.note.setPlainText(mod.notes)
-
-    infowin.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.get_files().keys())]))
-    
-    infowin.closeButton.clicked.connect(infowin.close)
-    infowin.settingsButton.clicked.connect(show_settings)
-    infowin.runButton.clicked.connect(do_run)
-    infowin.show()
-    
-    infowin.note.verticalScrollBar().setValue(0)
-
-
-def select_pkg(item, col):
-    pkg = item.data(0, QtCore.Qt.UserRole + 2)
-    pinfo = item.data(0, QtCore.Qt.UserRole + 1)
-
-    if not isinstance(pkg, repo.Package):
-        if isinstance(pkg, repo.Mod):
-            select_mod(item, col)
-        return
-
-    infowin = util.init_ui(Ui_Modinfo(), QtGui.QDialog(main_win))
-    infowin.setModal(True)
-    infowin.modname.setText(pkg.name)
-    infowin.logo.hide()
-
-    infowin.desc.setPlainText(pkg.notes)
-
-    if len(pinfo.check_notes) > 0 and item.data(0, QtCore.Qt.UserRole) != QtCore.Qt.Unchecked:
-        infowin.note.appendPlainText('\nCheck messages:\n* ' + '\n* '.join(pinfo.check_notes))
-    
-    deps = pkg.resolve_deps()
-    if len(deps) > 0:
-        lines = []
-        for dep in deps:
-            line = '* ' + dep[0].name
-            if installed.is_installed(dep[0]):
-                line += ' (installed)'
-            
-            lines.append(line)
-        
-        infowin.note.appendPlainText('\nDependencies:\n' + '\n'.join(lines))
-
-    infowin.closeButton.clicked.connect(infowin.close)
-    infowin.settingsButton.hide()
-    infowin.runButton.hide()
-    infowin.show()
-    
-    infowin.note.verticalScrollBar().setValue(0)
+    return run_task(FetchTask())
 
 
 def run_mod(mod):
@@ -617,15 +271,15 @@ def run_mod(mod):
     
     def check_install():
         if not os.path.isdir(modpath) or mod.mid not in installed.mods:
-            QtGui.QMessageBox.critical(main_win, 'Error', 'Failed to install "%s"! Check the log for more information.' % (mod.title))
+            QtGui.QMessageBox.critical(main_win.win, 'Error', 'Failed to install "%s"! Check the log for more information.' % (mod.title))
         else:
             run_mod(mod)
     
     if settings['fs2_bin'] is None:
-        select_fs2_path(False)
+        select_fs2_path()
 
         if settings['fs2_bin'] is None:
-            QtGui.QMessageBox.critical(main_win, 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
+            QtGui.QMessageBox.critical(main_win.win, 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
             return
     
     if mod.title != '' and (not os.path.isdir(modpath) or mod.mid not in installed.mods):
@@ -687,6 +341,9 @@ def run_mod(mod):
         else:
             modfolder = mod.folder.split('/')[0]
     
+    if modfolder == '':
+        modfolder = None
+
     if modfolder is not None:
         # Correct the case
         modfolder = modfolder.split(',')
@@ -732,7 +389,11 @@ def run_mod(mod):
                         cmdline[i + 1] = modfolder
                     break
     
-    if modfolder is not None and not mod_found:
+    if modfolder is None:
+        if mod_found:
+            cmdline.remove('-mod')
+            cmdline.remove(modfolder)
+    elif not mod_found:
         cmdline.append('-mod')
         cmdline.append(modfolder)
     
@@ -747,206 +408,34 @@ def run_mod(mod):
     except:
         logging.exception('Failed to modify "%s". Not starting FS2!!', path)
         
-        QtGui.QMessageBox.critical(main_win, 'Error', 'Failed to edit "%s"! I can\'t change the current mod!' % path)
+        QtGui.QMessageBox.critical(main_win.win, 'Error', 'Failed to edit "%s"! I can\'t change the current mod!' % path)
     else:
         run_fs2()
 
 
-def read_tree(parent, items=None):
-    if items is None:
-        items = []
-    
-    if isinstance(parent, QtGui.QTreeWidget):
-        for i in range(0, parent.topLevelItemCount()):
-            item = parent.topLevelItem(i)
-            items.append((item, None))
-            
-            read_tree(item, items)
-    else:
-        for i in range(0, parent.childCount()):
-            item = parent.child(i)
-            items.append((item, parent))
-            
-            read_tree(item, items)
-    
-    return items
-
-
-def apply_selection():
-    global settings, installed
-    
-    if settings['mods'] is None:
-        return
-    
-    install = []
-    uninstall = []
-    items = read_tree(main_win.modTree)
-    for item, parent in items:
-        pkg = item.data(0, QtCore.Qt.UserRole + 2)
-        if not isinstance(pkg, repo.Package):
-            continue
-
-        if item.checkState(0) == item.data(0, QtCore.Qt.UserRole):
-            # Unchanged
-            continue
-        
-        if item.checkState(0):
-            # Install
-            install.append(pkg)
-        else:
-            # Uninstall
-            uninstall.append(pkg)
-    
-    if len(install) == 0 and len(uninstall) == 0:
-        QtGui.QMessageBox.warning(main_win, 'Warning', 'You didn\'t change anything! There\'s nothing for me to do...')
-        return
-    
-    if len(install) > 0:
-        install_titles = set()
-        for pkg in install:
-            install_titles.add(pkg.get_mod().title)
-
-        msg = QtGui.QMessageBox()
-        msg.setIcon(QtGui.QMessageBox.Question)
-        msg.setText('Do you really want to install these mods?')
-        msg.setInformativeText(', '.join(install_titles) + ' will be installed.')
-        msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-        msg.setDefaultButton(QtGui.QMessageBox.Yes)
-        
-        if msg.exec_() == QtGui.QMessageBox.Yes:
-            run_task(InstallTask(install))
-    
-    if len(uninstall) > 0:
-        uninstall_titles = set()
-        for pkg in uninstall:
-            uninstall_titles.add(pkg.get_mod().title)
-
-        msg = QtGui.QMessageBox()
-        msg.setIcon(QtGui.QMessageBox.Question)
-        msg.setText('Do you really want to remove these mods?')
-        msg.setInformativeText(', '.join(uninstall_titles) + ' will be removed.')
-        msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-        msg.setDefaultButton(QtGui.QMessageBox.Yes)
-        
-        if msg.exec_() == QtGui.QMessageBox.Yes:
-            run_task(UninstallTask(uninstall))
-
-
-# Settings tab
-def update_repo_list():
-    main_win.sourceList.clear()
-    
-    for i, r in enumerate(settings['repos']):
-        item = QtGui.QListWidgetItem(r[1], main_win.sourceList)
-        item.setData(QtCore.Qt.UserRole, i)
-
-
-def _edit_repo(repo=None, idx=None):
-    win = util.init_ui(Ui_AddRepo(), QtGui.QDialog(main_win))
-    
-    win.okButton.clicked.connect(win.accept)
-    win.cancelButton.clicked.connect(win.reject)
-    
-    if repo is not None:
-        win.source.setText(repo[0])
-        win.title.setText(repo[1])
-    
-    if win.exec_() == QtGui.QMessageBox.Accepted:
-        source = win.source.text()
-        title = win.title.text()
-        
-        if idx is None:
-            found = False
-            
-            for r_source, r_title in settings['repos']:
-                if r_source == source:
-                    found = True
-                    QtGui.QMessageBox.critical(main_win, 'Error', 'This source is already in the list! (As "%s")' % (r_title))
-                    break
-            
-            if not found:
-                settings['repos'].append((source, title))
-        else:
-            settings['repos'][idx] = (source, title)
-        
-        save_settings()
-        update_repo_list()
-
-
 def ql_add_repo(a, b, tab):
+    return
+
+    # TODO: Fix this in Nebula mode.
     main_win.tabs.setCurrentIndex(tab)
     main_win.activateWindow()
     add_repo()
 
 
-def add_repo():
-    _edit_repo()
-
-
-def edit_repo():
-    item = main_win.sourceList.currentItem()
-    if item is not None:
-        idx = item.data(QtCore.Qt.UserRole)
-        _edit_repo(settings['repos'][idx], idx)
-
-
-def remove_repo():
-    item = main_win.sourceList.currentItem()
-    if item is not None:
-        idx = item.data(QtCore.Qt.UserRole)
-        answer = QtGui.QMessageBox.question(main_win, 'Are you sure?', 'Do you really want to remove "%s"?' % (item.text()),
-                                            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No, QtGui.QMessageBox.No)
-        
-        if answer == QtGui.QMessageBox.Yes:
-            del settings['repos'][idx]
-            
-            save_settings()
-            update_repo_list()
-
-
-def reorder_repos(parent, s_start, s_end, d_parent, d_row):
-    global settings
-    
-    repos = []
-    for row in range(0, main_win.sourceList.count()):
-        item = main_win.sourceList.item(row)
-        repos.append(settings['repos'][item.data(QtCore.Qt.UserRole)])
-    
-    settings['repos'] = repos
-    save_settings()
-    
-    # NOTE: This call is normally redundant but I want to make sure that
-    # the displayed list is always the same as the actual list in settings['repos'].
-    # Once this feature is stable this call can be removed.
-    update_repo_list()
-
-
-def update_enforce_deps():
-    global settings
-    
-    settings['enforce_deps'] = main_win.enforceDeps.checkState() == QtCore.Qt.Checked
-    save_settings()
-
-
-def update_max_downloads():
-    global settings
-
-    old_num = num = settings['max_downloads']
-
-    try:
-        settings['max_downloads'] = num = int(main_win.maxDownloads.text())
-    except:
-        pass
-
-    main_win.maxDownloads.setText(str(num))
-
-    if num != old_num:
-        util.DL_POOL.set_capacity(num)
-        save_settings()
-
-
 def show_fs2settings():
     SettingsWindow(None)
+
+
+def switch_ui_mode(nmode):
+    global main_win
+
+    main_win.close()
+    if nmode == 'nebula':
+        main_win = NebulaWindow()
+    else:
+        main_win = MainWindow()
+
+    main_win.open()
 
 
 def init():
@@ -981,7 +470,7 @@ def init():
 
 
 def main():
-    global VERSION, settings, installed, pmaster, main_win, progress_win, unity_launcher, browser_ctrl
+    global VERSION, app, settings, installed, pmaster, main_win, progress_win, unity_launcher, browser_ctrl
     
     app = init()
 
@@ -1024,73 +513,10 @@ def main():
         QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
         return
 
-    main_win = util.init_ui(Ui_MainWindow(), MainWindow())
-    progress_win = progress.ProgressDisplay()
+    if os.path.isfile('commit'):
+        with open('commit', 'r') as data:
+            VERSION += '-' + data.read().strip()
 
-    if hasattr(sys, 'frozen'):
-        # Add note about bundled content.
-        # NOTE: This will appear even when this script is bundled with py2exe or a similiar program.
-        main_win.aboutLabel.setText(main_win.aboutLabel.text().replace('</body>', '<p>' +
-                                    'This bundle was created with <a href="http://pyinstaller.org">PyInstaller</a>' +
-                                    ' and contains a 7z executable.</p></body>'))
-        
-        if os.path.isfile('commit'):
-            with open('commit', 'r') as data:
-                VERSION += '-' + data.read().strip()
-    
-    if sys.platform.startswith('win') or sys.platform.startswith('linux'):
-        main_win.schemeHandler.clicked.connect(api.install_scheme_handler)
-    else:
-        main_win.schemeHandler.hide()
-    
-    label = QtGui.QLabel(main_win.statusbar)
-    label.setText('Version: ' + VERSION)
-    main_win.statusbar.addWidget(label)
-
-    progress_win.set_statusbar(main_win.statusbar)
-    
-    signals.repo_updated.connect(update_list)
-    update_repo_list()
-    
-    main_win.aboutLabel.linkActivated.connect(QtGui.QDesktopServices.openUrl)
-    
-    main_win.gogextract.clicked.connect(do_gog_extract)
-    main_win.select.clicked.connect(select_fs2_path_handler)
-
-    main_win.apply_sel.clicked.connect(apply_selection)
-    main_win.reset_sel.clicked.connect(reset_selection)
-    main_win.update.clicked.connect(fetch_list)
-    
-    main_win.modTree.itemActivated.connect(select_mod)
-    main_win.modTree.itemChanged.connect(autoselect_deps)
-    main_win.modTree.sortItems(0, QtCore.Qt.AscendingOrder)
-    main_win.modTree.header().setResizeMode(QtGui.QHeaderView.ResizeToContents)
-    
-    main_win.addSource.clicked.connect(add_repo)
-    main_win.editSource.clicked.connect(edit_repo)
-    main_win.removeSource.clicked.connect(remove_repo)
-    main_win.sourceList.itemDoubleClicked.connect(edit_repo)
-    
-    main_win.enforceDeps.setCheckState(QtCore.Qt.Checked if settings['enforce_deps'] else QtCore.Qt.Unchecked)
-    main_win.enforceDeps.stateChanged.connect(update_enforce_deps)
-    main_win.maxDownloads.setText(str(settings['max_downloads']))
-    main_win.maxDownloads.textEdited.connect(update_max_downloads)
-    
-    main_win.fs2Settings.clicked.connect(show_fs2settings)
-
-    browser_ctrl = BrowserCtrl(main_win.webView)
-    
-    # NOTE: Assign the model to a variable to prevent a segfault with PySide. (WTF?!)
-    m = main_win.sourceList.model()
-    m.rowsMoved.connect(reorder_repos)
-    del m
-
-    SettingsTab(main_win.fsoSettings)
-
-    # Fix a weird display bug
-    main_win.tabs.setCurrentIndex(3)
-
-    QtCore.QTimer.singleShot(1, init_fs2_tab)
     QtCore.QTimer.singleShot(1, api.setup_ipc)
     
     if Unity:
@@ -1128,7 +554,12 @@ def main():
         
         unity_launcher.set_property('quicklist', ql)
     
-    main_win.show()
+    if settings['ui_mode'] == 'nebula':
+        main_win = NebulaWindow()
+    else:
+        main_win = MainWindow()
+
+    main_win.open()
     app.exec_()
     
     save_settings()

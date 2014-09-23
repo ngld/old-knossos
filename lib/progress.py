@@ -568,9 +568,10 @@ class ProgressDisplay(QtGui.QDialog):
     _status_label = None
     _status_pbar = None
     _status_btn = None
+    _main_win = None
     
     def __init__(self):
-        super(ProgressDisplay, self).__init__(QtGui.QApplication.activeWindow())
+        super(ProgressDisplay, self).__init__()
         
         self._task_bars = []
         self._tasks = []
@@ -598,6 +599,11 @@ class ProgressDisplay(QtGui.QDialog):
         else:
             self.update_prog(_progress.value, _progress.text)
         
+        # Center on main window
+        main_win = QtGui.QApplication.activeWindow()
+        if main_win is not None:
+            self.move(main_win.pos() + main_win.rect().center() - self.rect().center())
+
         super(ProgressDisplay, self).show()
         self._status_pbar.show()
         self._status_btn.show()

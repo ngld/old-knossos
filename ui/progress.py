@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'progress.ui'
 #
-# Created: Sat Sep 20 15:23:45 2014
+# Created: Tue Sep 23 22:16:20 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -15,6 +15,7 @@ class Ui_Dialog(object):
         Dialog.setWindowModality(QtCore.Qt.ApplicationModal)
         Dialog.resize(594, 443)
         Dialog.setCursor(QtCore.Qt.BusyCursor)
+        Dialog.setModal(True)
         self.verticalLayout = QtGui.QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName("verticalLayout")
         self.label = QtGui.QLabel(Dialog)

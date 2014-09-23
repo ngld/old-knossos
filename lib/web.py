@@ -18,7 +18,7 @@ import semantic_version
 
 from .qt import QtCore, QtNetwork, QtWebKit
 from . import api
-from .windows import FlagsWindow, SettingsWindow
+from .windows import FlagsWindow, SettingsWindow, GogExtractWindow
 import manager
 
 
@@ -34,6 +34,13 @@ class WebBridge(QtCore.QObject):
     # uninstall(mid, pkgs?): Uninstalls the given mod. The first parameter is the mod's ID. The second parameter should be used if only some packages should be uninstalled.
     # runMod(mid): Launch fs2_open with the given mod selected.
     # showSettings(mid?): Open the settings window for the given mod or fs2_open if no mid is given.
+    
+    repoUpdated = QtCore.Signal()
+
+    def __init__(self):
+        super(WebBridge, self).__init__()
+
+        manager.signals.repo_updated.connect(self.repoUpdated.emit)
 
     @QtCore.Slot(result=str)
     def getVersion(self):
@@ -41,10 +48,11 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(result=bool)
     def isFsoInstalled(self):
-        fs2_path = manager.settings['fs2_path']
-        fs2_bin = os.path.join(fs2_path, manager.settings['fs2_bin'])
+        return api.is_fso_installed()
 
-        return os.path.isdir(fs2_path) and os.path.isfile(fs2_bin)
+    @QtCore.Slot(result=bool)
+    def isFs2PathSet(self):
+        return manager.settings['fs2_path'] is not None
 
     @QtCore.Slot()
     def selectFs2path(self):
@@ -52,7 +60,7 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot()
     def runGogInstaller(self):
-        manager.do_gog_extract()
+        GogExtractWindow(manager.main_win)
 
     @QtCore.Slot(result='QVariantList')
     def getInstalledMods(self):
@@ -162,7 +170,7 @@ class WebBridge(QtCore.QObject):
                 logging.error('Couldn\'t find mod "%s"!', mid)
                 return -1
 
-            FlagsWindow(manager.main_win, manager.installed.mods[mid])
+            FlagsWindow(manager.main_win.win, manager.installed.mods[mid])
 
 
 class NetworkAccessManager(QtNetwork.QNetworkAccessManager):

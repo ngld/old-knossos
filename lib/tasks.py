@@ -89,24 +89,28 @@ class FetchTask(progress.Task):
             filelist = manager.settings['known_files'] = {}
             for mod in modlist.get_list():
                 for pkg in mod.packages:
-                    for name, ar in pkg.files:
+                    for name, ar in pkg.files.items():
+                        path = util.pjoin(mod.folder, ar['dest'])
                         if ar['is_archive']:
                             for item in ar['contents']:
-                                filelist[util.pjoin(ar['dest'], item)] = (mod.mid, pkg.name)
+                                filelist[util.pjoin(path, item)] = (mod.mid, pkg.name)
                         else:
-                            filelist[util.pjoin(ar['dest'], name)] = (mod.mid, pkg.name)
+                            filelist[util.pjoin(path, name)] = (mod.mid, pkg.name)
 
             manager.save_settings()
         
-        manager.signals.repo_updated.emit()
+        manager.run_task(CheckTask())
 
 
 class CheckTask(progress.Task):
     can_abort = False
     
-    def __init__(self, mods):
+    def __init__(self, mods=None):
         super(CheckTask, self).__init__(threads=3)
         
+        if mods is None:
+            mods = manager.settings['mods'].get_list()
+
         pkgs = []
         for mod in mods:
             pkgs.extend(mod.packages)
@@ -128,7 +132,7 @@ class CheckTask(progress.Task):
         msgs = []
         
         for item, info in files.items():
-            mypath = util.ipath(os.path.join(fs2path, item))
+            mypath = util.ipath(os.path.join(modpath, item))
             fix = False
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (item))
@@ -233,7 +237,7 @@ class CheckTask(progress.Task):
 
         manager.settings['installed_mods'] = installed.get()
         manager.save_settings()
-        manager.update_list()
+        manager.signals.repo_updated.emit()
 
 
 # TODO: Optimize
@@ -266,12 +270,12 @@ class InstallTask(progress.MultistepTask):
             for path, dirs, files in os.walk(modpath):
                 relpath = path[len(modpath):].lstrip('/')
                 for item in files:
-                    itempath = os.path.join(relpath, item)
+                    itempath = util.pjoin(relpath, item)
                     if itempath not in mfiles:
                         logging.info('File "%s" is left over.', itempath)
 
         for item, info in mfiles.items():
-            itempath = util.ipath(os.path.join(fs2_path, item))
+            itempath = util.ipath(os.path.join(modpath, item))
             if not os.path.isfile(itempath) or util.gen_hash(itempath) != info[0]:
                 archives.add((mod.mid, info[1]))
 
@@ -289,6 +293,7 @@ class InstallTask(progress.MultistepTask):
         pkg, archives = p
         mid = pkg.get_mod().mid
         fs2path = manager.settings['fs2_path']
+        modpath = os.path.join(fs2path, pkg.get_mod().folder)
         files = []
 
         for f_mid, fname in archives:
@@ -298,7 +303,7 @@ class InstallTask(progress.MultistepTask):
         count = float(len(files))
         for i, fname in enumerate(files):
             info = pkg.files[fname]
-            dest = os.path.join(fs2path, info['dest'])
+            dest = os.path.join(modpath, info['dest'])
 
             progress.start_task(i / count, 1 / count)
 
@@ -363,18 +368,26 @@ class InstallTask(progress.MultistepTask):
         fs2path = manager.settings['fs2_path']
         progress.update(0, 'Installing %s...' % (mod.title))
 
+        # TODO: Implement globbing
+
         for act in mod.actions:
             if act['type'] == 'delete':
-                for item in act['files']:
-                    path = os.path.join(fs2path, item)
+                for item in act['paths']:
+                    path = os.path.join(fs2path, mod.folder, item)
                     if os.path.isfile(path):
                         logging.debug('Removing "%s"...', path)
                         os.unlink(path)
+            elif act['type'] == 'move':
+                dest = os.path.join(fs2path, mod.folder, act['dest'])
+                for item in act['paths']:
+                    path = os.path.join(fs2path, mod.folder, item)
+                    logging.debug('Moving "%s" to "%s"...', path, dest)
+                    shutil.move(path, dest)
             else:
                 logging.error('Unknown mod action "%s" in mod "%s" (%s)!', act['type'], mod.title, mod.mid)
 
     def finish(self):
-        manager.update_list()
+        manager.signals.repo_updated.emit()
 
 
 class UninstallTask(progress.Task):
@@ -394,7 +407,7 @@ class UninstallTask(progress.Task):
         mod = pkg.get_mod()
 
         for item in pkg.get_files():
-            path = util.ipath(os.path.join(fs2path, item))
+            path = util.ipath(os.path.join(fs2path, mod.folder, item))
             if not os.path.isfile(path):
                 logging.warning('File "%s" for mod "%s" (%s) is missing during uninstall!', item, mod.title, mod.mid)
             else:
@@ -408,7 +421,7 @@ class UninstallTask(progress.Task):
             manager.installed.del_pkg(pkg)
 
         manager.settings['installed_mods'] = manager.installed.get()
-        manager.update_list()
+        manager.signals.repo_updated.emit()
 
 
 class GOGExtractTask(progress.Task):
@@ -548,13 +561,13 @@ class GOGExtractTask(progress.Task):
     def finish(self):
         results = self.get_results()
         if len(results) < 1:
-            QtGui.QMessageBox.critical(manager.main_win, 'Error', 'The installer failed! Please read the log for more details...')
+            QtGui.QMessageBox.critical(manager.main_win.win, 'Error', 'The installer failed! Please read the log for more details...')
             return
         elif results[0] == -1:
-            QtGui.QMessageBox.critical(manager.main_win, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
+            QtGui.QMessageBox.critical(manager.main_win.win, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
             return
         else:
-            QtGui.QMessageBox.information(manager.main_win, 'Done', 'FS2 was successfully installed.')
+            QtGui.QMessageBox.information(manager.main_win.win, 'Done', 'FS2 was successfully installed.')
 
         fs2_path = results[0]
         manager.settings['fs2_path'] = fs2_path
@@ -566,4 +579,4 @@ class GOGExtractTask(progress.Task):
                 break
         
         manager.save_settings()
-        manager.init_fs2_tab()
+        manager.main_win.check_fso()
