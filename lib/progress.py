@@ -20,8 +20,9 @@ import sys
 import logging
 import threading
 import six
-import util
-from qt import QtCore, QtGui
+
+from lib import util
+from lib.qt import QtCore, QtGui
 from ui.progress import Ui_Dialog as Ui_Progress
 
 try:
@@ -98,6 +99,7 @@ def update(prog, text=''):
 
 # Task scheduler
 class Worker(threading.Thread):
+
     def __init__(self, master):
         super(Worker, self).__init__()
         
@@ -116,6 +118,8 @@ class Worker(threading.Thread):
                 set_callback(task[0]._track_progress)
                 task[0]._init()
                 task[0].work(*task[1])
+            except SystemExit:
+                return
             except:
                 logging.exception('Exception in Thread!')
             
@@ -156,13 +160,10 @@ class Master(object):
                 return None
             
             with self._tasks_lock:
-                while len(self._tasks) > 0:
-                    work = self._tasks[0]._get_work()
+                for task in self._tasks:
+                    work = task._get_work()
                     if work is not None:
                         return work
-                    else:
-                        task = self._tasks.pop(0)
-                        task._attached = False
             
             # No work here... let's wait for more.
             with self._worker_cond:
@@ -177,7 +178,20 @@ class Master(object):
             self._tasks.append(task)
             task._master = self
             task._attached = True
+
+        task.done.connect(self.check_tasks)
         
+        with self._worker_cond:
+            self._worker_cond.notify_all()
+
+    def check_tasks(self):
+        with self._tasks_lock:
+            for task in self._tasks[:]:
+                if not task._has_work():
+                    self._tasks.remove(task)
+                    task._attached = False
+
+    def wake_workers(self):
         with self._worker_cond:
             self._worker_cond.notify_all()
 
@@ -193,14 +207,18 @@ class Task(QtCore.QObject):
     _progress = None
     _progress_lock = None
     _running = 0
+    _threads = 0
     can_abort = True
     aborted = False
     done = QtCore.Signal()
     progress = QtCore.Signal()
     
-    def __init__(self, work=[]):
+    def __init__(self, work=None, threads=0):
         super(Task, self).__init__()
         
+        if work is None:
+            work = []
+
         self._results = []
         self._work = work
         self._result_lock = threading.Lock()
@@ -208,10 +226,13 @@ class Task(QtCore.QObject):
         self._done = threading.Event()
         self._progress = dict()
         self._progress_lock = threading.Lock()
+        self._threads = threads
     
     def _get_work(self):
         with self._work_lock:
             if len(self._work) == 0:
+                return None
+            elif self._threads > 0 and self._running >= self._threads:
                 return None
             else:
                 return (self, (self._work.pop(0),))
@@ -268,24 +289,27 @@ class Task(QtCore.QObject):
         with self._progress_lock:
             prog = self._progress.copy()
         
-        with self._result_lock:
-            results = len(self._results)
-        
         with self._work_lock:
             work = len(self._work)
+            results = len(self._results)
         
-        work_count = float(results + work + len(prog))
-        if work_count == 0:
+        count = float(results + work + len(prog))
+        if count == 0:
             total = 1
         else:
-            total = results / work_count
+            total = results / count
         
         for item in prog.values():
-            total += item[0] * (1.0 / work_count)
+            total += item[0] * (1.0 / count)
         
         return total, prog
     
     def is_done(self):
+        if not self._done.is_set():
+            with self._progress_lock:
+                if self._running == 0 and not self._has_work():
+                    self._done.set()
+
         return self._done.is_set()
     
     def get_results(self):
@@ -294,6 +318,79 @@ class Task(QtCore.QObject):
         
         with self._result_lock:
             return self._results
+
+
+class MultistepTask(Task):
+    _steps = None
+    _sdone = False
+    _cur_step = -1
+
+    def __init__(self, steps=None, **kwargs):
+        super(MultistepTask, self).__init__(**kwargs)
+
+        if steps is None:
+            steps = self._steps
+
+        if isinstance(steps, int):
+            snum = steps
+            steps = []
+            for i in range(1, snum + 1):
+                steps.append((getattr(self, 'init' + str(i)), getattr(self, 'work' + str(i))))
+
+        self._steps = steps
+
+    def _has_work(self):
+        return not self._sdone
+
+    def _get_work(self):
+        with self._work_lock:
+            if (self._threads > 0 and self._running >= self._threads) or self._sdone or self.aborted:
+                return None
+            elif len(self._work) == 0:
+                if self._running == 0:
+                    return (self, ('MAGIC_MULTITASK_STEP_KEY_###',))
+                else:
+                    return None
+            else:
+                return (self, (self._work.pop(0),))
+
+    def work(self, arg):
+        # Any better ideas for this magic key?
+        if arg == 'MAGIC_MULTITASK_STEP_KEY_###':
+            # Maybe we need to advance to the next step.
+            self._work_lock.acquire()
+
+            if self._running == 1 and len(self._work) == 0:
+                self._work_lock.release()
+                self._next_step()
+            else:
+                logging.warning('Either we still have some work to do (unlikely) or there are still some other threads running (%d).', self._running)
+                self._work_lock.release()
+            
+            return
+
+        # Call the current work method
+        self._steps[self._cur_step][1](arg)
+
+    def _next_step(self):
+        self._cur_step += 1
+        logging.debug('Entering step %d of %d in task %s.', self._cur_step + 1, len(self._steps), self.__class__.__name__)
+
+        if self._cur_step >= len(self._steps):
+            # That was the last one.
+            self._sdone = True
+            return
+
+        # Call the init routine.
+        self._done.set()
+        self._steps[self._cur_step][0]()
+        self._done.clear()
+
+        with self._result_lock:
+            self._results = []
+
+        # Wake all free workers.
+        self._master.wake_workers()
 
 
 # Curses display
@@ -360,9 +457,11 @@ class Textbox(object):
             text = self.wrap(self.content[-1] + text)
             y, x, height, width = self.get_coords()
             self.content[-1] = text.pop(0)
-            
+
             self.win.addstr(y + height - 1, x, self.content[-1])
-            self.appendln('\n'.join(text))
+            
+            if len(text) > 0:
+                self.appendln('\n'.join(text))
     
     def set_text(self, text):
         with self.lock:
@@ -451,22 +550,40 @@ def _init_curses(scr, cb, log):
 def init_curses(cb, log=None):
     curses.wrapper(_init_curses, cb, log)
 
+    # Restore ONLCR mode. (See man tcsetattr for details)
+    try:
+        import termios
+        attr = termios.tcgetattr(sys.stdout)
+        attr[1] = attr[1] | termios.ONLCR
+        termios.tcsetattr(sys.stdout, termios.TCSAFLUSH, attr)
+    except:
+        pass
+
 
 # Qt Display
 class ProgressDisplay(QtGui.QDialog):
     unity_launcher = None
     _threads = None
     _tasks = None
+    _status_label = None
+    _status_pbar = None
+    _status_btn = None
+    _main_win = None
     
     def __init__(self):
-        super(ProgressDisplay, self).__init__(QtGui.QApplication.activeWindow())
+        super(ProgressDisplay, self).__init__()
         
         self._task_bars = []
         self._tasks = []
         
         util.init_ui(Ui_Progress(), self)
         self.setModal(True)
+        self.hideButton.clicked.connect(super(ProgressDisplay, self).hide)
         self.abortButton.clicked.connect(self.try_abort)
+
+        self._status_label = QtGui.QLabel()
+        self._status_pbar = QtGui.QProgressBar()
+        self._status_pbar.setMaximum(100)
         
         if Unity:
             self.unity_launcher = Unity.LauncherEntry.get_for_desktop_id('fs2mod-py.desktop')
@@ -475,18 +592,41 @@ class ProgressDisplay(QtGui.QDialog):
         event.ignore()
     
     def show(self):
-        reset()
-        
         set_callback(self.update_prog)
-        update(0, 'Working...')
+
+        if _progress.value == 1:
+            update(0, 'Working...')
+        else:
+            self.update_prog(_progress.value, _progress.text)
+        
+        # Center on main window
+        main_win = QtGui.QApplication.activeWindow()
+        if main_win is not None:
+            self.move(main_win.pos() + main_win.rect().center() - self.rect().center())
+
         super(ProgressDisplay, self).show()
+        self._status_pbar.show()
+        self._status_btn.show()
         
         if Unity:
             self.unity_launcher.set_property('progress_visible', True)
     
+    def set_statusbar(self, stbar):
+        self._status_btn = QtGui.QPushButton(stbar)
+        self._status_btn.setText('Show Progress')
+        self._status_btn.clicked.connect(super(ProgressDisplay, self).show)
+        self._status_btn.hide()
+        
+        stbar.addWidget(self._status_label)
+        stbar.addWidget(self._status_pbar, True)
+        stbar.addPermanentWidget(self._status_btn)
+
     def update_prog(self, percent, text):
         self.progressBar.setValue(percent * 100)
         self.label.setText(text)
+
+        self._status_pbar.setValue(percent * 100)
+        self._status_label.setText(text)
         
         if Unity:
             self.unity_launcher.set_property('progress', percent)
@@ -539,12 +679,18 @@ class ProgressDisplay(QtGui.QDialog):
         else:
             self.progressBar.setValue(total * 100)
             self.progressBar.show()
+
+        self._status_pbar.setValue(total * 100)
         
         if Unity:
             self.unity_launcher.set_property('progress', total)
     
     def hide(self):
         set_callback(None)
+
+        self._status_label.setText('Ready.')
+        self._status_pbar.hide()
+        self._status_btn.hide()
         
         if Unity:
             self.unity_launcher.set_property('progress_visible', False)
@@ -565,6 +711,8 @@ class ProgressDisplay(QtGui.QDialog):
     def try_abort(self):
         for task in self._tasks:
             task.abort()
+
+        self._check_tasks()
     
     def _check_tasks(self):
         for task in self._tasks:

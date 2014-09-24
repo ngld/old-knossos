@@ -1,9 +1,9 @@
 # -*- mode: python -*-
 import os
 
-onefile = True
+onefile = False
 
-a = Analysis(['../manager.py'],
+a = Analysis(['../launcher.py'],
              pathex=[os.path.abspath('.')],
              hiddenimports=['urllib2', 'bisect'],
              hookspath=['.'],
@@ -12,9 +12,9 @@ a = Analysis(['../manager.py'],
 # Exclude everything we don't need to get a smaller output. (This saves around 2 MB.)
 idx = []
 for i, item in enumerate(a.binaries):
-    if item[0].startswith('PySide.') and item[0] not in ('PySide.QtCore', 'PySide.QtGui'):
+    if item[0].startswith('PySide.') and item[0] not in ('PySide.QtCore', 'PySide.QtGui', 'PySide.QtNetwork', 'PySide.QtWebKit'):
         idx.append(i)
-    elif item[0].startswith('Qt') and item[0] not in ('QtCore4.dll', 'QtGui4.dll'):
+    elif item[0].startswith('Qt') and item[0] not in ('QtCore4.dll', 'QtGui4.dll', 'QtNetwork4.dll', 'QtWebKit4.dll'):
         idx.append(i)
     elif item[0].startswith('plugins') and not item[0].endswith('qjpeg4.dll'):
         idx.append(i)
@@ -40,6 +40,12 @@ a.datas += [('7z.exe', '7z.exe', 'BINARY'),
             ('SDL.dll', 'SDL.dll', 'BINARY'),
             ('openal.dll', 'openal.dll', 'BINARY')]
 
+for sub, dirs, files in os.walk('../html'):
+    relsub = sub[3:]
+
+    for name in files:
+        a.datas.append((os.path.join(relsub, name), os.path.join(sub, name), 'DATA'))
+
 if onefile:
   exe = EXE(pyz, a.scripts, a.binaries, a.zipfiles, a.datas,
             exclude_binaries=False,
@@ -48,7 +54,7 @@ if onefile:
             debug=False,
             strip=None,
             upx=True,
-            console=False )
+            console=True )
 else:
   exe = EXE(pyz,
             a.scripts,
@@ -58,7 +64,7 @@ else:
             debug=False,
             strip=None,
             upx=True,
-            console=False )
+            console=True )
   coll = COLLECT(exe,
                  a.binaries,
                  a.zipfiles,

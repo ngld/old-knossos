@@ -2,12 +2,12 @@
 
 # Form implementation generated from reading ui file 'progress.ui'
 #
-# Created: Sun Feb 23 11:46:49 2014
-#      by: pyside-uic 0.2.15 running on PySide 1.2.1
+# Created: Tue Sep 23 22:16:20 2014
+#      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
 
-from qt import QtCore, QtGui
+from lib.qt import QtCore, QtGui
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
@@ -15,6 +15,7 @@ class Ui_Dialog(object):
         Dialog.setWindowModality(QtCore.Qt.ApplicationModal)
         Dialog.resize(594, 443)
         Dialog.setCursor(QtCore.Qt.BusyCursor)
+        Dialog.setModal(True)
         self.verticalLayout = QtGui.QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName("verticalLayout")
         self.label = QtGui.QLabel(Dialog)
@@ -31,6 +32,9 @@ class Ui_Dialog(object):
         self.horizontalLayout.addWidget(self.label_2)
         spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem)
+        self.hideButton = QtGui.QPushButton(Dialog)
+        self.hideButton.setObjectName("hideButton")
+        self.horizontalLayout.addWidget(self.hideButton)
         self.abortButton = QtGui.QPushButton(Dialog)
         self.abortButton.setObjectName("abortButton")
         self.horizontalLayout.addWidget(self.abortButton)
@@ -55,5 +59,6 @@ class Ui_Dialog(object):
         Dialog.setWindowTitle(QtGui.QApplication.translate("Dialog", "Working...", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("Dialog", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("Dialog", "Tasks", None, QtGui.QApplication.UnicodeUTF8))
+        self.hideButton.setText(QtGui.QApplication.translate("Dialog", "Hide", None, QtGui.QApplication.UnicodeUTF8))
         self.abortButton.setText(QtGui.QApplication.translate("Dialog", "Cancel", None, QtGui.QApplication.UnicodeUTF8))
 

@@ -17,15 +17,13 @@ import os
 import re
 import shutil
 import tempfile
-import hashlib
 import six
-import progress
-from util import get, download, normpath, movetree, ipath, pjoin, is_archive, extract_archive
+
+from lib import progress
+from lib.util import get, download, movetree, ipath, pjoin, gen_hash, is_archive, extract_archive
 
 if six.PY2:
-    import py2_compat
-
-HASH_CACHE = dict()
+    import lib.py2_compat
 
 
 class EntryPoint(object):
@@ -112,8 +110,8 @@ class Parser(object):
 
 
 class ModParser(Parser):
-    TOKENS = ('NAME', 'DESC', 'FOLDER', 'DELETE', 'RENAME', 'URL', 'MULTIURL', 'HASH', 'VERSION', 'NOTE', 'END')
-    #ENDTOKENS = { 'DESC': 'ENDDESC', 'MULTIURL': 'ENDMULTI', 'NOTE': 'ENDNOTE' }
+    TOKENS = ('NAME', 'DESC', 'FOLDER', 'DELETE', 'RENAME', 'URL', 'MULTIURL', 'HASH', 'VERSION', 'NOTE', 'DEPENDENCIES', 'END')
+    #ENDTOKENS = { 'DESC': 'ENDDESC', 'MULTIURL': 'ENDMULTI', 'NOTE': 'ENDNOTE', 'DEPENDENCIES': 'ENDDEPENDENCIES' }
 
     def parse(self, data, toplevel=True):
         if isinstance(data, six.string_types):
@@ -140,7 +138,7 @@ class ModParser(Parser):
     def _parse_sub(self):
         mod = ModInfo()
         mod.name = self._read()
-        logging.debug('ModInfo: Parsing "%s" mod...', mod.name)
+        logging.debug('ModInfo: Parsing mod "%s"...', mod.name)
 
         while len(self._data) > 0:
             line = self._read()
@@ -173,7 +171,7 @@ class ModParser(Parser):
             elif line == 'URL':
                 mod.urls.append(([self._read()], []))
             elif line == 'MULTIURL':
-                mod.urls.extend((self._read_until('ENDMULTI'), []))
+                mod.urls.append((self._read_until('ENDMULTI'), []))
             elif line == 'HASH':
                 line = self._read()
                 parts = re.split('\s+', line)
@@ -185,6 +183,8 @@ class ModParser(Parser):
                 mod.version = self._read()
             elif line == 'NOTE':
                 mod.note = '\n'.join(self._read_until('ENDNOTE'))
+            elif line == 'DEPENDENCIES':
+                mod.dependencies = self._read_until('ENDDEPENDENCIES')
             elif line == 'NAME':
                 sub = self._parse_sub()
                 sub.parent = mod
@@ -207,6 +207,7 @@ class ModInfo(object):
     hashes = None
     version = ''
     note = ''
+    dependencies = None
     submods = None
     parent = None
     ignore_subpath = False
@@ -216,34 +217,9 @@ class ModInfo(object):
         self.rename = []
         self.urls = []
         self.hashes = []
+        self.dependencies = []
         self.submods = []
 
-    def _hash(self, path, algo='md5'):
-        global HASH_CACHE
-        
-        path = os.path.abspath(path)
-        info = os.stat(path)
-
-        if algo == 'md5' and path in HASH_CACHE:
-            chksum, mtime = HASH_CACHE[path]
-            if mtime == info.st_mtime:
-                return chksum
-        
-        h = hashlib.new(algo)
-        with open(path, 'rb') as stream:
-            while True:
-                chunk = stream.read(16 * h.block_size)
-                if not chunk:
-                    break
-
-                h.update(chunk)
-
-        chksum = h.hexdigest()
-        if algo == 'md5':
-            HASH_CACHE[path] = (chksum, info.st_mtime)
-        
-        return chksum
-    
     def download(self, dest, sel_files=None):
         count = 0
         num = 0
@@ -281,7 +257,7 @@ class ModInfo(object):
 
         for algo, filepath, chksum in self.hashes:
             try:
-                mysum = self._hash(ipath(os.path.join(path, filepath)), algo)
+                mysum = gen_hash(ipath(os.path.join(path, filepath)), algo)
             except:
                 logging.exception('Failed to computed checksum for "%s" with algorithm "%s"!', filepath, algo)
                 continue

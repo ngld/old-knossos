@@ -12,8 +12,14 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+import sys
 import logging
 import ctypes.util
+
+
+ENCODING = 'utf8'
+if sys.platform.startswith('win'):
+    ENCODING = 'iso-8859-1'
 
 
 class SDL_Rect(ctypes.Structure):
@@ -62,21 +68,20 @@ def double_zero_string(val):
             break
         
         slen = libc.strlen(val)
-        data.append(val[off:off + slen].decode('utf8'))
+        data.append(val[off:off + slen].decode(ENCODING, 'replace'))
         off += slen
     
     return data
-
 
 libc = load_lib('c')
 
 # Load SDL
 try:
-    sdl = load_lib('libSDL-1.2.so.0', 'SDL')
+    sdl = load_lib('libSDL-1.2.so.0', 'SDL', 'SDL.dll')
     SDL2 = False
 except:
     # Try SDL 2
-    sdl = load_lib('libSDL2.so', 'SDL2')
+    sdl = load_lib('libSDL2.so', 'SDL2', 'SDL2.dll')
     SDL2 = True
 
 # SDL constants
@@ -221,7 +226,7 @@ else:
         
         joys = []
         for i in range(sdl.SDL_NumJoysticks()):
-            joys.append(sdl.SDL_JoystickName(i).decode('utf8'))
+            joys.append(sdl.SDL_JoystickName(i).decode(ENCODING, 'replace'))
         
         sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
         return joys
@@ -240,7 +245,7 @@ def list_audio_devs():
     captures = double_zero_string(alc.alcGetString(None, ALC_CAPTURE_DEVICE_SPECIFIER))
     default_capture = alc.alcGetString(None, ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)
     
-    default = ctypes.cast(default, ctypes.c_char_p).value.decode('utf8')
-    default_capture = ctypes.cast(default_capture, ctypes.c_char_p).value.decode('utf8')
+    default = ctypes.cast(default, ctypes.c_char_p).value.decode(ENCODING, 'replace')
+    default_capture = ctypes.cast(default_capture, ctypes.c_char_p).value.decode(ENCODING, 'replace')
     
     return devs, default, captures, default_capture

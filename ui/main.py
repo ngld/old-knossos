@@ -2,44 +2,23 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Thu Mar  6 00:34:36 2014
-#      by: pyside-uic 0.2.15 running on PySide 1.2.1
+# Created: Tue Sep 23 22:16:20 2014
+#      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
 
-from qt import QtCore, QtGui
+from lib.qt import QtCore, QtGui
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(544, 656)
+        MainWindow.resize(561, 667)
         self.centralwidget = QtGui.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtGui.QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName("verticalLayout")
         self.tabs = QtGui.QTabWidget(self.centralwidget)
         self.tabs.setObjectName("tabs")
-        self.fs2 = QtGui.QWidget()
-        self.fs2.setObjectName("fs2")
-        self.verticalLayout_2 = QtGui.QVBoxLayout(self.fs2)
-        self.verticalLayout_2.setObjectName("verticalLayout_2")
-        spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
-        self.verticalLayout_2.addItem(spacerItem)
-        self.gogextract = QtGui.QPushButton(self.fs2)
-        self.gogextract.setObjectName("gogextract")
-        self.verticalLayout_2.addWidget(self.gogextract)
-        self.select = QtGui.QPushButton(self.fs2)
-        self.select.setObjectName("select")
-        self.verticalLayout_2.addWidget(self.select)
-        self.fs2Settings = QtGui.QPushButton(self.fs2)
-        self.fs2Settings.setObjectName("fs2Settings")
-        self.verticalLayout_2.addWidget(self.fs2Settings)
-        self.fs2_bin = QtGui.QLabel(self.fs2)
-        self.fs2_bin.setObjectName("fs2_bin")
-        self.verticalLayout_2.addWidget(self.fs2_bin)
-        spacerItem1 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
-        self.verticalLayout_2.addItem(spacerItem1)
-        self.tabs.addTab(self.fs2, "")
         self.mods = QtGui.QWidget()
         self.mods.setObjectName("mods")
         self.verticalLayout_3 = QtGui.QVBoxLayout(self.mods)
@@ -69,6 +48,18 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.apply_sel)
         self.verticalLayout_3.addLayout(self.horizontalLayout)
         self.tabs.addTab(self.mods, "")
+        self.modweb = QtGui.QWidget()
+        self.modweb.setObjectName("modweb")
+        self.verticalLayout_6 = QtGui.QVBoxLayout(self.modweb)
+        self.verticalLayout_6.setObjectName("verticalLayout_6")
+        self.webView = QtWebKit.QWebView(self.modweb)
+        self.webView.setUrl(QtCore.QUrl("about:blank"))
+        self.webView.setObjectName("webView")
+        self.verticalLayout_6.addWidget(self.webView)
+        self.tabs.addTab(self.modweb, "")
+        self.fsoSettings = QtGui.QWidget()
+        self.fsoSettings.setObjectName("fsoSettings")
+        self.tabs.addTab(self.fsoSettings, "")
         self.settings = QtGui.QWidget()
         self.settings.setObjectName("settings")
         self.verticalLayout_5 = QtGui.QVBoxLayout(self.settings)
@@ -95,14 +86,34 @@ class Ui_MainWindow(object):
         self.verticalLayout_5.addLayout(self.horizontalLayout_2)
         self.gridLayout = QtGui.QGridLayout()
         self.gridLayout.setObjectName("gridLayout")
-        self.schemeHandler = QtGui.QPushButton(self.settings)
-        self.schemeHandler.setObjectName("schemeHandler")
-        self.gridLayout.addWidget(self.schemeHandler, 0, 1, 1, 1)
         self.enforceDeps = QtGui.QCheckBox(self.settings)
         self.enforceDeps.setChecked(True)
         self.enforceDeps.setObjectName("enforceDeps")
         self.gridLayout.addWidget(self.enforceDeps, 0, 0, 1, 1)
+        self.label_3 = QtGui.QLabel(self.settings)
+        self.label_3.setObjectName("label_3")
+        self.gridLayout.addWidget(self.label_3, 1, 0, 1, 1)
+        self.maxDownloads = QtGui.QLineEdit(self.settings)
+        self.maxDownloads.setObjectName("maxDownloads")
+        self.gridLayout.addWidget(self.maxDownloads, 1, 1, 1, 1)
+        self.label_4 = QtGui.QLabel(self.settings)
+        self.label_4.setObjectName("label_4")
+        self.gridLayout.addWidget(self.label_4, 2, 0, 1, 1)
+        self.uiMode = QtGui.QComboBox(self.settings)
+        self.uiMode.setObjectName("uiMode")
+        self.uiMode.addItem("")
+        self.uiMode.addItem("")
+        self.gridLayout.addWidget(self.uiMode, 2, 1, 1, 1)
         self.verticalLayout_5.addLayout(self.gridLayout)
+        self.horizontalLayout_3 = QtGui.QHBoxLayout()
+        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
+        self.schemeHandler = QtGui.QPushButton(self.settings)
+        self.schemeHandler.setObjectName("schemeHandler")
+        self.horizontalLayout_3.addWidget(self.schemeHandler)
+        self.gogextractButton = QtGui.QPushButton(self.settings)
+        self.gogextractButton.setObjectName("gogextractButton")
+        self.horizontalLayout_3.addWidget(self.gogextractButton)
+        self.verticalLayout_5.addLayout(self.horizontalLayout_3)
         self.tabs.addTab(self.settings, "")
         self.tab = QtGui.QWidget()
         self.tab.setObjectName("tab")
@@ -115,7 +126,7 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.tabs)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 544, 19))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 561, 19))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtGui.QStatusBar(MainWindow)
@@ -123,16 +134,11 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(3)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "Mod Manager", None, QtGui.QApplication.UnicodeUTF8))
-        self.gogextract.setText(QtGui.QApplication.translate("MainWindow", "Install FS2 with the GOG installer", None, QtGui.QApplication.UnicodeUTF8))
-        self.select.setText(QtGui.QApplication.translate("MainWindow", "Select installed FS2 (Open)", None, QtGui.QApplication.UnicodeUTF8))
-        self.fs2Settings.setText(QtGui.QApplication.translate("MainWindow", "FS2 Settings", None, QtGui.QApplication.UnicodeUTF8))
-        self.fs2_bin.setText(QtGui.QApplication.translate("MainWindow", "Selected FS2: ...", None, QtGui.QApplication.UnicodeUTF8))
-        self.tabs.setTabText(self.tabs.indexOf(self.fs2), QtGui.QApplication.translate("MainWindow", "FS2", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("MainWindow", "Select mods to install them or deselect them to uninstall them. Click on a mod\'s name to get more information about it.", None, QtGui.QApplication.UnicodeUTF8))
         self.modTree.setSortingEnabled(True)
         self.modTree.headerItem().setText(0, QtGui.QApplication.translate("MainWindow", "Name", None, QtGui.QApplication.UnicodeUTF8))
@@ -141,28 +147,38 @@ class Ui_MainWindow(object):
         self.update.setText(QtGui.QApplication.translate("MainWindow", "Update List", None, QtGui.QApplication.UnicodeUTF8))
         self.reset_sel.setText(QtGui.QApplication.translate("MainWindow", "Reset Selection", None, QtGui.QApplication.UnicodeUTF8))
         self.apply_sel.setText(QtGui.QApplication.translate("MainWindow", "Install/Uninstall", None, QtGui.QApplication.UnicodeUTF8))
-        self.tabs.setTabText(self.tabs.indexOf(self.mods), QtGui.QApplication.translate("MainWindow", "Mods", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabs.setTabText(self.tabs.indexOf(self.mods), QtGui.QApplication.translate("MainWindow", "Mod Tree", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabs.setTabText(self.tabs.indexOf(self.modweb), QtGui.QApplication.translate("MainWindow", "Mod List", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabs.setTabText(self.tabs.indexOf(self.fsoSettings), QtGui.QApplication.translate("MainWindow", "FSO Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Mod Sources:", None, QtGui.QApplication.UnicodeUTF8))
         self.addSource.setText(QtGui.QApplication.translate("MainWindow", "Add", None, QtGui.QApplication.UnicodeUTF8))
         self.editSource.setText(QtGui.QApplication.translate("MainWindow", "Edit", None, QtGui.QApplication.UnicodeUTF8))
         self.removeSource.setText(QtGui.QApplication.translate("MainWindow", "Remove", None, QtGui.QApplication.UnicodeUTF8))
-        self.schemeHandler.setText(QtGui.QApplication.translate("MainWindow", "Install as handler for fs2:// links", None, QtGui.QApplication.UnicodeUTF8))
         self.enforceDeps.setText(QtGui.QApplication.translate("MainWindow", "Enforce dependencies", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_3.setText(QtGui.QApplication.translate("MainWindow", "Parallel downloads:", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_4.setText(QtGui.QApplication.translate("MainWindow", "UI Mode:", None, QtGui.QApplication.UnicodeUTF8))
+        self.uiMode.setItemText(0, QtGui.QApplication.translate("MainWindow", "Traditional", None, QtGui.QApplication.UnicodeUTF8))
+        self.uiMode.setItemText(1, QtGui.QApplication.translate("MainWindow", "Nebula", None, QtGui.QApplication.UnicodeUTF8))
+        self.schemeHandler.setText(QtGui.QApplication.translate("MainWindow", "Install as handler for fso:// links", None, QtGui.QApplication.UnicodeUTF8))
+        self.gogextractButton.setText(QtGui.QApplication.translate("MainWindow", "Install FS2 from GoG", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.settings), QtGui.QApplication.translate("MainWindow", "Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.aboutLabel.setText(QtGui.QApplication.translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
 "</style></head><body style=\" font-family:\'Sans Serif\'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Idea and implementation in Bash by Hellzed.</p>\n"
-"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Port to Python by ngld.</p>\n"
-"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">For feedback and updates go to:<br /><a href=\"http://www.hard-light.net/forums/index.php?topic=86364\"><span style=\" text-decoration: underline; color:#0000ff;\">http://www.hard-light.net/forums/index.php?topic=86364</span></a> (for now)</p>\n"
+"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Idea and prototype by Hellzed.</p>\n"
+"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Rewrite in Python by ngld.</p>\n"
+"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">For feedback and updates go to:<br /><a href=\"http://www.hard-light.net/forums/index.php?topic=86364\"><span style=\" text-decoration: underline; color:#0000ff;\">http://www.hard-light.net/forums/index.php?topic=86364</span></a></p>\n"
 "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">The code is available at:<br /><a href=\"https://github.com/ngld/fs2mod-py\"><span style=\" text-decoration: underline; color:#0000ff;\">https://github.com/ngld/fs2mod-py</span></a><br /></p>\n"
 "<p style=\"-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p>\n"
 "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Dependencies:</p>\n"
 "<ul style=\"margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;\"><li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"http://python.org\"><span style=\" text-decoration: underline; color:#0000ff;\">Python</span></a> (2 or 3)</li>\n"
 "<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"http://qt-project.org/wiki/Category:LanguageBindings::PySide\"><span style=\" text-decoration: underline; color:#0000ff;\">PySide</span></a> or <a href=\"http://riverbankcomputing.co.uk/software/pyqt/intro\"><span style=\" text-decoration: underline; color:#0000ff;\">PyQt4</span></a></li>\n"
-"<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"http://www.7-zip.org/\"><span style=\" text-decoration: underline; color:#0000ff;\">7zip</span></a> (to extract downloaded archives)</li></ul>\n"
+"<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"http://www.7-zip.org/\"><span style=\" text-decoration: underline; color:#0000ff;\">7zip</span></a> (to extract downloaded archives)</li>\n"
+"<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"https://github.com/workhorsy/py-cpuinfo\"><span style=\" text-decoration: underline; color:#0000ff;\">py-cpuinfo</span></a></li>\n"
+"<li style=\" text-decoration: underline; color:#0000ff;\" style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"https://pypi.python.org/pypi/semantic_version\">semantic_version</a></li></ul>\n"
 "<p style=\"-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p>\n"
 "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">This tool also uses <a href=\"http://constexpr.org/innoextract/\"><span style=\" text-decoration: underline; color:#0000ff;\">InnoExtract</span></a> to unpack the GOG installer.</p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.tab), QtGui.QApplication.translate("MainWindow", "About", None, QtGui.QApplication.UnicodeUTF8))
 
+from lib.qt import QtWebKit

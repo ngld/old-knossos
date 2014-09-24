@@ -1,0 +1,360 @@
+/* Repo configuration */
+// Created by ngld, m!m and Hellzed
+// Most of this is similar to Goober's text files (http://www.hard-light.net/wiki/index.php/FSO_Installer_Text_Files)
+
+{
+    "mods": [
+        {
+            "id": "...", // required, internal *unique* identifier, should be URL friendly, never shown to the user
+            "title": "...", // required, a UTF-8 compatible string, displayed to the user
+            "version": "...", // required, http://semver.org/
+            "description": "...", // optional, should match the mod.ini's description
+            "logo": "<path to image>", // optional, default: null, will be extracted from the archive if null
+            "notes": "...", // optional, these will be displayed during the installation.
+            "folder": "<mod folder>", // optional, This folder will be created in the FS2 directory. default: mod title
+            "submods": ["<ID1>", "..."], // optional
+            "packages": [ // optional
+                {
+                    "name": "...", // required
+                    "notes": "...", // optional
+                    /*
+                        optional, default: "recommended"
+                        A feature can be:
+                        - "required" (always installed with the mod, in fact these are the base files of the mod),
+                        - "recommended" (automatically selected for installation, but the user can skip them),
+                        - "optional" (not automatically selected, but user can add them during the install process)
+                    */
+                    "status": "<required|recommended|optional>",
+                    "dependencies": [ // optional
+                        {
+                            "id": "<mod ID>", // required
+                            "version": "1.2.*", // required, https://getcomposer.org/doc/01-basic-usage.md#package-versions
+                            "packages": [] // optional, specifies which optional and recommended packages are also required
+                        },
+                        ...
+                    ],
+                    "environment": [ // optional
+                        {
+                            "type": "cpu_feature", // required
+                            "value": "<SSE|SSE2|AVX|...>" // required
+                        },
+                        {
+                            "type": "os", // required
+                            "value": "<windows|linux|macos>" // required
+                        },
+                        ...
+                    ],
+                    "files": [ // optional
+                        /* You can use this syntax ...
+                            [
+                                [ // required
+                                    "<link1>",
+                                    "..."
+                                ],
+                                {
+                                    "<filename>": {
+                                        "is_archive": true, // optional, default: true
+                                        "dest": "<destination path>" // optional, default: "", relative to the mod folder 
+                                    }
+                                }
+                            ],
+                            ...
+                        /* ... or this one: */
+                            {
+                                "filename": "<filename>", // required
+                                "is_archive": true, // optional, default: true
+                                "dest": "<destination path>", // optional, default: "", relative to the mod folder 
+                                "urls": ["<url1>", "<url2>"] // required
+                            },
+                            ...
+                        /* . */
+                    ]
+                },
+                ...
+            ],
+            "actions": [ // optional
+                {
+                    "type": "delete", // required
+                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
+                    "glob": true // optional, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                },
+                {
+                    "type": "move", // required
+                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
+                    "dest": "<path>", // required, specifies the destination relative to the mod folder
+                    "glob": true // optional, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                }
+                ...
+            ]
+        },
+        ...
+    ],
+    "includes": [ // optional, These will be processed when generating repo files and should be relative paths.
+        "<repo file 1>",
+        "..."
+    ],
+    "remote_includes": [ // optional, These will be kept and should be full URLs.
+        "<URL1>",
+        "..."
+    ]
+}
+
+/* generated repo files */
+{
+    "generated": "<time of generation>",
+    "includes": ["<URL1>", "..."],
+    "mods": [
+        {
+            /* All of the above */
+            "packages": [
+                {
+                    /* All of the above */
+                    "files": [
+                        {
+                            "filename": "<filename>",
+                            "is_archive": true,
+                            "dest": "<destination path>",
+                            "md5sum": "<checksum>",
+                            "urls": ["<URL1>", "<URL2>"], // The URLs are full URLs (they contain the filename).
+
+                            /* if is_archive */
+                                "contents": {
+                                    "<filename>": "<checksum>"
+                                }
+                            /* endif */
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+/* Example repo configuration */
+{
+    "includes": [],
+    "mods": [
+        {
+            "id": "FSO",
+            "title": "FreeSpace Open",
+            "version": "3.7.0",
+            "logo": null,
+            "description": "Recent builds of FreeSpace Open (the engine)",
+            "notes": ""
+            "submods": [],
+            "actions": [],
+            "packages": [
+                {
+                    "name": "Windows SSE",
+                    "notes": Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
+                    "status": "required",
+                    "dependencies": [],
+                    "environment": [
+                        {
+                            "type": "os",
+                            "os": "windows"
+                        },
+                        {
+                            "type": "cpu_feature",
+                            "feature": "SSE"
+                        }
+                    ],
+                    "files": [
+                        [
+                            [
+                                "http://swc.fs2downloads.com/builds/WIN/",
+                                "http://scp.fsmods.net/builds/WIN/",
+                                "http://scp.indiegames.us/builds/WIN/"
+                            ],
+                            {
+                                "fs2_open_3_7_0_SSE.zip": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ],
+                        [
+                            [
+                                "http://swc.fs2downloads.com/files/",
+                                "http://scp.fsmods.net/builds/",
+                                "http://scp.indiegames.us/builds/"
+                            ],
+                            {
+                                "Launcher55g.zip": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "name": "Windows SSE2",
+                    "notes": Windows builds for FreeSpace 2 Open, compiled with SSE2 optimizations.",
+                    "status": "required",
+                    "dependencies": [],
+                    "environment": [
+                        {
+                            "type": "os",
+                            "os": "windows"
+                        },
+                        {
+                            "type": "cpu_feature",
+                            "feature": "SSE2"
+                        }
+                    ],
+                    "files": [
+                        [
+                            [
+                                "http://swc.fs2downloads.com/builds/WIN/",
+                                "http://scp.fsmods.net/builds/WIN/",
+                                "http://scp.indiegames.us/builds/WIN/"
+                            ],
+                            {
+                                "fs2_open_3_7_0_SSE2.zip": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ],
+                        [
+                            [
+                                "http://swc.fs2downloads.com/files/",
+                                "http://scp.fsmods.net/builds/",
+                                "http://scp.indiegames.us/builds/"
+                            ],
+                            {
+                                "Launcher55g.zip": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "name": "Linux",
+                    "notes": Linux builds for FreeSpace 2 Open.",
+                    "status": "required",
+                    "dependencies": [],
+                    "environment": [
+                        {
+                            "type": "os",
+                            "os": "linux"
+                        }
+                    ],
+                    "files": [
+                        [
+                            [
+                                "http://swc.fs2downloads.com/builds/LIN/",
+                                "http://scp.fsmods.net/builds/LIN/",
+                                "http://scp.indiegames.us/builds/LIN/"
+                            ],
+                            {
+                                "fs2_open_3_7_0.tar.gz": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "name": "Common files",
+                    "notes": "",
+                    "status": "required",
+                    "dependencies": [],
+                    "environment": [],
+                    "files": [
+                        [
+                            [
+                                "http://www.fsoinstaller.com/files/installer/java/"
+                            ],
+                            {
+                                "FS2.bmp": {
+                                    "is_archive": false,
+                                    "dest": ""
+                                },
+                                "mod.ini": {
+                                    "is_archive": false,
+                                    "dest": ""
+                                }
+                            }
+                        ],
+                        [
+                            [
+                                "http://scp.indiegames.us/builds/"
+                            ],
+                            {
+                                "scptrackir.zip": {
+                                    "is_archive": true,
+                                    "dest": ""
+                                }
+                            }
+                        ]
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+/* Example generated configuration */
+{
+    "generated": "1409169192",
+    "mods": [
+        {
+            "id": "FSO",
+            "title": "FreeSpace Open",
+            "version": "3.7.0",
+            "logo": null,
+            "description": "Recent builds of FreeSpace Open (the engine)",
+            "notes": ""
+            "submods": [],
+            "actions": [],
+            "packages": [
+                {
+                    "name": "Windows SSE",
+                    "notes": Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
+                    "status": "required",
+                    "dependencies": [],
+                    "environment": [
+                        {
+                            "type": "os",
+                            "os": "windows"
+                        },
+                        {
+                            "type": "cpu_feature",
+                            "feature": "SSE"
+                        }
+                    ],
+                    "files": [
+                        {
+                            "filename": "fs2_open_3_7_0_SSE.zip",
+                            "is_archive": true,
+                            "dest": "",
+                            "md5sum": "66ded59be0187cb057a5b77a341f625f",
+                            "urls": [
+                                "http://swc.fs2downloads.com/builds/WIN/fs2_open_3_7_0_SSE.zip",
+                                "http://scp.fsmods.net/builds/WIN/fs2_open_3_7_0_SSE.zip",
+                                "http://scp.indiegames.us/builds/WIN/fs2_open_3_7_0_SSE.zip"
+                            ],
+                            "contents": {
+                                "fred2_open_3_7_0_SSE-DEBUG.exe": "df9b8b05bca52a41a02543d96f7801e8",
+                                "fred2_open_3_7_0_SSE-DEBUG.map": "a883fb1ac82e508b16b02c78e3b90c47",
+                                "fred2_open_3_7_0_SSE-DEBUG.pdb": "756ab728cec24511073f8d3b33b4e38b",
+                                "fred2_open_3_7_0_SSE.exe": "55e5b03e8acab2196670f6ba58947833",
+                                "fs2_open_3_7_0_SSE-DEBUG.exe": "d29eff2072aac561db7e742c6315d0cb",
+                                "fs2_open_3_7_0_SSE-DEBUG.map": "cf0a580b48e6aec0f2778f85c1a8dae5",
+                                "fs2_open_3_7_0_SSE-DEBUG.pdb": "af61483a93b74ac8374ed6213dca783a",
+                                "fs2_open_3_7_0_SSE.exe": "ca0bea2411f1963c726e43d85e14be90"
+                            }
+                        },
+                        ...
+                    ]
+                },
+                ...
+            ]
+        }
+    ]
+}

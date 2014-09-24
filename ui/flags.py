@@ -2,12 +2,12 @@
 
 # Form implementation generated from reading ui file 'flags.ui'
 #
-# Created: Sat Mar  8 03:06:23 2014
-#      by: pyside-uic 0.2.15 running on PySide 1.2.1
+# Created: Tue Sep 23 22:16:20 2014
+#      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
 
-from qt import QtCore, QtGui
+from lib.qt import QtCore, QtGui
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
@@ -59,16 +59,20 @@ class Ui_Dialog(object):
         self.flagList.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
         self.flagList.setObjectName("flagList")
         self.verticalLayout.addWidget(self.flagList)
-        self.buttonBox = QtGui.QDialogButtonBox(Dialog)
-        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QtGui.QDialogButtonBox.Cancel|QtGui.QDialogButtonBox.Ok)
-        self.buttonBox.setCenterButtons(True)
-        self.buttonBox.setObjectName("buttonBox")
-        self.verticalLayout.addWidget(self.buttonBox)
+        self.horizontalLayout = QtGui.QHBoxLayout()
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.okButton = QtGui.QPushButton(Dialog)
+        self.okButton.setObjectName("okButton")
+        self.horizontalLayout.addWidget(self.okButton)
+        self.defaultsButton = QtGui.QPushButton(Dialog)
+        self.defaultsButton.setObjectName("defaultsButton")
+        self.horizontalLayout.addWidget(self.defaultsButton)
+        self.cancelButton = QtGui.QPushButton(Dialog)
+        self.cancelButton.setObjectName("cancelButton")
+        self.horizontalLayout.addWidget(self.cancelButton)
+        self.verticalLayout.addLayout(self.horizontalLayout)
 
         self.retranslateUi(Dialog)
-        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("accepted()"), Dialog.accept)
-        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("rejected()"), Dialog.reject)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
@@ -77,4 +81,7 @@ class Ui_Dialog(object):
         self.label_2.setText(QtGui.QApplication.translate("Dialog", "Easy Setup", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("Dialog", "Custom Flags", None, QtGui.QApplication.UnicodeUTF8))
         self.label_4.setText(QtGui.QApplication.translate("Dialog", "List Type", None, QtGui.QApplication.UnicodeUTF8))
+        self.okButton.setText(QtGui.QApplication.translate("Dialog", "OK", None, QtGui.QApplication.UnicodeUTF8))
+        self.defaultsButton.setText(QtGui.QApplication.translate("Dialog", "Use Defaults", None, QtGui.QApplication.UnicodeUTF8))
+        self.cancelButton.setText(QtGui.QApplication.translate("Dialog", "Cancel", None, QtGui.QApplication.UnicodeUTF8))
 

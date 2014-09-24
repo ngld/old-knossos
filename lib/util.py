@@ -18,12 +18,23 @@ import logging
 import shutil
 import subprocess
 import struct
+import hashlib
 import six
-import progress
+import tempfile
+import re
+import time
+import json
 from six.moves.urllib.request import urlopen, Request
+from six.moves.urllib.error import HTTPError, URLError
 from collections import OrderedDict
-from qt import QtCore, QtGui
+from threading import Condition
 
+from lib.qt import QtCore, QtGui
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 SEVEN_PATH = '7z'
 # Copied from http://sourceforge.net/p/sevenzipjbind/code/ci/master/tree/jbinding-java/src/net/sf/sevenzipjbinding/ArchiveFormat.java
@@ -32,6 +43,9 @@ ARCHIVE_FORMATS = ('zip', 'tar', 'split', 'rar', 'lzma', 'iso', 'hfs', 'gzip', '
                    'cpio', 'bzip2', 'bz2', '7z', 'z', 'arj', 'cab', 'lzh', 'chm',
                    'nsis', 'deb', 'rpm', 'udf', 'wim', 'xar')
 QUIET = False
+HASH_CACHE = dict()
+_HAS_CONVERT = None
+DL_POOL = None
 
 
 class QDialog(QtGui.QDialog):
@@ -97,6 +111,67 @@ class FlagsReader(object):
             self.flags[flag['type']].append(flag)
 
 
+class ResizableSemaphore(object):
+    _capacity = 0
+    _free = 0
+    _cond = None
+
+    def __init__(self, cap):
+        self._capacity = cap
+        self._free = cap
+        self._cond = Condition()
+
+    def acquire(self, blocking=True, timeout=None):
+        if not blocking and timeout is not None:
+            raise ValueError("can't specify timeout for non-blocking acquire")
+
+        rc = False
+        endtime = None
+        with self._cond:
+            while self._free < 1:
+                if not blocking:
+                    break
+                if timeout is not None:
+                    if endtime is None:
+                        endtime = time.time() + timeout
+                    else:
+                        timeout = endtime - time.time()
+                        if timeout <= 0:
+                            break
+                self._cond.wait(timeout)
+            else:
+                self._free -= 1
+                rc = True
+        return rc
+
+    def release(self):
+        with self._cond:
+            if self._free >= self._capacity:
+                raise ValueError('Semaphore released too many times')
+
+            self._free += 1
+            if self._free > 0:
+                self._cond.notify()
+
+    __enter__ = acquire
+
+    def __exit__(self, t, v, tb):
+        self.release()
+
+    def get_capacity(self):
+        return self._capacity
+
+    def set_capacity(self, cap):
+        diff = cap - self._capacity
+        with self._cond:
+            self._capacity = cap
+            self._free += diff
+
+            self._cond.notify_all()
+
+        logging.debug('Capacity set to %d, was %d. I now have %d free slots.', self._capacity, self._capacity - diff, self._free)
+
+
 def call(*args, **kwargs):
     if sys.platform.startswith('win'):
         # Provide the called program with proper I/O on Windows.
@@ -114,14 +189,39 @@ def call(*args, **kwargs):
         si.wShowWindow = subprocess.SW_HIDE
         
         kwargs['startupinfo'] = si
-    
+
+    logging.debug('Running %s', args[0])
     return subprocess.call(*args, **kwargs)
 
 
-def get(link):
+def check_output(*args, **kwargs):
+    if sys.platform.startswith('win'):
+        # Provide the called program with proper I/O on Windows.
+        if 'stdin' not in kwargs:
+            kwargs['stdin'] = subprocess.DEVNULL
+        
+        if 'stderr' not in kwargs:
+            kwargs['stderr'] = subprocess.DEVNULL
+        
+        si = subprocess.STARTUPINFO()
+        si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = subprocess.SW_HIDE
+        
+        kwargs['startupinfo'] = si
+
+    logging.debug('Running %s', args[0])
+    return subprocess.check_output(*args, **kwargs)
+
+
+def get(link, headers=None):
+    if headers is None:
+        headers = {}
+    
+    headers['User-Agent'] = 'curl/7.22.0'
+    logging.info('Retrieving "%s"...', link)
+
     try:
-        logging.info('Retrieving "%s"...', link)
-        result = urlopen(Request(link, headers={'User-Agent': 'curl/7.22.0'}))
+        result = urlopen(Request(link, headers=headers))
         if six.PY2:
             code = result.getcode()
         else:
@@ -136,55 +236,90 @@ def get(link):
                 return get(result.getheader('Location'))
         else:
             return None
-    except:
+    except KeyboardInterrupt:
+        raise
+    except HTTPError as exc:
+        if exc.code == 304:
+            return 304
+
+        logging.exception('Failed to load "%s"!', link)
+    except URLError:
         logging.exception('Failed to load "%s"!', link)
 
     return None
 
 
-def download(link, dest):
-    try:
-        logging.info('Downloading "%s"...', link)
-        result = urlopen(Request(link, headers={'User-Agent': 'curl/7.22.0'}))
-        if six.PY2:
-            if result.getcode() in (301, 302):
-                return download(result.info()['Location'], dest)
-            elif result.getcode() != 200:
-                logging.error('Download of "%s" failed with code %d!', link, result.getcode())
-                return False
-            
-            try:
-                size = float(result.info()['Content-Length'])
-            except:
-                logging.exception('Failed to parse Content-Length header!')
-                size = 1024 ** 4  # = 1 TB
-        else:
-            if result.status in (301, 302):
-                return download(result.getheader('Location'), dest)
-            elif result.status != 200:
-                logging.error('Download of "%s" failed with code %d!', link, result.status)
-                return False
-            
-            try:
-                size = float(result.getheader('Content-Length'))
-            except:
-                logging.exception('Failed to parse Content-Length header!')
-                size = 1024 ** 4  # = 1 TB
+def download(link, dest, headers=None):
+    # NOTE: We have to import progress here to avoid a dependency cycle.
+    from . import progress
 
-        start = dest.tell()
-        while True:
-            chunk = result.read(50 * 1024)  # Read 50KB chunks
-            if not chunk:
-                break
+    if headers is None:
+        headers = {}
 
-            dest.write(chunk)
+    headers['User-Agent'] = 'curl/7.22.0'
+    logging.info('Downloading "%s"...', link)
 
-            progress.update((dest.tell() - start) / size, '%s: %d%%' % (os.path.basename(link), 100 * (dest.tell() - start) / size))
-    except:
-        logging.exception('Failed to load "%s"!', link)
-        return False
+    with DL_POOL:
+        try:
+            result = urlopen(Request(link, headers=headers))
+            if six.PY2:
+                if result.getcode() in (301, 302):
+                    return download(result.info()['Location'], dest)
+                elif result.getcode() != 200:
+                    logging.error('Download of "%s" failed with code %d!', link, result.getcode())
+                    return False
+                
+                try:
+                    size = float(result.info()['Content-Length'])
+                except:
+                    logging.exception('Failed to parse Content-Length header!')
+                    size = 1024 ** 4  # = 1 TB
+            else:
+                if result.status in (301, 302):
+                    return download(result.getheader('Location'), dest)
+                elif result.status != 200:
+                    logging.error('Download of "%s" failed with code %d!', link, result.status)
+                    return False
+                
+                try:
+                    size = float(result.getheader('Content-Length'))
+                except:
+                    logging.exception('Failed to parse Content-Length header!')
+                    size = 1024 ** 4  # = 1 TB
+
+            start = dest.tell()
+            while True:
+                chunk = result.read(50 * 1024)  # Read 50KB chunks
+                if not chunk:
+                    break
+
+                dest.write(chunk)
+
+                # TODO: Add time estimate
+                progress.update((dest.tell() - start) / size, '%s' % (os.path.basename(link)))
+        except KeyboardInterrupt:
+            raise
+        except HTTPError as exc:
+            if exc.code == 304:
+                # 304 Not Modified
+                return 304
+
+            logging.exception('Failed to load "%s"!', link)
+            return False
+        except URLError:
+            logging.exception('Failed to load "%s"!', link)
+            return False
 
     return True
+
+
+# Tries all passed links until one succeeds.
+def try_download(links, dest):
+    for url in links:
+        if download(url, dest):
+            return True
+    
+    return False
 
 
 # This function will move the contents of src inside dest so that src/a/r/z.dat ends up as dest/a/r/z.dat.
@@ -255,6 +390,7 @@ def ipath(path):
     return path
 
 
+# TODO: Shouldn't we also handle ./ and ../ here ?
 def pjoin(*args):
     path = ''
     for arg in args:
@@ -266,6 +402,55 @@ def pjoin(*args):
             path += '/' + arg
     
     return path
+
+
+def url_join(a, b):
+    if re.match(r'[a-z|A-Z]+://.*', b):
+        # A full URL
+        return b
+
+    if b == '':
+        # Umm....
+        return a
+
+    if b[0] == '/':
+        if len(b) > 1 and b[1] == '/':
+            # The second part begins with // which means we have to grab a's protocol.
+            proto = a[:a.find(':')]
+            return proto + ':' + b
+
+        # An absolute path
+        info = re.match(r'([a-z|A-Z]+://[^/]+).*')
+        return info.group(1) + b
+
+    return pjoin(a, b)
+
+
+def gen_hash(path, algo='md5'):
+    global HASH_CACHE
+    
+    path = os.path.abspath(path)
+    info = os.stat(path)
+
+    if algo == 'md5' and path in HASH_CACHE:
+        chksum, mtime = HASH_CACHE[path]
+        if mtime == info.st_mtime:
+            return chksum
+    
+    h = hashlib.new(algo)
+    with open(path, 'rb') as stream:
+        while True:
+            chunk = stream.read(16 * h.block_size)
+            if not chunk:
+                break
+
+            h.update(chunk)
+
+    chksum = h.hexdigest()
+    if algo == 'md5':
+        HASH_CACHE[path] = (chksum, info.st_mtime)
+    
+    return chksum
 
 
 def test_7z():
@@ -289,7 +474,7 @@ def is_archive(path):
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
     if '.tar.' in archive and not _rec:
         # This is a file like whatever.tar.gz. We have to call 7z two times for this kind of file:
-        # First to get whatever.tar and second to extract that tar archive.
+        # First to get whatever.tar and a second time to extract that tar archive.
         
         if not extract_archive(archive, os.path.dirname(archive), True, None, True):
             return False
@@ -319,6 +504,33 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
         return call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
     else:
         return call(cmd) == 0
+
+
+def convert_img(path, outfmt):
+    global _HAS_CONVERT
+
+    fd, dest = tempfile.mkstemp('.' + outfmt)
+    os.close(fd)
+    if Image is not None:
+        img = Image.open(path)
+        img.save(dest)
+        
+        return dest
+    else:
+        if _HAS_CONVERT is None:
+            try:
+                subprocess.check_call(['which', 'convert'], stdout=subprocess.DEVNULL)
+                _HAS_CONVERT = True
+            except subprocess.CalledProcessError:
+                # Well, this failed, too. Is there any other way to convert an image?
+                # For now I'll just abort.
+                _HAS_CONVERT = False
+                return None
+        elif _HAS_CONVERT is False:
+            return None
+        
+        subprocess.check_call(['convert', path, dest])
+        return dest
 
 
 def init_ui(ui, win):
@@ -375,3 +587,38 @@ def is_number(s):
         return True
     except TypeError:
         return False
+
+
+def merge_dicts(a, b):
+    for k, v in b.items():
+        if k in a and isinstance(v, dict) and isinstance(a[k], dict):
+            merge_dicts(a[k], v)
+        else:
+            a[k] = v
+
+    return a
+
+
+def get_cpuinfo():
+    from launcher import launch_cmd
+
+    # Try the cpuid method first but do so in a seperate process in case it segfaults.
+    try:
+        info = check_output(launch_cmd(['--cpuinfo']))
+        info = json.loads(info.decode('utf8', 'replace').strip())
+    except subprocess.CalledProcessError:
+        info = None
+        logging.exception('The CPUID method failed!')
+    except:
+        info = None
+        logging.exception('Failed to process my CPUID output.')
+
+    if info is None:
+        from third_party import cpuinfo
+
+        info = cpuinfo.get_cpu_info()
+
+    return info
+
+
+DL_POOL = ResizableSemaphore(10)

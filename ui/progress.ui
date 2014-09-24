@@ -19,6 +19,9 @@
   <property name="windowTitle">
    <string>Working...</string>
   </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="label">
@@ -55,6 +58,13 @@
         </size>
        </property>
       </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="hideButton">
+       <property name="text">
+        <string>Hide</string>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="abortButton">
