@@ -1,4 +1,5 @@
-## Copyright 2014 ngld <ngld@tproxy.de>
+#!/usr/bin/python
+## Copyright 2014 fs2mod-py authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
