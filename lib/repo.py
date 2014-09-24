@@ -245,7 +245,7 @@ class Mod(object):
         self.mid = values['id']
         self.title = values['title']
         self.version = semantic_version.Version(values['version'], partial=True)
-        self.folder = values.get('folder', '')
+        self.folder = values.get('folder', '').strip('/')  # make sure we have a relative path
         self.logo = values.get('logo', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
@@ -257,6 +257,14 @@ class Mod(object):
             pkg = Package(pkg, self)
             if pkg.check_env():
                 self.packages.append(pkg)
+
+        # Enforce relative paths
+        for act in self.actions:
+            if 'paths' in act:
+                act['paths'] = [p.lstrip('/') for p in act['paths']]
+
+            if 'dest' in act:
+                act['dest'] = act['dest'].lstrip('/')
 
     def get(self):
         return {
@@ -335,9 +343,11 @@ class Package(object):
             self.files = _files
             for name, item in _files.items():
                 item['filename'] = name
+                item['dest'] = item.get('dest', '').strip('/')  # make sure this is a relative path
 
         elif isinstance(_files, list):
             for item in _files:
+                item['dest'] = item.get('dest', '').strip('/')  # make sure this is a relative path
                 self.files[item['filename']] = item
         else:
             logging.warning('"%s"\'s file list has an unknown type.', self.name)

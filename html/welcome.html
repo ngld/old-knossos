@@ -31,38 +31,47 @@
                     or I could <a class="btn btn-default" id="gog-install">install FS2 using the GOG installer</a>.
                 </p>
             </div>
+            <div id="mod-list">
+            </div>
         </div>
         <script type="text/javascript">
             function list_mods() {
                 if(!fs2mod.isFs2PathSet()) return;
                 $('#install-note').hide();
 
-                $('table').remove();
+                var mod_list = $('#mod-list').empty();
+                var table = $('<table class="table">');
+                var mods = fs2mod.getInstalledMods();
 
-                var table = $('<table class="table">').appendTo('body');
-                $.each(fs2mod.getInstalledMods(), function (i, mod) {
-                    var row = $('<tr>');
+                if(mods.length > 0) {
+                    $.each(mods, function (i, mod) {
+                        var row = $('<tr>');
 
-                    var title = $('<td>').appendTo(row);
-                    if(mod.logo) {
-                        title.append($('<img class="mod-logo">').attr('src', 'fsrs:///' + mod.logo));
-                        title.append('&nbsp;')
-                    }
-                    title.append($('<span>').text(mod.title));
+                        var title = $('<td>').appendTo(row);
+                        if(mod.logo) {
+                            title.append($('<img class="mod-logo">').attr('src', 'fsrs:///' + mod.logo));
+                            title.append('&nbsp;')
+                        }
+                        title.append($('<span>').text(mod.title));
 
-                    var actions = $('<div class="mod-actions">');
-                    actions.append($('<a href="#">Launch</a>').click(function (e) {
-                        e.preventDefault();
-                        fs2mod.runMod(mod.id);
-                    }));
-                    actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
-                        e.preventDefault();
-                        fs2mod.showSettings(mod.id);
-                    }));
+                        var actions = $('<div class="mod-actions">');
+                        actions.append($('<a href="#">Launch</a>').click(function (e) {
+                            e.preventDefault();
+                            fs2mod.runMod(mod.id);
+                        }));
+                        actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
+                            e.preventDefault();
+                            fs2mod.showSettings(mod.id);
+                        }));
 
-                    row.append($('<td>').append(actions));
-                    table.append(row);
-                });
+                        row.append($('<td>').append(actions));
+                        table.append(row);
+                    });
+
+                    mod_list.html(table);
+                } else {
+                    mod_list.html('No mods found!');
+                }
             }
 
             $(function () {

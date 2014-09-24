@@ -240,7 +240,7 @@ class CheckTask(progress.Task):
         manager.signals.repo_updated.emit()
 
 
-# TODO: Optimize
+# TODO: Optimize, make sure all paths are relative (no mod should be able to install to C:\evil)
 class InstallTask(progress.MultistepTask):
     _pkgs = None
     _steps = 3
@@ -390,6 +390,7 @@ class InstallTask(progress.MultistepTask):
         manager.signals.repo_updated.emit()
 
 
+# TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
 class UninstallTask(progress.Task):
     _pkgs = None
 
