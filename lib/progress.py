@@ -253,7 +253,7 @@ class Task(QtCore.QObject):
             self._progress[threading.get_ident()] = (1, 'Done')
             self._running -= 1
             running = self._running
-        
+
         if running == 0 and not self._has_work():
             self._done.set()
             self.done.emit()
@@ -284,6 +284,8 @@ class Task(QtCore.QObject):
         with self._work_lock:
             self._work = []
             self.aborted = True
+
+        self._master.check_tasks()
     
     def get_progress(self):
         with self._progress_lock:
@@ -340,7 +342,7 @@ class MultistepTask(Task):
         self._steps = steps
 
     def _has_work(self):
-        return not self._sdone
+        return not self._sdone and not self.aborted
 
     def _get_work(self):
         with self._work_lock:

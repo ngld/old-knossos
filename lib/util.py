@@ -27,7 +27,7 @@ import json
 from six.moves.urllib.request import urlopen, Request
 from six.moves.urllib.error import HTTPError, URLError
 from collections import OrderedDict
-from threading import Condition
+from threading import Condition, Event
 
 from lib.qt import QtCore, QtGui
 
@@ -46,6 +46,8 @@ QUIET = False
 HASH_CACHE = dict()
 _HAS_CONVERT = None
 DL_POOL = None
+_DL_CANCEL = Event()
+_DL_CANCEL.clear()
 
 
 class QDialog(QtGui.QDialog):
@@ -169,7 +171,11 @@ class ResizableSemaphore(object):
 
             self._cond.notify_all()
 
-        logging.debug('Capacity set to %d, was %d. I now have %d free slots.', self._capacity, self._capacity - diff, self._free)
+        #logging.debug('Capacity set to %d, was %d. I now have %d free slots.', self._capacity, self._capacity - diff, self._free)
+    
+    def get_consumed(self):
+        with self._cond:
+            return self._capacity - self._free
 
 
 def call(*args, **kwargs):
@@ -250,6 +256,8 @@ def get(link, headers=None):
 
 
 def download(link, dest, headers=None):
+    global _DL_CANCEL, DL_POOL
+
     # NOTE: We have to import progress here to avoid a dependency cycle.
     from . import progress
 
@@ -288,7 +296,7 @@ def download(link, dest, headers=None):
                     size = 1024 ** 4  # = 1 TB
 
             start = dest.tell()
-            while True:
+            while not _DL_CANCEL.is_set():
                 chunk = result.read(50 * 1024)  # Read 50KB chunks
                 if not chunk:
                     break
@@ -311,6 +319,17 @@ def download(link, dest, headers=None):
             return False
 
     return True
+
+
+def cancel_downloads():
+    global _DL_CANCEL, DL_POOL
+
+    _DL_CANCEL.set()
+    # Wait for the downloads to actually cancel.
+    while DL_POOL.get_consumed() > 0:
+        time.sleep(0.2)
+
+    _DL_CANCEL.clear()
 
 
 # Tries all passed links until one succeeds.

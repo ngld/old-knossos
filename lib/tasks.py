@@ -251,6 +251,11 @@ class InstallTask(progress.MultistepTask):
 
         progress.update(0, 'Installing mods...')
 
+    def abort(self):
+        super(InstallTask, self).abort()
+
+        util.cancel_downloads()
+
     def init1(self):
         mods = set()
         for pkg in self._pkgs:
@@ -312,6 +317,9 @@ class InstallTask(progress.MultistepTask):
 
                 with open(arpath, 'wb') as fobj:
                     util.try_download(info['urls'], fobj)
+
+                if self.aborted:
+                    return
 
                 if info['is_archive']:
                     progress.update(1, 'Extracting %s...' % fname)
