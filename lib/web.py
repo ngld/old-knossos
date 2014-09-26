@@ -24,16 +24,41 @@ import manager
 
 class WebBridge(QtCore.QObject):
 
-    # getVersion(): Returns fs2mod-py's version
-    # isFsoInstalled(): Returns true if fs2_open is installed and configured.
-    # getInstalledMods(): Returns a list of all installed mods (see the generated section of schema.txt)
-    # isInstalled(mid, spec?): Returns true if the given mod is installed. The parameters are the same as query()'s.
-    # query(mid, spec?): Allows the web page to query the local mod cache. The first parameter is the mod ID. The second parameter is optional and can specify a version requirement. (i.e. ">=3.0.*")
-    # fetchModlist(): Update the local mod cache.
-    # install(mid, spec?, pkgs?): Installs the given mod. The first two parameters are the same as query()'s. The third parameter is optional and contains the names of all packages which should be installed (defaults to all required).
-    # uninstall(mid, pkgs?): Uninstalls the given mod. The first parameter is the mod's ID. The second parameter should be used if only some packages should be uninstalled.
-    # runMod(mid): Launch fs2_open with the given mod selected.
-    # showSettings(mid?): Open the settings window for the given mod or fs2_open if no mid is given.
+    # getVersion(): str
+    #   Returns fs2mod-py's version
+    # isFsoInstalled(): bool
+    #   Returns true if fs2_open is installed and configured.
+    # isFs2PathSet(): bool
+    #   Returns true if the path to the FS2 directory is set.
+    # selectFs2path(): void
+    #   Prompts the user to select their FS2 directory.
+    # runGogInstaller(): void
+    #   Launches the GOGExtract wizard.
+    # getInstalledMods(): list of mod objects
+    #   Returns a list of all installed mods (see the generated section of schema.txt)
+    # isInstalled(mid, spec?): bool
+    #   Returns true if the given mod is installed. The parameters are the same as query()'s.
+    # query(mid, spec?): mod object
+    #   Allows the web page to query the local mod cache. The first parameter is the mod ID.
+    #   The second parameter is optional and can specify a version requirement. (i.e. ">=3.0.*")
+    #   If no matching mod is found, null is returned.
+    # fetchModlist(): void
+    #   Update the local mod cache.
+    # addRepo(name, link): void
+    #   Adds a new repository.
+    # getRepos(): list of [<name>, <link>]
+    #   Returns a list of all configured repositories.
+    # install(mid, spec?, pkgs?): int
+    #   Installs the given mod. The first two parameters are the same as query()'s.
+    #   The third parameter is optional and contains the names of all packages which should be installed (defaults to all required).
+    #   Returns -1 if the mod wasn't found, -2 if some of the given packages are missing, 0 if the install failed and 1 on success.
+    # uninstall(mid, pkgs?): bool
+    #   Uninstalls the given mod. The first parameter is the mod's ID. The second parameter should be used if only some packages should be uninstalled.
+    #   Returns true on success.
+    # runMod(mid): void
+    #   Launch fs2_open with the given mod selected.
+    # showSettings(mid?): void
+    #   Open the settings window for the given mod or fs2_open if no mid is given.
     
     repoUpdated = QtCore.Signal()
 
