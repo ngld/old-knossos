@@ -142,6 +142,7 @@ class MainWindow(Window):
         # Fix a weird display bug
         self.win.tabs.setCurrentIndex(2)
         self.win.tabs.setCurrentIndex(1)
+        self.win.webView.setMaximumSize(999999, 999999)
 
         self.check_fso()
         self.win.move(manager.app.desktop().screen().rect().center() - self.win.rect().center())
@@ -607,7 +608,10 @@ class NebulaWindow(Window):
         super(NebulaWindow, self)._del()
 
     def check_fso(self):
-        pass
+        self.support_win.check_fso()
+
+    def update_repo_list(self):
+        self.support_win.update_repo_list()
 
     def open_support(self):
         if self.support_win is None:

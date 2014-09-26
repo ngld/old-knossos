@@ -113,7 +113,7 @@ def uninstall_pkgs(pkgs, name=None, cb=None):
 #########
 
 
-def install_scheme_handler():
+def install_scheme_handler(interactive=True):
     logging.info('Installing scheme handler...')
 
     if hasattr(sys, 'frozen'):
@@ -139,7 +139,9 @@ def install_scheme_handler():
         settings.setFallbacksEnabled(False)
 
         if settings.value('shell/open/command/Default') != '"' + my_path + '" "%1"':
-            QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')
+            if interactive:
+                QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')
+
             return
         
     elif sys.platform.startswith('linux'):
@@ -176,7 +178,8 @@ MimeType=x-scheme-handler/fso;
             with open(mime_types_file, 'a') as output_file:
                 output_file.write(tpl_mime_type)
 
-    QtGui.QMessageBox.information(None, 'fs2mod-py', 'Done!')
+    if interactive:
+        QtGui.QMessageBox.information(None, 'fs2mod-py', 'Done!')
 
 
 def setup_ipc():

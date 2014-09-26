@@ -94,6 +94,19 @@ class WebBridge(QtCore.QObject):
     def fetchModlist():
         manager.fetch_list()
 
+    @QtCore.Slot(str, str)
+    def addRepo(self, repo_url, repo_name):
+        repos = manager.settings['repos']
+        repos.append((repo_url, repo_name))
+
+        manager.save_settings()
+        if manager.main_win is not None:
+            manager.main_win.update_repo_list()
+
+    @QtCore.Slot(result='QVariantList')
+    def getRepos(self):
+        return manager.settings['repos']
+
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)
     @QtCore.Slot(str, str, 'QStringList', result=int)

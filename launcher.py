@@ -168,6 +168,14 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         if sys.argv[1] == '--cpuinfo':
             get_cpu_info()
+        elif sys.argv[1] == '--install-scheme':
+            app = QtGui.QApplication([])
+
+            # We have to import manager first to solve a dependency problem. (lib.api imports lib.tasks which imports manager which in turn imports lib.api)
+            # /headdesk
+            import manager
+            from lib import api
+            api.install_scheme_handler('--slient' not in sys.argv)
         else:
             scheme_handler(sys.argv[1])
     elif ipc.server_exists():
