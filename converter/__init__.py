@@ -305,7 +305,7 @@ def main(args, prg_wrap=False):
                     files[name].update({
                         'filename': name,
                         'is_archive': info.get('is_archive', True),
-                        'dest': info.get('dest', '#'),
+                        'dest': info.get('dest', ''),
                         'urls': info['urls']
                     })
 
