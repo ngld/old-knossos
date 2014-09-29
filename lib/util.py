@@ -290,7 +290,7 @@ def download(link, dest, headers=None):
                     return False
                 
                 try:
-                    size = float(result.getheader('Content-Length'))
+                    size = float(result.getheader('Content-Length', 0))
                 except:
                     logging.exception('Failed to parse Content-Length header!')
                     size = 1024 ** 4  # = 1 TB
@@ -304,7 +304,11 @@ def download(link, dest, headers=None):
                 dest.write(chunk)
 
                 # TODO: Add time estimate
-                progress.update((dest.tell() - start) / size, '%s' % (os.path.basename(link)))
+                if size > 0:
+                    p = (dest.tell() - start) / size
+                else:
+                    p = 0
+                progress.update(p, '%s' % (os.path.basename(link)))
         except KeyboardInterrupt:
             raise
         except HTTPError as exc:

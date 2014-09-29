@@ -117,7 +117,7 @@ def read_file_list(l):
         return res
 
 
-def main(args):
+def main(args, prg_wrap=False):
     progress.reset()
     progress.set_callback(show_progress)
     
@@ -170,7 +170,11 @@ def main(args):
 
         if os.path.isfile(args.outfile):
             with open(args.outfile, 'r') as stream:
-                cache = json.load(stream)
+                stream.seek(0, os.SEEK_END)
+
+                if stream.tell() != 0:
+                    stream.seek(0)
+                    cache = json.load(stream)
 
             c_mods = {}
             for mod in cache['mods']:
@@ -219,7 +223,9 @@ def main(args):
         task.done.connect(finish)
         
         def core():
-            signal.signal(signal.SIGINT, lambda a, b: app.quit())
+            if prg_wrap is None:
+                signal.signal(signal.SIGINT, lambda a, b: app.quit())
+
             master.start_workers(5)
             master.add_task(task)
             app.exec_()
@@ -228,9 +234,12 @@ def main(args):
         logging.info('Updating checksums...')
 
         util.QUIET = True
-        out = StringIO()
-        progress.init_curses(core, out)
-        sys.stdout.write(out.getvalue())
+        if prg_wrap is not None:
+            prg_wrap(core)
+        else:
+            out = StringIO()
+            progress.init_curses(core, out)
+            sys.stdout.write(out.getvalue())
 
         logging.info('Saving data...')
 

@@ -153,6 +153,7 @@ class Master(object):
             w.join()
         
         self._workers = []
+        self._tasks = []
     
     def _get_work(self):
         while True:
