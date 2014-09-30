@@ -146,7 +146,7 @@
             "packages": [
                 {
                     "name": "Windows SSE",
-                    "notes": Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
+                    "notes": "Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
                     "status": "required",
                     "dependencies": [],
                     "environment": [
@@ -190,7 +190,7 @@
                 },
                 {
                     "name": "Windows SSE2",
-                    "notes": Windows builds for FreeSpace 2 Open, compiled with SSE2 optimizations.",
+                    "notes": "Windows builds for FreeSpace 2 Open, compiled with SSE2 optimizations.",
                     "status": "required",
                     "dependencies": [],
                     "environment": [
@@ -234,7 +234,7 @@
                 },
                 {
                     "name": "Linux",
-                    "notes": Linux builds for FreeSpace 2 Open.",
+                    "notes": "Linux builds for FreeSpace 2 Open.",
                     "status": "required",
                     "dependencies": [],
                     "environment": [
@@ -315,7 +315,7 @@
             "packages": [
                 {
                     "name": "Windows SSE",
-                    "notes": Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
+                    "notes": "Windows builds for FreeSpace 2 Open, compiled with SSE optimizations.",
                     "status": "required",
                     "dependencies": [],
                     "environment": [
