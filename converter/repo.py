@@ -14,10 +14,12 @@
 
 import os
 import json
-import semantic_version
+import re
 import logging
+import semantic_version
 
 from lib.util import pjoin, is_archive, merge_dicts
+from . import vfs
 
 
 class RepoConf(object):
@@ -203,8 +205,9 @@ class Mod(object):
     submods = None
     actions = None
     packages = None
+    filelist = None
 
-    _fields = ('id', 'title', 'version', 'folder', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
+    _fields = ('id', 'title', 'version', 'folder', 'logo', 'description', 'notes', 'submods', 'actions', 'packages', 'filelist')
     _req = ('id', 'title', 'version')
 
     def __init__(self, values=None, repo=None):
@@ -234,57 +237,56 @@ class Mod(object):
 
         self.mid = values['id']
         self.title = values['title']
-        self.version = semantic_version.Version(values['version'], partial=True)
         self.folder = values.get('folder', '').strip('/')  # make sure we have a relative path
         self.logo = values.get('logo', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
         self.submods = values.get('submods', [])
+        self.packages = [Package(pkg, self) for pkg in values.get('packages', [])]
         self.actions = values.get('actions', [])
+        self.filelist = values.get('filelist', [])
 
-        self.packages = []
-        for pkg in values.get('packages', []):
-            pkg = Package(pkg, self)
-            if pkg.check_env():
-                self.packages.append(pkg)
+        try:
+            self.version = semantic_version.Version(values['version'], partial=True)
+        except ValueError as exc:
+            logging.error('Failed to parse version for Mod "%s"! (%s)', self.title, str(exc))
+            self._valid = False
+            return
 
         # Enforce relative paths
         for act in self.actions:
+            if 'glob' not in act:
+                act['glob'] = True
+
+            if 'paths' not in act:
+                logging.error('An action for mod "%s" is missing its paths!', self.title)
+                self._valid = False
+            elif not isinstance(act['paths'], list):
+                logging.error('An action for mod "%s" has an invalid type for its paths!', self.title)
+                self._valid = False
+            else:
+                act['paths'] = [p.lstrip('/') for p in act['paths']]
+
             if 'type' not in act:
                 logging.error('An action for mod "%s" is missing its type!', self.title)
                 self._valid = False
             elif act['type'] == 'delete':
-                if 'paths' not in act:
-                    logging.error('A delete action for mod "%s" is missing its paths!', self.title)
-                    self._valid = False
-                elif not isinstance(act['type'], list):
-                    logging.error('A delete action for mod "%s" has an invalid type for its paths!', self.title)
-                    self._valid = False
-
-                if 'glob' not in act:
-                    act['glob'] = False
+                pass
             elif act['type'] == 'move':
-                if 'paths' not in act:
-                    logging.error('A move action for mod "%s" is missing its paths!', self.title)
-                    self._valid = False
-                elif not isinstance(act['type'], list):
-                    logging.error('A move action for mod "%s" has an invalid type for its paths!', self.title)
-                    self._valid = False
-
                 if 'dest' not in act:
                     logging.error('A move action for mod "%s" is missing its dest property!', self.title)
                     self._valid = False
-
-                if 'glob' not in act:
-                    act['glob'] = False
+            elif act['type'] == 'copy':
+                if 'dest' not in act:
+                    logging.error('A copy action for mod "%s" is missing its dest property!', self.title)
+                    self._valid = False
+            elif act['type'] == 'mkdir':
+                pass
             else:
                 logging.error('The action type "%s" for mod "%s" is unknown!', act['type'], self.title)
                 self._valid = False
                 continue
             
-            if 'paths' in act:
-                act['paths'] = [p.lstrip('/') for p in act['paths']]
-
             if 'dest' in act:
                 act['dest'] = act['dest'].lstrip('/')
 
@@ -299,8 +301,12 @@ class Mod(object):
             'notes': self.notes,
             'submods': self.submods,
             'actions': self.actions,
-            'packages': [pkg.get() for pkg in self.packages]
+            'packages': [pkg.get() for pkg in self.packages],
+            'filelist': self.filelist
         }
+
+    def copy(self):
+        return Mod(self.get(), self._repo)
 
     def validate(self):
         if not self._valid:
@@ -311,6 +317,51 @@ class Mod(object):
                 return False
 
         return True
+
+    def build_file_list(self):
+        fs = vfs.Container()
+        for pkg in self.packages:
+            for _file in pkg.files.values():
+                for name, csum in _file.contents.items():
+                    my_path = os.path.join(_file.dest, name)
+                    fs.makedirs(os.path.dirname(my_path))
+                    fs.put_file(my_path, (pkg.name, _file.filename, name, csum))
+
+        self.apply_actions(fs)
+
+        filelist = fs.get_tree()
+        self.filelist = []
+
+        for name, item in filelist.items():
+            self.filelist.append({
+                'filename': name,
+                'package': item[0],
+                'archive': item[1],
+                'orig_name': item[2],
+                'md5sum': item[3]
+            })
+
+    def apply_actions(self, fs):
+        for act in self.actions:
+            if act.get('glob', False):
+                    paths = []
+                    for p in act['paths']:
+                        paths.extend(fs.iglob(p))
+            else:
+                paths = act['paths']
+
+            if act['type'] == 'delete':
+                for item in paths:
+                    fs.rmtree(item)
+            elif act['type'] == 'move':
+                for item in paths:
+                    fs.move(item, act['dest'])
+            elif act['type'] == 'copy':
+                for item in paths:
+                    fs.copytree(item, act['dest'])
+            elif act['type'] == 'mkdir':
+                for item in paths:
+                    fs.makedirs(item)
 
     def get_submods(self):
         return [self._repo.query(mid) for mid in self.submods]
@@ -325,7 +376,7 @@ class Mod(object):
 
 class Package(object):
     _mod = None
-    _valid = False
+    _valid = True
     name = ''
     notes = ''
     status = 'recommended'
@@ -374,6 +425,17 @@ class Package(object):
             if 'version' not in dep:
                 logging.error('Missing the version of one of package "%s"\'s dependencies!', self.name)
                 self._valid = False
+            else:
+                if re.match('\d.*', dep['version']):
+                    # Make a spec out of this version
+                    dep['version'] = '==' + dep['version']
+
+                try:
+                    semantic_version.Spec(dep['version'])
+                except ValueError as exc:
+                    logging.error('Failed to parse version for one of package "%s"\'s dependencies! (%s)', self.name, str(exc))
+                    self._valid = False
+                    return
 
             for name in dep:
                 if name not in ('id', 'version', 'packages'):
@@ -399,21 +461,7 @@ class Package(object):
 
         _files = values.get('files', [])
 
-        if isinstance(_files, dict):
-            self.files = _files
-            for name, item in _files.items():
-                item['filename'] = name
-                item['dest'] = item.get('dest', '').strip('/')  # make sure this is a relative path
-                self.files[item['filename']] = PkgFile(item, self)
-
-        elif isinstance(_files, list):
-            for item in _files:
-                item['dest'] = item.get('dest', '').strip('/')  # make sure this is a relative path
-                self.files[item['filename']] = PkgFile(item, self)
-        else:
-            logging.error('"%s"\'s file list has an unknown type.', self.name)
-            self._valid = False
-            return
+        self.set_files(_files)
 
         has_mod_dep = False
         mid = self._mod.mid
@@ -433,6 +481,23 @@ class Package(object):
                 'packages': []
             })
 
+    def set_files(self, files):
+        self.files = {}
+
+        if not isinstance(files, list):
+            logging.error('"%s"\'s file list has an unknown type.', self.name)
+            return False
+        elif len(files) > 0 and isinstance(files[0], dict):
+            for item in files:
+                self.files[item['filename']] = PkgFile(item, self)
+        else:
+            for urls, file_items in files:
+                for name, info in file_items.items():
+                    info = info.copy()
+                    info['filename'] = name
+                    info['urls'] = [pjoin(url, name) for url in urls]
+                    self.files[name] = PkgFile(info, self)
+
     def get(self):
         return {
             'name': self.name,
@@ -440,14 +505,17 @@ class Package(object):
             'status': self.status,
             'dependencies': self.dependencies,
             'environment': self.environment,
-            'files': [f.get() for f in self.files]
+            'files': [f.get() for f in self.files.values()]
         }
+
+    def copy(self):
+        return Package(self.get(), self._mod)
 
     def validate(self):
         if not self._valid:
             return False
 
-        for f in self.files:
+        for f in self.files.values():
             if not f.validate():
                 return False
 
@@ -455,17 +523,6 @@ class Package(object):
 
     def get_mod(self):
         return self._mod
-
-    def get_files(self):
-        files = {}
-        for name, item in self.files.items():
-            if item['is_archive']:
-                for path, csum in item['contents'].items():
-                    files[os.path.join(item['dest'], path)] = (csum, name)
-            else:
-                files[os.path.join(item['dest'], name)] = (item['md5sum'], name)
-
-        return files
 
 
 class PkgFile(object):
@@ -475,14 +532,17 @@ class PkgFile(object):
     is_archive = True
     dest = ''
     urls = None
+    contents = None
+    md5sum = ''
 
-    _fields = ('filename', 'is_archive', 'dest', 'urls')
+    _fields = ('filename', 'is_archive', 'dest', 'urls', 'contents', 'md5sum')
     _req = ('filename', 'urls')
 
     def __init__(self, values, package):
         super(PkgFile, self).__init__()
 
         self._package = package
+        self.contents = {}
         self.set(values)
 
     def set(self, values):
@@ -498,8 +558,10 @@ class PkgFile(object):
 
         self.filename = values['filename']
         self.is_archive = values.get('is_archive', True)
-        self.dest = values.get('dest', '')
+        self.dest = values.get('dest', '').strip('/')  # make sure this is a relative path
         self.urls = values['urls']
+        self.contents = values.get('contents', {})
+        self.md5sum = values.get('md5sum', '')
 
         if not isinstance(self.urls, list):
             logging.error('Unknown type for URL list for file "%s"!', self.filename)
@@ -513,8 +575,16 @@ class PkgFile(object):
             'filename': self.filename,
             'is_archive': self.is_archive,
             'dest': self.dest,
-            'urls': self.urls
+            'urls': self.urls,
+            'contents': self.contents,
+            'md5sum': self.md5sum
         }
+
+    def copy(self):
+        return PkgFile(self.get(), self._package)
 
     def validate(self):
         return self._valid
+
+    def get_files(self):
+        return self.contents.keys()

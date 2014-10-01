@@ -43,6 +43,7 @@ ARCHIVE_FORMATS = ('zip', 'tar', 'split', 'rar', 'lzma', 'iso', 'hfs', 'gzip', '
                    'cpio', 'bzip2', 'bz2', '7z', 'z', 'arj', 'cab', 'lzh', 'chm',
                    'nsis', 'deb', 'rpm', 'udf', 'wim', 'xar')
 QUIET = False
+QUIET_EXC = False
 HASH_CACHE = dict()
 _HAS_CONVERT = None
 DL_POOL = None
@@ -316,10 +317,16 @@ def download(link, dest, headers=None):
                 # 304 Not Modified
                 return 304
 
-            logging.exception('Failed to load "%s"!', link)
+            if QUIET_EXC:
+                logging.error('Failed to load "%s"! (%s)', link, exc.msg)
+            else:
+                logging.exception('Failed to load "%s"!', link)
             return False
-        except URLError:
-            logging.exception('Failed to load "%s"!', link)
+        except URLError as exc:
+            if QUIET_EXC:
+                logging.error('Failed to load "%s"! (%s)', link, exc.reason)
+            else:
+                logging.exception('Failed to load "%s"!', link)
             return False
 
     return True

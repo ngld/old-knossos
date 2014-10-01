@@ -17,6 +17,8 @@ import sys
 import re
 import fnmatch
 
+from lib import util
+
 
 class VFSError(Exception):
     pass
@@ -62,6 +64,25 @@ class Container(object):
     def copy_file(self, src, dst):
         self.put_file(dst, self.get_file(src))
 
+    def get_tree(self, parent=None, tree=None, prefix=''):
+        if parent is None:
+            parent = self.root
+
+        if tree is None:
+            tree = {}
+
+        for item, info in parent.contents.items():
+            if item in ('.', '..'):
+                continue
+
+            path = util.pjoin(prefix, item)
+            if isinstance(info, Directory):
+                self.get_tree(info, tree, path)
+            else:
+                tree[path] = info.content
+
+        return tree
+
     # os
 
     def mkdir(self, path):
@@ -93,7 +114,8 @@ class Container(object):
         obj = parent.contents[name]
 
         if isinstance(obj, Directory):
-            if len(obj.contents) > 0:
+            # There are always the "." and ".." directories.
+            if len(obj.contents) > 2:
                 raise VFSError('The directory is not empty!')
 
             del parent.contents[name]
@@ -122,7 +144,7 @@ class Container(object):
             dest.contents[name] = item
 
     def listdir(self, path):
-        items = self.query(path).contents.keys()
+        items = list(self.query(path).contents.keys())
         items.remove('.')
         items.remove('..')
         return items
@@ -439,7 +461,7 @@ class Shutil(object):
                     onerror(vfs.unlink, fullname, sys.exc_info())
         try:
             vfs.rmdir(path)
-        except OSError:
+        except VFSError:
             onerror(vfs.rmdir, path, sys.exc_info())
 
     def _basename(path):

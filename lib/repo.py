@@ -228,12 +228,14 @@ class Mod(object):
     submods = None
     actions = None
     packages = None
+    filelist = None
 
     __fields__ = ('mid', 'title', 'version', 'folder', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
 
     def __init__(self, values=None, repo=None):
         self.actions = []
         self.packages = []
+        self.filelist = {}
 
         if repo is not None:
             self._repo = self
@@ -266,6 +268,10 @@ class Mod(object):
             if 'dest' in act:
                 act['dest'] = act['dest'].lstrip('/')
 
+        self.filelist = {}
+        for item in values.get('filelist', []):
+            self.filelist[item['filename']] = item
+
     def get(self):
         return {
             'id': self.mid,
@@ -283,12 +289,12 @@ class Mod(object):
     def get_submods(self):
         return [self._repo.query(mid) for mid in self.submods]
 
-    def get_files(self):
-        files = {}
-        for pkg in self.packages:
-            files.update(pkg.get_files())
+    # def get_files(self):
+    #     files = {}
+    #     for pkg in self.packages:
+    #         files.update(pkg.get_files())
 
-        return files
+    #     return files
 
     def resolve_deps(self):
         return self._repo.process_pkg_selection(self.packages)

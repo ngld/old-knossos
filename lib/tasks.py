@@ -122,7 +122,7 @@ class CheckTask(progress.Task):
     def work(self, pkg):
         fs2path = manager.settings['fs2_path']
         modpath = os.path.join(fs2path, pkg.get_mod().folder)
-        files = pkg.get_files()
+        files = [item for item in pkg.get_mod().filelist.values() if item['package'] == pkg.name]
         
         count = float(len(files))
         success = 0
@@ -131,23 +131,23 @@ class CheckTask(progress.Task):
         archives = set()
         msgs = []
         
-        for item, info in files.items():
-            mypath = util.ipath(os.path.join(modpath, item))
+        for info in files.items():
+            mypath = util.ipath(os.path.join(modpath, info['filename']))
             fix = False
             if os.path.isfile(mypath):
-                progress.update(checked / count, 'Checking "%s"...' % (item))
+                progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
                 
-                if util.gen_hash(mypath) == info[0]:
+                if util.gen_hash(mypath) == info['md5sum']:
                     success += 1
                 else:
-                    msgs.append('File "%s" is corrupted. (checksum mismatch)' % (item))
+                    msgs.append('File "%s" is corrupted. (checksum mismatch)' % (info['filename']))
                     fix = True
             else:
-                msgs.append('File "%s" is missing.' % (item))
+                msgs.append('File "%s" is missing.' % (info['filename']))
                 fix = True
             
             if fix:
-                archives.add(info[1])
+                archives.add(info['archive'])
             
             checked += 1
         
@@ -158,8 +158,7 @@ class CheckTask(progress.Task):
             for sub_path, dirs, files in os.walk(modpath):
                 for name in files:
                     my_path = os.path.join(sub_path[prefix:], name).replace('\\', '/').lower().lstrip('/')
-                    if my_path not in filelist:
-                        lines.append('  * %s' % my_path)
+                    lines.append('  * %s' % my_path)
             
             if len(lines) > 0:
                 msgs.append('User-added files:\n' + '\n'.join(lines))
@@ -176,26 +175,26 @@ class CheckTask(progress.Task):
         if manager.settings['installed_mods'] is not None:
             installed.set(manager.settings['installed_mods'])
         
-        for pkg, archives, s, c, m in results:
-            mods.add(pkg.get_mod())
-            for item in pkg.get_files().keys():
-                path = util.pjoin(pkg.get_mod().folder, item)
+        # for pkg, archives, s, c, m in results:
+        #     mods.add(pkg.get_mod())
+        #     for item in pkg.get_files().keys():
+        #         path = util.pjoin(pkg.get_mod().folder, item)
                 
-                if path in files:
-                    files[path].append(pkg.name)
-                else:
-                    files[path] = [pkg.name]
+        #         if path in files:
+        #             files[path].append(pkg.name)
+        #         else:
+        #             files[path] = [pkg.name]
         
-        shared_files = dict()
-        for path, f_mods in files.items():
-            if len(f_mods) > 1:
-                shared_files[path] = f_mods
+        # shared_files = dict()
+        # for path, f_mods in files.items():
+        #     if len(f_mods) > 1:
+        #         shared_files[path] = f_mods
         
-        shared_set = set(shared_files.keys())
+        # shared_set = set(shared_files.keys())
         
         for pkg, archives, s, c, m in results:
             mod = pkg.get_mod()
-            my_shared = shared_set & set([util.pjoin(mod.folder, item) for item in pkg.get_files().keys()])
+            #my_shared = shared_set & set([util.pjoin(mod.folder, item) for item in pkg.get_files().keys()])
             pinfo = installed.query(mod.mid, pkg.name)
             
             if s == c:
@@ -205,7 +204,7 @@ class CheckTask(progress.Task):
 
                 pinfo.state = 'installed'
                 
-            elif s == 0 or s == len(my_shared):
+            elif s == 0:  # or s == len(my_shared):
                 # Not Installed
                 if pinfo is not None:
                     # What?!
@@ -228,7 +227,7 @@ class CheckTask(progress.Task):
                 pinfo.check_notes = m
                 pinfo.files_ok = s
                 pinfo.files_checked = c
-                pinfo.files_shared = len(my_shared)
+                pinfo.files_shared = 0  # len(my_shared)
 
         for mod in mods:
             if mod.mid in installed.mods:
@@ -266,7 +265,7 @@ class InstallTask(progress.MultistepTask):
     def work1(self, mod):
         fs2_path = manager.settings['fs2_path']
         modpath = os.path.join(fs2_path, mod.folder)
-        mfiles = mod.get_files()
+        mfiles = mod.filelist
 
         archives = set()
         progress.update(0, 'Checking %s...' % mod.title)
@@ -281,8 +280,8 @@ class InstallTask(progress.MultistepTask):
 
         for item, info in mfiles.items():
             itempath = util.ipath(os.path.join(modpath, item))
-            if not os.path.isfile(itempath) or util.gen_hash(itempath) != info[0]:
-                archives.add((mod.mid, info[1]))
+            if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
+                archives.add((mod.mid, info['package'], info['archive']))
 
         self.post(archives)
 
@@ -301,8 +300,8 @@ class InstallTask(progress.MultistepTask):
         modpath = os.path.join(fs2path, pkg.get_mod().folder)
         files = []
 
-        for f_mid, fname in archives:
-            if f_mid == mid and fname in pkg.files:
+        for f_mid, pkg_name, fname in archives:
+            if f_mid == mid and pkg.name == pkg_name:  # and fname in pkg.files:
                 files.append(fname)
 
         count = float(len(files))
@@ -376,23 +375,40 @@ class InstallTask(progress.MultistepTask):
         fs2path = manager.settings['fs2_path']
         progress.update(0, 'Installing %s...' % (mod.title))
 
-        # TODO: Implement globbing
-
         for act in mod.actions:
-            if act['type'] == 'delete':
+            path_prefix = os.path.join(fs2path, mod.folder)
+            if act.get('glob', True):
+                path_prefix = glob.escape(path_prefix)
+
+            try:
+                paths = []
                 for item in act['paths']:
-                    path = os.path.join(fs2path, mod.folder, item)
-                    if os.path.isfile(path):
-                        logging.debug('Removing "%s"...', path)
-                        os.unlink(path)
-            elif act['type'] == 'move':
-                dest = os.path.join(fs2path, mod.folder, act['dest'])
-                for item in act['paths']:
-                    path = os.path.join(fs2path, mod.folder, item)
-                    logging.debug('Moving "%s" to "%s"...', path, dest)
-                    shutil.move(path, dest)
-            else:
-                logging.error('Unknown mod action "%s" in mod "%s" (%s)!', act['type'], mod.title, mod.mid)
+                    if act.get('glob', True):
+                        paths.extend(glob.iglob(os.path.join(path_prefix, item.lstrip('/'))))
+                    else:
+                        paths.append(os.path.join(path_prefix, item.lstrip('/')))
+
+                if act['type'] == 'delete':
+                    for item in paths:
+                        logging.debug('Removing "%s"...', item)
+                        shutil.rmtree(item)
+                elif act['type'] == 'move':
+                    dest = os.path.join(fs2path, mod.folder, act['dest'].lstrip('/'))
+                    for item in paths:
+                        logging.debug('Moving "%s" to "%s"...', item, dest)
+                        shutil.move(item, dest)
+                elif act['type'] == 'copy':
+                    dest = os.path.join(fs2path, mod.folder, act['dest'].lstrip('/'))
+                    for item in paths:
+                        logging.debug('Copying "%s" to "%s"...', item, dest)
+                        shutil.copytree(item, dest)
+                elif act['type'] == 'mkdir':
+                    for item in paths:
+                        os.makedirs(item)
+                else:
+                    logging.error('Unknown mod action "%s" in mod "%s" (%s)!', act['type'], mod.title, mod.mid)
+            except OSError:
+                logging.exception('A path action failedmsg')
 
     def finish(self):
         manager.signals.repo_updated.emit()

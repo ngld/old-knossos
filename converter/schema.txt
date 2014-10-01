@@ -76,13 +76,24 @@
                 {
                     "type": "delete", // required
                     "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
-                    "glob": true // optional, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
                 },
                 {
                     "type": "move", // required
                     "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
                     "dest": "<path>", // required, specifies the destination relative to the mod folder
-                    "glob": true // optional, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                },
+                {
+                    "type": "copy", // required
+                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
+                    "dest": "<path>", // required, specifies the destination relative to the mod folder
+                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                },
+                {
+                    "type": "mkdir",
+                    "paths": ["<folder1>", "<folder2>", "..."],
+                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
                 }
                 ...
             ]
@@ -125,6 +136,16 @@
                         }
                     ]
                 }
+            ],
+            "filelist": [
+                {
+                    "filename": "<file path>",
+                    "package": "...",
+                    "archive": "...",
+                    "orig_name": "<name in archive>",
+                    "md5sum": "..."
+                },
+                ...
             ]
         }
     ]
