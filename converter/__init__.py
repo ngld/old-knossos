@@ -241,7 +241,7 @@ def generate_checksums(repo, output, prg_wrap=None):
         return True
 
 
-def main(args, prg_wrap=False):
+def main(args, prg_wrap=None):
     progress.reset()
     progress.set_callback(show_progress)
     
