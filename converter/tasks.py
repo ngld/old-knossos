@@ -38,8 +38,10 @@ class ChecksumTask(progress.Task):
                 elif res:
                     logging.info('Inspecting "%s"...', name)
                     csum, content = self._inspect_file(id_, archive, dest, path)
-                    self.post((id_, csum, content))
-                    return
+
+                    if csum != 'FAILED':
+                        self.post((id_, csum, content))
+                        return
 
             # None of the links worked!
             self.post((id_, 'FAILED', None))
@@ -62,6 +64,9 @@ class ChecksumTask(progress.Task):
 
                         if name == 'mod.ini':
                             self._inspect_mod_ini(os.path.join(cur_path, name), id_[0])
+            else:
+                logging.error('Failed to extract "%s"!', os.path.basename(path))
+                return 'FAILED', None
 
         return csum, content
 
