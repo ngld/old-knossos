@@ -283,7 +283,8 @@ class Mod(object):
             'notes': self.notes,
             'submods': self.submods,
             'actions': self.actions,
-            'packages': [pkg.get() for pkg in self.packages]
+            'packages': [pkg.get() for pkg in self.packages],
+            'filelist': list(self.filelist.values())
         }
 
     def get_submods(self):

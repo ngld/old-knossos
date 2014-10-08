@@ -10,7 +10,7 @@ To run this script you'll need the following:
 * [PySide][pyside] or [PyQt4][pyqt]
 * [Six][six]
 * [7zip][7z] (IMPORTANT: This script needs the full implementation, i.e. ```p7zip-full``` _and_ ```p7zip-rar``` on Ubuntu)
-* [py-cpuinfo][cpuid]
+* [py-cpuinfo][cpuid] (included in third_party/)
 * [semantic_version][sv]
 
 The following commands should install everything you need:

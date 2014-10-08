@@ -40,6 +40,7 @@
                 $('#install-note').hide();
 
                 var mod_list = $('#mod-list').empty();
+                var update_link = $('<a href="#">Update mod list</a>');
                 var table = $('<table class="table">');
                 var mods = fs2mod.getInstalledMods();
 
@@ -68,10 +69,16 @@
                         table.append(row);
                     });
 
-                    mod_list.html(table);
+                    mod_list.html(update_link).append('<br><br>').append(table);
                 } else {
-                    mod_list.html('No mods found!');
+                    mod_list.html(update_link).append('<br><hr>No mods found!');
                 }
+
+                update_link.click(function (e) {
+                    e.preventDefault();
+
+                    fs2mod.fetchModlist();
+                });
             }
 
             $(function () {

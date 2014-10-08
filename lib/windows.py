@@ -29,7 +29,7 @@ from ui.modinfo import Ui_Dialog as Ui_Modinfo
 from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from ui.settings import Ui_Dialog as Ui_Settings
 from ui.flags import Ui_Dialog as Ui_Flags
-from lib.tasks import GOGExtractTask, FetchTask, CheckTask, InstallTask, UninstallTask
+from lib.tasks import GOGExtractTask, CheckTask, InstallTask, UninstallTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -109,7 +109,7 @@ class MainWindow(Window):
 
         self.win.apply_sel.clicked.connect(self.apply_selection)
         self.win.reset_sel.clicked.connect(self.reset_selection)
-        self.win.update.clicked.connect(self.fetch_list)
+        self.win.update.clicked.connect(manager.fetch_list)
         
         self.win.modTree.itemActivated.connect(self.select_mod)
         self.win.modTree.itemChanged.connect(self.autoselect_deps)
@@ -236,12 +236,9 @@ class MainWindow(Window):
         
         return items
 
-    def fetch_list(self):
-        return manager.run_task(FetchTask())
-
     def update_list(self):
         if manager.settings['mods'] is None:
-            self.fetch_list()
+            manager.fetch_list()
             return
 
         # Make sure the mod tree is empty.
@@ -314,7 +311,7 @@ class MainWindow(Window):
             return
         
         if manager.settings['mods'] is None:
-            self.fetch_list()
+            manager.fetch_list()
         else:
             return manager.run_task(CheckTask(manager.settings['mods'].get_list()))
 
@@ -721,7 +718,7 @@ class ModInfoWindow(Window):
         self.win.desc.setPlainText(mod.description)
         self.win.note.setPlainText(mod.notes)
 
-        self.win.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.get_files().keys())]))
+        self.win.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.filelist.keys())]))
         
         self.win.closeButton.clicked.connect(self.win.close)
         self.win.settingsButton.clicked.connect(self.show_settings)
@@ -824,12 +821,17 @@ class SettingsWindow(Window):
             fs2_path = os.path.abspath(fs2_path)
             bins = glob.glob(os.path.join(fs2_path, 'fs2_open_*'))
             
-            for i, path in enumerate(bins):
+            idx = 0
+            for path in bins:
                 path = os.path.basename(path)
-                self.win.build.addItem(path)
 
-                if path == fs2_bin:
-                    self.win.build.setCurrentIndex(i)
+                if not path.endswith(('.map', '.pdb')):
+                    self.win.build.addItem(path)
+                    
+                    if path == fs2_bin:
+                        self.win.build.setCurrentIndex(idx)
+
+                    idx += 1
             
             if len(bins) == 1:
                 # Found only one binary, select it by default.

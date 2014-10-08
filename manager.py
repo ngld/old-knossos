@@ -221,6 +221,9 @@ def select_fs2_path(interact=True):
 
             for i, path in enumerate(bins):
                 path = os.path.basename(path)
+                if path.endswith(('.map', '.pdb')):
+                    continue
+
                 select_win.listWidget.addItem(path)
 
                 if path.endswith('.exe'):
@@ -301,7 +304,7 @@ def run_mod(mod):
         return
     
     # Look for the mod.ini
-    for item in mod.get_files():
+    for item in mod.filelist:
         if os.path.basename(item).lower() == 'mod.ini':
             ini = item
             break
@@ -334,7 +337,7 @@ def run_mod(mod):
     else:
         # No mod.ini found, look for the first subdirectory then.
         if mod.folder == '':
-            for item in mod.get_files():
+            for item in mod.filelist:
                 if item.lower().endswith('.vp'):
                     modfolder = item.split('/')[0]
                     break

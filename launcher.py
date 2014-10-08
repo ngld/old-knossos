@@ -162,7 +162,7 @@ def get_cpu_info():
     print(json.dumps(info))
 
 
-if __name__ == '__main__':
+def main():
     ipc = IPCComm(settings_path)
 
     if len(sys.argv) > 1:
@@ -191,3 +191,7 @@ if __name__ == '__main__':
 
             # Try to tell the user
             QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
+
+
+if __name__ == '__main__':
+    main()

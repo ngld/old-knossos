@@ -116,7 +116,7 @@ class WebBridge(QtCore.QObject):
             return None
 
     @QtCore.Slot()
-    def fetchModlist():
+    def fetchModlist(self):
         manager.fetch_list()
 
     @QtCore.Slot(str, str)

@@ -131,7 +131,7 @@ class CheckTask(progress.Task):
         archives = set()
         msgs = []
         
-        for info in files.items():
+        for info in files:
             mypath = util.ipath(os.path.join(modpath, info['filename']))
             fix = False
             if os.path.isfile(mypath):
@@ -169,31 +169,14 @@ class CheckTask(progress.Task):
         results = self.get_results()
 
         installed = manager.installed = InstalledRepo()
-        files = dict()
         mods = set()
 
         if manager.settings['installed_mods'] is not None:
             installed.set(manager.settings['installed_mods'])
         
-        # for pkg, archives, s, c, m in results:
-        #     mods.add(pkg.get_mod())
-        #     for item in pkg.get_files().keys():
-        #         path = util.pjoin(pkg.get_mod().folder, item)
-                
-        #         if path in files:
-        #             files[path].append(pkg.name)
-        #         else:
-        #             files[path] = [pkg.name]
-        
-        # shared_files = dict()
-        # for path, f_mods in files.items():
-        #     if len(f_mods) > 1:
-        #         shared_files[path] = f_mods
-        
-        # shared_set = set(shared_files.keys())
-        
         for pkg, archives, s, c, m in results:
             mod = pkg.get_mod()
+            mods.add(mod)
             #my_shared = shared_set & set([util.pjoin(mod.folder, item) for item in pkg.get_files().keys()])
             pinfo = installed.query(mod.mid, pkg.name)
             
