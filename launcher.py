@@ -163,6 +163,8 @@ def get_cpu_info():
 
 
 def main():
+    global ipc
+    
     ipc = IPCComm(settings_path)
 
     if len(sys.argv) > 1:

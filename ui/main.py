@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Fri Sep 26 01:35:14 2014
+# Created: Thu Oct  9 14:42:12 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -133,6 +133,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_4 = QtGui.QVBoxLayout(self.tab)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
         self.aboutLabel = QtGui.QLabel(self.tab)
+        self.aboutLabel.setWordWrap(True)
         self.aboutLabel.setObjectName("aboutLabel")
         self.verticalLayout_4.addWidget(self.aboutLabel)
         self.tabs.addTab(self.tab, "")
@@ -147,7 +148,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(4)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):

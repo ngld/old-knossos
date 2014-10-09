@@ -72,7 +72,9 @@ class IPCComm(QtCore.QObject):
             self._socket.error.connect(err_hdl)
 
         with open(fp, 'r') as stream:
-            self._socket.connectToServer(stream.read())
+            addr = stream.read()
+
+        self._socket.connectToServer(addr)
 
     def send_message(self, msg):
         if self._socket is None:

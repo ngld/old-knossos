@@ -569,8 +569,6 @@ class MainWindow(Window):
         manager.save_settings()
         manager.switch_ui_mode(manager.settings['ui_mode'])
 
-        print(_open_wins)
-
 
 class NebulaWindow(Window):
     browser_ctrl = None

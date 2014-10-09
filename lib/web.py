@@ -24,6 +24,7 @@ import manager
 
 class WebBridge(QtCore.QObject):
 
+    # NOTE: Update https://github.com/ngld/knossos/wiki/JS%20API whenever you make an API change.
     # getVersion(): str
     #   Returns fs2mod-py's version
     # isFsoInstalled(): bool

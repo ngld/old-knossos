@@ -432,13 +432,14 @@ def show_fs2settings():
 def switch_ui_mode(nmode):
     global main_win
 
-    main_win.close()
+    old_win = main_win
     if nmode == 'nebula':
         main_win = NebulaWindow()
     else:
         main_win = MainWindow()
 
     main_win.open()
+    old_win.close()
 
 
 def init():

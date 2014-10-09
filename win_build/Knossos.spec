@@ -49,7 +49,7 @@ for sub, dirs, files in os.walk('../html'):
 if onefile:
   exe = EXE(pyz, a.scripts, a.binaries, a.zipfiles, a.datas,
             exclude_binaries=False,
-            name='fs2mod-py.exe',
+            name='Knossos.exe',
             icon='../hlp.ico',
             debug=False,
             strip=None,
@@ -59,7 +59,7 @@ else:
   exe = EXE(pyz,
             a.scripts,
             exclude_binaries=True,
-            name='fs2mod-py.exe',
+            name='Knossos.exe',
             icon='../hlp.ico',
             debug=False,
             strip=None,
@@ -71,4 +71,4 @@ else:
                  a.datas,
                  strip=None,
                  upx=True,
-                 name='fs2mod-py')
+                 name='Knossos')

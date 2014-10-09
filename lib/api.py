@@ -207,7 +207,7 @@ def handle_ipc(msg):
 
     if msg[0] == 'focus':
         manager.main_win.win.activateWindow()
-    if msg[0] == 'mode':
+    elif msg[0] == 'mode':
         if msg[1] in ('traditional', 'nebula'):
             manager.switch_ui_mode(msg[1])
     elif msg[0] == 'run':
