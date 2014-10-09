@@ -37,6 +37,8 @@ class ChecksumTask(progress.Task):
                     return
                 elif res:
                     logging.info('Inspecting "%s"...', name)
+                    progress.update(1, 'Inspecting "%s"...' % name)
+                    
                     csum, content = self._inspect_file(id_, archive, dest, path)
 
                     if csum != 'FAILED':

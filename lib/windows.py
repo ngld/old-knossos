@@ -17,7 +17,6 @@ import sys
 import logging
 import glob
 import shlex
-import stat
 
 import manager
 from lib import util, clibs, progress, repo
@@ -29,7 +28,7 @@ from ui.modinfo import Ui_Dialog as Ui_Modinfo
 from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from ui.settings import Ui_Dialog as Ui_Settings
 from ui.flags import Ui_Dialog as Ui_Flags
-from lib.tasks import GOGExtractTask, CheckTask, InstallTask, UninstallTask
+from lib.tasks import GOGExtractTask, CheckTask, InstallTask, UninstallTask, WindowsUpdateTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -74,10 +73,15 @@ class MainWindow(Window):
     browser_ctrl = None
     dep_processing = False
 
-    def __init__(self):
+    def __init__(self, parent=None):
         super(MainWindow, self).__init__()
 
-        self.win = util.init_ui(Ui_MainWindow(), manager.QMainWindow())
+        if parent is None:
+            self.win = util.init_ui(Ui_MainWindow(), manager.QMainWindow())
+        else:
+            self.win = util.init_ui(Ui_MainWindow(), manager.QMainWindow(parent.win, QtCore.Qt.Dialog))
+            self.win.setWindowModality(QtCore.Qt.WindowModal)
+
         self.progress_win = progress.ProgressDisplay()
 
         if hasattr(sys, 'frozen'):
@@ -102,6 +106,11 @@ class MainWindow(Window):
         self.progress_win.set_statusbar(self.win.statusbar)
         
         manager.signals.repo_updated.connect(self.update_list)
+        
+        manager.signals.update_avail.connect(self.ask_update)
+        self.win.updateButton.hide()
+        self.win.updateButton.clicked.connect(self.run_update)
+
         self.update_repo_list()
         
         self.win.aboutLabel.linkActivated.connect(QtGui.QDesktopServices.openUrl)
@@ -123,6 +132,7 @@ class MainWindow(Window):
         
         self.win.enforceDeps.setCheckState(QtCore.Qt.Checked if manager.settings['enforce_deps'] else QtCore.Qt.Unchecked)
         self.win.enforceDeps.stateChanged.connect(self.update_enforce_deps)
+        self.win.versionLabel.setText(manager.VERSION)
         self.win.maxDownloads.setText(str(manager.settings['max_downloads']))
         self.win.maxDownloads.textEdited.connect(self.update_max_downloads)
         self.win.uiMode.setCurrentIndex(0 if manager.settings['ui_mode'] == 'traditional' else 1)
@@ -151,32 +161,6 @@ class MainWindow(Window):
         self.settings_tab._del2()
         super(MainWindow, self)._del()
 
-    # def init_fs2_tab():
-    #     global settings, main_win
-        
-    #     if settings['fs2_path'] is not None:
-    #         if settings['fs2_bin'] is None or not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
-    #             settings['fs2_bin'] = None
-        
-    #     if settings['fs2_path'] is None or not os.path.isdir(settings['fs2_path']):
-    #         # Disable mod tab if we don't know where fs2 is.
-    #         main_win.tabs.setTabEnabled(1, False)
-    #         main_win.tabs.setCurrentIndex(0)
-    #         main_win.fs2_bin.hide()
-    #         main_win.fs2Settings.setDisabled(True)
-    #     else:
-    #         fs2_path = settings['fs2_path']
-    #         if settings['fs2_bin'] is not None:
-    #             fs2_path = os.path.join(fs2_path, settings['fs2_bin'])
-            
-    #         main_win.tabs.setTabEnabled(1, True)
-    #         main_win.tabs.setCurrentIndex(1)
-    #         main_win.fs2_bin.show()
-    #         main_win.fs2_bin.setText('Selected FS2 Open: ' + os.path.normcase(fs2_path))
-    #         main_win.fs2Settings.setDisabled(False)
-            
-    #         update_list()
-    
     def check_fso(self):
         if manager.settings['fs2_path'] is None:
             self.win.tabs.setTabEnabled(0, False)
@@ -569,6 +553,23 @@ class MainWindow(Window):
         manager.save_settings()
         manager.switch_ui_mode(manager.settings['ui_mode'])
 
+    def ask_update(self, version):
+        # We only have an updater for windows.
+        if sys.platform.startswith('win'):
+            self.win.updateButton.show()
+
+            msg = 'There\'s an update available!\nDo you want to install Knossos %s now?' % str(version)
+            buttons = QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
+            result = QtGui.QMessageBox.question(manager.app.activeWindow(), 'fs2mod-py', msg, buttons)
+            if result == QtGui.QMessageBox.Yes:
+                self.run_update()
+        else:
+            msg = 'There\'s an update available!\nYou should update to Knossos %s.' % str(version)
+            QtGui.QMessageBox.information(manager.app.activeWindow(), 'fs2mod-py', msg)
+
+    def run_update(self):
+        manager.run_task(WindowsUpdateTask())
+
 
 class NebulaWindow(Window):
     browser_ctrl = None
@@ -578,7 +579,7 @@ class NebulaWindow(Window):
     def __init__(self):
         super(NebulaWindow, self).__init__()
 
-        self.support_win = MainWindow()
+        self.support_win = MainWindow(self)
         self.progress_win = self.support_win.progress_win
         self.win = util.init_ui(Ui_Nebula(), manager.QMainWindow())
 
@@ -597,6 +598,7 @@ class NebulaWindow(Window):
         from . import web
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
         self.show_mod_list()
+        self.win.move(manager.app.desktop().screen().rect().center() - self.win.rect().center())
 
     def _del(self):
         self.support_win.close()
@@ -721,7 +723,7 @@ class ModInfoWindow(Window):
         self.win.closeButton.clicked.connect(self.win.close)
         self.win.settingsButton.clicked.connect(self.show_settings)
         self.win.runButton.clicked.connect(self.do_run)
-        self.win.show()
+        self.open()
         
         self.win.note.verticalScrollBar().setValue(0)
 
@@ -762,7 +764,7 @@ class PkgInfoWindow(Window):
         self.win.closeButton.clicked.connect(self.win.close)
         self.win.settingsButton.hide()
         self.win.runButton.hide()
-        self.win.show()
+        self.open()
         
         self.win.note.verticalScrollBar().setValue(0)
 
@@ -787,6 +789,7 @@ class SettingsWindow(Window):
         self.win.cmdButton.clicked.connect(self.show_flagwin)
         self.read_config()
         
+        self.win.build.activated.connect(self.save_build)
         self.win.runButton.clicked.connect(self.run_mod)
         self.win.cancelButton.clicked.connect(self.win.close)
         
@@ -835,8 +838,6 @@ class SettingsWindow(Window):
                 # Found only one binary, select it by default.
                 self.win.build.setEnabled(False)
                 self.save_build()
-            else:
-                self.win.build.currentIndexChanged.connect(self.save_build)
 
         # ---Read fs2_open.ini or the registry---
         if sys.platform.startswith('win'):
@@ -1132,8 +1133,12 @@ class SettingsWindow(Window):
         config.sync()
 
     def save_build(self):
-        manager.settings['fs2_bin'] = str(self.win.build.currentText())
-        manager.save_settings()
+        fs2_bin = str(self.win.build.currentText())
+        if not os.path.isfile(os.path.join(manager.settings['fs2_path'], fs2_bin)):
+            return
+
+        manager.settings['fs2_bin'] = fs2_bin
+        manager.get_fso_flags()
 
     def run_mod(self):
         logging.info('Launching...')
@@ -1164,6 +1169,7 @@ class SettingsTab(SettingsWindow):
         self.win.cmdButton.clicked.connect(self.show_flagwin)
         self.read_config()
         
+        self.win.build.activated.connect(self.save_build)
         self.win.runButton.clicked.connect(self.run_mod)
         self.win.cancelButton.setText('Save')
         self.win.cancelButton.clicked.connect(self.write_config)
@@ -1209,28 +1215,13 @@ class FlagsWindow(Window):
             self.set_selection(manager.settings['cmdlines'][mod.mid])
     
     def read_flags(self):
-        fs2_bin = os.path.join(manager.settings['fs2_path'], manager.settings['fs2_bin'])
-        flags_path = os.path.join(manager.settings['fs2_path'], 'flags.lch')
-        mode = os.stat(fs2_bin).st_mode
-        
-        if mode & stat.S_IXUSR != stat.S_IXUSR:
-            # Make it executable.
-            os.chmod(fs2_bin, mode | stat.S_IXUSR)
-        
-        # TODO: Shouldn't we cache the flags?
-        # Right now FS2 will be called every time this window opens...
-        util.call([fs2_bin, '-get_flags'], cwd=manager.settings['fs2_path'])
-        
-        if not os.path.isfile(flags_path):
-            logging.error('Could not find the flags file "%s"!', flags_path)
-            
+        flags = manager.get_fso_flags()
+
+        if flags is None:
             self.win.easySetup.setDisabled(True)
             self.win.listType.setDisabled(True)
             self.win.flagList.setDisabled(True)
-            return None
-        
-        with open(flags_path, 'rb') as stream:
-            flags = util.FlagsReader(stream)
+            return
         
         for key, name in flags.easy_flags.items():
             self.win.easySetup.addItem(name, key)

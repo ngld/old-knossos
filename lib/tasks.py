@@ -21,6 +21,7 @@ import glob
 import stat
 import json
 import tempfile
+import semantic_version
 
 import manager
 from lib import util, progress, repo
@@ -588,3 +589,67 @@ class GOGExtractTask(progress.Task):
         
         manager.save_settings()
         manager.main_win.check_fso()
+
+
+class CheckUpdateTask(progress.Task):
+
+    def __init__(self):
+        super(CheckUpdateTask, self).__init__()
+
+        self.add_work(('',))
+        progress.update(0, 'Checking for updates...')
+
+    def work(self, item):
+        progress.update(0, 'Checking for updates...')
+
+        update_base = manager.settings['update_link']
+        version = util.get(update_base + '/version').read().decode('utf8', 'replace').strip()
+
+        try:
+            version = semantic_version.Version(version)
+        except:
+            logging.exception('Failed to parse remote version!')
+            return
+
+        cur_version = semantic_version.Version(manager.VERSION)
+        if version > cur_version:
+            manager.signals.update_avail.emit(version)
+
+
+class WindowsUpdateTask(progress.Task):
+
+    def __init__(self):
+        super(WindowsUpdateTask, self).__init__()
+
+        self.done.connect(self.finish)
+        self.add_work(('',))
+        progress.update(0, 'Installing update...')
+
+    def work(self, item):
+        # Download it.
+        update_base = manager.settings['update_link']
+
+        dir_name = tempfile.mkdtemp()
+        updater = os.path.join(dir_name, 'knossos_updater.exe')
+        
+        progress.start_task(0, 0.98, 'Downloading update...')
+        with open(updater, 'wb') as stream:
+            util.download(update_base + '/updater.exe', stream)
+
+        progress.update(0.99, 'Launching updater...')
+
+        try:
+            import win32api
+            win32api.ShellExecute(0, 'open', updater, '/D=' + os.getcwd(), os.path.dirname(updater), 1)
+        except:
+            logging.exception('Failed to launch updater!')
+            self.post(False)
+        else:
+            self.post(True)
+            manager.app.quit()
+
+    def finish(self):
+        res = self.get_results()
+
+        if len(res) < 1 or not res[0]:
+            QtGui.QMessageBox.critical(manager.app.activeWindow(), 'fs2mod-py', 'Failed to launch the update!')

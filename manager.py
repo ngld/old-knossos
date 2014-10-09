@@ -16,15 +16,6 @@
 from __future__ import absolute_import, print_function
 import sys
 import logging
-
-# NOTE: This isn't necessary anymore if you start fs2mod-py with launcher.py
-if __name__ == '__main__':
-    # Allow other modules to use "import manager"
-    sys.modules['manager'] = sys.modules['__main__']
-
-    # Do the logging config here because gi.repository will use it already on import.
-    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
-
 import os
 import pickle
 import glob
@@ -36,7 +27,7 @@ import six
 
 from lib import progress, util, repo, api
 from lib.qt import QtCore, QtGui
-from lib.tasks import FetchTask, InstallTask
+from lib.tasks import FetchTask, InstallTask, CheckUpdateTask
 from lib.windows import MainWindow, NebulaWindow, SettingsWindow
 from ui.select_list import Ui_Dialog as Ui_SelectList
 
@@ -58,6 +49,7 @@ shared_files = {}
 fs2_watcher = None
 pmaster = progress.Master()
 installed = None
+fso_flags = None
 
 settings = {
     'fs2_bin': None,
@@ -70,7 +62,8 @@ settings = {
     'max_downloads': 3,
     'repos': [('http://dev.tproxy.de/fs2/all.json', 'ngld\'s Repo')],
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt',
-    'nebula_link': 'http://dev.tproxy.de/fs2/mirrors/',
+    'nebula_link': 'http://neubla.tproxy.de/',
+    'update_link': 'http://dev.tproxy.de/knossos',
     'ui_mode': 'nebula'
 }
 
@@ -85,6 +78,7 @@ class _SignalContainer(QtCore.QObject):
     fs2_quit = QtCore.Signal()
     list_updated = QtCore.Signal()
     repo_updated = QtCore.Signal()
+    update_avail = QtCore.Signal('QVariant')
 
 signals = _SignalContainer()
 
@@ -145,7 +139,7 @@ class Fs2Watcher(threading.Thread):
         global main_win, settings
         
         msg = 'Starting FS2 Open (%s) failed! (return code: %d)' % (os.path.join(settings['fs2_path'], settings['fs2_bin']), p.returncode)
-        QtGui.QMessageBox.critical(main_win.win, 'Failed', msg)
+        QtGui.QMessageBox.critical(app.activeWindow(), 'Failed', msg)
 
     
 def run_task(task, cb=None):
@@ -247,6 +241,38 @@ def select_fs2_path(interact=True):
         main_win.check_fso()
 
 
+def get_fso_flags():
+    global fso_flags
+
+    if fso_flags is not None and fso_flags[0] == settings['fs2_bin']:
+        return fso_flags[1]
+
+    fs2_bin = os.path.join(settings['fs2_path'], settings['fs2_bin'])
+    flags_path = os.path.join(settings['fs2_path'], 'flags.lch')
+    mode = os.stat(fs2_bin).st_mode
+    
+    if mode & stat.S_IXUSR != stat.S_IXUSR:
+        # Make it executable.
+        os.chmod(fs2_bin, mode | stat.S_IXUSR)
+    
+    rc = util.call([fs2_bin, '-get_flags'], cwd=settings['fs2_path'])
+    flags = None
+
+    if rc != 1 and rc != 0:
+        logging.error('Failed to run FSO! (Exit code was %d)', rc)
+    elif not os.path.isfile(flags_path):
+        logging.error('Could not find the flags file "%s"!', flags_path)
+    else:
+        with open(flags_path, 'rb') as stream:
+            flags = util.FlagsReader(stream)
+
+    if flags is None:
+        QtGui.QMessageBox.critical(app.activeWindow(), 'fs2mod-py', 'I can\'t run FS2 Open! Are you sure you selected the right file?')
+
+    fso_flags = (settings['fs2_bin'], flags)
+    return flags
+
+
 def run_fs2(params=None):
     global fs2_watcher
     
@@ -274,7 +300,7 @@ def run_mod(mod):
     
     def check_install():
         if not os.path.isdir(modpath) or mod.mid not in installed.mods:
-            QtGui.QMessageBox.critical(main_win.win, 'Error', 'Failed to install "%s"! Check the log for more information.' % (mod.title))
+            QtGui.QMessageBox.critical(app.activeWindow(), 'Error', 'Failed to install "%s"! Check the log for more information.' % (mod.title))
         else:
             run_mod(mod)
     
@@ -282,7 +308,7 @@ def run_mod(mod):
         select_fs2_path()
 
         if settings['fs2_bin'] is None:
-            QtGui.QMessageBox.critical(main_win.win, 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
+            QtGui.QMessageBox.critical(app.activeWindow(), 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
             return
     
     if mod.title != '' and (not os.path.isdir(modpath) or mod.mid not in installed.mods):
@@ -411,7 +437,7 @@ def run_mod(mod):
     except:
         logging.exception('Failed to modify "%s". Not starting FS2!!', path)
         
-        QtGui.QMessageBox.critical(main_win.win, 'Error', 'Failed to edit "%s"! I can\'t change the current mod!' % path)
+        QtGui.QMessageBox.critical(app.activeWindow(), 'Error', 'Failed to edit "%s"! I can\'t change the current mod!' % path)
     else:
         run_fs2()
 
@@ -442,42 +468,11 @@ def switch_ui_mode(nmode):
     old_win.close()
 
 
-def init():
-    if hasattr(sys, 'frozen'):
-        if hasattr(sys, '_MEIPASS'):
-            os.chdir(sys._MEIPASS)
-        else:
-            os.chdir(os.path.dirname(sys.executable))
-        
-        if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
-            util.SEVEN_PATH = os.path.abspath('7z.exe')
-    else:
-        if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
-            util.SEVEN_PATH = os.path.abspath('7z.exe')
-        
-        my_path = os.path.dirname(__file__)
-        if my_path != '':
-            os.chdir(my_path)
-    
-    if not os.path.isdir(settings_path):
-        os.makedirs(settings_path)
-    
-    if sys.platform.startswith('win'):
-        # Windows won't display a console. Let's write our log messages to a file.
-        # We truncate the log file on every start to avoid filling the user's disk with useless data.
-        handler = logging.FileHandler(os.path.join(settings_path, 'log.txt'), 'w')
-        handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
-        logging.getLogger().addHandler(handler)
-    
-    app = QtGui.QApplication([])
-    return app
-
-
-def main():
+def main(app_):
     global VERSION, app, settings, installed, pmaster, main_win, progress_win, unity_launcher, browser_ctrl
-    
-    app = init()
 
+    app = app_
+    
     # Try to load our settings.
     spath = os.path.join(settings_path, 'settings.pick')
     if os.path.exists(spath):
@@ -521,8 +516,6 @@ def main():
         with open('commit', 'r') as data:
             VERSION += '-' + data.read().strip()
 
-    QtCore.QTimer.singleShot(1, api.setup_ipc)
-    
     if Unity:
         unity_launcher = Unity.LauncherEntry.get_for_desktop_id('fs2mod-py.desktop')
         
@@ -563,12 +556,11 @@ def main():
     else:
         main_win = MainWindow()
 
+    QtCore.QTimer.singleShot(1, api.setup_ipc)
+    QtCore.QTimer.singleShot(1, lambda: run_task(CheckUpdateTask()))
+
     main_win.open()
     app.exec_()
     
     save_settings()
     api.shutdown_ipc()
-
-
-if __name__ == '__main__':
-    main()

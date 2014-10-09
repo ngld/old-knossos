@@ -9,10 +9,12 @@ SetCompressor /SOLID lzma
 OutFile updater.exe
 
 !define MUI_ICON ${KNOSSOS_ROOT}hlp.ico
+!define MUI_INSTFILESPAGE_HEADER_SUBTEXT
 
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
 
+LangString MUI_TEXT_INSTALLING_SUBTITLE 0 "Please wait while $(^NameDA) is being updated."
 
 Section
     SetOutPath "$INSTDIR"
@@ -37,6 +39,6 @@ Section
     File /r /x *.h dist\Knossos\*
 
     DetailPrint "Launching Knossos..."
-    Exec '"$INSTDIR\Knossos.exe"'
+    ExecShell "open" '"$INSTDIR\Knossos.exe"' '--finish-update "$EXEPATH"'
     SetAutoClose true
 SectionEnd

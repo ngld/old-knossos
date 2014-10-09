@@ -32,6 +32,7 @@ if six.PY2:
 
 from lib.qt import QtGui
 from lib.ipc import IPCComm
+from lib import util
 
 
 app = None
@@ -162,37 +163,95 @@ def get_cpu_info():
     print(json.dumps(info))
 
 
+def init():
+    if hasattr(sys, 'frozen'):
+        if hasattr(sys, '_MEIPASS'):
+            os.chdir(sys._MEIPASS)
+        else:
+            os.chdir(os.path.dirname(sys.executable))
+        
+        if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
+            util.SEVEN_PATH = os.path.abspath('7z.exe')
+    else:
+        if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
+            util.SEVEN_PATH = os.path.abspath('7z.exe')
+        
+        my_path = os.path.dirname(__file__)
+        if my_path != '':
+            os.chdir(my_path)
+    
+    if not os.path.isdir(settings_path):
+        os.makedirs(settings_path)
+    
+    if sys.platform.startswith('win'):
+        # Windows won't display a console. Let's write our log messages to a file.
+        # We truncate the log file on every start to avoid filling the user's disk with useless data.
+        handler = logging.FileHandler(os.path.join(settings_path, 'log.txt'), 'w')
+        handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
+        logging.getLogger().addHandler(handler)
+    
+    app = QtGui.QApplication([])
+    return app
+
+
 def main():
     global ipc
-    
+
+    app = init()
     ipc = IPCComm(settings_path)
 
     if len(sys.argv) > 1:
         if sys.argv[1] == '--cpuinfo':
             get_cpu_info()
+            return
         elif sys.argv[1] == '--install-scheme':
-            app = QtGui.QApplication([])
-
             # We have to import manager first to solve a dependency problem. (lib.api imports lib.tasks which imports manager which in turn imports lib.api)
             # /headdesk
             import manager
             from lib import api
-            api.install_scheme_handler('--slient' not in sys.argv)
+            
+            api.install_scheme_handler('--silent' not in sys.argv)
+            return
+        elif sys.argv[1] == '--finish-update':
+            updater = sys.argv[2]
+
+            if not os.path.isfile(updater):
+                logging.error('The update finished but where is the installer?! It\'s not where it\'s supposed to be! (%s)', updater)
+            else:
+                tries = 3
+                while tries > 0:
+                    # Clean up
+                    os.unlink(updater)
+
+                    if os.path.isfile(updater):
+                        time.sleep(0.3)
+                        tries -= 1
+                    else:
+                        break
+
+                # Delete the temporary directory.
+                if os.path.basename(updater) == 'knossos_updater.exe':
+                    try:
+                        os.rmdir(os.path.dirname(updater))
+                    except:
+                        logging.exception('Failed to remove the updater\'s temporary directory.')
         else:
             scheme_handler(sys.argv[1])
+            return
     elif ipc.server_exists():
         scheme_handler('fso://focus')
-    else:
-        del ipc
+        return
+    
+    del ipc
 
-        from manager import main
-        try:
-            main()
-        except:
-            logging.exception('Uncaught exeception! Quitting...')
+    from manager import main
+    try:
+        main(app)
+    except:
+        logging.exception('Uncaught exeception! Quitting...')
 
-            # Try to tell the user
-            QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
+        # Try to tell the user
+        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
 
 
 if __name__ == '__main__':

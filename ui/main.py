@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Thu Oct  9 14:42:12 2014
+# Created: Thu Oct  9 21:27:46 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -77,6 +77,9 @@ class Ui_MainWindow(object):
         self.settings.setObjectName("settings")
         self.verticalLayout_5 = QtGui.QVBoxLayout(self.settings)
         self.verticalLayout_5.setObjectName("verticalLayout_5")
+        self.updateButton = QtGui.QPushButton(self.settings)
+        self.updateButton.setObjectName("updateButton")
+        self.verticalLayout_5.addWidget(self.updateButton)
         self.label_2 = QtGui.QLabel(self.settings)
         self.label_2.setObjectName("label_2")
         self.verticalLayout_5.addWidget(self.label_2)
@@ -105,18 +108,24 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.enforceDeps, 0, 0, 1, 1)
         self.label_3 = QtGui.QLabel(self.settings)
         self.label_3.setObjectName("label_3")
-        self.gridLayout.addWidget(self.label_3, 1, 0, 1, 1)
+        self.gridLayout.addWidget(self.label_3, 2, 0, 1, 1)
         self.maxDownloads = QtGui.QLineEdit(self.settings)
         self.maxDownloads.setObjectName("maxDownloads")
-        self.gridLayout.addWidget(self.maxDownloads, 1, 1, 1, 1)
+        self.gridLayout.addWidget(self.maxDownloads, 2, 1, 1, 1)
         self.label_4 = QtGui.QLabel(self.settings)
         self.label_4.setObjectName("label_4")
-        self.gridLayout.addWidget(self.label_4, 2, 0, 1, 1)
+        self.gridLayout.addWidget(self.label_4, 3, 0, 1, 1)
         self.uiMode = QtGui.QComboBox(self.settings)
         self.uiMode.setObjectName("uiMode")
         self.uiMode.addItem("")
         self.uiMode.addItem("")
-        self.gridLayout.addWidget(self.uiMode, 2, 1, 1, 1)
+        self.gridLayout.addWidget(self.uiMode, 3, 1, 1, 1)
+        self.label_5 = QtGui.QLabel(self.settings)
+        self.label_5.setObjectName("label_5")
+        self.gridLayout.addWidget(self.label_5, 1, 0, 1, 1)
+        self.versionLabel = QtGui.QLabel(self.settings)
+        self.versionLabel.setObjectName("versionLabel")
+        self.gridLayout.addWidget(self.versionLabel, 1, 1, 1, 1)
         self.verticalLayout_5.addLayout(self.gridLayout)
         self.horizontalLayout_3 = QtGui.QHBoxLayout()
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
@@ -148,7 +157,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(4)
+        self.tabs.setCurrentIndex(3)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -164,6 +173,7 @@ class Ui_MainWindow(object):
         self.tabs.setTabText(self.tabs.indexOf(self.mods), QtGui.QApplication.translate("MainWindow", "Mod Tree", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.modweb), QtGui.QApplication.translate("MainWindow", "Mod List", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.fsoSettings), QtGui.QApplication.translate("MainWindow", "FSO Settings", None, QtGui.QApplication.UnicodeUTF8))
+        self.updateButton.setText(QtGui.QApplication.translate("MainWindow", "Update Knossos", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Mod Sources:", None, QtGui.QApplication.UnicodeUTF8))
         self.addSource.setText(QtGui.QApplication.translate("MainWindow", "Add", None, QtGui.QApplication.UnicodeUTF8))
         self.editSource.setText(QtGui.QApplication.translate("MainWindow", "Edit", None, QtGui.QApplication.UnicodeUTF8))
@@ -173,6 +183,8 @@ class Ui_MainWindow(object):
         self.label_4.setText(QtGui.QApplication.translate("MainWindow", "UI Mode:", None, QtGui.QApplication.UnicodeUTF8))
         self.uiMode.setItemText(0, QtGui.QApplication.translate("MainWindow", "Traditional", None, QtGui.QApplication.UnicodeUTF8))
         self.uiMode.setItemText(1, QtGui.QApplication.translate("MainWindow", "Nebula", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_5.setText(QtGui.QApplication.translate("MainWindow", "Version:", None, QtGui.QApplication.UnicodeUTF8))
+        self.versionLabel.setText(QtGui.QApplication.translate("MainWindow", "?", None, QtGui.QApplication.UnicodeUTF8))
         self.schemeHandler.setText(QtGui.QApplication.translate("MainWindow", "Install as handler for fso:// links", None, QtGui.QApplication.UnicodeUTF8))
         self.gogextractButton.setText(QtGui.QApplication.translate("MainWindow", "Install FS2 from GoG", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.settings), QtGui.QApplication.translate("MainWindow", "Settings", None, QtGui.QApplication.UnicodeUTF8))

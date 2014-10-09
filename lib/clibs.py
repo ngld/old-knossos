@@ -12,14 +12,14 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
-import sys
+#import sys
 import logging
 import ctypes.util
 
 
 ENCODING = 'utf8'
-if sys.platform.startswith('win'):
-    ENCODING = 'iso-8859-1'
+#if sys.platform.startswith('win'):
+#    ENCODING = 'iso-8859-1'
 
 
 class SDL_Rect(ctypes.Structure):
