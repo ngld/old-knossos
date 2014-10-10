@@ -21,6 +21,11 @@ from lib import progress, util
 
 class ChecksumTask(progress.Task):
 
+    def __init__(self, items):
+        super(ChecksumTask, self).__init__(items)
+
+        self.add_work(items)
+
     def work(self, item):
         id_, links, name, archive, tstamp = item
 

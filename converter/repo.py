@@ -49,7 +49,9 @@ class RepoConf(object):
         self.mods = {}
 
         for mod in mods:
-            self.mods[mod['id']] = Mod(mod)
+            mod = Mod(mod)
+            if mod.validate():
+                self.mods[mod.id] = mod
 
     def validate(self):
         for mod in self.mods.values():

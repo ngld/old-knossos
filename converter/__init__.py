@@ -141,18 +141,23 @@ def generate_checksums(repo, output, prg_wrap=None):
                 # id_, links, name, archive, tstamp
                 items.append(((mid, pkg.name, name), file_.urls, name, file_.is_archive, my_tstamp))
     
-    logging.info('Updating checksums...')
+    if len(items) < 1:
+        logging.error('No files found!')
+        failed = True
+        file_info = []
+    else:
+        logging.info('Updating checksums...')
 
-    init_app()
-    task = ChecksumTask()
-    task.add_work(items)
-    run_task(task, prg_wrap)
+        init_app()
+        task = ChecksumTask(items)
+        run_task(task, prg_wrap)
+        file_info = task.get_results()
 
     logging.info('Saving data...')
 
     results = {}
     logos = {}
-    for id_, csum, content in task.get_results():
+    for id_, csum, content in file_info:
         mid, pkg, name = id_
 
         if csum == 'FAILED':
