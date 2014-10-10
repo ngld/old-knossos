@@ -154,7 +154,6 @@ class CheckTask(progress.Task):
         
         if pkg.get_mod().folder != '':
             prefix = len(manager.settings['fs2_path'])
-            filelist = manager.settings['known_files']
             lines = []
             for sub_path, dirs, files in os.walk(modpath):
                 for name in files:
@@ -178,7 +177,6 @@ class CheckTask(progress.Task):
         for pkg, archives, s, c, m in results:
             mod = pkg.get_mod()
             mods.add(mod)
-            #my_shared = shared_set & set([util.pjoin(mod.folder, item) for item in pkg.get_files().keys()])
             pinfo = installed.query(mod.mid, pkg.name)
             
             if s == c:
@@ -211,12 +209,15 @@ class CheckTask(progress.Task):
                 pinfo.check_notes = m
                 pinfo.files_ok = s
                 pinfo.files_checked = c
-                pinfo.files_shared = 0  # len(my_shared)
+                pinfo.files_shared = 0  # TODO: Remove
 
         for mod in mods:
             if mod.mid in installed.mods:
                 im = installed.mods[mod.mid]
                 im.logo = mod.logo
+                
+                if mod.version > im.version:
+                    im.current_version = im.version
 
         manager.settings['installed_mods'] = installed.get()
         manager.save_settings()

@@ -40,7 +40,7 @@ except ImportError:
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.0.3-dev'
+VERSION = '0.0.4-dev'
 
 app = None
 main_win = None
@@ -243,6 +243,9 @@ def select_fs2_path(interact=True):
 
 def get_fso_flags():
     global fso_flags
+
+    if settings['fs2_bin'] is None:
+        select_fs2_path()
 
     if fso_flags is not None and fso_flags[0] == settings['fs2_bin']:
         return fso_flags[1]

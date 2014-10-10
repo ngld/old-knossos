@@ -28,6 +28,7 @@ from six.moves.urllib.request import urlopen, Request
 from six.moves.urllib.error import HTTPError, URLError
 from collections import OrderedDict
 from threading import Condition, Event
+from collections import deque
 
 from lib.qt import QtCore, QtGui
 
@@ -179,6 +180,35 @@ class ResizableSemaphore(object):
             return self._capacity - self._free
 
 
+class SpeedCalc(object):
+    speeds = None
+    last_time = 0
+    last_bytes = 0
+    interval = 0.5
+
+    def __init__(self):
+        self.speeds = deque(maxlen=30)
+
+    def push(self, bytes):
+        now = time.time()
+
+        if self.last_time != 0:
+            if (now - self.last_time) < self.interval:
+                # Enforce a little gap between two speed measurements.
+                return -1
+
+            self.speeds.append(float(bytes - self.last_bytes) / float(now - self.last_time))
+
+        self.last_time = now
+        self.last_bytes = bytes
+
+    def get_speed(self):
+        if len(self.speeds) == 0:
+            return 0.1
+
+        return max(sum(self.speeds) / len(self.speeds), 0.1)
+
+
 def call(*args, **kwargs):
     if sys.platform.startswith('win'):
         # Provide the called program with proper I/O on Windows.
@@ -218,6 +248,24 @@ def check_output(*args, **kwargs):
 
     logging.debug('Running %s', args[0])
     return subprocess.check_output(*args, **kwargs)
+
+
+def format_bytes(value):
+    unit = 'Bytes'
+    if value > 1024:
+        value = value / 1024
+        unit = 'KB'
+    if value > 1024:
+        value = value / 1024
+        unit = 'MB'
+    if value > 1024:
+        value = value / 1024
+        unit = 'GB'
+    if value > 1024:
+        value = value / 1024
+        unit = 'TB'
+
+    return str(round(value)) + ' ' + unit
 
 
 def get(link, headers=None):
@@ -297,19 +345,25 @@ def download(link, dest, headers=None):
                     size = 1024 ** 4  # = 1 TB
 
             start = dest.tell()
+            sc = SpeedCalc()
             while not _DL_CANCEL.is_set():
                 chunk = result.read(50 * 1024)  # Read 50KB chunks
                 if not chunk:
                     break
 
                 dest.write(chunk)
+                sc.push(dest.tell())
 
-                # TODO: Add time estimate
                 if size > 0:
-                    p = (dest.tell() - start) / size
+                    by_done = dest.tell() - start
+                    speed = sc.get_speed()
+                    p = by_done / size
+                    text = ', ' + format_bytes(speed) + '/s, '
+                    text += time.strftime('%H:%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
                 else:
                     p = 0
-                progress.update(p, '%s' % (os.path.basename(link)))
+                    text = ''
+                progress.update(p, os.path.basename(link) + text)
         except KeyboardInterrupt:
             raise
         except HTTPError as exc:

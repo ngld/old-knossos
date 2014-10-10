@@ -155,7 +155,7 @@ class MainWindow(Window):
         self.win.webView.setMaximumSize(999999, 999999)
 
         self.check_fso()
-        self.win.move(manager.app.desktop().screen().rect().center() - self.win.rect().center())
+        #self.win.move(manager.app.desktop().screen().rect().center() - self.win.rect().center())
 
     def _del(self):
         self.settings_tab._del2()
@@ -598,7 +598,7 @@ class NebulaWindow(Window):
         from . import web
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
         self.show_mod_list()
-        self.win.move(manager.app.desktop().screen().rect().center() - self.win.rect().center())
+        #self.win.move(manager.app.desktop().screen().rect().center() - self.win.rect().center())
 
     def _del(self):
         self.support_win.close()

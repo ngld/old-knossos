@@ -518,6 +518,7 @@ class InstalledRepo(object):
 
 class InstalledMod(Mod):
     check_notes = ''
+    current_version = None
 
     @staticmethod
     def convert(mod):
@@ -537,6 +538,16 @@ class InstalledMod(Mod):
         super(InstalledMod, self).set(values)
 
         self.check_notes = values.get('check_notes', '')
+        cur_version = values.get('current_version', None)
+
+        if cur_version is None:
+            self.current_version = None
+        else:
+            try:
+                self.current_version = semantic_version.Version(cur_version)
+            except:
+                logging.exception('Failed to parse invalid version!')
+                self.current_version = None
         
         for pkg in pkgs:
             self.packages.append(InstalledPackage(pkg, self))
@@ -544,6 +555,12 @@ class InstalledMod(Mod):
     def get(self):
         data = super(InstalledMod, self).get()
         data['check_notes'] = self.check_notes
+
+        if self.current_version is None:
+            data['current_version'] = None
+        else:
+            data['current_version'] = str(self.current_version)
+
         return data
 
     def add_pkg(self, pkg):
