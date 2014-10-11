@@ -330,7 +330,7 @@ class Mod(object):
                         fs.makedirs(os.path.dirname(my_path))
                         fs.put_file(my_path, (pkg.name, _file.filename, name, csum))
                 else:
-                    my_path = os.path.join(_file.dest, _file.name)
+                    my_path = os.path.join(_file.dest, _file.filename)
                     fs.makedirs(os.path.dirname(my_path))
                     fs.put_file(my_path, (pkg.name, _file.filename, None, _file.md5sum))
 
