@@ -123,7 +123,7 @@ class CheckTask(progress.Task):
     def work(self, pkg):
         fs2path = manager.settings['fs2_path']
         modpath = os.path.join(fs2path, pkg.get_mod().folder)
-        files = [item for item in pkg.get_mod().filelist.values() if item['package'] == pkg.name]
+        files = pkg.filelist
         
         count = float(len(files))
         success = 0
@@ -221,7 +221,7 @@ class CheckTask(progress.Task):
                     im.current_version = im.version
 
                 updated_mids.append(mod.mid)
-        
+
         for mid, mod in installed.mods.items():
             if mid not in updated_mids:
                 mod.logo = None
@@ -295,11 +295,11 @@ class InstallTask(progress.MultistepTask):
                     if itempath not in mfiles:
                         logging.info('File "%s" is left over.', itempath)
 
-        for item, info in mfiles.items():
-            if (mod.mid, item['package']) not in self._pkg_names:
+        for info in mfiles:
+            if (mod.mid, info['package']) not in self._pkg_names:
                 continue
 
-            itempath = util.ipath(os.path.join(modpath, item))
+            itempath = util.ipath(os.path.join(modpath, info['filename']))
             if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
                 archives.add((mod.mid, info['package'], info['archive']))
 
@@ -399,9 +399,9 @@ class UninstallTask(progress.Task):
         mod = pkg.get_mod()
 
         for item in pkg.filelist:
-            path = util.ipath(os.path.join(fs2path, mod.folder, item))
+            path = util.ipath(os.path.join(fs2path, mod.folder, item['filename']))
             if not os.path.isfile(path):
-                logging.warning('File "%s" for mod "%s" (%s) is missing during uninstall!', item, mod.title, mod.mid)
+                logging.warning('File "%s" for mod "%s" (%s) is missing during uninstall!', item['filename'], mod.title, mod.mid)
             else:
                 os.unlink(path)
 
