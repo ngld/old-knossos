@@ -183,6 +183,7 @@ class Repo(object):
                         dep_dict[mid][dep.name][version] = dep
                         ndeps.append(dep)
 
+        # Check for conflicts (and try to resolve them if possible).
         dep_list = []
         for mid, deps in dep_dict.items():
             for name, variants in deps.items():
@@ -290,12 +291,15 @@ class Mod(object):
     def get_submods(self):
         return [self._repo.query(mid) for mid in self.submods]
 
-    # def get_files(self):
-    #     files = {}
-    #     for pkg in self.packages:
-    #         files.update(pkg.get_files())
+    def get_files(self):
+        files = []
+        for pkg in self.packages:
+            for item in pkg.filelist:
+                item = item.copy()
+                item['package'] = pkg.name
+                files.append(item)
 
-    #     return files
+        return files
 
     def resolve_deps(self):
         return self._repo.process_pkg_selection(self.packages)
@@ -326,6 +330,7 @@ class Package(object):
     dependencies = None
     environment = None
     files = None
+    filelist = None
 
     def __init__(self, values=None, mod=None):
         self._mod = mod
@@ -343,6 +348,7 @@ class Package(object):
         self.dependencies = values.get('dependencies', [])
         self.environment = values.get('environment', [])
         self.files = {}
+        self.filelist = values.get('filelist', [])
 
         _files = values.get('files', [])
 
@@ -373,7 +379,7 @@ class Package(object):
         if not has_mod_dep:
             self.dependencies.append({
                 'id': self.get_mod().mid,
-                'version': '*',
+                'version': '==' + str(self.get_mod().version),
                 'packages': []
             })
 
@@ -384,7 +390,8 @@ class Package(object):
             'status': self.status,
             'dependencies': self.dependencies,
             'environment': self.environment,
-            'files': list(self.files.values())
+            'files': list(self.files.values()),
+            'filelist': self.filelist
         }
 
     def get_mod(self):

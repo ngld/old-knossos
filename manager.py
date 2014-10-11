@@ -245,12 +245,15 @@ def get_fso_flags():
     global fso_flags
 
     if settings['fs2_bin'] is None:
-        select_fs2_path()
+        return
 
     if fso_flags is not None and fso_flags[0] == settings['fs2_bin']:
         return fso_flags[1]
 
     fs2_bin = os.path.join(settings['fs2_path'], settings['fs2_bin'])
+    if not os.path.isfile(fs2_bin):
+        return
+
     flags_path = os.path.join(settings['fs2_path'], 'flags.lch')
     mode = os.stat(fs2_bin).st_mode
     

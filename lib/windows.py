@@ -1221,6 +1221,7 @@ class FlagsWindow(Window):
             self.win.easySetup.setDisabled(True)
             self.win.listType.setDisabled(True)
             self.win.flagList.setDisabled(True)
+            self.win.defaultsButton.setDisabled(True)
             return
         
         for key, name in flags.easy_flags.items():

@@ -87,6 +87,9 @@ class Container(object):
 
     def mkdir(self, path):
         parent, name = self._split(path)
+        if name in parent.contents:
+            raise VFSError('Path already exists!')
+
         parent.contents[name] = Directory(name, parent)
 
     def makedirs(self, path):
@@ -99,7 +102,14 @@ class Container(object):
 
     def touch(self, path):
         parent, name = self._split(path)
-        obj = parent.contents[name] = File(name, parent)
+        if name in parent.contents:
+            if isinstance(parent.contents[name], Directory):
+                raise VFSError('The path points to a directory!')
+            else:
+                obj = parent.contents[name]
+        else:
+            obj = parent.contents[name] = File(name, parent)
+
         return obj
 
     def unlink(self, path):
@@ -110,38 +120,30 @@ class Container(object):
             raise VFSError('The path points to a directory!')
 
     def rmdir(self, path):
-        parent, name = self._split(path)
-        obj = parent.contents[name]
+        obj = self.query(path)
+        parent = obj.parent
 
         if isinstance(obj, Directory):
             # There are always the "." and ".." directories.
             if len(obj.contents) > 2:
                 raise VFSError('The directory is not empty!')
 
-            del parent.contents[name]
+            del parent.contents[obj.name]
         else:
             raise VFSError('The path points to a file!')
 
     def rename(self, path_a, path_b):
         parent, name = self._split(path_a)
-
-        try:
-            dest = self.query(path_b)
-        except VFSError:
-            dest = self.query(os.path.dirname(path_b))
-        else:
+        
+        dest = self.query(os.path.dirname(path_b))
+        dest_name = os.path.basename(path_b)
+        
+        if dest_name in dest.contents:
             raise VFSError('Destination exists!')
 
         item = parent.contents[name]
-        if not isinstance(item, File):
-            raise VFSError('The source isn\'t a file!')
-
         del parent.contents[name]
-
-        if isinstance(dest, File):
-            dest.content = item.content
-        else:
-            dest.contents[name] = item
+        dest.contents[dest_name] = item
 
     def listdir(self, path):
         items = list(self.query(path).contents.keys())

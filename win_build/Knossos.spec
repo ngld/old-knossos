@@ -54,7 +54,7 @@ if onefile:
             debug=False,
             strip=None,
             upx=True,
-            console=True )
+            console=False )
 else:
   exe = EXE(pyz,
             a.scripts,
@@ -64,7 +64,7 @@ else:
             debug=False,
             strip=None,
             upx=True,
-            console=True )
+            console=False )
   coll = COLLECT(exe,
                  a.binaries,
                  a.zipfiles,

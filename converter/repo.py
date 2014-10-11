@@ -207,9 +207,8 @@ class Mod(object):
     submods = None
     actions = None
     packages = None
-    filelist = None
 
-    _fields = ('id', 'title', 'version', 'folder', 'logo', 'description', 'notes', 'submods', 'actions', 'packages', 'filelist')
+    _fields = ('id', 'title', 'version', 'folder', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
     _req = ('id', 'title', 'version')
 
     def __init__(self, values=None, repo=None):
@@ -246,7 +245,6 @@ class Mod(object):
         self.submods = values.get('submods', [])
         self.packages = [Package(pkg, self) for pkg in values.get('packages', [])]
         self.actions = values.get('actions', [])
-        self.filelist = values.get('filelist', [])
 
         try:
             self.version = semantic_version.Version(values['version'], partial=True)
@@ -303,8 +301,7 @@ class Mod(object):
             'notes': self.notes,
             'submods': self.submods,
             'actions': self.actions,
-            'packages': [pkg.get() for pkg in self.packages],
-            'filelist': self.filelist
+            'packages': [pkg.get() for pkg in self.packages]
         }
 
     def copy(self):
@@ -322,22 +319,27 @@ class Mod(object):
 
     def build_file_list(self):
         fs = vfs.Container()
+        pkg_filelist = {}
+
         for pkg in self.packages:
+            pkg_filelist[pkg.name] = pkg.filelist = []
             for _file in pkg.files.values():
-                for name, csum in _file.contents.items():
-                    my_path = os.path.join(_file.dest, name)
+                if _file.is_archive:
+                    for name, csum in _file.contents.items():
+                        my_path = os.path.join(_file.dest, name)
+                        fs.makedirs(os.path.dirname(my_path))
+                        fs.put_file(my_path, (pkg.name, _file.filename, name, csum))
+                else:
+                    my_path = os.path.join(_file.dest, _file.name)
                     fs.makedirs(os.path.dirname(my_path))
-                    fs.put_file(my_path, (pkg.name, _file.filename, name, csum))
+                    fs.put_file(my_path, (pkg.name, _file.filename, None, _file.md5sum))
 
         self.apply_actions(fs)
-
         filelist = fs.get_tree()
-        self.filelist = []
-
+        
         for name, item in filelist.items():
-            self.filelist.append({
+            pkg_filelist[item[0]].append({
                 'filename': name,
-                'package': item[0],
                 'archive': item[1],
                 'orig_name': item[2],
                 'md5sum': item[3]
@@ -346,9 +348,9 @@ class Mod(object):
     def apply_actions(self, fs):
         for act in self.actions:
             if act.get('glob', False):
-                    paths = []
-                    for p in act['paths']:
-                        paths.extend(fs.iglob(p))
+                paths = []
+                for p in act['paths']:
+                    paths.extend(fs.iglob(p))
             else:
                 paths = act['paths']
 
@@ -385,8 +387,9 @@ class Package(object):
     dependencies = None
     environment = None
     files = None
+    filelist = None
 
-    _fields = ('name', 'notes', 'status', 'dependencies', 'environment', 'files')
+    _fields = ('name', 'notes', 'status', 'dependencies', 'environment', 'files', 'filelist')
 
     def __init__(self, values=None, mod=None):
         self._mod = mod
@@ -413,6 +416,7 @@ class Package(object):
         self.dependencies = values.get('dependencies', [])
         self.environment = values.get('environment', [])
         self.files = {}
+        self.filelist = values.get('filelist', [])
 
         # Validate this package's options
         if self.status not in ('required', 'recommended', 'optional'):
@@ -450,6 +454,8 @@ class Package(object):
             elif 'value' not in env:
                 logging.error('Missing the value for one of "%s"\'s environment conditions!', self.name)
                 self._valid = False
+            elif 'not' not in env:
+                env['not'] = False
             elif env['type'] == 'cpu_feature':
                 # TODO
                 pass
@@ -462,26 +468,11 @@ class Package(object):
                 self._valid = False
 
         _files = values.get('files', [])
-
         self.set_files(_files)
-
-        has_mod_dep = False
         mid = self._mod.mid
 
         if mid == '':
             raise Exception('Package "%s" initialized with Mod %s which has no ID!' % (self.name, self._mod.title))
-
-        for info in self.dependencies:
-            if info['id'] == mid:
-                has_mod_dep = True
-                break
-
-        if not has_mod_dep:
-            self.dependencies.append({
-                'id': self.get_mod().mid,
-                'version': '*',
-                'packages': []
-            })
 
     def set_files(self, files):
         self.files = {}
@@ -507,7 +498,8 @@ class Package(object):
             'status': self.status,
             'dependencies': self.dependencies,
             'environment': self.environment,
-            'files': [f.get() for f in self.files.values()]
+            'files': [f.get() for f in self.files.values()],
+            'filelist': self.filelist
         }
 
     def copy(self):

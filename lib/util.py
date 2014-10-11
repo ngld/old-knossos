@@ -359,7 +359,7 @@ def download(link, dest, headers=None):
                     speed = sc.get_speed()
                     p = by_done / size
                     text = ', ' + format_bytes(speed) + '/s, '
-                    text += time.strftime('%H:%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
+                    text += time.strftime('%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
                 else:
                     p = 0
                     text = ''

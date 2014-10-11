@@ -211,13 +211,22 @@ class CheckTask(progress.Task):
                 pinfo.files_checked = c
                 pinfo.files_shared = 0  # TODO: Remove
 
+        updated_mids = []
         for mod in mods:
             if mod.mid in installed.mods:
                 im = installed.mods[mod.mid]
                 im.logo = mod.logo
-                
+
                 if mod.version > im.version:
                     im.current_version = im.version
+
+                updated_mids.append(mod.mid)
+        
+        for mid, mod in installed.mods.items():
+            if mid not in updated_mids:
+                mod.logo = None
+
+        # TODO: Detect local mods.
 
         manager.settings['installed_mods'] = installed.get()
         manager.save_settings()
@@ -227,12 +236,16 @@ class CheckTask(progress.Task):
 # TODO: Optimize, make sure all paths are relative (no mod should be able to install to C:\evil)
 class InstallTask(progress.MultistepTask):
     _pkgs = None
-    _steps = 3
+    _pkg_names = None
+    _dls = None
+    _steps = 2
 
     def __init__(self, pkgs):
         self._pkgs = pkgs
+        self._pkg_names = [(pkg.get_mod().mid, pkg.name) for pkg in self._pkgs]
         super(InstallTask, self).__init__()
 
+        self.done.connect(self.finish)
         progress.update(0, 'Installing mods...')
 
     def abort(self):
@@ -240,17 +253,36 @@ class InstallTask(progress.MultistepTask):
 
         util.cancel_downloads()
 
+    def finish(self):
+        if self.aborted:
+            if self._cur_step == 1:
+                # Need to remove all those temporary directories.
+                for ar in self.get_results():
+                    shutil.rmtree(ar['tpath'])
+        else:
+            mods = set()
+
+            # Register installed pkgs
+            for pkg in self._pkgs:
+                manager.installed.add_pkg(pkg)
+                mods.add(pkg.get_mod())
+
+            manager.settings['installed_mods'] = manager.installed.get()
+
+            manager.signals.repo_updated.emit()
+
     def init1(self):
         mods = set()
         for pkg in self._pkgs:
             mods.add(pkg.get_mod())
 
+        self._threads = 3
         self.add_work(mods)
 
     def work1(self, mod):
         fs2_path = manager.settings['fs2_path']
         modpath = os.path.join(fs2_path, mod.folder)
-        mfiles = mod.filelist
+        mfiles = mod.get_files()
 
         archives = set()
         progress.update(0, 'Checking %s...' % mod.title)
@@ -264,6 +296,9 @@ class InstallTask(progress.MultistepTask):
                         logging.info('File "%s" is left over.', itempath)
 
         for item, info in mfiles.items():
+            if (mod.mid, item['package']) not in self._pkg_names:
+                continue
+
             itempath = util.ipath(os.path.join(modpath, item))
             if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
                 archives.add((mod.mid, info['package'], info['archive']))
@@ -272,131 +307,78 @@ class InstallTask(progress.MultistepTask):
 
     def init2(self):
         archives = set()
-
+        downloads = []
+        
         for a in self.get_results():
             archives |= a
 
-        self.add_work([(pkg, archives) for pkg in self._pkgs])
-
-    def work2(self, p):
-        pkg, archives = p
-        mid = pkg.get_mod().mid
-        fs2path = manager.settings['fs2_path']
-        modpath = os.path.join(fs2path, pkg.get_mod().folder)
-        files = []
-
-        for f_mid, pkg_name, fname in archives:
-            if f_mid == mid and pkg.name == pkg_name:  # and fname in pkg.files:
-                files.append(fname)
-
-        count = float(len(files))
-        for i, fname in enumerate(files):
-            info = pkg.files[fname]
-            dest = os.path.join(modpath, info['dest'])
-
-            progress.start_task(i / count, 1 / count)
-
-            with tempfile.TemporaryDirectory() as tpath:
-                arpath = os.path.join(tpath, fname)
-
-                with open(arpath, 'wb') as fobj:
-                    util.try_download(info['urls'], fobj)
-
-                if self.aborted:
-                    return
-
-                if info['is_archive']:
-                    progress.update(1, 'Extracting %s...' % fname)
-
-                    cpath = os.path.join(tpath, 'content')
-                    os.mkdir(cpath)
-                    util.extract_archive(arpath, cpath)
-
-                    for sub_path, dirs, files in os.walk(cpath):
-                        destpath = util.ipath(os.path.join(dest, sub_path[len(cpath):].lstrip('/')))
-
-                        if not os.path.isdir(destpath):
-                            logging.debug('Creating path "%s"...', destpath)
-                            os.makedirs(destpath)
-
-                        for item in files:
-                            spath = os.path.join(sub_path, item)
-                            dpath = util.ipath(os.path.join(destpath, item))
-
-                            logging.debug('Moving "%s" to "%s"...', spath, dpath)
-                            if os.path.isfile(dpath):
-                                os.unlink(dpath)
-                            elif os.path.isdir(dpath):
-                                logging.warning('What?! "%s" is a directory! (I was expecting a file!)', dpath)
-                                shutil.rmtree(dpath)
-
-                            shutil.move(spath, dpath)
-                else:
-                    dpath = util.ipath(os.path.join(dest, fname))
-                    if os.path.isfile(dpath):
-                        os.unlink(dpath)
-                    elif os.path.isdir(dpath):
-                        logging.warning('What?! "%s" is a directory! (I was expecting a file!)', dpath)
-                        shutil.rmtree(dpath)
-
-                    shutil.move(arpath, dpath)
-
-            progress.finish_task()
-
-    def init3(self):
-        mods = set()
-
-        # Register installed pkgs
         for pkg in self._pkgs:
-            manager.installed.add_pkg(pkg)
-            mods.add(pkg.get_mod())
+            mod = pkg.get_mod()
+            for item in pkg.files.values():
+                if (mod.mid, pkg.name, item['filename']) in archives:
+                    item = item.copy()
+                    item['mod'] = mod
+                    item['pkg'] = pkg
+                    downloads.append(item)
 
-        manager.settings['installed_mods'] = manager.installed.get()
+        self._threads = 0
+        self.add_work(downloads)
 
-        self.done.connect(self.finish)
-        self.add_work(mods)
+    def work2(self, archive):
+        with tempfile.TemporaryDirectory() as tpath:
+            arpath = os.path.join(tpath, archive['filename'])
+            fs2path = manager.settings['fs2_path']
+            modpath = os.path.join(fs2path, archive['mod'].folder)
 
-    def work3(self, mod):
-        fs2path = manager.settings['fs2_path']
-        progress.update(0, 'Installing %s...' % (mod.title))
+            with open(arpath, 'wb') as stream:
+                util.try_download(archive['urls'], stream)
 
-        for act in mod.actions:
-            path_prefix = os.path.join(fs2path, mod.folder)
-            if act.get('glob', True):
-                path_prefix = glob.escape(path_prefix)
+            if self.aborted:
+                return
 
-            try:
-                paths = []
-                for item in act['paths']:
-                    if act.get('glob', True):
-                        paths.extend(glob.iglob(os.path.join(path_prefix, item.lstrip('/'))))
+            if archive['is_archive']:
+                progress.update(1, 'Extracting %s...' % archive['filename'])
+
+                cpath = os.path.join(tpath, 'content')
+                os.mkdir(cpath)
+                util.extract_archive(arpath, cpath)
+
+                for item in archive['pkg'].filelist:
+                    if item['archive'] != archive['filename']:
+                        continue
+
+                    src_path = os.path.join(cpath, item['orig_name'])
+                    dest_path = util.ipath(os.path.join(modpath, item['filename']))
+
+                    if not os.path.isfile(src_path):
+                        logging.error('Missing file "%s" from archive "%s" for package "%s" (%s)!',
+                                      item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
                     else:
-                        paths.append(os.path.join(path_prefix, item.lstrip('/')))
+                        try:
+                            dparent = os.path.dirname(dest_path)
+                            if not os.path.isdir(dparent):
+                                os.makedirs(dparent)
 
-                if act['type'] == 'delete':
-                    for item in paths:
-                        logging.debug('Removing "%s"...', item)
-                        shutil.rmtree(item)
-                elif act['type'] == 'move':
-                    dest = os.path.join(fs2path, mod.folder, act['dest'].lstrip('/'))
-                    for item in paths:
-                        logging.debug('Moving "%s" to "%s"...', item, dest)
-                        shutil.move(item, dest)
-                elif act['type'] == 'copy':
-                    dest = os.path.join(fs2path, mod.folder, act['dest'].lstrip('/'))
-                    for item in paths:
-                        logging.debug('Copying "%s" to "%s"...', item, dest)
-                        shutil.copytree(item, dest)
-                elif act['type'] == 'mkdir':
-                    for item in paths:
-                        os.makedirs(item)
-                else:
-                    logging.error('Unknown mod action "%s" in mod "%s" (%s)!', act['type'], mod.title, mod.mid)
-            except OSError:
-                logging.exception('A path action failedmsg')
+                            shutil.move(src_path, dest_path)
+                        except:
+                            logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
+                                              src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
+            else:
+                for item in archive['pkg'].filelist:
+                    if item['archive'] != archive['filename']:
+                        continue
 
-    def finish(self):
-        manager.signals.repo_updated.emit()
+                    dest_path = util.ipath(os.path.join(modpath, archive['filename']))
+
+                    try:
+                        dparent = os.path.dirname(dest_path)
+                        if not os.path.isdir(dparent):
+                            os.makedirs(dparent)
+
+                        shutil.move(src_path, dest_path)
+                    except:
+                        logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
+                                          src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
 
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
@@ -416,7 +398,7 @@ class UninstallTask(progress.Task):
         fs2path = manager.settings['fs2_path']
         mod = pkg.get_mod()
 
-        for item in pkg.get_files():
+        for item in pkg.filelist:
             path = util.ipath(os.path.join(fs2path, mod.folder, item))
             if not os.path.isfile(path):
                 logging.warning('File "%s" for mod "%s" (%s) is missing during uninstall!', item, mod.title, mod.mid)
