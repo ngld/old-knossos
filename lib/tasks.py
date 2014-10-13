@@ -103,24 +103,44 @@ class FetchTask(progress.Task):
         manager.run_task(CheckTask())
 
 
-class CheckTask(progress.Task):
+# TODO: Discover mods which don't have knossos.json files.
+class CheckTask(progress.MultistepTask):
     can_abort = False
+    _steps = 2
     
-    def __init__(self, mods=None):
+    def __init__(self):
         super(CheckTask, self).__init__(threads=3)
         
-        if mods is None:
-            mods = manager.settings['mods'].get_list()
-
-        pkgs = []
-        for mod in mods:
-            pkgs.extend(mod.packages)
-
         self.done.connect(self.finish)
-        self.add_work(pkgs)
         progress.update(0, 'Checking installed mods...')
 
-    def work(self, pkg):
+    def init1(self):
+        manager.installed.clear()
+        self.add_work(('',))
+
+    def work1(self, p):
+        fs2path = manager.settings['fs2_path']
+        mods = manager.installed
+
+        for subdir in os.listdir(fs2path):
+            kfile = os.path.join(fs2path, subdir, 'knossos.json')
+            if os.path.isfile(kfile):
+                try:
+                    with open(kfile, 'r') as stream:
+                        data = json.load(stream)
+                        mods.add_mod(repo.InstalledMod(data))
+                except:
+                    logging.exception('Failed to parse "%s"!', kfile)
+                    continue
+
+    def init2(self):
+        pkgs = []
+        for mod in manager.installed.get_list():
+            pkgs.extend(mod.packages)
+
+        self.add_work(pkgs)
+
+    def work2(self, pkg):
         fs2path = manager.settings['fs2_path']
         modpath = os.path.join(fs2path, pkg.get_mod().folder)
         files = pkg.filelist
@@ -152,7 +172,7 @@ class CheckTask(progress.Task):
             
             checked += 1
         
-        if pkg.get_mod().folder != '':
+        if pkg.get_mod().folder not in ('', '.'):
             prefix = len(manager.settings['fs2_path'])
             lines = []
             for sub_path, dirs, files in os.walk(modpath):
@@ -167,17 +187,11 @@ class CheckTask(progress.Task):
 
     def finish(self):
         results = self.get_results()
+        installed = manager.installed
 
-        installed = manager.installed = InstalledRepo()
-        mods = set()
-
-        if manager.settings['installed_mods'] is not None:
-            installed.set(manager.settings['installed_mods'])
-        
         for pkg, archives, s, c, m in results:
             mod = pkg.get_mod()
-            mods.add(mod)
-            pinfo = installed.query(mod.mid, pkg.name)
+            pinfo = installed.query(mod.mid, pname=pkg.name)
             
             if s == c:
                 # Installed
@@ -186,7 +200,7 @@ class CheckTask(progress.Task):
 
                 pinfo.state = 'installed'
                 
-            elif s == 0:  # or s == len(my_shared):
+            elif s == 0:
                 # Not Installed
                 if pinfo is not None:
                     # What?!
@@ -198,35 +212,19 @@ class CheckTask(progress.Task):
                 logging.info('Found some weird files from package %s of mod %s (%s) but it\'s not installed.' % (pkg.name, mod.mid, mod.title))
 
             else:
-                if pinfo.version < pkg.version:
-                    # There's an update available!
-                    pinfo.state = 'has_update'
-                else:
-                    # It's corrupted.
-                    pinfo.state = 'corrupted'
+                # if pinfo.version < pkg.version:
+                #     # There's an update available!
+                #     pinfo.state = 'has_update'
+                # else:
+                #     # It's corrupted.
+                #     pinfo.state = 'corrupted'
+                pass
 
             if pinfo is not None:
                 pinfo.check_notes = m
                 pinfo.files_ok = s
                 pinfo.files_checked = c
                 pinfo.files_shared = 0  # TODO: Remove
-
-        updated_mids = []
-        for mod in mods:
-            if mod.mid in installed.mods:
-                im = installed.mods[mod.mid]
-                im.logo = mod.logo
-
-                if mod.version > im.version:
-                    im.current_version = im.version
-
-                updated_mids.append(mod.mid)
-
-        for mid, mod in installed.mods.items():
-            if mid not in updated_mids:
-                mod.logo = None
-
-        # TODO: Detect local mods.
 
         manager.settings['installed_mods'] = installed.get()
         manager.save_settings()
@@ -261,14 +259,20 @@ class InstallTask(progress.MultistepTask):
                     shutil.rmtree(ar['tpath'])
         else:
             mods = set()
+            fs2_path = manager.settings['fs2_path']
 
             # Register installed pkgs
             for pkg in self._pkgs:
-                manager.installed.add_pkg(pkg)
+                pkg = manager.installed.add_pkg(pkg)
                 mods.add(pkg.get_mod())
 
-            manager.settings['installed_mods'] = manager.installed.get()
+            # Generate knossos.json files.
+            for mod in mods:
+                kpath = os.path.join(fs2_path, mod.folder, 'knossos.json')
+                with open(kpath, 'w') as stream:
+                    json.dump(mod.get(), stream)
 
+            manager.settings['installed_mods'] = manager.installed.get()
             manager.signals.repo_updated.emit()
 
     def init1(self):
@@ -375,26 +379,28 @@ class InstallTask(progress.MultistepTask):
                         if not os.path.isdir(dparent):
                             os.makedirs(dparent)
 
-                        shutil.move(src_path, dest_path)
+                        shutil.move(arpath, dest_path)
                     except:
                         logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
-                                          src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
+                                          arpath, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
 
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
-class UninstallTask(progress.Task):
+class UninstallTask(progress.MultistepTask):
     _pkgs = None
+    _steps = 2
 
     def __init__(self, pkgs):
         super(UninstallTask, self).__init__()
 
         self._pkgs = pkgs
-
         self.done.connect(self.finish)
-        self.add_work(pkgs)
         progress.update(0, 'Uninstalling mods...')
 
-    def work(self, pkg):
+    def init1(self):
+        self.add_work(self._pkgs)
+
+    def work1(self, pkg):
         fs2path = manager.settings['fs2_path']
         mod = pkg.get_mod()
 
@@ -405,7 +411,20 @@ class UninstallTask(progress.Task):
             else:
                 os.unlink(path)
 
-        # TODO: Remove empty directories.
+    def init2(self):
+        mods = set()
+        for pkg in self._pkgs:
+            mods.add(pkg.get_mod())
+
+        self.add_work(mods)
+
+    def work2(self, mod):
+        modpath = os.path.join(manager.settings['fs2_path'], mod.folder)
+
+        # Remove empty directories.
+        for path, dirs, files in os.walk(modpath, topdown=False):
+            if len(dirs) == 0 and len(files) == 0:
+                os.rmdir(path)
 
     def finish(self):
         # Unregister uninstalled pkgs.

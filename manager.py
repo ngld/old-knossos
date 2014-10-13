@@ -40,7 +40,7 @@ except ImportError:
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.0.4-dev'
+VERSION = '0.0.6-dev'
 
 app = None
 main_win = None
@@ -60,10 +60,10 @@ settings = {
     'hash_cache': None,
     'enforce_deps': True,
     'max_downloads': 3,
-    'repos': [('http://dev.tproxy.de/fs2/all.json', 'ngld\'s Repo')],
+    'repos': [],
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt',
     'nebula_link': 'http://neubla.tproxy.de/',
-    'update_link': 'http://dev.tproxy.de/knossos',
+    'update_link': 'https://dev.tproxy.de/knossos',
     'ui_mode': 'nebula'
 }
 

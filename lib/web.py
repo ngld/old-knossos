@@ -89,8 +89,16 @@ class WebBridge(QtCore.QObject):
         GogExtractWindow(manager.main_win)
 
     @QtCore.Slot(result='QVariantList')
+    def getMods(self):
+        return manager.settings['mods'].get()
+
+    @QtCore.Slot(result='QVariantList')
     def getInstalledMods(self):
         return manager.installed.get()
+
+    @QtCore.Slot(result='QVariantList')
+    def getUpdates(self):
+        return manager.installed.get_updates()
 
     @QtCore.Slot(str, result=bool)
     @QtCore.Slot(str, str, result=bool)

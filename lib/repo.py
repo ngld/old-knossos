@@ -53,10 +53,25 @@ class Repo(object):
     mods = None
     includes = None
 
-    def __init__(self):
+    def __init__(self, data=None):
         self.mods = {}
 
-    def get(self, link):
+        if data is not None:
+            self.set(data)
+
+    def set(self, mods):
+        for mod in mods:
+            self.add_mod(Mod(mod, self))
+
+    def get(self):
+        mods = []
+        for v in self.mods.values():
+            for mod in v:
+                mods.append(mod.get())
+
+        return mods
+
+    def fetch(self, link):
         self.base = os.path.dirname(link)
         self.is_link = True
         self.parse(util.get(link))
@@ -79,7 +94,7 @@ class Repo(object):
         for inc in self.includes:
             item = Repo()
             if self.is_link:
-                item.get(util.url_join(self.base, inc))
+                item.fetch(util.url_join(self.base, inc))
             else:
                 item.read(os.path.join(self.base, inc))
 
@@ -109,7 +124,7 @@ class Repo(object):
 
             if not inserted:
                 self.mods[mid].append(mod)
-                self.mods[mid].sort(key=lambda m: m.version, reversed=True)
+                self.mods[mid].sort(key=lambda m: m.version, reverse=True)
         else:
             self.mods[mid] = [mod]
 
@@ -119,27 +134,33 @@ class Repo(object):
         for mod in repo.get_list():
             self.add_mod(mod)
 
-    def query(self, mid, spec=None):
+    def query(self, mid, spec=None, pname=None):
         if mid not in self.mods:
             raise ModNotFound('Mod "%s" wasn\'t found!' % (mid), mid)
 
         candidates = self.mods[mid]
         if spec is None:
-            return candidates[0]
+            mod = candidates[0]
+        else:
+            version = spec.select([mod.version for mod in candidates])
+            if not version:
+                raise ModNotFound('Mod "%s" %s wasn\'t found!' % (mid, spec), mid, spec)
 
-        version = spec.select([mod.version for mod in candidates])
-        if not version:
-            raise ModNotFound('Mod "%s" %s wasn\'t found!' % (mid, spec), mid, spec)
+            for m in candidates:
+                if m.version == version:
+                    mod = m
+                    break
 
-        for mod in candidates:
-            if mod.version == version:
-                return mod
+        if pname is not None:
+            for pkg in mod.packages:
+                if pkg.name == pname:
+                    return pkg
 
-        # This should never be reached!
-        logging.fatal('Repo.query() unreachable reached!')
-        raise ModNotFound('I got confused by the mod versions!', mid, spec)
+            raise ModNotFound('The package "%s" for mod "%s" wasn\'t found!' % (pname, mid), mid)
+        else:
+            return mod
 
-    def query_all(self, mid, spec):
+    def query_all(self, mid, spec=None):
         if mid not in self.mods:
             raise ModNotFound('Mod "%s" wasn\'t found!' % (mid), mid)
 
@@ -287,6 +308,9 @@ class Mod(object):
             'packages': [pkg.get() for pkg in self.packages],
             'filelist': list(self.filelist.values())
         }
+
+    def copy(self):
+        return Mod(self.get(), self._repo)
 
     def get_submods(self):
         return [self._repo.query(mid) for mid in self.submods]
@@ -454,73 +478,61 @@ class Package(object):
 
 
 # Keeps track of installed mods
-class InstalledRepo(object):
-    mods = None
+class InstalledRepo(Repo):
 
-    def __init__(self, values=None):
+    def clear(self):
         self.mods = {}
 
-        if values is not None:
-            self.set(values)
-
-    def set(self, values):
-        self.mods = {}
-
-        for d in values:
-            mod = InstalledMod(d)
-            self.mods[mod.mid] = mod
-
-    def get(self):
-        return [mod.get() for mod in self.mods.values()]
+    def set(self, mods):
+        for mod in mods:
+            self.add_mod(InstalledMod(mod))
 
     def add_pkg(self, pkg):
         mod = pkg.get_mod()
+        try:
+            my_mod = self.query(mod.mid, semantic_version.Spec('==' + str(mod.version)))
+        except ModNotFound:
+            my_mod = InstalledMod.convert(mod)
+            self.add_mod(my_mod)
 
-        if mod.mid not in self.mods:
-            self.mods[mod.mid] = InstalledMod.convert(mod)
-        
-        return self.mods[mod.mid].add_pkg(pkg)
+        return my_mod.add_pkg(pkg)
 
     def del_pkg(self, pkg):
         mod = pkg.get_mod()
 
-        if mod.mid in self.mods:
-            m = self.mods[mod.mid]
-            m.del_pkg(pkg)
+        try:
+            my_mod = self.query(mod.mid, semantic_version.Spec('==' + str(mod.version)))
+        except ModNotFound:
+            logging.error('Tried to delete non-existing package!')
+            return
 
-            # Remove empty mods.
-            if len(m.packages) < 1:
-                del self.mods[mod.mid]
+        my_mod.del_pkg(pkg)
 
-    def query(self, mid, pname=None):
-        if mid not in self.mods:
-            #raise ModNotFound('The mod %s could not be found in this InstalledRepo().' % (mid))
-            return None
+    def is_installed(self, mid, spec=None, pname=None):
+        try:
+            self.query(mid, spec, pname)
+            return True
+        except ModNotFound:
+            return False
 
-        mod = self.mods[mid]
-        if pname is None:
-            return mod
+    def get_updates(self):
+        from manager import settings
 
-        for pkg in mod.packages:
-            if pkg.name == pname:
-                return pkg
+        remote_mods = settings['mods']
+        updates = []
 
-        #raise ModNotFound('The package %s of mod %s (%s) could not be found!' % (pname, mid, mod.name))
-        return None
+        for mid, v in self.mods.items():
+            my_version = sorted([mod.version for mod in v])[0]
 
-    def is_installed(self, mid, pname=None):
-        if pname is None and isinstance(mid, Package):
-            pname = mid.name
-            mid = mid.get_mod().mid
+            try:
+                remote_version = remote_mods.query(mid).version
+            except ModNotFound:
+                continue
 
-        pkg = self.query(mid, pname)
+            if remote_version > my_version:
+                updates.append((mid, remote_version, my_version))
 
-        return pkg is not None and pkg.state in ('installed', 'has_update')
-
-    def get_packages(self):
-        for mod in self.mods.values():
-            for pkg in mod.packages:
-                yield pkg
+        return updates
 
 
 class InstalledMod(Mod):

@@ -236,7 +236,10 @@ class MainWindow(Window):
             ri = 0
 
             for pkg in mod.packages:
-                pinfo = manager.installed.query(mod.mid, pkg.name)
+                try:
+                    pinfo = manager.installed.query(mod.mid, pname=pkg.name)
+                except repo.ModNotFound:
+                    pinfo = None
 
                 if pinfo is None or pinfo.state == 'not installed':
                     cstate = QtCore.Qt.Unchecked
@@ -705,7 +708,7 @@ class ModInfoWindow(Window):
 
         self.win = util.init_ui(Ui_Modinfo(), util.QDialog(main_win.win))
         self.win.setModal(True)
-        
+
         self.win.modname.setText(mod.title + ' - ' + str(mod.version))
         
         if mod.logo is None:
@@ -718,8 +721,32 @@ class ModInfoWindow(Window):
         self.win.desc.setPlainText(mod.description)
         self.win.note.setPlainText(mod.notes)
 
-        self.win.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted(mod.filelist.keys())]))
+        self.win.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted([f['filename'] for f in mod.get_files()])]))
+
+        rem_ver = set([mod.version for mod in manager.settings['mods'].mods.get(mod.mid, [])])
+        local_ver = set([mod.version for mod in manager.installed.mods.get(mod.mid, [])])
+
+        for version in rem_ver:
+            item = QtGui.QListWidgetItem(str(version))
+            item.setData(QtCore.Qt.UserRole, version)
+
+            if version in local_ver:
+                item.setCheckState(QtCore.Qt.Checked)
+                item.setData(QtCore.Qt.UserRole + 1, True)
+            else:
+                item.setCheckState(QtCore.Qt.Unchecked)
+                item.setData(QtCore.Qt.UserRole + 1, False)
+
+            self.win.versionList.addItem(item)
+
+        for version in local_ver - rem_ver:
+            item = QtGui.QListWidgetItem(str(version))
+            item.setData(QtCore.Qt.UserRole, version)
+            item.setData(QtCore.Qt.UserRole + 1, True)
+            item.setCheckState(QtCore.Qt.Checked)
+            self.win.versionList.addItem(item)
         
+        self.win.applyVersions.clicked.connect(self.apply_versions)
         self.win.closeButton.clicked.connect(self.win.close)
         self.win.settingsButton.clicked.connect(self.show_settings)
         self.win.runButton.clicked.connect(self.do_run)
@@ -733,6 +760,43 @@ class ModInfoWindow(Window):
     def show_settings(self):
         FlagsWindow(self.win, self._mod)
 
+    def apply_versions(self):
+        install = set()
+        uninstall = set()
+
+        for i in range(self.win.versionList.count()):
+            item = self.win.versionList.item(i)
+            checked = item.checkState() == QtCore.Qt.Checked
+
+            if item.data(QtCore.Qt.UserRole + 1) and not checked:
+                uninstall.add(item.data(QtCore.Qt.UserRole))
+            elif not item.data(QtCore.Qt.UserRole + 1) and checked:
+                install.add(item.data(QtCore.Qt.UserRole))
+
+        if len(install) == 0 and len(uninstall) == 0:
+            msg = 'You made no changes! What do you want me to do?'
+            QtGui.QMessageBox.information(manager.app.activeWindow(), 'fs2mod-py', msg)
+            return
+        
+        msg = 'The '
+        if len(install) > 0:
+            msg += ', '.join([str(v) for v in install])
+            msg += ' versions are going to be installed'
+
+            if len(uninstall) > 0:
+                msg += ' and '
+
+        if len(uninstall) > 0:
+            msg += ', '.join([str(v) for v in uninstall])
+            msg += ' versions are going to be uninstalled'
+
+        msg += '.\nAre you shure?'
+        result = QtGui.QMessageBox.question(manager.app.activeWindow(), 'fs2mod-py', msg, QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+        if result != QtGui.QMessageBox.Yes:
+            return
+
+        pass
+
 
 class PkgInfoWindow(Window):
     
@@ -743,6 +807,8 @@ class PkgInfoWindow(Window):
         self.win.setModal(True)
         self.win.modname.setText(pkg.name)
         self.win.logo.hide()
+        self.win.tabs.setTabEnabled(2, False)
+        self.win.tabs.setCurrentIndex(1)
 
         self.win.desc.setPlainText(pkg.notes)
 
