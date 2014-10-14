@@ -17,7 +17,7 @@ import logging
 import semantic_version
 
 from .qt import QtCore, QtNetwork, QtWebKit
-from . import api
+from . import api, repo
 from .windows import FlagsWindow, SettingsWindow, GogExtractWindow
 import manager
 
@@ -141,18 +141,30 @@ class WebBridge(QtCore.QObject):
     def getRepos(self):
         return manager.settings['repos']
 
+    def _get_mod(self, mid, spec=None, mod_repo=None):
+        if spec is not None:
+            try:
+                spec = semantic_version.Spec(spec)
+            except:
+                logging.exception('Invalid spec "%s" passed to uninstall()!', spec)
+                return -2
+
+        if mod_repo is None:
+            mod_repo = manager.installed
+
+        try:
+            return mod_repo.query(mid, spec)
+        except repo.ModNotFound:
+            logging.exception('Couldn\'t find mod "%s" (%s)!', mid, spec)
+            return -1
+
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)
     @QtCore.Slot(str, str, 'QStringList', result=int)
     def install(self, mid, spec=None, pkgs=None):
-        if spec is not None:
-            spec = semantic_version.Spec(spec)
-
-        try:
-            mod = manager.settings['mods'].query(mid, spec)
-        except:
-            logging.exception('Couldn\'t find mod "%s"!', mid)
-            return -1
+        mod = self._get_mod(mid, spec, manager.settings['mods'])
+        if mod in (-1, -2):
+            return mod
 
         if pkgs is None:
             plist = mod.resolve_deps()
@@ -168,18 +180,17 @@ class WebBridge(QtCore.QObject):
                 # Some packages are missing
                 pmissing = set(pkgs) - pfound
                 logging.warning('Missing packages %s.', ', '.join(pmissing))
-                return -2
+                return -3
 
         return api.install_pkgs(plist, name=mod.title)
 
-    @QtCore.Slot(str, result=bool)
-    @QtCore.Slot(str, 'QStringList', result=bool)
-    def uninstall(self, mid, pkgs=None):
-        if mid not in manager.installed.mods:
-            logging.exception('Couldn\'t find mod "%s"!', mid)
-            return -1
-
-        mod = manager.installed.mods[mid]
+    @QtCore.Slot(str, result=int)
+    @QtCore.Slot(str, str, result=int)
+    @QtCore.Slot(str, str, 'QStringList', result=int)
+    def uninstall(self, mid, spec=None, pkgs=None):
+        mod = self._get_mod(mid, spec)
+        if mod in (-1, -2):
+            return mod
 
         if pkgs is None:
             plist = mod.packages
@@ -199,25 +210,27 @@ class WebBridge(QtCore.QObject):
 
         return api.uninstall_pkgs(plist, name=mod.title)
 
-    @QtCore.Slot(str)
-    def runMod(self, mid):
-        if mid not in manager.installed.mods:
-            logging.error('Couldn\'t find mod "%s"!', mid)
-            return -1
+    @QtCore.Slot(str, result=int)
+    @QtCore.Slot(str, str, result=int)
+    def runMod(self, mid, spec=None):
+        mod = self._get_mod(mid, spec)
+        if mod in (-1, -2):
+            return mod
 
-        manager.run_mod(manager.installed.mods[mid])
+        manager.run_mod(mod)
 
-    @QtCore.Slot()
-    @QtCore.Slot(str)
-    def showSettings(self, mid=None):
+    @QtCore.Slot(result=int)
+    @QtCore.Slot(str, result=int)
+    @QtCore.Slot(str, str, result=int)
+    def showSettings(self, mid=None, spec=None):
         if mid is None:
             SettingsWindow(None)
         else:
-            if mid not in manager.installed.mods:
-                logging.error('Couldn\'t find mod "%s"!', mid)
-                return -1
+            mod = self._get_mod(mid, spec)
+            if mod in (-1, -2):
+                return mod
 
-            FlagsWindow(manager.main_win.win, manager.installed.mods[mid])
+            FlagsWindow(manager.main_win.win, mod)
 
 
 class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
@@ -237,7 +250,22 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
             # Rewrite fsrs:// links.
             url = request.url()
             url.setScheme('file')
-            url.setPath(os.path.join(manager.settings_path, os.path.basename(url.path())))
+            path = url.path()
+
+            if path.startswith('/logo'):
+                path = path.split('/')
+                try:
+                    mod = manager.settings['mods'].query(path[2], semantic_version.Spec('==' + path[3]))
+                except:
+                    try:
+                        mod = manager.installed.query(path[2], semantic_version.Spec('==' + path[3]))
+                    except:
+                        mod = None
+
+                if mod is not None:
+                    url.setPath(mod.logo_path)
+            else:
+                url.setPath(os.path.join(manager.settings_path, os.path.basename(url.path())))
 
             request.setUrl(url)
         

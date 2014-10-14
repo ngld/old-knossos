@@ -103,7 +103,7 @@ class FetchTask(progress.Task):
         manager.run_task(CheckTask())
 
 
-# TODO: Discover mods which don't have knossos.json files.
+# TODO: Discover mods which don't have mod.json files.
 class CheckTask(progress.MultistepTask):
     can_abort = False
     _steps = 2
@@ -123,12 +123,13 @@ class CheckTask(progress.MultistepTask):
         mods = manager.installed
 
         for subdir in os.listdir(fs2path):
-            kfile = os.path.join(fs2path, subdir, 'knossos.json')
+            kfile = os.path.join(fs2path, subdir, 'mod.json')
             if os.path.isfile(kfile):
                 try:
                     with open(kfile, 'r') as stream:
                         data = json.load(stream)
                         mod = repo.InstalledMod(data)
+                        mod.folder = subdir
                         if mod.logo is not None:
                             mod.logo_path = os.path.join(fs2path, subdir, mod.logo)
 
@@ -161,10 +162,8 @@ class CheckTask(progress.MultistepTask):
 
         # Reset them
         for pkg in pkgs:
-            pkg.state = 'not installed'
             pkg.files_ok = 0
             pkg.files_checked = 0
-            pkg.files_shared = 0
 
         self.add_work(pkgs)
 
@@ -209,26 +208,15 @@ class CheckTask(progress.MultistepTask):
         for pkg, archives, s, c, m in results:
             mod = pkg.get_mod()
             
-            if s == c and s != 0:
-                # Installed
-                pkg.state = 'installed'
-                
-            elif s == 0:
+            if s == 0:
                 # Not Installed
-                if pkg is not None:
-                    # What?!
-                    logging.warning('Package %s of mod %s (%s) is not installed but in the local repo.' % (pkg.name, mod.mid, mod.title))
-                    pkg.state = 'not installed'
-
-            elif pkg is None:
-                # Assume it's not installed.
-                logging.info('Found some weird files from package %s of mod %s (%s) but it\'s not installed.' % (pkg.name, mod.mid, mod.title))
-
+                # What?!
+                logging.warning('Package %s of mod %s (%s) is not installed but in the local repo.' % (pkg.name, mod.mid, mod.title))
+            
             if pkg is not None:
                 pkg.check_notes = m
                 pkg.files_ok = s
                 pkg.files_checked = c
-                pkg.files_shared = 0  # TODO: Remove
 
         manager.settings['installed_mods'] = installed.get()
         manager.save_settings()
@@ -276,12 +264,15 @@ class InstallTask(progress.MultistepTask):
 
             # Register installed pkgs
             for pkg in self._pkgs:
+                logo_path = pkg.get_mod().logo_path
                 pkg = manager.installed.add_pkg(pkg)
-                mods.add(pkg.get_mod())
+                mod = pkg.get_mod()
+                mod.logo_path = logo_path
+                mods.add(mod)
 
             # Generate knossos.json files.
             for mod in mods:
-                kpath = os.path.join(fs2_path, mod.folder, 'knossos.json')
+                kpath = os.path.join(fs2_path, mod.folder, 'mod.json')
                 logo = os.path.join(fs2_path, mod.folder, 'knossos.' + mod.logo.split('.')[-1])
                 
                 # Copy the logo right next to the json file.
@@ -312,17 +303,17 @@ class InstallTask(progress.MultistepTask):
         archives = set()
         progress.update(0, 'Checking %s...' % mod.title)
         
-        kpath = os.path.join(modpath, 'knossos.json')
+        kpath = os.path.join(modpath, 'mod.json')
         if os.path.isfile(kpath):
             try:
                 with open(kpath, 'r') as stream:
                     info = json.load(stream)
             except:
-                logging.exception('Failed to parse knossos.json!')
+                logging.exception('Failed to parse mod.json!')
                 info = None
 
             if info is not None and info['version'] != str(mod.version):
-                mod.folder += '_' + str(mod.version) + '_knossos'
+                mod.folder += '_kv_' + str(mod.version)
                 modpath = os.path.join(fs2_path, mod.folder)
 
         if mod.folder not in ('', '.') and os.path.isdir(modpath):
@@ -447,13 +438,24 @@ class UninstallTask(progress.MultistepTask):
 
     def init2(self):
         mods = set()
+
+        # Unregister uninstalled pkgs.
         for pkg in self._pkgs:
             mods.add(pkg.get_mod())
+            manager.installed.del_pkg(pkg)
 
         self.add_work(mods)
 
     def work2(self, mod):
         modpath = os.path.join(manager.settings['fs2_path'], mod.folder)
+
+        print(mod.title, mod.packages)
+        # Remove our files
+        if len(mod.packages) == 0:
+            my_files = (os.path.join(modpath, 'mod.json'), mod.logo_path)
+            for path in my_files:
+                if os.path.isfile(path):
+                    os.unlink(path)
 
         # Remove empty directories.
         for path, dirs, files in os.walk(modpath, topdown=False):
@@ -461,10 +463,6 @@ class UninstallTask(progress.MultistepTask):
                 os.rmdir(path)
 
     def finish(self):
-        # Unregister uninstalled pkgs.
-        for pkg in self._pkgs:
-            manager.installed.del_pkg(pkg)
-
         manager.settings['installed_mods'] = manager.installed.get()
         manager.signals.repo_updated.emit()
 

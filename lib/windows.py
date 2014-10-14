@@ -230,6 +230,7 @@ class MainWindow(Window):
         self.dep_processing = True
         self.win.modTree.clear()
         rows = self.build_mod_tree()
+        updates = manager.installed.get_updates()
         
         for mid, mvs in manager.settings['mods'].mods.items():
             mod = mvs[0]
@@ -243,29 +244,22 @@ class MainWindow(Window):
                 except repo.ModNotFound:
                     pinfo = None
 
-                if pinfo is None or pinfo.state == 'not installed':
+                if pinfo is None:
                     cstate = QtCore.Qt.Unchecked
                     status = 'Not installed'
-                    
-                    if pinfo is None:
-                        pinfo = repo.InstalledPackage.convert(pkg, pkg.get_mod())
-                        pinfo.state = 'not installed'
-                    elif pinfo.files_shared > 0:
-                        status += ' (%d shared files)' % pinfo.files_shared
-                elif pinfo.state == 'installed':
-                    cstate = QtCore.Qt.Checked
-                    status = 'Installed'
-                elif pinfo.state == 'has_update':
+                elif mod.version in updates.get(mod.mid, {}):
                     cstate = QtCore.Qt.PartiallyChecked
                     status = 'Update available'
-                elif pinfo.state == 'corrupted':
+                elif pinfo.files_ok < pinfo.files_checked:
                     cstate = QtCore.Qt.PartiallyChecked
-                    status = '%d corrupted or updated files' % (pinfo.files_checked - pinfo.files_ok)
+                    status = '%d corrupted files' % (pinfo.files_checked - pinfo.files_ok)
+                else:
+                    cstate = QtCore.Qt.Checked
+                    status = 'Installed'
                 
                 row = QtGui.QTreeWidgetItem((pkg.name, str(mod.version), status))
                 row.setCheckState(0, cstate)
                 row.setData(0, QtCore.Qt.UserRole, cstate)
-                row.setData(0, QtCore.Qt.UserRole + 1, pinfo)
                 row.setData(0, QtCore.Qt.UserRole + 2, pkg)
                 row.setData(0, QtCore.Qt.UserRole + 3, False)
                 
@@ -273,7 +267,7 @@ class MainWindow(Window):
                     row.setDisabled(True)
                     rc += 1
 
-                    if pinfo.state == 'installed':
+                    if pinfo is not None:
                         ri += 1
 
                 titem.addChild(row)
@@ -301,28 +295,27 @@ class MainWindow(Window):
                         except repo.ModNotFound:
                             pinfo = None
 
-                        if pinfo is None or pinfo.state == 'not installed':
+                        if pinfo is None:
                             cstate = QtCore.Qt.Unchecked
                             status = 'Not installed'
-                            
-                            if pinfo is None:
-                                pinfo = repo.InstalledPackage.convert(pkg, pkg.get_mod())
-                                pinfo.state = 'not installed'
-                            elif pinfo.files_shared > 0:
-                                status += ' (%d shared files)' % pinfo.files_shared
-                        elif pinfo.state == 'installed':
+                        elif mod.version in updates.get(mod.mid, {}):
+                            cstate = QtCore.Qt.PartiallyChecked
+                            status = 'Update available'
+                        elif pinfo.files_ok < pinfo.files_checked:
+                            cstate = QtCore.Qt.PartiallyChecked
+                            status = '%d corrupted files' % (pinfo.files_checked - pinfo.files_ok)
+                        else:
                             cstate = QtCore.Qt.Checked
                             status = 'Installed'
-                        elif pinfo.state == 'corrupted':
-                            cstate = QtCore.Qt.PartiallyChecked
-                            status = '%d corrupted or updated files' % (pinfo.files_checked - pinfo.files_ok)
-                        
+
                         row = QtGui.QTreeWidgetItem((pkg.name, str(mod.version), status))
                         row.setCheckState(0, cstate)
                         row.setData(0, QtCore.Qt.UserRole, cstate)
-                        row.setData(0, QtCore.Qt.UserRole + 1, pinfo)
                         row.setData(0, QtCore.Qt.UserRole + 2, pkg)
                         row.setData(0, QtCore.Qt.UserRole + 3, False)
+
+                        if pkg.status == 'required':
+                            row.setDisabled(True)
                         
                         m_item.addChild(row)
 
@@ -441,6 +434,14 @@ class MainWindow(Window):
             else:
                 # Uninstall
                 uninstall.append(pkg)
+
+        try:
+            install = manager.settings['mods'].process_pkg_selection(install)
+        except:
+            logging.exception('Failed to process package selection!')
+            msg = 'There probably was some kind of dependency conflict.\nI\'m sorry but I can\'t install the packages you selected.'
+            QtGui.QMessageBox.critical(self.win, 'Error', msg)
+            return
         
         if len(install) == 0 and len(uninstall) == 0:
             QtGui.QMessageBox.warning(self.win, 'Warning', 'You didn\'t change anything! There\'s nothing for me to do...')
@@ -495,14 +496,13 @@ class MainWindow(Window):
 
     def select_pkg(self, item, col):
         pkg = item.data(0, QtCore.Qt.UserRole + 2)
-        pinfo = item.data(0, QtCore.Qt.UserRole + 1)
-
+        
         if not isinstance(pkg, repo.Package):
             if isinstance(pkg, repo.Mod):
                 self.select_mod(item, col)
             return
 
-        PkgInfoWindow(self, pkg, pinfo)
+        PkgInfoWindow(self, pkg)
 
     # Settings tab
     def update_repo_list(self):
@@ -794,7 +794,7 @@ class ModInfoWindow(Window):
 
 class PkgInfoWindow(Window):
     
-    def __init__(self, main_win, pkg, pinfo=None):
+    def __init__(self, main_win, pkg):
         super(PkgInfoWindow, self).__init__()
 
         self.win = util.init_ui(Ui_Modinfo(), util.QDialog(main_win.win))
@@ -805,6 +805,11 @@ class PkgInfoWindow(Window):
         self.win.tabs.setCurrentIndex(1)
 
         self.win.desc.setPlainText(pkg.notes)
+
+        try:
+            pinfo = manager.installed.query(pkg)
+        except repo.ModNotFound:
+            pinfo = None
 
         if pinfo is not None and len(pinfo.check_notes) > 0:
             self.win.note.appendPlainText('\nCheck messages:\n* ' + '\n* '.join(pinfo.check_notes))

@@ -246,8 +246,9 @@ class Repo(object):
         return pkgs + dep_list
 
     def save_logos(self, path):
-        for mod in self.get_list():
-            mod.save_logo(path)
+        for mid, mvs in self.mods.items():
+            for mod in mvs:
+                mod.save_logo(path)
 
 
 class Mod(object):
@@ -529,10 +530,10 @@ class InstalledRepo(Repo):
         from manager import settings
 
         remote_mods = settings['mods']
-        updates = []
+        updates = {}
 
         for mid, v in self.mods.items():
-            my_version = sorted([mod.version for mod in v])[0]
+            my_version = sorted([mod.version for mod in v])[-1]
 
             try:
                 remote_version = remote_mods.query(mid).version
@@ -540,7 +541,10 @@ class InstalledRepo(Repo):
                 continue
 
             if remote_version > my_version:
-                updates.append((mid, remote_version, my_version))
+                if mid not in updates:
+                    updates[mid] = {}
+
+                updates[mid][my_version] = remote_version
 
         return updates
 
@@ -570,9 +574,15 @@ class InstalledMod(Mod):
             self.packages.append(InstalledPackage(pkg, self))
 
     def get(self):
-        data = super(InstalledMod, self).get()
-        data['check_notes'] = self.check_notes
-        return data
+        return {
+            'id': self.mid,
+            'title': self.title,
+            'version': str(self.version),
+            'description': self.description,
+            'logo': self.logo,
+            'cmdline': self.cmdline,
+            'packages': [pkg.get() for pkg in self.packages]
+        }
 
     def add_pkg(self, pkg):
         pkg = InstalledPackage.convert(pkg, self)
@@ -597,11 +607,9 @@ class InstalledMod(Mod):
 
 
 class InstalledPackage(Package):
-    state = 'unknown'  # installed, not installed, has_update, corrupted
     check_notes = ''
-    files_ok = 0
-    files_checked = 0
-    files_shared = 0
+    files_ok = -1
+    files_checked = -1
 
     @staticmethod
     def convert(pkg, mod):
@@ -610,19 +618,9 @@ class InstalledPackage(Package):
     def set(self, values):
         super(InstalledPackage, self).set(values.copy())
 
-        self.state = values.get('state', 'installed')
         self.check_notes = values.get('check_notes', '')
-        self.files_ok = values.get('files_ok', 0)
-        self.files_checked = values.get('files_checked', 0)
-        self.files_shared = values.get('files_shared', 0)
 
     def get(self):
         data = super(InstalledPackage, self).get()
-
-        data['state'] = self.state
         data['check_notes'] = self.check_notes
-        data['files_ok'] = self.files_ok
-        data['files_checked'] = self.files_checked
-        data['files_shared'] = self.files_shared
-
         return data

@@ -336,9 +336,9 @@ def run_mod(mod):
         return
     
     # Look for the mod.ini
-    for item in mod.filelist:
-        if os.path.basename(item).lower() == 'mod.ini':
-            ini = item
+    for item in mod.get_files():
+        if item['filename'].lower() == 'mod.ini':
+            ini = item['filename']
             break
     
     if ini is not None and os.path.isfile(os.path.join(modpath, ini)):
@@ -369,9 +369,9 @@ def run_mod(mod):
     else:
         # No mod.ini found, look for the first subdirectory then.
         if mod.folder == '':
-            for item in mod.filelist:
-                if item.lower().endswith('.vp'):
-                    modfolder = item.split('/')[0]
+            for item in mod.get_files():
+                if item['filename'].lower().endswith('.vp'):
+                    modfolder = item['filename'].split('/')[0]
                     break
         else:
             modfolder = mod.folder.split('/')[0]

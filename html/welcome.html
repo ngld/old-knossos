@@ -48,12 +48,14 @@
                     $.each(mods, function (i, mod) {
                         var row = $('<tr>');
 
+                        var logo = $('<td>').appendTo(row);
                         var title = $('<td>').appendTo(row);
+
                         if(mod.logo) {
-                            title.append($('<img class="mod-logo">').attr('src', 'fsrs:///' + mod.logo));
-                            title.append('&nbsp;')
+                            logo.append($('<img class="mod-logo">').attr('src', 'fsrs:///logo/' + mod.id + '/' + mod.version));
+                            logo.append('&nbsp;');
                         }
-                        title.append($('<span>').text(mod.title));
+                        title.append($('<span>').text(mod.title + ' (' + mod.version + ')'));
 
                         var actions = $('<div class="mod-actions">');
                         actions.append($('<a href="#">Launch</a>').click(function (e) {
@@ -65,7 +67,7 @@
                             fs2mod.showSettings(mod.id);
                         }));
 
-                        row.append($('<td>').append(actions));
+                        title.append(actions)
                         table.append(row);
                     });
 
