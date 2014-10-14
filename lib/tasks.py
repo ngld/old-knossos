@@ -25,7 +25,7 @@ import semantic_version
 
 import manager
 from lib import util, progress, repo
-from lib.repo import Repo, InstalledRepo
+from lib.repo import Repo
 from lib.qt import QtGui
 
 
@@ -203,7 +203,7 @@ class CheckTask(progress.MultistepTask):
 
     def finish(self):
         results = self.get_results()
-        installed = manager.installed
+        #installed = manager.installed
 
         for pkg, archives, s, c, m in results:
             mod = pkg.get_mod()
@@ -218,8 +218,8 @@ class CheckTask(progress.MultistepTask):
                 pkg.files_ok = s
                 pkg.files_checked = c
 
-        manager.settings['installed_mods'] = installed.get()
-        manager.save_settings()
+        #manager.settings['installed_mods'] = installed.get()
+        #manager.save_settings()
         manager.signals.repo_updated.emit()
 
 
@@ -283,7 +283,7 @@ class InstallTask(progress.MultistepTask):
                 with open(kpath, 'w') as stream:
                     json.dump(info, stream)
 
-            manager.settings['installed_mods'] = manager.installed.get()
+            #manager.settings['installed_mods'] = manager.installed.get()
             manager.signals.repo_updated.emit()
 
     def init1(self):
@@ -463,7 +463,7 @@ class UninstallTask(progress.MultistepTask):
                 os.rmdir(path)
 
     def finish(self):
-        manager.settings['installed_mods'] = manager.installed.get()
+        #manager.settings['installed_mods'] = manager.installed.get()
         manager.signals.repo_updated.emit()
 
 

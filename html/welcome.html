@@ -60,7 +60,7 @@
                         var actions = $('<div class="mod-actions">');
                         actions.append($('<a href="#">Launch</a>').click(function (e) {
                             e.preventDefault();
-                            fs2mod.runMod(mod.id);
+                            fs2mod.runMod(mod.id, '==' + mod.version);
                         }));
                         actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
                             e.preventDefault();

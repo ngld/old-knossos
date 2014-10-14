@@ -24,10 +24,11 @@ import threading
 import stat
 import time
 import six
+import shlex
 
 from lib import progress, util, repo, api
 from lib.qt import QtCore, QtGui
-from lib.tasks import FetchTask, InstallTask, CheckUpdateTask
+from lib.tasks import FetchTask, InstallTask, CheckUpdateTask, CheckTask
 from lib.windows import MainWindow, NebulaWindow, SettingsWindow
 from ui.select_list import Ui_Dialog as Ui_SelectList
 
@@ -122,6 +123,7 @@ class Fs2Watcher(threading.Thread):
             # Make it executable.
             os.chmod(fs2_bin, mode | stat.S_IXUSR)
         
+        logging.debug('Launching FS2: %s', [fs2_bin] + self._params)
         p = subprocess.Popen([fs2_bin] + self._params, cwd=settings['fs2_path'])
 
         time.sleep(0.3)
@@ -289,9 +291,20 @@ def run_fs2(params=None):
         return False
 
 
-# Mod tab
 def fetch_list():
     return run_task(FetchTask())
+
+
+def get_cmdline(mod):
+    if mod is None:
+        return settings['cmdlines'].get('#default', [])
+
+    if mod.cmdline != '':
+        return shlex.split(mod.cmdline)
+    elif mod.mid in settings['cmdlines']:
+        return settings['cmdlines'][mod.mid]
+    else:
+        return settings['cmdlines'].get('#default', [])
 
 
 def run_mod(mod):
@@ -302,7 +315,7 @@ def run_mod(mod):
     
     modpath = util.ipath(os.path.join(settings['fs2_path'], mod.folder))
     ini = None
-    modfolder = None
+    mods = []
     
     def check_install():
         if not os.path.isdir(modpath) or mod.mid not in installed.mods:
@@ -316,8 +329,13 @@ def run_mod(mod):
         if settings['fs2_bin'] is None:
             QtGui.QMessageBox.critical(app.activeWindow(), 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
             return
+
+    try:
+        inst_mod = installed.query(mod)
+    except repo.ModNotFound:
+        inst_mod = None
     
-    if mod.title != '' and (not os.path.isdir(modpath) or mod.mid not in installed.mods):
+    if inst_mod is None:
         deps = settings['mods'].process_pkg_selection(mod.resolve_deps())
         titles = [pkg.name for pkg in deps if not installed.is_installed(pkg)]
 
@@ -334,13 +352,13 @@ def run_mod(mod):
             run_task(task)
         
         return
-    
+
     # Look for the mod.ini
     for item in mod.get_files():
         if item['filename'].lower() == 'mod.ini':
             ini = item['filename']
             break
-    
+
     if ini is not None and os.path.isfile(os.path.join(modpath, ini)):
         # mod.ini was found, now read its "[multimod]" section.
         primlist = []
@@ -355,9 +373,9 @@ def run_mod(mod):
                 for line in stream:
                     line = [p.strip(' ;\n\r') for p in line.split('=')]
                     if line[0] == 'primarylist':
-                        primlist = line[1].split(',')
+                        primlist = line[1].replace(',,', ',').strip(',').split(',')
                     elif line[0] in ('secondrylist', 'secondarylist'):
-                        seclist = line[1].split(',')
+                        seclist = line[1].replace(',,', ',').strip(',').split(',')
         except:
             logging.exception('Failed to read %s!', os.path.join(modpath, ini))
         
@@ -365,27 +383,22 @@ def run_mod(mod):
             ini = os.path.basename(modpath) + '/' + ini
 
         # Build the whole list for -mod
-        modfolder = ','.join(primlist + [ini.split('/')[0]] + seclist).strip(',').replace(',,', ',')
+        mods = primlist + [os.path.dirname(ini)] + seclist
     else:
         # No mod.ini found, look for the first subdirectory then.
-        if mod.folder == '':
-            for item in mod.get_files():
-                if item['filename'].lower().endswith('.vp'):
-                    modfolder = item['filename'].split('/')[0]
-                    break
+        if mod.folder in ('', '.'):
+            # Well, this is no ordinary mod. No -mod flag for you!
+            pass
         else:
-            modfolder = mod.folder.split('/')[0]
+            mods = [mod.folder]
     
-    if modfolder == '':
-        modfolder = None
-
-    if modfolder is not None:
-        # Correct the case
-        modfolder = modfolder.split(',')
-        for i, item in enumerate(modfolder):
-            modfolder[i] = os.path.basename(util.ipath(os.path.join(settings['fs2_path'], item)))
-        
-        modfolder = ','.join(modfolder)
+    m = []
+    for item in mods:
+        if item.strip() != '':
+            m.append(os.path.basename(util.ipath(os.path.join(settings['fs2_path'], item))))
+    
+    mods = m
+    del m
     mod_found = False
     
     # Look for the cmdline path.
@@ -396,41 +409,35 @@ def run_mod(mod):
         path = settings['fs2_path']
     
     path = os.path.join(path, 'data/cmdline_fso.cfg')
+    cmdline = get_cmdline(mod)
     
-    if mod.mid in settings['cmdlines']:
-        # We have a saved cmdline for this mod.
-        cmdline = settings['cmdlines'][mod.mid][:]
-    elif '#default' in settings['cmdlines']:
-        # We have a default cmdline.
-        cmdline = settings['cmdlines']['#default'][:]
-    else:
+    if len(cmdline) == 0:
         # Read the current cmdline.
         cmdline = []
         if os.path.exists(path):
             try:
                 with open(path, 'r') as stream:
-                    cmdline = stream.read().strip().split(' ')
+                    cmdline = shlex.split(stream.read().strip())
             except:
                 logging.exception('Failed to read "%s", assuming empty cmdline.', path)
         
-        if modfolder is not None:
-            for i, part in enumerate(cmdline):
-                if part.strip() == '-mod':
-                    mod_found = True
+        for i, part in enumerate(cmdline):
+            if part.strip() == '-mod':
+                mod_found = True
 
-                    if len(cmdline) <= i + 1:
-                        cmdline.append(modfolder)
-                    else:
-                        cmdline[i + 1] = modfolder
-                    break
+                if len(cmdline) <= i + 1:
+                    cmdline.apppend(','.join(mods))
+                else:
+                    cmdline[i + 1] = ','.join(mods)
+                break
     
-    if modfolder is None:
+    if len(mods) == 0:
         if mod_found:
             cmdline.remove('-mod')
-            cmdline.remove(modfolder)
+            cmdline.remove('')
     elif not mod_found:
         cmdline.append('-mod')
-        cmdline.append(modfolder)
+        cmdline.append(','.join(mods))
     
     if not os.path.isfile(path):
         basep = os.path.dirname(path)
@@ -439,12 +446,13 @@ def run_mod(mod):
 
     try:
         with open(path, 'w') as stream:
-            stream.write(' '.join(cmdline))
+            stream.write(' '.join([shlex.quote(p) for p in cmdline]))
     except:
         logging.exception('Failed to modify "%s". Not starting FS2!!', path)
         
         QtGui.QMessageBox.critical(app.activeWindow(), 'Error', 'Failed to edit "%s"! I can\'t change the current mod!' % path)
     else:
+        logging.info('Starting mod "%s" with cmdline "%s".', mod.title, cmdline)
         run_fs2()
 
 
@@ -564,6 +572,7 @@ def main(app_):
 
     QtCore.QTimer.singleShot(1, api.setup_ipc)
     QtCore.QTimer.singleShot(1, lambda: run_task(CheckUpdateTask()))
+    QtCore.QTimer.singleShot(1, lambda: run_task(CheckTask()))
 
     main_win.open()
     app.exec_()

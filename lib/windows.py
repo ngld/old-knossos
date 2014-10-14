@@ -1273,11 +1273,8 @@ class FlagsWindow(Window):
         if mod is None:
             self.win.defaultsButton.hide()
 
-        if mod is None or mod.mid not in manager.settings['cmdlines']:
-            if '#default' in manager.settings['cmdlines']:
-                self.set_selection(manager.settings['cmdlines']['#default'])
-        else:
-            self.set_selection(manager.settings['cmdlines'][mod.mid])
+        if self._flags is not None:
+            self.set_selection(manager.get_cmdline(mod))
     
     def read_flags(self):
         flags = manager.get_fso_flags()
