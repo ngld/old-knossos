@@ -12,6 +12,7 @@
             "logo": "<path to image>", // optional, default: null, will be extracted from the archive if null
             "notes": "...", // optional, these will be displayed during the installation.
             "folder": "<mod folder>", // optional, This folder will be created in the FS2 directory. default: mod title
+            "cmdline": "<flags>", // optional, allows the modder to specify a default cmdline for this mod
             "submods": ["<ID1>", "..."], // optional
             "packages": [ // optional
                 {

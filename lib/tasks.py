@@ -128,31 +128,59 @@ class CheckTask(progress.MultistepTask):
                 try:
                     with open(kfile, 'r') as stream:
                         data = json.load(stream)
-                        mods.add_mod(repo.InstalledMod(data))
+                        mod = repo.InstalledMod(data)
+                        if mod.logo is not None:
+                            mod.logo_path = os.path.join(fs2path, subdir, mod.logo)
+
+                        mods.add_mod(mod)
                 except:
                     logging.exception('Failed to parse "%s"!', kfile)
                     continue
+                
+                if mod.folder not in ('', '.'):
+                    fs2path = manager.settings['fs2_path']
+                    modpath = os.path.join(fs2path, mod.folder)
+                    filenames = [util.pjoin(mod.folder, f['filename']).lower() for f in mod.get_files()]
+                    prefix = len(fs2path)
+                    lines = []
+                    
+                    for sub_path, dirs, files in os.walk(modpath):
+                        for name in files:
+                            my_path = os.path.join(sub_path[prefix:], name).replace('\\', '/').lstrip('/')
+                            if my_path.lower() not in filenames:
+                                lines.append('  * %s' % my_path)
+                    
+                    if len(lines) > 0:
+                        mod.check_notes = ['User-added files:\n' + '\n'.join(lines)]
 
     def init2(self):
         pkgs = []
-        for mod in manager.installed.get_list():
-            pkgs.extend(mod.packages)
+        for mid, mvs in manager.installed.mods.items():
+            for mod in mvs:
+                pkgs.extend(mod.packages)
+
+        # Reset them
+        for pkg in pkgs:
+            pkg.state = 'not installed'
+            pkg.files_ok = 0
+            pkg.files_checked = 0
+            pkg.files_shared = 0
 
         self.add_work(pkgs)
 
     def work2(self, pkg):
         fs2path = manager.settings['fs2_path']
-        modpath = os.path.join(fs2path, pkg.get_mod().folder)
-        files = pkg.filelist
-        
-        count = float(len(files))
+        mod = pkg.get_mod()
+        modpath = os.path.join(fs2path, mod.folder)
+        pkg_files = pkg.filelist
+        count = float(len(pkg_files))
         success = 0
         checked = 0
         
         archives = set()
         msgs = []
         
-        for info in files:
+        for info in pkg_files:
             mypath = util.ipath(os.path.join(modpath, info['filename']))
             fix = False
             if os.path.isfile(mypath):
@@ -172,17 +200,6 @@ class CheckTask(progress.MultistepTask):
             
             checked += 1
         
-        if pkg.get_mod().folder not in ('', '.'):
-            prefix = len(manager.settings['fs2_path'])
-            lines = []
-            for sub_path, dirs, files in os.walk(modpath):
-                for name in files:
-                    my_path = os.path.join(sub_path[prefix:], name).replace('\\', '/').lower().lstrip('/')
-                    lines.append('  * %s' % my_path)
-            
-            if len(lines) > 0:
-                msgs.append('User-added files:\n' + '\n'.join(lines))
-        
         self.post((pkg, archives, success, checked, msgs))
 
     def finish(self):
@@ -191,40 +208,27 @@ class CheckTask(progress.MultistepTask):
 
         for pkg, archives, s, c, m in results:
             mod = pkg.get_mod()
-            pinfo = installed.query(mod.mid, pname=pkg.name)
             
-            if s == c:
+            if s == c and s != 0:
                 # Installed
-                if pinfo is None:
-                    pinfo = installed.add_pkg(pkg)
-
-                pinfo.state = 'installed'
+                pkg.state = 'installed'
                 
             elif s == 0:
                 # Not Installed
-                if pinfo is not None:
+                if pkg is not None:
                     # What?!
                     logging.warning('Package %s of mod %s (%s) is not installed but in the local repo.' % (pkg.name, mod.mid, mod.title))
-                    pinfo.state = 'not installed'
+                    pkg.state = 'not installed'
 
-            elif pinfo is None:
+            elif pkg is None:
                 # Assume it's not installed.
                 logging.info('Found some weird files from package %s of mod %s (%s) but it\'s not installed.' % (pkg.name, mod.mid, mod.title))
 
-            else:
-                # if pinfo.version < pkg.version:
-                #     # There's an update available!
-                #     pinfo.state = 'has_update'
-                # else:
-                #     # It's corrupted.
-                #     pinfo.state = 'corrupted'
-                pass
-
-            if pinfo is not None:
-                pinfo.check_notes = m
-                pinfo.files_ok = s
-                pinfo.files_checked = c
-                pinfo.files_shared = 0  # TODO: Remove
+            if pkg is not None:
+                pkg.check_notes = m
+                pkg.files_ok = s
+                pkg.files_checked = c
+                pkg.files_shared = 0  # TODO: Remove
 
         manager.settings['installed_mods'] = installed.get()
         manager.save_settings()
@@ -239,8 +243,17 @@ class InstallTask(progress.MultistepTask):
     _steps = 2
 
     def __init__(self, pkgs):
-        self._pkgs = pkgs
-        self._pkg_names = [(pkg.get_mod().mid, pkg.name) for pkg in self._pkgs]
+        self._pkgs = []
+        self._pkg_names = []
+        rmods = manager.settings['mods']
+
+        # Make sure we have remote mods here!
+        for pkg in pkgs:
+            mod = pkg.get_mod()
+            pkg = rmods.query(pkg)
+            self._pkgs.append(pkg)
+            self._pkg_names.append((mod.mid, pkg.name))
+
         super(InstallTask, self).__init__()
 
         self.done.connect(self.finish)
@@ -269,8 +282,15 @@ class InstallTask(progress.MultistepTask):
             # Generate knossos.json files.
             for mod in mods:
                 kpath = os.path.join(fs2_path, mod.folder, 'knossos.json')
+                logo = os.path.join(fs2_path, mod.folder, 'knossos.' + mod.logo.split('.')[-1])
+                
+                # Copy the logo right next to the json file.
+                shutil.copy(mod.logo_path, logo)
+                info = mod.get()
+                info['logo'] = os.path.join(logo)
+
                 with open(kpath, 'w') as stream:
-                    json.dump(mod.get(), stream)
+                    json.dump(info, stream)
 
             manager.settings['installed_mods'] = manager.installed.get()
             manager.signals.repo_updated.emit()
@@ -287,16 +307,30 @@ class InstallTask(progress.MultistepTask):
         fs2_path = manager.settings['fs2_path']
         modpath = os.path.join(fs2_path, mod.folder)
         mfiles = mod.get_files()
+        mnames = [f['filename'] for f in mfiles]
 
         archives = set()
         progress.update(0, 'Checking %s...' % mod.title)
         
-        if mod.folder != '':
+        kpath = os.path.join(modpath, 'knossos.json')
+        if os.path.isfile(kpath):
+            try:
+                with open(kpath, 'r') as stream:
+                    info = json.load(stream)
+            except:
+                logging.exception('Failed to parse knossos.json!')
+                info = None
+
+            if info is not None and info['version'] != str(mod.version):
+                mod.folder += '_' + str(mod.version) + '_knossos'
+                modpath = os.path.join(fs2_path, mod.folder)
+
+        if mod.folder not in ('', '.') and os.path.isdir(modpath):
             for path, dirs, files in os.walk(modpath):
                 relpath = path[len(modpath):].lstrip('/')
                 for item in files:
                     itempath = util.pjoin(relpath, item)
-                    if itempath not in mfiles:
+                    if itempath not in mnames:
                         logging.info('File "%s" is left over.', itempath)
 
         for info in mfiles:

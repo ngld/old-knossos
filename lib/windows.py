@@ -17,6 +17,7 @@ import sys
 import logging
 import glob
 import shlex
+import semantic_version
 
 import manager
 from lib import util, clibs, progress, repo
@@ -230,14 +231,15 @@ class MainWindow(Window):
         self.win.modTree.clear()
         rows = self.build_mod_tree()
         
-        for mod in manager.settings['mods'].get_list():
+        for mid, mvs in manager.settings['mods'].mods.items():
+            mod = mvs[0]
             titem = rows[mod.mid]
             rc = 0
             ri = 0
 
             for pkg in mod.packages:
                 try:
-                    pinfo = manager.installed.query(mod.mid, pname=pkg.name)
+                    pinfo = manager.installed.query(pkg)
                 except repo.ModNotFound:
                     pinfo = None
 
@@ -275,6 +277,54 @@ class MainWindow(Window):
                         ri += 1
 
                 titem.addChild(row)
+
+            if len(mvs) > 1:
+                v_item = QtGui.QTreeWidgetItem(('Other Versions', '', ''))
+                v_item.setData(0, QtCore.Qt.UserRole + 2, None)
+                v_item.setData(0, QtCore.Qt.UserRole + 3, False)
+                titem.addChild(v_item)
+
+                for mod in mvs[1:]:
+                    m_item = QtGui.QTreeWidgetItem((str(mod.version), str(mod.version), ''))
+                    m_item.setData(0, QtCore.Qt.UserRole + 2, mod)
+                    m_item.setData(0, QtCore.Qt.UserRole + 3, False)
+                    v_item.addChild(m_item)
+
+                    if manager.installed.is_installed(mod):
+                        m_item.setCheckState(0, QtCore.Qt.Checked)
+                    else:
+                        m_item.setCheckState(0, QtCore.Qt.Unchecked)
+
+                    for pkg in mod.packages:
+                        try:
+                            pinfo = manager.installed.query(pkg)
+                        except repo.ModNotFound:
+                            pinfo = None
+
+                        if pinfo is None or pinfo.state == 'not installed':
+                            cstate = QtCore.Qt.Unchecked
+                            status = 'Not installed'
+                            
+                            if pinfo is None:
+                                pinfo = repo.InstalledPackage.convert(pkg, pkg.get_mod())
+                                pinfo.state = 'not installed'
+                            elif pinfo.files_shared > 0:
+                                status += ' (%d shared files)' % pinfo.files_shared
+                        elif pinfo.state == 'installed':
+                            cstate = QtCore.Qt.Checked
+                            status = 'Installed'
+                        elif pinfo.state == 'corrupted':
+                            cstate = QtCore.Qt.PartiallyChecked
+                            status = '%d corrupted or updated files' % (pinfo.files_checked - pinfo.files_ok)
+                        
+                        row = QtGui.QTreeWidgetItem((pkg.name, str(mod.version), status))
+                        row.setCheckState(0, cstate)
+                        row.setData(0, QtCore.Qt.UserRole, cstate)
+                        row.setData(0, QtCore.Qt.UserRole + 1, pinfo)
+                        row.setData(0, QtCore.Qt.UserRole + 2, pkg)
+                        row.setData(0, QtCore.Qt.UserRole + 3, False)
+                        
+                        m_item.addChild(row)
 
             if ri == 0:
                 state = QtCore.Qt.Unchecked
@@ -350,7 +400,7 @@ class MainWindow(Window):
                     selection.append(pkg)
 
         try:
-            selection = manager.settings['mods'].process_pkg_selection(selection)
+            selection = []  # manager.settings['mods'].process_pkg_selection(selection)
         except:
             logging.exception('Failed to satisfy dependencies!')
             self.reset_selection()
@@ -715,38 +765,19 @@ class ModInfoWindow(Window):
             self.win.logo.hide()
         else:
             img = QtGui.QPixmap()
-            img.load(os.path.join(manager.settings_path, mod.logo))
+            img.load(mod.logo_path)
             self.win.logo.setPixmap(img)
         
         self.win.desc.setPlainText(mod.description)
         self.win.note.setPlainText(mod.notes)
 
         self.win.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted([f['filename'] for f in mod.get_files()])]))
+        try:
+            inst_mod = manager.installed.query(mod)
+            self.win.note.appendPlainText('\n* '.join(inst_mod.check_notes))
+        except repo.ModNotFound:
+            pass
 
-        rem_ver = set([mod.version for mod in manager.settings['mods'].mods.get(mod.mid, [])])
-        local_ver = set([mod.version for mod in manager.installed.mods.get(mod.mid, [])])
-
-        for version in rem_ver:
-            item = QtGui.QListWidgetItem(str(version))
-            item.setData(QtCore.Qt.UserRole, version)
-
-            if version in local_ver:
-                item.setCheckState(QtCore.Qt.Checked)
-                item.setData(QtCore.Qt.UserRole + 1, True)
-            else:
-                item.setCheckState(QtCore.Qt.Unchecked)
-                item.setData(QtCore.Qt.UserRole + 1, False)
-
-            self.win.versionList.addItem(item)
-
-        for version in local_ver - rem_ver:
-            item = QtGui.QListWidgetItem(str(version))
-            item.setData(QtCore.Qt.UserRole, version)
-            item.setData(QtCore.Qt.UserRole + 1, True)
-            item.setCheckState(QtCore.Qt.Checked)
-            self.win.versionList.addItem(item)
-        
-        self.win.applyVersions.clicked.connect(self.apply_versions)
         self.win.closeButton.clicked.connect(self.win.close)
         self.win.settingsButton.clicked.connect(self.show_settings)
         self.win.runButton.clicked.connect(self.do_run)
@@ -759,43 +790,6 @@ class ModInfoWindow(Window):
     
     def show_settings(self):
         FlagsWindow(self.win, self._mod)
-
-    def apply_versions(self):
-        install = set()
-        uninstall = set()
-
-        for i in range(self.win.versionList.count()):
-            item = self.win.versionList.item(i)
-            checked = item.checkState() == QtCore.Qt.Checked
-
-            if item.data(QtCore.Qt.UserRole + 1) and not checked:
-                uninstall.add(item.data(QtCore.Qt.UserRole))
-            elif not item.data(QtCore.Qt.UserRole + 1) and checked:
-                install.add(item.data(QtCore.Qt.UserRole))
-
-        if len(install) == 0 and len(uninstall) == 0:
-            msg = 'You made no changes! What do you want me to do?'
-            QtGui.QMessageBox.information(manager.app.activeWindow(), 'fs2mod-py', msg)
-            return
-        
-        msg = 'The '
-        if len(install) > 0:
-            msg += ', '.join([str(v) for v in install])
-            msg += ' versions are going to be installed'
-
-            if len(uninstall) > 0:
-                msg += ' and '
-
-        if len(uninstall) > 0:
-            msg += ', '.join([str(v) for v in uninstall])
-            msg += ' versions are going to be uninstalled'
-
-        msg += '.\nAre you shure?'
-        result = QtGui.QMessageBox.question(manager.app.activeWindow(), 'fs2mod-py', msg, QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-        if result != QtGui.QMessageBox.Yes:
-            return
-
-        pass
 
 
 class PkgInfoWindow(Window):

@@ -24,6 +24,7 @@ import tempfile
 import re
 import time
 import json
+import semantic_version
 from six.moves.urllib.request import urlopen, Request
 from six.moves.urllib.error import HTTPError, URLError
 from collections import OrderedDict
@@ -644,27 +645,6 @@ def run_in_qt(func):
     return dispatcher
 
 
-def vercmp(a, b):
-    a = a.split('.')
-    b = b.split('.')
-    
-    while len(a) > 0 and len(b) > 0:
-        cur_a = a.pop(0)
-        cur_b = b.pop(0)
-        
-        if cur_a < cur_b:
-            return -1
-        elif cur_a > cur_b:
-            return 1
-    
-    if len(a) == 0 and len(b) == 0:
-        return 0
-    elif len(a) > len(b):
-        return 1
-    else:
-        return -1
-
-
 def is_number(s):
     try:
         int(s)
@@ -703,6 +683,13 @@ def get_cpuinfo():
         info = cpuinfo.get_cpu_info()
 
     return info
+
+
+class Spec(semantic_version.Spec):
+    
+    @staticmethod
+    def from_version(version, op='=='):
+        return Spec('==' + str(version))
 
 
 DL_POOL = ResizableSemaphore(10)

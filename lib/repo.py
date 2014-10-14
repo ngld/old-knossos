@@ -135,6 +135,17 @@ class Repo(object):
             self.add_mod(mod)
 
     def query(self, mid, spec=None, pname=None):
+        if isinstance(mid, Package):
+            mod = mid.get_mod()
+            pname = mid.name
+            mid = mod.mid
+            spec = util.Spec.from_version(mod.version)
+
+            del mod
+        elif isinstance(mid, Mod):
+            spec = util.Spec.from_version(mid.version)
+            mid = mid.mid
+
         if mid not in self.mods:
             raise ModNotFound('Mod "%s" wasn\'t found!' % (mid), mid)
 
@@ -225,7 +236,8 @@ class Repo(object):
                             remains.append(v)
 
                     if len(remains) == 0:
-                        raise PackageNotFound('No version of package "%s" found for these constraints: %s' % (list(variants.values())[0].name, ','.join(specs)), mid, list(variants.values())[0].name)
+                        v = (list(variants.values())[0].name, ','.join([str(s) for s in specs]))
+                        raise PackageNotFound('No version of package "%s" found for these constraints: %s' % v, mid, list(variants.values())[0].name)
                     else:
                         # Pick the latest
                         remains.sort(key=lambda v: v.get_mod().version)
@@ -244,20 +256,20 @@ class Mod(object):
     title = ''
     version = None
     folder = None
-    logo = ''
+    cmdline = ''
+    logo = None
+    logo_path = None
     description = ''
     notes = ''
     submods = None
     actions = None
     packages = None
-    filelist = None
 
-    __fields__ = ('mid', 'title', 'version', 'folder', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
+    __fields__ = ('mid', 'title', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
 
     def __init__(self, values=None, repo=None):
         self.actions = []
         self.packages = []
-        self.filelist = {}
 
         if repo is not None:
             self._repo = self
@@ -270,6 +282,7 @@ class Mod(object):
         self.title = values['title']
         self.version = semantic_version.Version(values['version'], partial=True)
         self.folder = values.get('folder', '').strip('/')  # make sure we have a relative path
+        self.cmdline = values.get('cmdline', '')
         self.logo = values.get('logo', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
@@ -290,23 +303,19 @@ class Mod(object):
             if 'dest' in act:
                 act['dest'] = act['dest'].lstrip('/')
 
-        self.filelist = {}
-        for item in values.get('filelist', []):
-            self.filelist[item['filename']] = item
-
     def get(self):
         return {
             'id': self.mid,
             'title': self.title,
             'version': str(self.version),
             'folder': self.folder,
+            'cmdline': self.cmdline,
             'logo': self.logo,
             'description': self.description,
             'notes': self.notes,
             'submods': self.submods,
             'actions': self.actions,
-            'packages': [pkg.get() for pkg in self.packages],
-            'filelist': list(self.filelist.values())
+            'packages': [pkg.get() for pkg in self.packages]
         }
 
     def copy(self):
@@ -344,6 +353,7 @@ class Mod(object):
             shutil.copyfile(self.logo, path)
 
         self.logo = os.path.relpath(path, dest)
+        self.logo_path = os.path.abspath(path)
 
 
 class Package(object):
@@ -368,7 +378,7 @@ class Package(object):
     def set(self, values):
         self.name = values['name']
         self.notes = values.get('notes', '')
-        self.status = values.get('status', 'recommended')
+        self.status = values.get('status', 'recommended').lower()
         self.dependencies = values.get('dependencies', [])
         self.environment = values.get('environment', [])
         self.files = {}
@@ -490,7 +500,7 @@ class InstalledRepo(Repo):
     def add_pkg(self, pkg):
         mod = pkg.get_mod()
         try:
-            my_mod = self.query(mod.mid, semantic_version.Spec('==' + str(mod.version)))
+            my_mod = self.query(mod)
         except ModNotFound:
             my_mod = InstalledMod.convert(mod)
             self.add_mod(my_mod)
@@ -501,7 +511,7 @@ class InstalledRepo(Repo):
         mod = pkg.get_mod()
 
         try:
-            my_mod = self.query(mod.mid, semantic_version.Spec('==' + str(mod.version)))
+            my_mod = self.query(mod)
         except ModNotFound:
             logging.error('Tried to delete non-existing package!')
             return
@@ -537,7 +547,6 @@ class InstalledRepo(Repo):
 
 class InstalledMod(Mod):
     check_notes = ''
-    current_version = None
 
     @staticmethod
     def convert(mod):
@@ -557,29 +566,12 @@ class InstalledMod(Mod):
         super(InstalledMod, self).set(values)
 
         self.check_notes = values.get('check_notes', '')
-        cur_version = values.get('current_version', None)
-
-        if cur_version is None:
-            self.current_version = None
-        else:
-            try:
-                self.current_version = semantic_version.Version(cur_version)
-            except:
-                logging.exception('Failed to parse invalid version!')
-                self.current_version = None
-        
         for pkg in pkgs:
             self.packages.append(InstalledPackage(pkg, self))
 
     def get(self):
         data = super(InstalledMod, self).get()
         data['check_notes'] = self.check_notes
-
-        if self.current_version is None:
-            data['current_version'] = None
-        else:
-            data['current_version'] = str(self.current_version)
-
         return data
 
     def add_pkg(self, pkg):

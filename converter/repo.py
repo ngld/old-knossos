@@ -204,11 +204,12 @@ class Mod(object):
     logo = ''
     description = ''
     notes = ''
+    cmdline = ''
     submods = None
     actions = None
     packages = None
 
-    _fields = ('id', 'title', 'version', 'folder', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
+    _fields = ('id', 'title', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
     _req = ('id', 'title', 'version')
 
     def __init__(self, values=None, repo=None):
@@ -239,6 +240,7 @@ class Mod(object):
         self.mid = values['id']
         self.title = values['title']
         self.folder = values.get('folder', '').strip('/')  # make sure we have a relative path
+        self.cmdline = values.get('cmdline', '')
         self.logo = values.get('logo', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
@@ -296,6 +298,7 @@ class Mod(object):
             'title': self.title,
             'version': str(self.version),
             'folder': self.folder,
+            'cmdline': self.cmdline,
             'logo': self.logo,
             'description': self.description,
             'notes': self.notes,
