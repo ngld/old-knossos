@@ -307,6 +307,7 @@ def get_cmdline(mod):
         return settings['cmdlines'].get('#default', [])
 
 
+# TODO: Modify the -mod flag so that it points to the right directories (multiple version).
 def run_mod(mod):
     global installed
 

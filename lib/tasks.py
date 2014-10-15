@@ -418,7 +418,13 @@ class UninstallTask(progress.MultistepTask):
     def __init__(self, pkgs):
         super(UninstallTask, self).__init__()
 
-        self._pkgs = pkgs
+        self._pkgs = []
+        for pkg in pkgs:
+            try:
+                self._pkgs.append(manager.installed.query(pkg))
+            except repo.ModNotFound:
+                logging.exception('Someone tried to uninstall a non-existant package (%s, %s)!', pkg.get_mod().mid, pkg.name)
+
         self.done.connect(self.finish)
         progress.update(0, 'Uninstalling mods...')
 

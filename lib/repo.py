@@ -532,19 +532,32 @@ class InstalledRepo(Repo):
         remote_mods = settings['mods']
         updates = {}
 
-        for mid, v in self.mods.items():
-            my_version = sorted([mod.version for mod in v])[-1]
-
+        for mid, mods in self.mods.items():
             try:
-                remote_version = remote_mods.query(mid).version
+                rem_mod = remote_mods.query(mid)
             except ModNotFound:
                 continue
 
-            if remote_version > my_version:
-                if mid not in updates:
-                    updates[mid] = {}
+            if rem_mod.version > mods[0].version:
+                # Let's see if the files changed.
+                my_files = {}
+                rem_files = {}
+                my_pkgs = [pkg.name for pkg in mods[0].packages]
 
-                updates[mid][my_version] = remote_version
+                for item in mods[0].get_files():
+                    my_files[item['filename']] = item['md5sum']
+
+                for item in rem_mod.get_files():
+                    if item['package'] in my_pkgs:
+                        rem_files[item['filename']] = item['md5sum']
+
+                if rem_files == my_files:
+                    logging.warning('Detected an empty update for mod "%s"! (%s -> %s)', mods[0].title, str(mods[0].version), str(rem_mod.version))
+                else:
+                    if mid not in updates:
+                        updates[mid] = {}
+
+                    updates[mid][mods[0].version] = rem_mod.version
 
         return updates
 
