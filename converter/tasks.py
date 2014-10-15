@@ -15,38 +15,83 @@
 import os
 import tempfile
 import logging
+from threading import Lock
 
 from lib import progress, util
 
 
 class ChecksumTask(progress.Task):
+    dl_path = None
+    dl_mirror = None
+    _mf_lock = None
+
+    def __init__(self, work, dl_path=None, dl_mirror=None):
+        super(ChecksumTask, self).__init__(work)
+
+        self.dl_path = dl_path
+        self.dl_mirror = dl_mirror
+        self._mf_lock = Lock()
 
     def work(self, item):
         id_, links, name, archive, tstamp = item
         
         with tempfile.TemporaryDirectory() as dest:
-            path = os.path.join(dest, name)
+            if self.dl_path is None:
+                base_path = dest
+            else:
+                base_path = self.dl_path
 
-            for link in links:
+            f_name = os.path.basename(name)
+            path = os.path.join(base_path, f_name)
+            idx = 1
+            while os.path.exists(path):
+                path = os.path.join(base_path, str(idx) + '_' + f_name)
+                idx += 1
+
+            res = self._download(links, path, tstamp)
+
+            if res == 304:
+                # Nothing changed.
+                self.post((id_, 'CACHE', None))
+            elif res:
+                logging.info('Inspecting "%s"...', name)
+                progress.update(1, 'Inspecting "%s"...' % name)
+                
+                csum, content = self._inspect_file(id_, archive, dest, path)
+
+                if csum != 'FAILED':
+                    if self.dl_mirror is not None:
+                        links.append(util.pjoin(self.dl_mirror, os.path.basename(path)))
+
+                    self.post((id_, csum, content))
+                else:
+                    self.post((id_, 'FAILED', None))
+            else:
+                # None of the links worked!
+                self.post((id_, 'FAILED', None))
+
+    def _download(self, links, path, tstamp):
+        from . import download
+
+        all_links = links[:]
+
+        # Remove all indirect links.
+        for i, link in reversed(list(enumerate(links))):
+            if not download.is_direct(link):
+                del links[i]
+
+        for link in all_links:
+            res = download.download(link, path)
+            print(link, res)
+
+            if res is None:
                 with open(path, 'wb') as stream:
-                    res = util.download(link, stream, {'If-Modified-Since': tstamp})
+                    res = util.download(link, stream, headers={'If-Modified': tstamp})
 
-                if res == 304:
-                    # Nothing changed.
-                    self.post((id_, 'CACHE', None))
-                    return
-                elif res:
-                    logging.info('Inspecting "%s"...', name)
-                    progress.update(1, 'Inspecting "%s"...' % name)
-                    
-                    csum, content = self._inspect_file(id_, archive, dest, path)
+            if res == 304 or res:
+                return res
 
-                    if csum != 'FAILED':
-                        self.post((id_, csum, content))
-                        return
-
-            # None of the links worked!
-            self.post((id_, 'FAILED', None))
+        return False
 
     def _inspect_file(self, id_, archive, dest, path):
         csum = util.gen_hash(path)

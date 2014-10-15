@@ -307,7 +307,6 @@ def get_cmdline(mod):
         return settings['cmdlines'].get('#default', [])
 
 
-# TODO: Modify the -mod flag so that it points to the right directories (multiple version).
 def run_mod(mod):
     global installed
 
@@ -383,6 +382,38 @@ def run_mod(mod):
         if ini == 'mod.ini':
             ini = os.path.basename(modpath) + '/' + ini
 
+        try:
+            local_deps = mod.resolve_deps()
+            rem_deps = [installed.query(pkg) for pkg in local_deps]
+        except repo.ModNotFound:
+            logging.exception('Failed to resolve the dependencies of mod "%s"! I won\'t be able to generate a correct -mod list.', mod.title)
+        else:
+            dir_map = {}
+            local_mods = {}
+            rem_mods = {}
+
+            for pkg in local_deps:
+                mod = pkg.get_mod()
+                local_mods[mod.mid] = mod.folder
+
+            for pkg in rem_deps:
+                mod = pkg.get_mod()
+                rem_mods[mod.mid] = mod.folder
+
+            for mid, folder in local_mods.items():
+                dir_map[rem_mods[mid]] = folder
+
+            for i, item in enumerate(primlist):
+                if item in dir_map:
+                    primlist[i] = dir_map[item]
+
+            for i, item in enumerate(seclist):
+                if item in dir_map:
+                    seclist[i] = dir_map[item]
+
+            del local_mods, rem_mods, dir_map
+
+        del local_deps, rem_deps
         # Build the whole list for -mod
         mods = primlist + [os.path.dirname(ini)] + seclist
     else:

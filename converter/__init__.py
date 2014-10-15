@@ -43,7 +43,7 @@ def show_progress(prog, text):
 def init_app():
     global app, pmaster
 
-    if app is None:
+    if True:  # app is None:
         app = QtCore.QCoreApplication([])
         pmaster = progress.Master()
 
@@ -85,7 +85,7 @@ def run_task(task, prg_wrap=None):
         sys.stdout.write(out.getvalue())
 
 
-def generate_checksums(repo, output, prg_wrap=None):
+def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None):
     logging.info('Parsing repo...')
 
     mods = RepoConf(repo)
@@ -149,7 +149,7 @@ def generate_checksums(repo, output, prg_wrap=None):
         logging.info('Updating checksums...')
 
         init_app()
-        task = ChecksumTask(items)
+        task = ChecksumTask(items, dl_path, dl_mirror)
         run_task(task, prg_wrap)
         file_info = task.get_results()
 
@@ -257,7 +257,7 @@ def main(args, prg_wrap=None):
     import_parser.add_argument('repofile', help='The imported files will be stored inside this file.')
 
     checksums_parser = subs.add_parser('checksums', help='Generate checksums for all referenced files.')
-    checksums_parser.add_argument('-p', dest='pretty', help='pretty print the output', action='store_true')
+    checksums_parser.add_argument('--save-files', dest='dl_path', help='Save the downloaded files.', default=None)
     checksums_parser.add_argument('repofile', help='The configuration used to locate the files.')
     checksums_parser.add_argument('outfile', help='The path to the generated configuration.')
 
@@ -282,7 +282,7 @@ def main(args, prg_wrap=None):
         mods.write(args.repofile, True)
         logging.info('Done')
     elif args.action == 'checksums':
-        generate_checksums(args.repofile, args.outfile)
+        generate_checksums(args.repofile, args.outfile, dl_path=args.dl_path)
     elif args.action == 'list':
         mods = RepoConf(args.repofile)
 

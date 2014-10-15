@@ -25,7 +25,9 @@ import re
 import time
 import json
 import semantic_version
+import random
 from six.moves.urllib.request import urlopen, Request
+from six.moves.urllib.parse import urlencode
 from six.moves.urllib.error import HTTPError, URLError
 from collections import OrderedDict
 from threading import Condition, Event
@@ -44,6 +46,58 @@ SEVEN_PATH = '7z'
 ARCHIVE_FORMATS = ('zip', 'tar', 'split', 'rar', 'lzma', 'iso', 'hfs', 'gzip', 'gz',
                    'cpio', 'bzip2', 'bz2', '7z', 'z', 'arj', 'cab', 'lzh', 'chm',
                    'nsis', 'deb', 'rpm', 'udf', 'wim', 'xar')
+# TODO: Too many?
+USER_AGENTS = (
+    'Mozilla/5.0 (compatible; Knossos +http://nebula.tproxy.de)',
+    'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/5.0)',
+    'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; Trident/6.0)',
+    'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; WOW64; Trident/6.0)',
+    'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.0; Trident/5.0)',
+    'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.78.2 (KHTML, like Gecko) Version/6.1.6 Safari/537.78.2',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.124 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:32.0) Gecko/20100101 Firefox/32.0',
+    'Mozilla/5.0 (Macintosh; U; PPC Mac OS X; de-de) AppleWebKit/125.2 (KHTML, like Gecko)',
+    'Mozilla/5.0 (Windows NT 5.0; rv:21.0) Gecko/20100101 Firefox/21.0',
+    'Mozilla/5.0 (Windows NT 5.1; rv:32.0) Gecko/20100101 Firefox/32.0',
+    'Mozilla/5.0 (Windows NT 5.1; rv:6.0.2) Gecko/20100101 Firefox/6.0.2',
+    'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.101 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 6.1; rv:32.0.3) Gecko/20100101 Firefox/32.0.3 anonymized by Abelssoft 1108446737',
+    'Mozilla/5.0 (Windows NT 6.1; rv:32.0) Gecko/20100101 Firefox/32.0',
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.104 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.4 (KHTML, like Gecko) Chrome/22.0.1229.94 Safari/537.4',
+    'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:32.0) Gecko/20100101 Firefox/32.0',
+    'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0',
+    'Mozilla/5.0 (Windows NT 6.2; WOW64; rv:32.0) Gecko/20100101 Firefox/32.0',
+    'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:29.0) Gecko/20100101 Firefox/29.0 SeaMonkey/2.26.1',
+    'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0 DT-Browser/DTB7.031.0020',
+    'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:32.0) Gecko/20100101 Firefox/32.0',
+    'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0',
+    'Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; LCJB; rv:11.0) like Gecko',
+    'Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko',
+    'Mozilla/5.0 (Windows; U; MSIE 9.0; Windows NT 9.0; en-US)',
+    'Mozilla/5.0 (Windows; U; Windows NT 5.1; de-AT; rv:1.7.12)',
+    'Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.0.10) Gecko/2009042316 Firefox/3.0.10 (.NET CLR 3.5.30729)',
+    'Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.2.24) Gecko/20111103 Firefox/3.6.24 ( .NET CLR 3.5.30729)',
+    'Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.2.8) Gecko/20100722 Firefox/3.6.8 (.NET CLR 3.5.30729)',
+    'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:x.x.x) Gecko/20041107 Firefox/x.x',
+    'Mozilla/5.0 (Windows; U; Windows NT 5.1; pl; rv:1.9.1.3) Gecko/20090824 Firefox/3.5.3',
+    'Mozilla/5.0 (Windows; U; Windows NT 6.0; de; rv:1.9.2.16) Gecko/20110319 BTRS26718 Firefox/3.6.16 (.NET CLR 3.5.30729)',
+    'Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US; rv:1.9.0.1) Gecko/2008070208 Firefox/3.0.1',
+    'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/533.4 (KHTML, like Gecko) Iron/5.0.381.0 Chrome/5.0.381 Safari/533.4',
+    'Mozilla/5.0 (Windows; U; Windows NT 6.1; tr-TR) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27',
+    'Mozilla/5.0 (X11; Linux i686) AppleWebKit/534.7 (KHTML, like Gecko) Version/5.0 Safari/534.7',
+    'Mozilla/5.0 (X11; Linux i686; rv:21.0) Gecko/20100101 Firefox/21.0',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2185.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64; rv:31.0) Gecko/20100101 Firefox/31.0',
+    'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:14.0; ips-agent) Gecko/20100101 Firefox/14.0.1',
+    'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:15.0) Gecko/20100101 Firefox/15.0.1',
+    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:21.0) Gecko/20100101 Firefox/21.0',
+    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:22.0) Gecko/20100101 Firefox/22.0',
+    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:33.0) Gecko/20100101 Firefox/33.0',
+    'Opera/9.80 (Windows NT 6.1; U; en) Presto/2.8.131 Version/11.10',
+    'Opera/9.80 (Windows NT 6.1; WOW64) Presto/2.12.388 Version/12.17'
+)
 QUIET = False
 QUIET_EXC = False
 HASH_CACHE = dict()
@@ -269,15 +323,19 @@ def format_bytes(value):
     return str(round(value)) + ' ' + unit
 
 
-def get(link, headers=None):
+def get(link, headers=None, random_ua=False, data=None):
     if headers is None:
         headers = {}
     
-    headers['User-Agent'] = 'curl/7.22.0'
+    headers['User-Agent'] = get_user_agent(random_ua)
+
+    if isinstance(data, dict):
+        data = urlencode(data).encode('utf8')
+
     logging.info('Retrieving "%s"...', link)
 
     try:
-        result = urlopen(Request(link, headers=headers))
+        result = urlopen(Request(link, headers=headers), data=data)
         if six.PY2:
             code = result.getcode()
         else:
@@ -305,7 +363,7 @@ def get(link, headers=None):
     return None
 
 
-def download(link, dest, headers=None):
+def download(link, dest, headers=None, random_ua=False):
     global _DL_CANCEL, DL_POOL
 
     # NOTE: We have to import progress here to avoid a dependency cycle.
@@ -314,7 +372,7 @@ def download(link, dest, headers=None):
     if headers is None:
         headers = {}
 
-    headers['User-Agent'] = 'curl/7.22.0'
+    headers['User-Agent'] = get_user_agent(random_ua)
     logging.info('Downloading "%s"...', link)
 
     with DL_POOL:
@@ -365,6 +423,9 @@ def download(link, dest, headers=None):
                     p = 0
                     text = ''
                 progress.update(p, os.path.basename(link) + text)
+
+            if _DL_CANCEL.is_set():
+                return False
         except KeyboardInterrupt:
             raise
         except HTTPError as exc:
@@ -683,6 +744,21 @@ def get_cpuinfo():
         info = cpuinfo.get_cpu_info()
 
     return info
+
+
+def get_user_agent(random_ua=False):
+    if random_ua:
+        return random.choice(USER_AGENTS[1:])
+    else:
+        return USER_AGENTS[0]
+
+
+def str_random(slen):
+    s = ''
+    for i in range(0, slen):
+        s += random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+
+    return s
 
 
 class Spec(semantic_version.Spec):
