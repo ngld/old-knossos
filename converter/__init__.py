@@ -43,9 +43,11 @@ def show_progress(prog, text):
 def init_app():
     global app, pmaster
 
-    if True:  # app is None:
+    if app is None:
         app = QtCore.QCoreApplication([])
         pmaster = progress.Master()
+    else:
+        app.reset()
 
     return app
 
@@ -69,7 +71,7 @@ def run_task(task, prg_wrap=None):
         if prg_wrap is None:
             signal.signal(signal.SIGINT, lambda a, b: app.quit())
 
-        pmaster.start_workers(5)
+        pmaster.start_workers(3)
         pmaster.add_task(task)
         app.exec_()
         pmaster.stop_workers()

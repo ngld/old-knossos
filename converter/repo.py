@@ -28,6 +28,7 @@ class RepoConf(object):
     remote_includes = None
     mods = None
     meta = None
+    _valid = True
 
     def __init__(self, file=None):
         self.includes = []
@@ -45,6 +46,14 @@ class RepoConf(object):
         self.includes = content.get('includes', [])
         self.remote_includes = content.get('remote_includes', [])
         
+        if 'mods' not in content:
+            if 'id' in content and 'title' in content and 'packages' in content:
+                content = {'mods': [content]}
+            else:
+                self._valid = False
+                logging.error('I can\'t find the "mods" key.')
+                return
+
         mods = content['mods']
         self.mods = {}
 
@@ -52,8 +61,13 @@ class RepoConf(object):
             mod = Mod(mod)
             if mod.validate():
                 self.mods[mod.mid] = mod
+            else:
+                self._valid = False
 
     def validate(self):
+        if not self._valid:
+            return False
+
         for mod in self.mods.values():
             if not mod.validate():
                 return False

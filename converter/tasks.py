@@ -82,7 +82,6 @@ class ChecksumTask(progress.Task):
 
         for link in all_links:
             res = download.download(link, path)
-            print(link, res)
 
             if res is None:
                 with open(path, 'wb') as stream:
