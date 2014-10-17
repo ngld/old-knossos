@@ -218,8 +218,6 @@ class CheckTask(progress.MultistepTask):
                 pkg.files_ok = s
                 pkg.files_checked = c
 
-        #manager.settings['installed_mods'] = installed.get()
-        #manager.save_settings()
         manager.signals.repo_updated.emit()
 
 
@@ -283,8 +281,7 @@ class InstallTask(progress.MultistepTask):
                 with open(kpath, 'w') as stream:
                     json.dump(info, stream)
 
-            #manager.settings['installed_mods'] = manager.installed.get()
-            manager.signals.repo_updated.emit()
+        manager.run_task(CheckTask())
 
     def init1(self):
         mods = set()
@@ -469,8 +466,7 @@ class UninstallTask(progress.MultistepTask):
                 os.rmdir(path)
 
     def finish(self):
-        #manager.settings['installed_mods'] = manager.installed.get()
-        manager.signals.repo_updated.emit()
+        manager.run_task(CheckTask())
 
 
 class GOGExtractTask(progress.Task):

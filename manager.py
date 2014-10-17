@@ -413,7 +413,6 @@ def run_mod(mod):
 
             del local_mods, rem_mods, dir_map
 
-        del local_deps, rem_deps
         # Build the whole list for -mod
         mods = primlist + [os.path.dirname(ini)] + seclist
     else:

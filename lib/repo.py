@@ -282,7 +282,7 @@ class Mod(object):
         self.mid = values['id']
         self.title = values['title']
         self.version = semantic_version.Version(values['version'], partial=True)
-        self.folder = values.get('folder', '').strip('/')  # make sure we have a relative path
+        self.folder = values.get('folder', self.mid).strip('/')  # make sure we have a relative path
         self.cmdline = values.get('cmdline', '')
         self.logo = values.get('logo', None)
         self.description = values.get('description', '')
