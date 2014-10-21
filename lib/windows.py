@@ -17,10 +17,8 @@ import sys
 import logging
 import glob
 import shlex
-import semantic_version
 
-import manager
-from lib import util, clibs, progress, repo, integration
+from lib import center, util, clibs, progress, repo, integration, api
 from lib.qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.nebula import Ui_MainWindow as Ui_Nebula
@@ -29,10 +27,24 @@ from ui.modinfo import Ui_Dialog as Ui_Modinfo
 from ui.add_repo import Ui_Dialog as Ui_AddRepo
 from ui.settings import Ui_Dialog as Ui_Settings
 from ui.flags import Ui_Dialog as Ui_Flags
-from lib.tasks import GOGExtractTask, CheckTask, InstallTask, UninstallTask, WindowsUpdateTask
+from lib.tasks import run_task, GOGExtractTask, CheckTask, InstallTask, UninstallTask, WindowsUpdateTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
+
+
+class QMainWindow(QtGui.QMainWindow):
+    closed = QtCore.Signal()
+    
+    def closeEvent(self, e):
+        self.closed.emit()
+        e.accept()
+
+    def changeEvent(self, event):
+        if event.type() == QtCore.QEvent.ActivationChange:
+            integration.current.annoy_user(False)
+    
+        return super(QMainWindow, self).changeEvent(event)
 
 
 class Window(object):
@@ -78,9 +90,9 @@ class MainWindow(Window):
         super(MainWindow, self).__init__()
 
         if parent is None:
-            self.win = util.init_ui(Ui_MainWindow(), manager.QMainWindow())
+            self.win = util.init_ui(Ui_MainWindow(), QMainWindow())
         else:
-            self.win = util.init_ui(Ui_MainWindow(), manager.QMainWindow(parent.win, QtCore.Qt.Dialog))
+            self.win = util.init_ui(Ui_MainWindow(), QMainWindow(parent.win, QtCore.Qt.Dialog))
             self.win.setWindowModality(QtCore.Qt.WindowModal)
 
         self.progress_win = progress.ProgressDisplay()
@@ -101,14 +113,14 @@ class MainWindow(Window):
         # Prepare the status bar
 
         label = QtGui.QLabel(self.win.statusbar)
-        label.setText('Version: ' + manager.VERSION)
+        label.setText('Version: ' + center.VERSION)
         self.win.statusbar.addWidget(label)
 
         self.progress_win.set_statusbar(self.win.statusbar)
         
-        manager.signals.repo_updated.connect(self.update_list)
+        center.signals.repo_updated.connect(self.update_list)
         
-        manager.signals.update_avail.connect(self.ask_update)
+        center.signals.update_avail.connect(self.ask_update)
         self.win.updateButton.hide()
         self.win.updateButton.clicked.connect(self.run_update)
 
@@ -119,7 +131,7 @@ class MainWindow(Window):
 
         self.win.apply_sel.clicked.connect(self.apply_selection)
         self.win.reset_sel.clicked.connect(self.reset_selection)
-        self.win.update.clicked.connect(manager.fetch_list)
+        self.win.update.clicked.connect(api.fetch_list)
         
         self.win.modTree.itemActivated.connect(self.select_mod)
         self.win.modTree.itemChanged.connect(self.autoselect_deps)
@@ -131,12 +143,12 @@ class MainWindow(Window):
         self.win.removeSource.clicked.connect(self.remove_repo)
         self.win.sourceList.itemDoubleClicked.connect(self.edit_repo)
         
-        self.win.enforceDeps.setCheckState(QtCore.Qt.Checked if manager.settings['enforce_deps'] else QtCore.Qt.Unchecked)
+        self.win.enforceDeps.setCheckState(QtCore.Qt.Checked if center.settings['enforce_deps'] else QtCore.Qt.Unchecked)
         self.win.enforceDeps.stateChanged.connect(self.update_enforce_deps)
-        self.win.versionLabel.setText(manager.VERSION)
-        self.win.maxDownloads.setText(str(manager.settings['max_downloads']))
+        self.win.versionLabel.setText(center.VERSION)
+        self.win.maxDownloads.setText(str(center.settings['max_downloads']))
         self.win.maxDownloads.textEdited.connect(self.update_max_downloads)
-        self.win.uiMode.setCurrentIndex(0 if manager.settings['ui_mode'] == 'traditional' else 1)
+        self.win.uiMode.setCurrentIndex(0 if center.settings['ui_mode'] == 'traditional' else 1)
         self.win.uiMode.currentIndexChanged.connect(self.update_ui_mode)
         
         from . import web
@@ -163,7 +175,7 @@ class MainWindow(Window):
         super(MainWindow, self)._del()
 
     def check_fso(self):
-        if manager.settings['fs2_path'] is None:
+        if center.settings['fs2_path'] is None:
             self.win.tabs.setTabEnabled(0, False)
             self.win.tabs.setTabEnabled(2, False)
         else:
@@ -180,7 +192,7 @@ class MainWindow(Window):
     
     def build_mod_tree(self, mod=None, parent_el=None):
         if mod is None:
-            mods = manager.settings['mods'].get_tree()
+            mods = center.settings['mods'].get_tree()
         else:
             mods = mod.get_submods()
 
@@ -222,17 +234,17 @@ class MainWindow(Window):
         return items
 
     def update_list(self):
-        if manager.settings['mods'] is None:
-            manager.fetch_list()
+        if center.settings['mods'] is None:
+            api.fetch_list()
             return
 
         # Make sure the mod tree is empty.
         self.dep_processing = True
         self.win.modTree.clear()
         rows = self.build_mod_tree()
-        updates = manager.installed.get_updates()
+        updates = center.installed.get_updates()
         
-        for mid, mvs in manager.settings['mods'].mods.items():
+        for mid, mvs in center.settings['mods'].mods.items():
             mod = mvs[0]
             titem = rows[mod.mid]
             rc = 0
@@ -240,7 +252,7 @@ class MainWindow(Window):
 
             for pkg in mod.packages:
                 try:
-                    pinfo = manager.installed.query(pkg)
+                    pinfo = center.installed.query(pkg)
                 except repo.ModNotFound:
                     pinfo = None
 
@@ -284,14 +296,14 @@ class MainWindow(Window):
                     m_item.setData(0, QtCore.Qt.UserRole + 3, False)
                     v_item.addChild(m_item)
 
-                    if manager.installed.is_installed(mod):
+                    if center.installed.is_installed(mod):
                         m_item.setCheckState(0, QtCore.Qt.Checked)
                     else:
                         m_item.setCheckState(0, QtCore.Qt.Unchecked)
 
                     for pkg in mod.packages:
                         try:
-                            pinfo = manager.installed.query(pkg)
+                            pinfo = center.installed.query(pkg)
                         except repo.ModNotFound:
                             pinfo = None
 
@@ -335,13 +347,13 @@ class MainWindow(Window):
     def check_list(self):
         self.win.modTree.clear()
         
-        if manager.settings['fs2_path'] is None:
+        if center.settings['fs2_path'] is None:
             return
         
-        if manager.settings['mods'] is None:
-            manager.fetch_list()
+        if center.settings['mods'] is None:
+            api.fetch_list()
         else:
-            return manager.run_task(CheckTask(manager.settings['mods'].get_list()))
+            return run_task(CheckTask(center.settings['mods'].get_list()))
 
     def autoselect_deps(self, item, col):
         if self.dep_processing:
@@ -391,7 +403,7 @@ class MainWindow(Window):
                     selection.append(pkg)
 
         try:
-            selection = []  # manager.settings['mods'].process_pkg_selection(selection)
+            selection = []  # center.settings['mods'].process_pkg_selection(selection)
         except:
             logging.exception('Failed to satisfy dependencies!')
             self.reset_selection()
@@ -411,7 +423,7 @@ class MainWindow(Window):
         self.dep_processing = False
 
     def apply_selection(self):
-        if manager.settings['mods'] is None:
+        if center.settings['mods'] is None:
             return
         
         install = []
@@ -434,7 +446,7 @@ class MainWindow(Window):
                 uninstall.append(pkg)
 
         try:
-            install = manager.settings['mods'].process_pkg_selection(install)
+            install = center.settings['mods'].process_pkg_selection(install)
         except:
             logging.exception('Failed to process package selection!')
             msg = 'There probably was some kind of dependency conflict.\nI\'m sorry but I can\'t install the packages you selected.'
@@ -458,7 +470,7 @@ class MainWindow(Window):
             msg.setDefaultButton(QtGui.QMessageBox.Yes)
             
             if msg.exec_() == QtGui.QMessageBox.Yes:
-                manager.run_task(InstallTask(install))
+                run_task(InstallTask(install))
         
         if len(uninstall) > 0:
             uninstall_titles = set()
@@ -473,7 +485,7 @@ class MainWindow(Window):
             msg.setDefaultButton(QtGui.QMessageBox.Yes)
             
             if msg.exec_() == QtGui.QMessageBox.Yes:
-                manager.run_task(UninstallTask(uninstall))
+                run_task(UninstallTask(uninstall))
 
     def reset_selection(self):
         items = self.read_tree(self.win.modTree)
@@ -506,7 +518,7 @@ class MainWindow(Window):
     def update_repo_list(self):
         self.win.sourceList.clear()
         
-        for i, r in enumerate(manager.settings['repos']):
+        for i, r in enumerate(center.settings['repos']):
             item = QtGui.QListWidgetItem(r[1], self.win.sourceList)
             item.setData(QtCore.Qt.UserRole, i)
 
@@ -527,18 +539,18 @@ class MainWindow(Window):
             if idx is None:
                 found = False
                 
-                for r_source, r_title in manager.settings['repos']:
+                for r_source, r_title in center.settings['repos']:
                     if r_source == source:
                         found = True
                         QtGui.QMessageBox.critical(self.win, 'Error', 'This source is already in the list! (As "%s")' % (r_title))
                         break
                 
                 if not found:
-                    manager.settings['repos'].append((source, title))
+                    center.settings['repos'].append((source, title))
             else:
-                manager.settings['repos'][idx] = (source, title)
+                center.settings['repos'][idx] = (source, title)
             
-            manager.save_settings()
+            api.save_settings()
             self.update_repo_list()
 
     def add_repo(self):
@@ -548,7 +560,7 @@ class MainWindow(Window):
         item = self.win.sourceList.currentItem()
         if item is not None:
             idx = item.data(QtCore.Qt.UserRole)
-            self._edit_repo(manager.settings['repos'][idx], idx)
+            self._edit_repo(center.settings['repos'][idx], idx)
 
     def remove_repo(self):
         item = self.win.sourceList.currentItem()
@@ -558,19 +570,19 @@ class MainWindow(Window):
                                                 QtGui.QMessageBox.Yes | QtGui.QMessageBox.No, QtGui.QMessageBox.No)
             
             if answer == QtGui.QMessageBox.Yes:
-                del manager.settings['repos'][idx]
+                del center.settings['repos'][idx]
                 
-                manager.save_settings()
+                api.save_settings()
                 self.update_repo_list()
 
     def reorder_repos(self, parent, s_start, s_end, d_parent, d_row):
         repos = []
         for row in range(0, self.win.sourceList.count()):
             item = self.win.sourceList.item(row)
-            repos.append(manager.settings['repos'][item.data(QtCore.Qt.UserRole)])
+            repos.append(center.settings['repos'][item.data(QtCore.Qt.UserRole)])
         
-        manager.settings['repos'] = repos
-        manager.save_settings()
+        center.settings['repos'] = repos
+        api.save_settings()
         
         # NOTE: This call is normally redundant but I want to make sure that
         # the displayed list is always the same as the actual list in settings['repos'].
@@ -578,14 +590,14 @@ class MainWindow(Window):
         self.update_repo_list()
 
     def update_enforce_deps(self):
-        manager.settings['enforce_deps'] = self.win.enforceDeps.checkState() == QtCore.Qt.Checked
-        manager.save_settings()
+        center.settings['enforce_deps'] = self.win.enforceDeps.checkState() == QtCore.Qt.Checked
+        api.save_settings()
 
     def update_max_downloads(self):
-        old_num = num = manager.settings['max_downloads']
+        old_num = num = center.settings['max_downloads']
 
         try:
-            manager.settings['max_downloads'] = num = int(self.win.maxDownloads.text())
+            center.settings['max_downloads'] = num = int(self.win.maxDownloads.text())
         except:
             pass
 
@@ -593,16 +605,16 @@ class MainWindow(Window):
 
         if num != old_num:
             util.DL_POOL.set_capacity(num)
-            manager.save_settings()
+            api.save_settings()
 
     def update_ui_mode(self, idx):
         if idx == 0:
-            manager.settings['ui_mode'] = 'traditional'
+            center.settings['ui_mode'] = 'traditional'
         else:
-            manager.settings['ui_mode'] = 'nebula'
+            center.settings['ui_mode'] = 'nebula'
 
-        manager.save_settings()
-        manager.switch_ui_mode(manager.settings['ui_mode'])
+        api.save_settings()
+        api.switch_ui_mode(center.settings['ui_mode'])
 
     def ask_update(self, version):
         # We only have an updater for windows.
@@ -611,15 +623,15 @@ class MainWindow(Window):
 
             msg = 'There\'s an update available!\nDo you want to install Knossos %s now?' % str(version)
             buttons = QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
-            result = QtGui.QMessageBox.question(manager.app.activeWindow(), 'fs2mod-py', msg, buttons)
+            result = QtGui.QMessageBox.question(center.app.activeWindow(), 'fs2mod-py', msg, buttons)
             if result == QtGui.QMessageBox.Yes:
                 self.run_update()
         else:
             msg = 'There\'s an update available!\nYou should update to Knossos %s.' % str(version)
-            QtGui.QMessageBox.information(manager.app.activeWindow(), 'fs2mod-py', msg)
+            QtGui.QMessageBox.information(center.app.activeWindow(), 'fs2mod-py', msg)
 
     def run_update(self):
-        manager.run_task(WindowsUpdateTask())
+        run_task(WindowsUpdateTask())
 
 
 class NebulaWindow(Window):
@@ -632,10 +644,10 @@ class NebulaWindow(Window):
 
         self.support_win = MainWindow(self)
         self.progress_win = self.support_win.progress_win
-        self.win = util.init_ui(Ui_Nebula(), manager.QMainWindow())
+        self.win = util.init_ui(Ui_Nebula(), QMainWindow())
 
         label = QtGui.QLabel(self.win.statusbar)
-        label.setText('Version: ' + manager.VERSION)
+        label.setText('Version: ' + center.VERSION)
         self.win.statusbar.addWidget(label)
         self.progress_win.set_statusbar(self.win.statusbar)
 
@@ -674,7 +686,7 @@ class NebulaWindow(Window):
         self.win.webView.load('./html/welcome.html')
 
     def show_nebula(self):
-        self.win.webView.load(manager.settings['nebula_link'])
+        self.win.webView.load(center.settings['nebula_link'])
 
     def show_fso_settings(self):
         self.open_support()
@@ -742,7 +754,7 @@ class GogExtractWindow(Window):
     def do_install(self):
         # Just to be sure...
         if os.path.isfile(self.win.gogPath.text()) and os.path.isdir(self.win.destPath.text()):
-            manager.run_task(GOGExtractTask(self.win.gogPath.text(), self.win.destPath.text()))
+            run_task(GOGExtractTask(self.win.gogPath.text(), self.win.destPath.text()))
             self.close()
 
 
@@ -771,7 +783,7 @@ class ModInfoWindow(Window):
 
         self.win.note.appendPlainText('\nContents:\n* ' + '\n* '.join([util.pjoin(mod.folder, item) for item in sorted([f['filename'] for f in mod.get_files()])]))
         try:
-            inst_mod = manager.installed.query(mod)
+            inst_mod = center.installed.query(mod)
             self.win.note.appendPlainText('\n* '.join(inst_mod.check_notes))
         except repo.ModNotFound:
             pass
@@ -784,7 +796,7 @@ class ModInfoWindow(Window):
         self.win.note.verticalScrollBar().setValue(0)
 
     def do_run(self):
-        manager.run_mod(self._mod)
+        api.run_mod(self._mod)
     
     def show_settings(self):
         FlagsWindow(self.win, self._mod)
@@ -805,7 +817,7 @@ class PkgInfoWindow(Window):
         self.win.desc.setPlainText(pkg.notes)
 
         try:
-            pinfo = manager.installed.query(pkg)
+            pinfo = center.installed.query(pkg)
         except repo.ModNotFound:
             pinfo = None
 
@@ -817,7 +829,7 @@ class PkgInfoWindow(Window):
             lines = []
             for dep in deps:
                 line = '* ' + dep[0].name
-                if manager.installed.is_installed(dep[0]):
+                if center.installed.is_installed(dep[0]):
                     line += ' (installed)'
                 
                 lines.append(line)
@@ -839,10 +851,10 @@ class SettingsWindow(Window):
     
     def __init__(self, mod, app=None):
         self.mod = mod
-        self.win = util.init_ui(Ui_Settings(), util.QDialog(manager.main_win))
+        self.win = util.init_ui(Ui_Settings(), util.QDialog(center.main_win))
         self.win.setModal(True)
 
-        self.win.browseButton.clicked.connect(manager.select_fs2_path)
+        self.win.browseButton.clicked.connect(api.select_fs2_path)
         
         if mod is None:
             self.win.cmdButton.setText('Default command line flags')
@@ -877,8 +889,8 @@ class SettingsWindow(Window):
     def read_config(self):
         # This is temporary: it will be better handled as soon as all mods use a default build
         # Binary selection combobox logic here
-        fs2_path = manager.settings['fs2_path']
-        fs2_bin = manager.settings['fs2_bin']
+        fs2_path = center.settings['fs2_path']
+        fs2_bin = center.settings['fs2_bin']
 
         self.win.build.clear()
 
@@ -1090,10 +1102,10 @@ class SettingsWindow(Window):
             kls.clear()
             for i, layout in enumerate(('default (qwerty)', 'qwertz', 'azerty')):
                 kls.addItem(layout)
-                if layout == manager.settings['keyboard_layout']:
+                if layout == center.settings['keyboard_layout']:
                     kls.setCurrentIndex(i)
 
-            if manager.settings['keyboard_setxkbmap']:
+            if center.settings['keyboard_setxkbmap']:
                 self.win.setxkbmapCheck.setChecked(True)
             else:
                 self.win.setxkbmapCheck.setChecked(False)
@@ -1192,8 +1204,8 @@ class SettingsWindow(Window):
             else:
                 key_layout = self.win.keyLayoutSelect.itemText(key_layout)
 
-            manager.settings['keyboard_layout'] = key_layout
-            manager.settings['keyboard_setxkbmap'] = self.win.setxkbmapCheck.isChecked()
+            center.settings['keyboard_layout'] = key_layout
+            center.settings['keyboard_setxkbmap'] = self.win.setxkbmapCheck.isChecked()
         
         # networking
         net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
@@ -1224,16 +1236,16 @@ class SettingsWindow(Window):
         
         # Save the new configuration.
         config.sync()
-        manager.save_settings()
+        api.save_settings()
 
     def save_build(self):
         fs2_bin = str(self.win.build.currentText())
-        if not os.path.isfile(os.path.join(manager.settings['fs2_path'], fs2_bin)):
+        if not os.path.isfile(os.path.join(center.settings['fs2_path'], fs2_bin)):
             return
 
-        manager.settings['fs2_bin'] = fs2_bin
-        manager.get_fso_flags()
-        manager.save_settings()
+        center.settings['fs2_bin'] = fs2_bin
+        api.get_fso_flags()
+        api.save_settings()
 
     def run_mod(self):
         logging.info('Launching...')
@@ -1242,9 +1254,9 @@ class SettingsWindow(Window):
 
         if self.mod is not None:
             self.win.close()
-            manager.run_mod(self.mod)
+            api.run_mod(self.mod)
         else:
-            manager.run_fs2()
+            api.run_fs2()
     
     def show_flagwin(self):
         FlagsWindow(self.win, self.mod)
@@ -1258,7 +1270,7 @@ class SettingsTab(SettingsWindow):
         self.mod = None
         self.win = util.init_ui(Ui_Settings(), tab)
 
-        self.win.browseButton.clicked.connect(manager.select_fs2_path)
+        self.win.browseButton.clicked.connect(api.select_fs2_path)
         
         self.win.cmdButton.setText('Default command line flags')
         self.win.cmdButton.clicked.connect(self.show_flagwin)
@@ -1304,10 +1316,10 @@ class FlagsWindow(Window):
             self.win.defaultsButton.hide()
 
         if self._flags is not None:
-            self.set_selection(manager.get_cmdline(mod))
+            self.set_selection(api.get_cmdline(mod))
     
     def read_flags(self):
-        flags = manager.get_fso_flags()
+        flags = api.get_fso_flags()
 
         if flags is None:
             self.win.easySetup.setDisabled(True)
@@ -1392,7 +1404,7 @@ class FlagsWindow(Window):
         return self._selected + custom
     
     def update_display(self):
-        fs2_bin = os.path.join(manager.settings['fs2_path'], manager.settings['fs2_bin'])
+        fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
         cmdline = ' '.join([fs2_bin] + [shlex.quote(opt) for opt in self.get_selection()])
         self.win.cmdLine.setPlainText(cmdline)
     
@@ -1415,7 +1427,7 @@ class FlagsWindow(Window):
         self.update_display()
     
     def set_defaults(self):
-        cmdlines = manager.settings['cmdlines']
+        cmdlines = center.settings['cmdlines']
 
         if '#default' in cmdlines:
             self.set_selection(cmdlines['#default'])
@@ -1426,8 +1438,8 @@ class FlagsWindow(Window):
 
     def save(self):
         if self._mod is None:
-            manager.settings['cmdlines']['#default'] = self.get_selection()
+            center.settings['cmdlines']['#default'] = self.get_selection()
         else:
-            manager.settings['cmdlines'][self._mod.mid] = self.get_selection()
+            center.settings['cmdlines'][self._mod.mid] = self.get_selection()
         
-        manager.save_settings()
+        api.save_settings()

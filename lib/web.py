@@ -17,9 +17,8 @@ import logging
 import semantic_version
 
 from .qt import QtCore, QtNetwork, QtWebKit
-from . import api, repo
+from . import center, api, repo
 from .windows import FlagsWindow, SettingsWindow, GogExtractWindow
-import manager
 
 
 class WebBridge(QtCore.QObject):
@@ -68,11 +67,11 @@ class WebBridge(QtCore.QObject):
     def __init__(self):
         super(WebBridge, self).__init__()
 
-        manager.signals.repo_updated.connect(self.repoUpdated.emit)
+        center.signals.repo_updated.connect(self.repoUpdated.emit)
 
     @QtCore.Slot(result=str)
     def getVersion(self):
-        return manager.VERSION
+        return center.VERSION
 
     @QtCore.Slot(result=bool)
     def isFsoInstalled(self):
@@ -80,36 +79,36 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(result=bool)
     def isFs2PathSet(self):
-        return manager.settings['fs2_path'] is not None
+        return center.settings['fs2_path'] is not None
 
     @QtCore.Slot()
     def selectFs2path(self):
-        manager.select_fs2_path()
+        api.select_fs2_path()
 
     @QtCore.Slot()
     def runGogInstaller(self):
-        GogExtractWindow(manager.main_win)
+        GogExtractWindow(center.main_win)
 
     @QtCore.Slot(result='QVariantList')
     def getMods(self):
-        return manager.settings['mods'].get()
+        return center.settings['mods'].get()
 
     @QtCore.Slot(result='QVariantList')
     def getInstalledMods(self):
-        return manager.installed.get()
+        return center.installed.get()
 
     @QtCore.Slot(result='QVariantList')
     def getUpdates(self):
-        return manager.installed.get_updates()
+        return center.installed.get_updates()
 
     @QtCore.Slot(str, result=bool)
     @QtCore.Slot(str, str, result=bool)
     def isInstalled(self, mid, spec=None):
         if spec is None:
-            return mid in manager.installed.mods
+            return mid in center.installed.mods
         else:
             spec = semantic_version.Spec(spec)
-            mod = manager.installed.mods.get(mid, None)
+            mod = center.installed.mods.get(mid, None)
             if mod is None:
                 return False
 
@@ -122,26 +121,26 @@ class WebBridge(QtCore.QObject):
             spec = semantic_version.Spec(spec)
 
         try:
-            return manager.settings['mods'].query(mid, spec).get()
+            return center.settings['mods'].query(mid, spec).get()
         except:
             return None
 
     @QtCore.Slot()
     def fetchModlist(self):
-        manager.fetch_list()
+        api.fetch_list()
 
     @QtCore.Slot(str, str)
     def addRepo(self, repo_url, repo_name):
-        repos = manager.settings['repos']
+        repos = center.settings['repos']
         repos.append((repo_url, repo_name))
 
-        manager.save_settings()
-        if manager.main_win is not None:
-            manager.main_win.update_repo_list()
+        api.save_settings()
+        if center.main_win is not None:
+            center.main_win.update_repo_list()
 
     @QtCore.Slot(result='QVariantList')
     def getRepos(self):
-        return manager.settings['repos']
+        return center.settings['repos']
 
     def _get_mod(self, mid, spec=None, mod_repo=None):
         if spec is not None:
@@ -155,7 +154,7 @@ class WebBridge(QtCore.QObject):
                     return -2
 
         if mod_repo is None:
-            mod_repo = manager.installed
+            mod_repo = center.installed
 
         try:
             return mod_repo.query(mid, spec)
@@ -167,7 +166,7 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str, result=int)
     @QtCore.Slot(str, str, 'QStringList', result=int)
     def install(self, mid, spec=None, pkgs=None):
-        mod = self._get_mod(mid, spec, manager.settings['mods'])
+        mod = self._get_mod(mid, spec, center.settings['mods'])
         if mod in (-1, -2):
             return mod
 
@@ -222,7 +221,7 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return mod
 
-        manager.run_mod(mod)
+        api.run_mod(mod)
 
     @QtCore.Slot(result=int)
     @QtCore.Slot(str, result=int)
@@ -235,7 +234,7 @@ class WebBridge(QtCore.QObject):
             if mod in (-1, -2):
                 return mod
 
-            FlagsWindow(manager.main_win.win, mod)
+            FlagsWindow(center.main_win.win, mod)
 
     @QtCore.Slot(str, str, result=int)
     def vercmp(self, a, b):
@@ -271,17 +270,17 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
             if path.startswith('/logo'):
                 path = path.split('/')
                 try:
-                    mod = manager.settings['mods'].query(path[2], semantic_version.Spec('==' + path[3]))
+                    mod = center.settings['mods'].query(path[2], semantic_version.Spec('==' + path[3]))
                 except:
                     try:
-                        mod = manager.installed.query(path[2], semantic_version.Spec('==' + path[3]))
+                        mod = center.installed.query(path[2], semantic_version.Spec('==' + path[3]))
                     except:
                         mod = None
 
                 if mod is not None:
                     url.setPath(mod.logo_path)
             else:
-                url.setPath(os.path.join(manager.settings_path, os.path.basename(url.path())))
+                url.setPath(os.path.join(center.settings_path, os.path.basename(url.path())))
 
             request.setUrl(url)
         

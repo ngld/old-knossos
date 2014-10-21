@@ -14,12 +14,17 @@
 
 import sys
 import logging
-import manager
 import ctypes
+import six
 
-if sys.platform.startswith('win'):
+from lib import center
+
+if six.PY2:
     ctypes.pythonapi.PyCObject_AsVoidPtr.argtypes = [ctypes.py_object]
     ctypes.pythonapi.PyCObject_AsVoidPtr.restype = ctypes.c_void_p
+else:
+    ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object, ctypes.c_char_p]
+    ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
 
 
 class Integration(object):
@@ -76,15 +81,17 @@ class WindowsIntegration(Integration):
         taskbar.HrInit()
 
     def wid(self):
-        win = manager.main_win.win
+        win = center.main_win.win
         if win != self._win:
-            self._hwnd = ctypes.pythonapi.PyCObject_AsVoidPtr(manager.main_win.win.winId())
+            if six.PY2:
+                self._hwnd = ctypes.pythonapi.PyCObject_AsVoidPtr(win.winId())
+            else:
+                self._hwnd = ctypes.pythonapi.PyCapsule_GetPointer(win.winId(), None)
             self._win = win
         
         return self._hwnd
 
     def show_progress(self, value):
-
         self.taskbar.SetProgressState(self.wid(), self.TBPF_NORMAL)
         self.set_progress(value)
 

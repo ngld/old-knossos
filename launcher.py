@@ -30,9 +30,9 @@ if six.PY2:
     import lib.py2_compat
 
 
-from lib.qt import QtGui
+from lib.qt import QtCore, QtGui
 from lib.ipc import IPCComm
-from lib import util
+from lib import util, center
 
 
 app = None
@@ -63,31 +63,78 @@ def launch_cmd(args=[]):
     return my_path + args
 
 
+def run_knossos():
+    global app
+
+    import pickle
+
+    from lib import repo, progress, integration, api
+    from lib.windows import NebulaWindow, MainWindow
+
+    # Try to load our settings.
+    spath = os.path.join(settings_path, 'settings.pick')
+    if os.path.exists(spath):
+        settings = center.settings
+        defaults = settings.copy()
+        
+        try:
+            with open(spath, 'rb') as stream:
+                if six.PY3:
+                    settings.update(pickle.load(stream, encoding='utf8', errors='replace'))
+                else:
+                    settings.update(pickle.load(stream))
+        except:
+            logging.exception('Failed to load settings from "%s"!', spath)
+        
+        # Migration
+        if 's_version' not in settings:
+            settings['repos'] = defaults['repos']
+            settings['s_version'] = 1
+        
+        del defaults
+    else:
+        # Most recent settings version
+        settings['s_version'] = 1
+    
+    if settings['hash_cache'] is not None:
+        util.HASH_CACHE = settings['hash_cache']
+
+    util.DL_POOL.set_capacity(settings['max_downloads'])
+
+    center.app = app
+    center.installed = repo.InstalledRepo(settings.get('installed_mods', []))
+    center.pmaster = progress.Master()
+    center.pmaster.start_workers(10)
+    
+    if os.path.isfile('hlp.png'):
+        app.setWindowIcon(QtGui.QIcon('hlp.png'))
+
+    if not util.test_7z():
+        QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
+        return
+
+    if os.path.isfile('commit'):
+        with open('commit', 'r') as data:
+            center.VERSION += '-' + data.read().strip()
+
+    if settings['ui_mode'] == 'nebula':
+        center.main_win = NebulaWindow()
+    else:
+        center.main_win = MainWindow()
+
+    integration.init()
+    QtCore.QTimer.singleShot(1, api.init_self)
+
+    center.main_win.open()
+    app.exec_()
+    
+    api.save_settings()
+    api.shutdown_ipc()
+
+
 def scheme_handler(link):
     global app, ipc
 
-    if hasattr(sys, 'frozen'):
-        if hasattr(sys, '_MEIPASS'):
-            os.chdir(sys._MEIPASS)
-        else:
-            os.chdir(os.path.dirname(sys.executable))
-    else:
-        my_path = os.path.dirname(__file__)
-        if my_path != '':
-            os.chdir(my_path)
-    
-    if not os.path.isdir(settings_path):
-        os.makedirs(settings_path)
-    
-    if sys.platform.startswith('win'):
-        # Windows won't display a console so write our log messages to a file.
-        handler = logging.FileHandler(os.path.join(settings_path, 'scheme_handler.txt'), 'w')
-        handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
-        handler.setLevel(logging.DEBUG)
-        logging.getLogger().addHandler(handler)
-    
-    app = QtGui.QApplication([])
-    
     if not link.startswith(('fs2://', 'fso://')):
         # NOTE: fs2:// is deprecated, we don't tell anyone about it.
         QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
@@ -197,7 +244,7 @@ def init():
 
 
 def main():
-    global ipc
+    global ipc, app
 
     app = init()
     ipc = IPCComm(settings_path)
@@ -207,9 +254,6 @@ def main():
             get_cpu_info()
             return
         elif sys.argv[1] == '--install-scheme':
-            # We have to import manager first to solve a dependency problem. (lib.api imports lib.tasks which imports manager which in turn imports lib.api)
-            # /headdesk
-            import manager
             from lib import api
             
             api.install_scheme_handler('--silent' not in sys.argv)
@@ -249,9 +293,8 @@ def main():
     
     del ipc
 
-    from manager import main
     try:
-        main(app)
+        run_knossos()
     except:
         logging.exception('Uncaught exeception! Quitting...')
 

@@ -23,8 +23,7 @@ import json
 import tempfile
 import semantic_version
 
-import manager
-from lib import util, progress, repo
+from lib import center, util, progress, repo, api
 from lib.repo import Repo
 from lib.qt import QtGui
 
@@ -36,7 +35,7 @@ class FetchTask(progress.Task):
         progress.update(0, 'Fetching mod list...')
 
         # Remove all logos.
-        for path in glob.glob(os.path.join(manager.settings_path, 'logo*.*')):
+        for path in glob.glob(os.path.join(center.settings_path, 'logo*.*')):
             if os.path.isfile(path):
                 logging.info('Removing old logo "%s"...', path)
                 os.unlink(path)
@@ -46,7 +45,7 @@ class FetchTask(progress.Task):
         if repo.CPU_INFO is None:
             self.add_work(['init'])
         else:
-            self.add_work([(i * 100, link[0]) for i, link in enumerate(manager.settings['repos'])])
+            self.add_work([(i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
     
     def work(self, params):
         if params == 'init':
@@ -55,7 +54,7 @@ class FetchTask(progress.Task):
             # We're doing this here because we don't want to block the UI.
             repo.CPU_INFO = util.get_cpuinfo()
 
-            self.add_work([(i * 100, link[0]) for i, link in enumerate(manager.settings['repos'])])
+            self.add_work([(i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
             return
 
         prio, link = params
@@ -74,20 +73,20 @@ class FetchTask(progress.Task):
             return
         
         progress.update(0.5, 'Loading logos...')
-        data.save_logos(manager.settings_path)
+        data.save_logos(center.settings_path)
         
         self.post((prio, data))
     
     def finish(self):
         if not self.aborted:
-            modlist = manager.settings['mods'] = Repo()
+            modlist = center.settings['mods'] = Repo()
             res = self.get_results()
             res.sort(key=lambda x: x[0])
             
             for part in res:
                 modlist.merge(part[1])
             
-            filelist = manager.settings['known_files'] = {}
+            filelist = center.settings['known_files'] = {}
             for mod in modlist.get_list():
                 for pkg in mod.packages:
                     for name, ar in pkg.files.items():
@@ -98,9 +97,9 @@ class FetchTask(progress.Task):
                         else:
                             filelist[util.pjoin(path, name)] = (mod.mid, pkg.name)
 
-            manager.save_settings()
+            api.save_settings()
         
-        manager.run_task(CheckTask())
+        run_task(CheckTask())
 
 
 # TODO: Discover mods which don't have mod.json files.
@@ -115,12 +114,12 @@ class CheckTask(progress.MultistepTask):
         progress.update(0, 'Checking installed mods...')
 
     def init1(self):
-        manager.installed.clear()
+        center.installed.clear()
         self.add_work(('',))
 
     def work1(self, p):
-        fs2path = manager.settings['fs2_path']
-        mods = manager.installed
+        fs2path = center.settings['fs2_path']
+        mods = center.installed
 
         for subdir in os.listdir(fs2path):
             kfile = os.path.join(fs2path, subdir, 'mod.json')
@@ -139,7 +138,7 @@ class CheckTask(progress.MultistepTask):
                     continue
                 
                 if mod.folder not in ('', '.'):
-                    fs2path = manager.settings['fs2_path']
+                    fs2path = center.settings['fs2_path']
                     modpath = os.path.join(fs2path, mod.folder)
                     filenames = [util.pjoin(mod.folder, f['filename']).lower() for f in mod.get_files()]
                     prefix = len(fs2path)
@@ -156,7 +155,7 @@ class CheckTask(progress.MultistepTask):
 
     def init2(self):
         pkgs = []
-        for mid, mvs in manager.installed.mods.items():
+        for mid, mvs in center.installed.mods.items():
             for mod in mvs:
                 pkgs.extend(mod.packages)
 
@@ -168,7 +167,7 @@ class CheckTask(progress.MultistepTask):
         self.add_work(pkgs)
 
     def work2(self, pkg):
-        fs2path = manager.settings['fs2_path']
+        fs2path = center.settings['fs2_path']
         mod = pkg.get_mod()
         modpath = os.path.join(fs2path, mod.folder)
         pkg_files = pkg.filelist
@@ -203,7 +202,7 @@ class CheckTask(progress.MultistepTask):
 
     def finish(self):
         results = self.get_results()
-        #installed = manager.installed
+        #installed = center.installed
 
         for pkg, archives, s, c, m in results:
             mod = pkg.get_mod()
@@ -218,7 +217,7 @@ class CheckTask(progress.MultistepTask):
                 pkg.files_ok = s
                 pkg.files_checked = c
 
-        manager.signals.repo_updated.emit()
+        center.signals.repo_updated.emit()
 
 
 # TODO: Optimize, make sure all paths are relative (no mod should be able to install to C:\evil)
@@ -231,7 +230,7 @@ class InstallTask(progress.MultistepTask):
     def __init__(self, pkgs):
         self._pkgs = []
         self._pkg_names = []
-        rmods = manager.settings['mods']
+        rmods = center.settings['mods']
 
         # Make sure we have remote mods here!
         for pkg in pkgs:
@@ -258,12 +257,12 @@ class InstallTask(progress.MultistepTask):
                     shutil.rmtree(ar['tpath'])
         else:
             mods = set()
-            fs2_path = manager.settings['fs2_path']
+            fs2_path = center.settings['fs2_path']
 
             # Register installed pkgs
             for pkg in self._pkgs:
                 logo_path = pkg.get_mod().logo_path
-                pkg = manager.installed.add_pkg(pkg)
+                pkg = center.installed.add_pkg(pkg)
                 mod = pkg.get_mod()
                 mod.logo_path = logo_path
                 mods.add(mod)
@@ -281,7 +280,7 @@ class InstallTask(progress.MultistepTask):
                 with open(kpath, 'w') as stream:
                     json.dump(info, stream)
 
-        manager.run_task(CheckTask())
+        run_task(CheckTask())
 
     def init1(self):
         mods = set()
@@ -292,7 +291,7 @@ class InstallTask(progress.MultistepTask):
         self.add_work(mods)
 
     def work1(self, mod):
-        fs2_path = manager.settings['fs2_path']
+        fs2_path = center.settings['fs2_path']
         modpath = os.path.join(fs2_path, mod.folder)
         mfiles = mod.get_files()
         mnames = [f['filename'] for f in mfiles]
@@ -353,7 +352,7 @@ class InstallTask(progress.MultistepTask):
     def work2(self, archive):
         with tempfile.TemporaryDirectory() as tpath:
             arpath = os.path.join(tpath, archive['filename'])
-            fs2path = manager.settings['fs2_path']
+            fs2path = center.settings['fs2_path']
             modpath = os.path.join(fs2path, archive['mod'].folder)
 
             with open(arpath, 'wb') as stream:
@@ -418,7 +417,7 @@ class UninstallTask(progress.MultistepTask):
         self._pkgs = []
         for pkg in pkgs:
             try:
-                self._pkgs.append(manager.installed.query(pkg))
+                self._pkgs.append(center.installed.query(pkg))
             except repo.ModNotFound:
                 logging.exception('Someone tried to uninstall a non-existant package (%s, %s)!', pkg.get_mod().mid, pkg.name)
 
@@ -429,7 +428,7 @@ class UninstallTask(progress.MultistepTask):
         self.add_work(self._pkgs)
 
     def work1(self, pkg):
-        fs2path = manager.settings['fs2_path']
+        fs2path = center.settings['fs2_path']
         mod = pkg.get_mod()
 
         for item in pkg.filelist:
@@ -445,12 +444,12 @@ class UninstallTask(progress.MultistepTask):
         # Unregister uninstalled pkgs.
         for pkg in self._pkgs:
             mods.add(pkg.get_mod())
-            manager.installed.del_pkg(pkg)
+            center.installed.del_pkg(pkg)
 
         self.add_work(mods)
 
     def work2(self, mod):
-        modpath = os.path.join(manager.settings['fs2_path'], mod.folder)
+        modpath = os.path.join(center.settings['fs2_path'], mod.folder)
 
         print(mod.title, mod.packages)
         # Remove our files
@@ -466,7 +465,7 @@ class UninstallTask(progress.MultistepTask):
                 os.rmdir(path)
 
     def finish(self):
-        manager.run_task(CheckTask())
+        run_task(CheckTask())
 
 
 class GOGExtractTask(progress.Task):
@@ -483,7 +482,7 @@ class GOGExtractTask(progress.Task):
         gog_path, dest_path = paths
         
         progress.start_task(0, 0.03, 'Looking for InnoExtract...')
-        data = util.get(manager.settings['innoextract_link']).read().decode('utf8', 'replace')
+        data = util.get(center.settings['innoextract_link']).read().decode('utf8', 'replace')
         progress.finish_task()
         
         try:
@@ -606,25 +605,25 @@ class GOGExtractTask(progress.Task):
     def finish(self):
         results = self.get_results()
         if len(results) < 1:
-            QtGui.QMessageBox.critical(manager.main_win.win, 'Error', 'The installer failed! Please read the log for more details...')
+            QtGui.QMessageBox.critical(center.main_win.win, 'Error', 'The installer failed! Please read the log for more details...')
             return
         elif results[0] == -1:
-            QtGui.QMessageBox.critical(manager.main_win.win, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
+            QtGui.QMessageBox.critical(center.main_win.win, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
             return
         else:
-            QtGui.QMessageBox.information(manager.main_win.win, 'Done', 'FS2 was successfully installed.')
+            QtGui.QMessageBox.information(center.main_win.win, 'Done', 'FS2 was successfully installed.')
 
         fs2_path = results[0]
-        manager.settings['fs2_path'] = fs2_path
-        manager.settings['fs2_bin'] = None
+        center.settings['fs2_path'] = fs2_path
+        center.settings['fs2_bin'] = None
         
         for item in glob.glob(os.path.join(fs2_path, 'fs2_*.exe')):
             if os.path.isfile(item):
-                manager.settings['fs2_bin'] = os.path.basename(item)
+                center.settings['fs2_bin'] = os.path.basename(item)
                 break
         
-        manager.save_settings()
-        manager.main_win.check_fso()
+        api.save_settings()
+        center.main_win.check_fso()
 
 
 class CheckUpdateTask(progress.Task):
@@ -638,7 +637,7 @@ class CheckUpdateTask(progress.Task):
     def work(self, item):
         progress.update(0, 'Checking for updates...')
 
-        update_base = manager.settings['update_link']
+        update_base = center.settings['update_link']
         version = util.get(update_base + '/version').read().decode('utf8', 'replace').strip()
 
         try:
@@ -647,9 +646,9 @@ class CheckUpdateTask(progress.Task):
             logging.exception('Failed to parse remote version!')
             return
 
-        cur_version = semantic_version.Version(manager.VERSION)
+        cur_version = semantic_version.Version(center.VERSION)
         if version > cur_version:
-            manager.signals.update_avail.emit(version)
+            center.signals.update_avail.emit(version)
 
 
 class WindowsUpdateTask(progress.Task):
@@ -663,7 +662,7 @@ class WindowsUpdateTask(progress.Task):
 
     def work(self, item):
         # Download it.
-        update_base = manager.settings['update_link']
+        update_base = center.settings['update_link']
 
         dir_name = tempfile.mkdtemp()
         updater = os.path.join(dir_name, 'knossos_updater.exe')
@@ -682,10 +681,22 @@ class WindowsUpdateTask(progress.Task):
             self.post(False)
         else:
             self.post(True)
-            manager.app.quit()
+            center.app.quit()
 
     def finish(self):
         res = self.get_results()
 
         if len(res) < 1 or not res[0]:
-            QtGui.QMessageBox.critical(manager.app.activeWindow(), 'fs2mod-py', 'Failed to launch the update!')
+            QtGui.QMessageBox.critical(center.app.activeWindow(), 'fs2mod-py', 'Failed to launch the update!')
+
+
+def run_task(task, cb=None):
+    def wrapper():
+        cb(task.get_results())
+    
+    if cb is not None:
+        task.done.connect(wrapper)
+    
+    center.main_win.progress_win.add_task(task)
+    center.pmaster.add_task(task)
+    return task

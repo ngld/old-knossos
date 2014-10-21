@@ -21,7 +21,7 @@ import tempfile
 import shutil
 import semantic_version
 import six
-from lib import util
+from lib import center, util
 
 # You have to fill this using https://github.com/workhorsy/py-cpuinfo .
 CPU_INFO = None
@@ -528,9 +528,7 @@ class InstalledRepo(Repo):
             return False
 
     def get_updates(self):
-        from manager import settings
-
-        remote_mods = settings['mods']
+        remote_mods = center.settings['mods']
         updates = {}
 
         for mid, mods in self.mods.items():
