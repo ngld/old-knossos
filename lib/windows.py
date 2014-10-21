@@ -20,7 +20,7 @@ import shlex
 import semantic_version
 
 import manager
-from lib import util, clibs, progress, repo
+from lib import util, clibs, progress, repo, integration
 from lib.qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.nebula import Ui_MainWindow as Ui_Nebula
@@ -330,9 +330,7 @@ class MainWindow(Window):
             titem.setData(0, QtCore.Qt.UserRole, state)
 
         self.dep_processing = False
-
-        if manager.Unity and not self.win.isActiveWindow() and not manager.unity_launcher.get_property('urgent'):
-            manager.unity_launcher.set_property('urgent', True)
+        integration.current.annoy_user()
 
     def check_list(self):
         self.win.modTree.clear()
@@ -856,6 +854,7 @@ class SettingsWindow(Window):
         
         self.win.build.activated.connect(self.save_build)
         self.win.runButton.clicked.connect(self.run_mod)
+        self.win.saveButton.clicked.connect(self.write_config)
         self.win.cancelButton.clicked.connect(self.win.close)
         
         self.open()
@@ -1084,7 +1083,25 @@ class SettingsWindow(Window):
 
         if len(joysticks) == 0:
             self.win.ctrl_joystick.setEnabled(False)
-            
+        
+        #---Keyboard settings---
+        if sys.platform.startswith('linux'):
+            kls = self.win.keyLayoutSelect
+            kls.clear()
+            for i, layout in enumerate(('default (qwerty)', 'qwertz', 'azerty')):
+                kls.addItem(layout)
+                if layout == manager.settings['keyboard_layout']:
+                    kls.setCurrentIndex(i)
+
+            if manager.settings['keyboard_setxkbmap']:
+                self.win.setxkbmapCheck.setChecked(True)
+            else:
+                self.win.setxkbmapCheck.setChecked(False)
+        else:
+            self.win.keyboardLabel.hide()
+            for i in range(self.win.keyboardForm.count()):
+                self.win.keyboardForm.itemAt(i).widget().hide()
+
         #---Network settings---
         self.win.net_type.clear()
         self.win.net_type.addItems(['None', 'Dialup', 'Broadband/LAN'])
@@ -1166,6 +1183,17 @@ class SettingsWindow(Window):
         else:
             new_joystick_id = self.win.ctrl_joystick.currentIndex() - 1
         config.setValue(section + 'CurrentJoystick', new_joystick_id)
+
+        # keyboard
+        if sys.platform.startswith('linux'):
+            key_layout = self.win.keyLayoutSelect.currentIndex()
+            if key_layout == 0:
+                key_layout = 'default'
+            else:
+                key_layout = self.win.keyLayoutSelect.itemText(key_layout)
+
+            manager.settings['keyboard_layout'] = key_layout
+            manager.settings['keyboard_setxkbmap'] = self.win.setxkbmapCheck.isChecked()
         
         # networking
         net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
@@ -1196,6 +1224,7 @@ class SettingsWindow(Window):
         
         # Save the new configuration.
         config.sync()
+        manager.save_settings()
 
     def save_build(self):
         fs2_bin = str(self.win.build.currentText())
@@ -1204,6 +1233,7 @@ class SettingsWindow(Window):
 
         manager.settings['fs2_bin'] = fs2_bin
         manager.get_fso_flags()
+        manager.save_settings()
 
     def run_mod(self):
         logging.info('Launching...')
@@ -1236,8 +1266,8 @@ class SettingsTab(SettingsWindow):
         
         self.win.build.activated.connect(self.save_build)
         self.win.runButton.clicked.connect(self.run_mod)
-        self.win.cancelButton.setText('Save')
-        self.win.cancelButton.clicked.connect(self.write_config)
+        self.win.saveButton.clicked.connect(self.write_config)
+        self.win.cancelButton.hide()
         
         self.open()
 

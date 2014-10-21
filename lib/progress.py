@@ -21,15 +21,9 @@ import logging
 import threading
 import six
 
-from lib import util
+from lib import util, integration
 from lib.qt import QtCore, QtGui
 from ui.progress import Ui_Dialog as Ui_Progress
-
-try:
-    from gi.repository import Unity
-except ImportError:
-    # Can't find Unity.
-    Unity = None
 
 try:
     import curses
@@ -569,7 +563,6 @@ def init_curses(cb, log=None):
 
 # Qt Display
 class ProgressDisplay(QtGui.QDialog):
-    unity_launcher = None
     _threads = None
     _tasks = None
     _status_label = None
@@ -591,15 +584,13 @@ class ProgressDisplay(QtGui.QDialog):
         self._status_label = QtGui.QLabel()
         self._status_pbar = QtGui.QProgressBar()
         self._status_pbar.setMaximum(100)
-        
-        if Unity:
-            self.unity_launcher = Unity.LauncherEntry.get_for_desktop_id('fs2mod-py.desktop')
     
     def closeEvent(self, event):
         event.ignore()
     
     def show(self):
         set_callback(self.update_prog)
+        integration.current.show_progress(0)
 
         if _progress.value == 1:
             update(0, 'Working...')
@@ -614,9 +605,6 @@ class ProgressDisplay(QtGui.QDialog):
         super(ProgressDisplay, self).show()
         self._status_pbar.show()
         self._status_btn.show()
-        
-        if Unity:
-            self.unity_launcher.set_property('progress_visible', True)
     
     def set_statusbar(self, stbar):
         self._status_btn = QtGui.QPushButton(stbar)
@@ -635,8 +623,7 @@ class ProgressDisplay(QtGui.QDialog):
         self._status_pbar.setValue(percent * 100)
         self._status_label.setText(text)
         
-        if Unity:
-            self.unity_launcher.set_property('progress', percent)
+        integration.current.set_progress(percent)
     
     def update_tasks(self):
         total = 0
@@ -688,9 +675,7 @@ class ProgressDisplay(QtGui.QDialog):
             self.progressBar.show()
 
         self._status_pbar.setValue(total * 100)
-        
-        if Unity:
-            self.unity_launcher.set_property('progress', total)
+        integration.current.set_progress(total)
     
     def hide(self):
         set_callback(None)
@@ -698,9 +683,7 @@ class ProgressDisplay(QtGui.QDialog):
         self._status_label.setText('Ready.')
         self._status_pbar.hide()
         self._status_btn.hide()
-        
-        if Unity:
-            self.unity_launcher.set_property('progress_visible', False)
+        integration.current.hide_progress()
         
         super(ProgressDisplay, self).hide()
     

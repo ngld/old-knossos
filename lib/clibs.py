@@ -200,36 +200,44 @@ if SDL2:
         return joys
 else:
     def get_modes():
-        if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0:
-            logging.error('Failed to init SDL\'s video subsystem!')
-            logging.error(sdl.SDL_GetError())
-            return []
-        
-        modes = sdl.SDL_ListModes(None, SDL_FULLSCREEN | SDL_HWSURFACE)
-        my_modes = []
-        
-        for mode in modes:
-            if not mode:
-                break
+        try:
+            if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0:
+                logging.error('Failed to init SDL\'s video subsystem!')
+                logging.error(sdl.SDL_GetError())
+                return []
             
-            rect = mode[0]
-            my_modes.append((rect.w, rect.h))
-        
-        sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
-        return my_modes
+            modes = sdl.SDL_ListModes(None, SDL_FULLSCREEN | SDL_HWSURFACE)
+            my_modes = []
+            
+            for mode in modes:
+                if not mode:
+                    break
+                
+                rect = mode[0]
+                my_modes.append((rect.w, rect.h))
+            
+            sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
+            return my_modes
+        except:
+            logging.exception('Failed to call SDL_ListModes()!')
+            return []
 
     def list_joysticks():
-        if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
-            logging.error('Failed to init SDL\'s joystick subsystem!')
-            logging.error(sdl.SDL_GetError())
+        try:
+            if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
+                logging.error('Failed to init SDL\'s joystick subsystem!')
+                logging.error(sdl.SDL_GetError())
+                return []
+            
+            joys = []
+            for i in range(sdl.SDL_NumJoysticks()):
+                joys.append(sdl.SDL_JoystickName(i).decode(ENCODING, 'replace'))
+            
+            sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
+            return joys
+        except:
+            logging.exception('Failed to ask SDL for joysticks!')
             return []
-        
-        joys = []
-        for i in range(sdl.SDL_NumJoysticks()):
-            joys.append(sdl.SDL_JoystickName(i).decode(ENCODING, 'replace'))
-        
-        sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
-        return joys
 
 
 def can_detect_audio():

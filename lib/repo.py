@@ -216,11 +216,11 @@ class Repo(object):
                         ndeps.append(dep)
 
         # Check for conflicts (and try to resolve them if possible).
-        dep_list = []
+        dep_list = set()
         for mid, deps in dep_dict.items():
             for name, variants in deps.items():
                 if len(variants) == 1:
-                    dep_list.append(next(iter(variants.values())))
+                    dep_list.add(next(iter(variants.values())))
                 else:
                     specs = variants.keys()
                     remains = []
@@ -241,9 +241,10 @@ class Repo(object):
                     else:
                         # Pick the latest
                         remains.sort(key=lambda v: v.get_mod().version)
-                        dep_list.append(remains[-1])
+                        dep_list.add(remains[-1])
 
-        return pkgs + dep_list
+        dep_list |= set(pkgs)
+        return dep_list
 
     def save_logos(self, path):
         for mid, mvs in self.mods.items():

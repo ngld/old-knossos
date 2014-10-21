@@ -81,8 +81,9 @@ def scheme_handler(link):
     
     if sys.platform.startswith('win'):
         # Windows won't display a console so write our log messages to a file.
-        handler = logging.FileHandler(os.path.join(settings_path, 'log.txt'), 'w')
+        handler = logging.FileHandler(os.path.join(settings_path, 'scheme_handler.txt'), 'w')
         handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
+        handler.setLevel(logging.DEBUG)
         logging.getLogger().addHandler(handler)
     
     app = QtGui.QApplication([])
@@ -186,8 +187,9 @@ def init():
     if sys.platform.startswith('win'):
         # Windows won't display a console. Let's write our log messages to a file.
         # We truncate the log file on every start to avoid filling the user's disk with useless data.
-        handler = logging.FileHandler(os.path.join(settings_path, 'log.txt'), 'w')
+        handler = logging.FileHandler(os.path.join(settings_path, 'log_' + str(os.getpid()) + '.txt'), 'w')
         handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
+        handler.setLevel(logging.DEBUG)
         logging.getLogger().addHandler(handler)
     
     app = QtGui.QApplication([])
@@ -220,8 +222,11 @@ def main():
             else:
                 tries = 3
                 while tries > 0:
-                    # Clean up
-                    os.unlink(updater)
+                    try:
+                        # Clean up
+                        os.unlink(updater)
+                    except:
+                        logging.exception('Failed to remove updater! (%s)' % updater)
 
                     if os.path.isfile(updater):
                         time.sleep(0.3)

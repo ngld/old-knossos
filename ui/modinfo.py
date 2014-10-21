@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'modinfo.ui'
 #
-# Created: Mon Oct 13 22:29:42 2014
+# Created: Sat Oct 18 20:36:52 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -50,20 +50,6 @@ class Ui_Dialog(object):
         self.note.setObjectName("note")
         self.verticalLayout_2.addWidget(self.note)
         self.tabs.addTab(self.tab_2, "")
-        self.tab_3 = QtGui.QWidget()
-        self.tab_3.setObjectName("tab_3")
-        self.verticalLayout_4 = QtGui.QVBoxLayout(self.tab_3)
-        self.verticalLayout_4.setObjectName("verticalLayout_4")
-        self.versionList = QtGui.QListWidget(self.tab_3)
-        self.versionList.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-        self.versionList.setProperty("showDropIndicator", False)
-        self.versionList.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
-        self.versionList.setObjectName("versionList")
-        self.verticalLayout_4.addWidget(self.versionList)
-        self.applyVersions = QtGui.QPushButton(self.tab_3)
-        self.applyVersions.setObjectName("applyVersions")
-        self.verticalLayout_4.addWidget(self.applyVersions)
-        self.tabs.addTab(self.tab_3, "")
         self.verticalLayout.addWidget(self.tabs)
         self.horizontalLayout = QtGui.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
@@ -79,7 +65,7 @@ class Ui_Dialog(object):
         self.verticalLayout.addLayout(self.horizontalLayout)
 
         self.retranslateUi(Dialog)
-        self.tabs.setCurrentIndex(0)
+        self.tabs.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
@@ -88,8 +74,6 @@ class Ui_Dialog(object):
         self.logo.setText(QtGui.QApplication.translate("Dialog", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.tab), QtGui.QApplication.translate("Dialog", "Description", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.tab_2), QtGui.QApplication.translate("Dialog", "Notes", None, QtGui.QApplication.UnicodeUTF8))
-        self.applyVersions.setText(QtGui.QApplication.translate("Dialog", "Install / Uninstall versions", None, QtGui.QApplication.UnicodeUTF8))
-        self.tabs.setTabText(self.tabs.indexOf(self.tab_3), QtGui.QApplication.translate("Dialog", "Versions", None, QtGui.QApplication.UnicodeUTF8))
         self.runButton.setText(QtGui.QApplication.translate("Dialog", "Launch", None, QtGui.QApplication.UnicodeUTF8))
         self.settingsButton.setText(QtGui.QApplication.translate("Dialog", "Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.closeButton.setText(QtGui.QApplication.translate("Dialog", "Close", None, QtGui.QApplication.UnicodeUTF8))

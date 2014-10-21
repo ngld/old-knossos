@@ -60,6 +60,8 @@ class WebBridge(QtCore.QObject):
     #   Launch fs2_open with the given mod selected.
     # showSettings(mid?): void
     #   Open the settings window for the given mod or fs2_open if no mid is given.
+    # vercmp(a, b): int
+    #   Compares two versions
     
     repoUpdated = QtCore.Signal()
 
@@ -143,11 +145,14 @@ class WebBridge(QtCore.QObject):
 
     def _get_mod(self, mid, spec=None, mod_repo=None):
         if spec is not None:
-            try:
-                spec = semantic_version.Spec(spec)
-            except:
-                logging.exception('Invalid spec "%s" passed to uninstall()!', spec)
-                return -2
+            if spec == '':
+                spec = None
+            else:
+                try:
+                    spec = semantic_version.Spec(spec)
+                except:
+                    logging.exception('Invalid spec "%s" passed to uninstall()!', spec)
+                    return -2
 
         if mod_repo is None:
             mod_repo = manager.installed
@@ -231,6 +236,17 @@ class WebBridge(QtCore.QObject):
                 return mod
 
             FlagsWindow(manager.main_win.win, mod)
+
+    @QtCore.Slot(str, str, result=int)
+    def vercmp(self, a, b):
+        try:
+            a = semantic_version.Version(a)
+            b = semantic_version.Version(b)
+        except:
+            #logging.exception('Someone passed an invalid version to vercmp()!')
+            return 0
+
+        return a.__cmp__(b)
 
 
 class NetworkAccessManager(QtNetwork.QNetworkAccessManager):

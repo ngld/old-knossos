@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'settings.ui'
 #
-# Created: Mon Oct 13 22:29:42 2014
+# Created: Sat Oct 18 20:36:53 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -141,6 +141,31 @@ class Ui_Dialog(object):
         self.line_4.setFrameShadow(QtGui.QFrame.Sunken)
         self.line_4.setObjectName("line_4")
         self.verticalLayout.addWidget(self.line_4)
+        self.keyboardLabel = QtGui.QLabel(Dialog)
+        font = QtGui.QFont()
+        font.setPointSize(12)
+        font.setWeight(75)
+        font.setBold(True)
+        self.keyboardLabel.setFont(font)
+        self.keyboardLabel.setObjectName("keyboardLabel")
+        self.verticalLayout.addWidget(self.keyboardLabel)
+        self.keyboardForm = QtGui.QFormLayout()
+        self.keyboardForm.setObjectName("keyboardForm")
+        self.label_8 = QtGui.QLabel(Dialog)
+        self.label_8.setObjectName("label_8")
+        self.keyboardForm.setWidget(0, QtGui.QFormLayout.LabelRole, self.label_8)
+        self.setxkbmapCheck = QtGui.QCheckBox(Dialog)
+        self.setxkbmapCheck.setObjectName("setxkbmapCheck")
+        self.keyboardForm.setWidget(1, QtGui.QFormLayout.FieldRole, self.setxkbmapCheck)
+        self.keyLayoutSelect = QtGui.QComboBox(Dialog)
+        self.keyLayoutSelect.setObjectName("keyLayoutSelect")
+        self.keyboardForm.setWidget(0, QtGui.QFormLayout.FieldRole, self.keyLayoutSelect)
+        self.verticalLayout.addLayout(self.keyboardForm)
+        self.line_7 = QtGui.QFrame(Dialog)
+        self.line_7.setFrameShape(QtGui.QFrame.HLine)
+        self.line_7.setFrameShadow(QtGui.QFrame.Sunken)
+        self.line_7.setObjectName("line_7")
+        self.verticalLayout.addWidget(self.line_7)
         self.label_4 = QtGui.QLabel(Dialog)
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -227,6 +252,9 @@ class Ui_Dialog(object):
         self.runButton.setDefault(True)
         self.runButton.setObjectName("runButton")
         self.horizontalLayout.addWidget(self.runButton)
+        self.saveButton = QtGui.QPushButton(Dialog)
+        self.saveButton.setObjectName("saveButton")
+        self.horizontalLayout.addWidget(self.saveButton)
         self.cancelButton = QtGui.QPushButton(Dialog)
         self.cancelButton.setObjectName("cancelButton")
         self.horizontalLayout.addWidget(self.cancelButton)
@@ -250,6 +278,9 @@ class Ui_Dialog(object):
         self.captureDeviceLabel.setText(QtGui.QApplication.translate("Dialog", "Capture device :", None, QtGui.QApplication.UnicodeUTF8))
         self.snd_efx.setText(QtGui.QApplication.translate("Dialog", "Enable EFX", None, QtGui.QApplication.UnicodeUTF8))
         self.sampleRateLabel.setText(QtGui.QApplication.translate("Dialog", "Sample rate :", None, QtGui.QApplication.UnicodeUTF8))
+        self.keyboardLabel.setText(QtGui.QApplication.translate("Dialog", "Keyboard", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_8.setText(QtGui.QApplication.translate("Dialog", "Layout: ", None, QtGui.QApplication.UnicodeUTF8))
+        self.setxkbmapCheck.setText(QtGui.QApplication.translate("Dialog", "Use \"setxbmap\"", None, QtGui.QApplication.UnicodeUTF8))
         self.label_4.setText(QtGui.QApplication.translate("Dialog", "Controller", None, QtGui.QApplication.UnicodeUTF8))
         self.label_6.setText(QtGui.QApplication.translate("Dialog", "Network", None, QtGui.QApplication.UnicodeUTF8))
         self.connectionTypeLabel.setText(QtGui.QApplication.translate("Dialog", "Connection type :", None, QtGui.QApplication.UnicodeUTF8))
@@ -259,5 +290,6 @@ class Ui_Dialog(object):
         self.label_5.setText(QtGui.QApplication.translate("Dialog", "Advanced settings", None, QtGui.QApplication.UnicodeUTF8))
         self.cmdButton.setText(QtGui.QApplication.translate("Dialog", "Command line flags for Mod name", None, QtGui.QApplication.UnicodeUTF8))
         self.runButton.setText(QtGui.QApplication.translate("Dialog", "Launch", None, QtGui.QApplication.UnicodeUTF8))
+        self.saveButton.setText(QtGui.QApplication.translate("Dialog", "Save", None, QtGui.QApplication.UnicodeUTF8))
         self.cancelButton.setText(QtGui.QApplication.translate("Dialog", "Close", None, QtGui.QApplication.UnicodeUTF8))
 

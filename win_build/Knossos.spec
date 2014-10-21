@@ -4,8 +4,8 @@ import os
 onefile = False
 
 a = Analysis(['../launcher.py'],
-             pathex=[os.path.abspath('.')],
-             hiddenimports=['urllib2', 'bisect'],
+             pathex=['.'],
+             hiddenimports=['urllib2'],
              hookspath=['.'],
              runtime_hooks=['PySide-rthook.py'])
 
@@ -38,7 +38,8 @@ a.datas += [('7z.exe', '7z.exe', 'BINARY'),
             ('commit', 'commit', 'DATA'),
             ('hlp.png', '../hlp.png', 'DATA'),
             ('SDL.dll', 'SDL.dll', 'BINARY'),
-            ('openal.dll', 'openal.dll', 'BINARY')]
+            ('openal.dll', 'openal.dll', 'BINARY'),
+            ('taskbar.tlb', 'taskbar.tlb', 'BINARY')]
 
 for sub, dirs, files in os.walk('../html'):
     relsub = sub[3:]
@@ -64,7 +65,7 @@ else:
             debug=False,
             strip=None,
             upx=True,
-            console=False )
+            console=True )
   coll = COLLECT(exe,
                  a.binaries,
                  a.zipfiles,

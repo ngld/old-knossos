@@ -51,7 +51,7 @@ if [ ! -d _w ]; then
     wine python get-pip.py
     
     echo "==> Installing dependencies from PyPi..."
-    wine python -mpip install six semantic_version PySide
+    wine python -mpip install six semantic_version PySide comtypes
     
     echo "==> Unpacking PyInstaller..."
     tar -xzf pyinstaller.tar.gz

@@ -61,8 +61,17 @@ def install_mods(mods):
 
 
 def install_pkgs(pkgs, name=None, cb=None):
+    repo = manager.settings['mods']
+
+    try:
+        pkgs = [repo.query(pkg) for pkg in pkgs]
+    except ModNotFound:
+        logging.exception('Failed to find one of the packages!')
+        QtGui.QMessageBox.critical(manager.app.activateWindow(), 'fs2mod-py', 'Failed to find one of the packages! I can\'t accept this install request.')
+        return
+
     deps = manager.settings['mods'].process_pkg_selection(pkgs)
-    titles = [pkg.name for pkg in deps if not manager.installed.is_installed(pkg)]
+    titles = [pkg.name + ' (%s)' % pkg.get_mod().version for pkg in deps if not manager.installed.is_installed(pkg)]
 
     if name is None:
         name = 'these packages'

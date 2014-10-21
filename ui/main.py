@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Mon Oct 13 22:29:42 2014
+# Created: Sat Oct 18 20:36:52 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -126,6 +126,9 @@ class Ui_MainWindow(object):
         self.versionLabel = QtGui.QLabel(self.settings)
         self.versionLabel.setObjectName("versionLabel")
         self.gridLayout.addWidget(self.versionLabel, 1, 1, 1, 1)
+        self.allModVersions = QtGui.QCheckBox(self.settings)
+        self.allModVersions.setObjectName("allModVersions")
+        self.gridLayout.addWidget(self.allModVersions, 0, 1, 1, 1)
         self.verticalLayout_5.addLayout(self.gridLayout)
         self.horizontalLayout_3 = QtGui.QHBoxLayout()
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
@@ -157,7 +160,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(3)
+        self.tabs.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -185,6 +188,7 @@ class Ui_MainWindow(object):
         self.uiMode.setItemText(1, QtGui.QApplication.translate("MainWindow", "Nebula", None, QtGui.QApplication.UnicodeUTF8))
         self.label_5.setText(QtGui.QApplication.translate("MainWindow", "Version:", None, QtGui.QApplication.UnicodeUTF8))
         self.versionLabel.setText(QtGui.QApplication.translate("MainWindow", "?", None, QtGui.QApplication.UnicodeUTF8))
+        self.allModVersions.setText(QtGui.QApplication.translate("MainWindow", "Show all mod versions", None, QtGui.QApplication.UnicodeUTF8))
         self.schemeHandler.setText(QtGui.QApplication.translate("MainWindow", "Install as handler for fso:// links", None, QtGui.QApplication.UnicodeUTF8))
         self.gogextractButton.setText(QtGui.QApplication.translate("MainWindow", "Install FS2 from GoG", None, QtGui.QApplication.UnicodeUTF8))
         self.tabs.setTabText(self.tabs.indexOf(self.settings), QtGui.QApplication.translate("MainWindow", "Settings", None, QtGui.QApplication.UnicodeUTF8))

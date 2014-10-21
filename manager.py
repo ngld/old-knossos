@@ -26,18 +26,12 @@ import time
 import six
 import shlex
 
-from lib import progress, util, repo, api
+from lib import progress, util, repo, api, integration
 from lib.qt import QtCore, QtGui
 from lib.tasks import FetchTask, InstallTask, CheckUpdateTask, CheckTask
 from lib.windows import MainWindow, NebulaWindow, SettingsWindow
 from ui.select_list import Ui_Dialog as Ui_SelectList
 
-
-try:
-    from gi.repository import Unity, Dbusmenu
-except ImportError:
-    # Can't find Unity.
-    Unity = None
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
@@ -45,7 +39,6 @@ VERSION = '0.0.6-dev'
 
 app = None
 main_win = None
-unity_launcher = None
 shared_files = {}
 fs2_watcher = None
 pmaster = progress.Master()
@@ -65,7 +58,9 @@ settings = {
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt',
     'nebula_link': 'http://neubla.tproxy.de/',
     'update_link': 'https://dev.tproxy.de/knossos',
-    'ui_mode': 'nebula'
+    'ui_mode': 'nebula',
+    'keyboard_layout': 'default',
+    'keyboard_setxkbmap': False
 }
 
 settings_path = os.path.expanduser('~/.fs2mod-py')
@@ -92,16 +87,15 @@ class QMainWindow(QtGui.QMainWindow):
         e.accept()
 
     def changeEvent(self, event):
-        global unity_launcher
         if event.type() == QtCore.QEvent.ActivationChange:
-            if Unity and self.isActiveWindow() and unity_launcher.get_property('urgent'):
-                unity_launcher.set_property('urgent', False)
+            integration.current.annoy_user(False)
     
         return super(QMainWindow, self).changeEvent(event)
 
 
 class Fs2Watcher(threading.Thread):
     _params = None
+    _key_layout = None
     
     def __init__(self, params=None):
         super(Fs2Watcher, self).__init__()
@@ -116,24 +110,33 @@ class Fs2Watcher(threading.Thread):
     
     def run(self):
         global settings, fs2_watcher
+
+        if settings['keyboard_layout'] != 'default':
+            self._params.append('-keyboard_layout')
+            self._params.append(settings['keyboard_layout'])
         
         fs2_bin = os.path.join(settings['fs2_path'], settings['fs2_bin'])
         mode = os.stat(fs2_bin).st_mode
         if mode & stat.S_IXUSR != stat.S_IXUSR:
             # Make it executable.
             os.chmod(fs2_bin, mode | stat.S_IXUSR)
+
+        if settings['keyboard_setxkbmap']:
+            self.set_us_layout()
         
         logging.debug('Launching FS2: %s', [fs2_bin] + self._params)
         p = subprocess.Popen([fs2_bin] + self._params, cwd=settings['fs2_path'])
 
         time.sleep(0.3)
         if p.poll() is not None:
+            self.revert_layout()
             signals.fs2_failed.emit(p.returncode)
             self.failed_msg(p)
             return
         
         signals.fs2_launched.emit()
         p.wait()
+        self.revert_layout()
         signals.fs2_quit.emit()
     
     @util.run_in_qt
@@ -143,7 +146,17 @@ class Fs2Watcher(threading.Thread):
         msg = 'Starting FS2 Open (%s) failed! (return code: %d)' % (os.path.join(settings['fs2_path'], settings['fs2_bin']), p.returncode)
         QtGui.QMessageBox.critical(app.activeWindow(), 'Failed', msg)
 
-    
+    def set_us_layout(self):
+        key_layout = util.check_output(['setxkbmap', '-query'])
+        self._key_layout = key_layout.decode('utf8').splitlines()[2].split(':')[1].strip()
+
+        util.call(['setxkbmap', '-layout', 'us'])
+
+    def revert_layout(self):
+        if self._key_layout is not None:
+            util.call(['setxkbmap', '-layout', self._key_layout])
+
+
 def run_task(task, cb=None):
     def wrapper():
         cb(task.get_results())
@@ -297,14 +310,14 @@ def fetch_list():
 
 def get_cmdline(mod):
     if mod is None:
-        return settings['cmdlines'].get('#default', [])
+        return settings['cmdlines'].get('#default', [])[:]
 
     if mod.cmdline != '':
         return shlex.split(mod.cmdline)
     elif mod.mid in settings['cmdlines']:
-        return settings['cmdlines'][mod.mid]
+        return settings['cmdlines'][mod.mid][:]
     else:
-        return settings['cmdlines'].get('#default', [])
+        return settings['cmdlines'].get('#default', [])[:]
 
 
 def run_mod(mod):
@@ -514,7 +527,7 @@ def switch_ui_mode(nmode):
 
 
 def main(app_):
-    global VERSION, app, settings, installed, pmaster, main_win, progress_win, unity_launcher, browser_ctrl
+    global VERSION, app, settings, installed, pmaster, main_win
 
     app = app_
     
@@ -561,46 +574,12 @@ def main(app_):
         with open('commit', 'r') as data:
             VERSION += '-' + data.read().strip()
 
-    if Unity:
-        unity_launcher = Unity.LauncherEntry.get_for_desktop_id('fs2mod-py.desktop')
-        
-        # We also want a quicklist
-        ql = Dbusmenu.Menuitem.new()
-        item_fs2 = Dbusmenu.Menuitem.new()
-        item_fs2.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'FS2')
-        item_fs2.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-        item_mods = Dbusmenu.Menuitem.new()
-        item_mods.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Mods')
-        item_mods.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-        item_settings = Dbusmenu.Menuitem.new()
-        item_settings.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Settings')
-        item_settings.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-        item_add_repo = Dbusmenu.Menuitem.new()
-        item_add_repo.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Add Source')
-        item_add_repo.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-        item_hlp = Dbusmenu.Menuitem.new()
-        item_hlp.property_set(Dbusmenu.MENUITEM_PROP_LABEL, 'Browse mods online')
-        item_hlp.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-        
-        item_fs2.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 0)
-        item_mods.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 1)
-        item_settings.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, show_tab, 2)
-        item_add_repo.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, ql_add_repo, 2)
-        item_hlp.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, go_to_hlp, 2)
-        
-        ql.child_append(item_fs2)
-        ql.child_append(item_mods)
-        ql.child_append(item_settings)
-        ql.child_append(item_add_repo)
-        ql.child_append(item_hlp)
-        
-        unity_launcher.set_property('quicklist', ql)
-    
     if settings['ui_mode'] == 'nebula':
         main_win = NebulaWindow()
     else:
         main_win = MainWindow()
 
+    integration.init()
     QtCore.QTimer.singleShot(1, api.setup_ipc)
     QtCore.QTimer.singleShot(1, lambda: run_task(CheckUpdateTask()))
     QtCore.QTimer.singleShot(1, lambda: run_task(CheckTask()))
