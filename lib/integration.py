@@ -17,9 +17,9 @@ import logging
 import manager
 import ctypes
 
-
-ctypes.pythonapi.PyCObject_AsVoidPtr.argtypes = [ctypes.py_object]
-ctypes.pythonapi.PyCObject_AsVoidPtr.restype = ctypes.c_void_p
+if sys.platform.startswith('win'):
+    ctypes.pythonapi.PyCObject_AsVoidPtr.argtypes = [ctypes.py_object]
+    ctypes.pythonapi.PyCObject_AsVoidPtr.restype = ctypes.c_void_p
 
 
 class Integration(object):
