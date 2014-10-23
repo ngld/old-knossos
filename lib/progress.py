@@ -584,6 +584,7 @@ class ProgressDisplay(QtGui.QDialog):
         self._status_label = QtGui.QLabel()
         self._status_pbar = QtGui.QProgressBar()
         self._status_pbar.setMaximum(100)
+        self._status_btn = QtGui.QPushButton()
     
     def closeEvent(self, event):
         event.ignore()
@@ -607,7 +608,7 @@ class ProgressDisplay(QtGui.QDialog):
         self._status_btn.show()
     
     def set_statusbar(self, stbar):
-        self._status_btn = QtGui.QPushButton(stbar)
+        self._status_btn.setParent(stbar)
         self._status_btn.setText('Show Progress')
         self._status_btn.clicked.connect(super(ProgressDisplay, self).show)
         self._status_btn.hide()

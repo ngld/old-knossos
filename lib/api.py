@@ -31,7 +31,7 @@ from . import center, util, repo
 from .qt import QtCore, QtGui
 from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, InstallTask, UninstallTask
 from ui.select_list import Ui_Dialog as Ui_SelectList
-from .windows import NebulaWindow, MainWindow, SettingsWindow
+from .windows import NebulaWindow, MainWindow, HellWindow, SettingsWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
 
@@ -515,7 +515,9 @@ def uninstall_pkgs(pkgs, name=None, cb=None):
 
 def switch_ui_mode(nmode):
     old_win = center.main_win
-    if nmode == 'nebula':
+    if nmode == 'hell':
+        center.main_win = HellWindow()
+    elif nmode == 'nebula':
         center.main_win = NebulaWindow()
     else:
         center.main_win = MainWindow()
@@ -532,20 +534,21 @@ def switch_ui_mode(nmode):
 def install_scheme_handler(interactive=True):
     logging.info('Installing scheme handler...')
 
-    if hasattr(sys, 'frozen'):
-        my_path = os.path.abspath(sys.executable)
-    else:
-        my_path = os.path.abspath(__file__)
-            
+    import launcher
+    my_cmd = launcher.launch_cmd()
+    
     if sys.platform.startswith('win'):
         settings = QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', QtCore.QSettings.NativeFormat)
         settings.setFallbacksEnabled(False)
 
         settings.setValue('Default', 'URL:Knossos protocol')
         settings.setValue('URL Protocol', '')
-        settings.setValue('DefaultIcon/Default', '"' + my_path + ',1"')
+        settings.setValue('DefaultIcon/Default', '"' + my_cmd[0] + ',1"')
+
+        my_cmd.append('%1')
+        my_path = ' '.join(['"' + p + '"' for p in my_cmd])
         
-        settings.setValue('shell/open/command/Default', '"' + my_path + '" "%1"')
+        settings.setValue('shell/open/command/Default', my_path)
 
         # Check
         # FIXME: Is there any better way to detect whether this worked or not?
@@ -554,7 +557,7 @@ def install_scheme_handler(interactive=True):
         settings = QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', QtCore.QSettings.NativeFormat)
         settings.setFallbacksEnabled(False)
 
-        if settings.value('shell/open/command/Default') != '"' + my_path + '" "%1"':
+        if settings.value('shell/open/command/Default') != my_path:
             if interactive:
                 QtGui.QMessageBox.critical(None, 'Knossos', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')
 
@@ -563,7 +566,7 @@ def install_scheme_handler(interactive=True):
     elif sys.platform.startswith('linux'):
         tpl_desktop = r"""[Desktop Entry]
 Name=Knossos
-Exec={PYTHON} {PATH} %U
+Exec={PATH} %U
 Icon={ICON_PATH}
 Type=Application
 Terminal=false
@@ -575,20 +578,24 @@ MimeType=x-scheme-handler/fso;
         applications_path = os.path.expanduser('~/.local/share/applications/')
         desktop_file = applications_path + 'Knossos.desktop'
         mime_types_file = applications_path + 'mimeapps.list'
+        my_path = ' '.join([shlex.quote(p) for p in my_cmd])
         
-        tpl_desktop = tpl_desktop.replace('{PYTHON}', os.path.abspath(sys.executable))
         tpl_desktop = tpl_desktop.replace('{PATH}', my_path)
-        tpl_desktop = tpl_desktop.replace('{ICON_PATH}', os.path.abspath(os.path.join(os.path.dirname(__file__), 'hlp.png')))
+        tpl_desktop = tpl_desktop.replace('{ICON_PATH}', os.path.abspath(os.path.join(os.path.dirname(launcher.__file__), 'hlp.png')))
         
+        if not os.path.isdir(applications_path):
+            os.makedirs(applications_path)
+
         with open(desktop_file, 'w') as output_file:
             output_file.write(tpl_desktop)
         
         found = False
-        with open(mime_types_file, 'r') as lines:
-            for line in lines:
-                if tpl_mime_type in line:
-                    found = True
-                    break
+        if os.path.isfile(mime_types_file):
+            with open(mime_types_file, 'r') as lines:
+                for line in lines:
+                    if tpl_mime_type in line:
+                        found = True
+                        break
         
         if not found:
             with open(mime_types_file, 'a') as output_file:

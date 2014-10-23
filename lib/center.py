@@ -41,7 +41,7 @@ settings = {
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt',
     'nebula_link': 'http://nebula.tproxy.de/',
     'update_link': 'https://dev.tproxy.de/knossos',
-    'ui_mode': 'nebula',
+    'ui_mode': 'hell',
     'keyboard_layout': 'default',
     'keyboard_setxkbmap': False
 }

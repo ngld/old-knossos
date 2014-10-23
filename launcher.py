@@ -69,7 +69,7 @@ def run_knossos():
     import pickle
 
     from lib import repo, progress, integration, api
-    from lib.windows import NebulaWindow, MainWindow
+    from lib.windows import NebulaWindow, MainWindow, HellWindow
 
     # Try to load our settings.
     spath = os.path.join(settings_path, 'settings.pick')
@@ -117,7 +117,9 @@ def run_knossos():
         with open('commit', 'r') as data:
             center.VERSION += '-' + data.read().strip()
 
-    if settings['ui_mode'] == 'nebula':
+    if settings['ui_mode'] == 'hell':
+        center.main_win = HellWindow()
+    elif settings['ui_mode'] == 'nebula':
         center.main_win = NebulaWindow()
     else:
         center.main_win = MainWindow()

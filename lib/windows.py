@@ -18,10 +18,14 @@ import logging
 import glob
 import shlex
 
-from lib import center, util, clibs, progress, repo, integration, api
+from lib import uhf
+uhf(__name__)
+
+from lib import center, util, clibs, progress, repo, integration, api, web
 from lib.qt import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ui.nebula import Ui_MainWindow as Ui_Nebula
+from ui.hell import Ui_MainWindow as Ui_Hell
 from ui.gogextract import Ui_Dialog as Ui_Gogextract
 from ui.modinfo import Ui_Dialog as Ui_Modinfo
 from ui.add_repo import Ui_Dialog as Ui_AddRepo
@@ -151,7 +155,6 @@ class MainWindow(Window):
         self.win.uiMode.setCurrentIndex(0 if center.settings['ui_mode'] == 'traditional' else 1)
         self.win.uiMode.currentIndexChanged.connect(self.update_ui_mode)
         
-        from . import web
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
         
         # NOTE: Assign the model to a variable to prevent a segfault with PySide. (WTF?!)
@@ -610,8 +613,10 @@ class MainWindow(Window):
     def update_ui_mode(self, idx):
         if idx == 0:
             center.settings['ui_mode'] = 'traditional'
-        else:
+        elif idx == 1:
             center.settings['ui_mode'] = 'nebula'
+        else:
+            center.settings['ui_mode'] = 'hell'
 
         api.save_settings()
         api.switch_ui_mode(center.settings['ui_mode'])
@@ -658,7 +663,6 @@ class NebulaWindow(Window):
         self.win.modtreeButton.clicked.connect(self.show_mod_tree)
         self.win.aboutButton.clicked.connect(self.show_about)
 
-        from . import web
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
         self.show_mod_list()
         #self.win.move(manager.app.desktop().screen().rect().center() - self.win.rect().center())
@@ -681,6 +685,7 @@ class NebulaWindow(Window):
             self.support_win.open()
         else:
             self.support_win.win.activateWindow()
+            self.support_win.win.raise_()
 
     def show_mod_list(self):
         self.win.webView.load('./html/welcome.html')
@@ -703,6 +708,91 @@ class NebulaWindow(Window):
     def show_about(self):
         self.open_support()
         self.support_win.win.tabs.setCurrentIndex(4)
+
+
+class HellWindow(Window):
+    browser_ctrl = None
+    progress_win = None
+
+    def __init__(self):
+        self.win = util.init_ui(Ui_Hell(), QMainWindow())
+        self.browser_ctrl = web.BrowserCtrl(self.win.webView)
+        self.progress_win = progress.ProgressDisplay()
+
+        self.win.modlistButton.clicked.connect(self.show_mod_list)
+        self.win.backButton.clicked.connect(self.win.webView.back)
+        self.win.searchEdit.textEdited.connect(self.search_mods)
+        self.win.filterSelect.currentIndexChanged.connect(self.search_mods)
+        self.win.settingsButton.clicked.connect(self.show_settings)
+
+        self.win.webView.loadStarted.connect(self.show_indicator)
+        self.win.webView.loadFinished.connect(self.check_loaded)
+
+        self.win.pageControls.hide()
+        self.win.progressInfo.hide()
+        self.show_mod_list()
+        self.open()
+
+    def check_fso(self):
+        pass
+
+    def update_repo_list(self):
+        pass
+
+    def show_mod_list(self):
+        self.win.webView.load('./html/modlist.html')
+
+    def search_mods(self):
+        mode = self.win.filterSelect.currentIndex()
+        mode_key = None
+        mods = None
+
+        if mode == 0:
+            mods = center.installed.mods
+            mode_key = 'installed'
+        elif mode == 1:
+            mods = {}
+            mode_key = 'available'
+            for mid, mvs in center.settings['mods'].mods.items():
+                if mid not in center.installed.mods:
+                    mods[mid] = mvs
+        elif mode == 2:
+            mods = {}
+            mode_key = 'updates'
+            for mid in center.installed.get_updates():
+                mods[mid] = center.installed.mods[mid]
+        elif mode == 3:
+            mods = {}
+            mode_key = 'downloading'
+            # TODO: Get currently downloading mods.
+        
+        # Now filter the mods.
+        query = self.win.searchEdit.text()
+        result = {}
+        for mid, mvs in mods.items():
+            if query in mvs[0].title:
+                result[mid] = [mod.get() for mod in mvs]
+
+        self.browser_ctrl.get_bridge().updateModlist.emit(result, mode_key)
+
+    def show_settings(self):
+        MainWindow(self).open()
+
+    def show_indicator(self):
+        self.win.setCursor(QtCore.Qt.BusyCursor)
+
+    def check_loaded(self, success):
+        self.win.unsetCursor()
+
+        page = self.win.webView.url().toString()
+        if page.endswith('modlist.html') and 'file://' in page:
+            self.win.listControls.show()
+            self.win.pageControls.hide()
+
+            self.search_mods()
+        else:
+            self.win.listControls.hide()
+            self.win.pageControls.show()
 
 
 class GogExtractWindow(Window):

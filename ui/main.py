@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Sat Oct 18 20:36:52 2014
+# Created: Thu Oct 23 23:07:19 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -119,6 +119,7 @@ class Ui_MainWindow(object):
         self.uiMode.setObjectName("uiMode")
         self.uiMode.addItem("")
         self.uiMode.addItem("")
+        self.uiMode.addItem("")
         self.gridLayout.addWidget(self.uiMode, 3, 1, 1, 1)
         self.label_5 = QtGui.QLabel(self.settings)
         self.label_5.setObjectName("label_5")
@@ -160,7 +161,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.tabs.setCurrentIndex(0)
+        self.tabs.setCurrentIndex(3)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -186,6 +187,7 @@ class Ui_MainWindow(object):
         self.label_4.setText(QtGui.QApplication.translate("MainWindow", "UI Mode:", None, QtGui.QApplication.UnicodeUTF8))
         self.uiMode.setItemText(0, QtGui.QApplication.translate("MainWindow", "Traditional", None, QtGui.QApplication.UnicodeUTF8))
         self.uiMode.setItemText(1, QtGui.QApplication.translate("MainWindow", "Nebula", None, QtGui.QApplication.UnicodeUTF8))
+        self.uiMode.setItemText(2, QtGui.QApplication.translate("MainWindow", "Hell", None, QtGui.QApplication.UnicodeUTF8))
         self.label_5.setText(QtGui.QApplication.translate("MainWindow", "Version:", None, QtGui.QApplication.UnicodeUTF8))
         self.versionLabel.setText(QtGui.QApplication.translate("MainWindow", "?", None, QtGui.QApplication.UnicodeUTF8))
         self.allModVersions.setText(QtGui.QApplication.translate("MainWindow", "Show all mod versions", None, QtGui.QApplication.UnicodeUTF8))

@@ -24,7 +24,7 @@
     <item>
      <widget class="QTabWidget" name="tabs">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mods">
        <attribute name="title">
@@ -240,6 +240,11 @@
             <item>
              <property name="text">
               <string>Nebula</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Hell</string>
              </property>
             </item>
            </widget>

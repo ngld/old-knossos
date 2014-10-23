@@ -14,11 +14,11 @@
 
 import os
 import logging
+import re
 import semantic_version
 
 from .qt import QtCore, QtNetwork, QtWebKit
-from . import center, api, repo
-from .windows import FlagsWindow, SettingsWindow, GogExtractWindow
+from . import center, api, repo, windows
 
 
 class WebBridge(QtCore.QObject):
@@ -65,6 +65,7 @@ class WebBridge(QtCore.QObject):
     #   Compares two versions
     
     repoUpdated = QtCore.Signal()
+    updateModlist = QtCore.Signal('QVariantMap', str)
 
     def __init__(self):
         super(WebBridge, self).__init__()
@@ -89,7 +90,7 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot()
     def runGogInstaller(self):
-        GogExtractWindow(center.main_win)
+        windows.GogExtractWindow(center.main_win)
 
     @QtCore.Slot(result='QVariantList')
     def getMods(self):
@@ -127,7 +128,17 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str, result='QVariantMap')
     def query(self, mid, spec=None):
         if spec is not None:
-            spec = semantic_version.Spec(spec)
+            if spec == '':
+                spec = None
+            else:
+                if re.search(r'^\d+', spec):
+                    spec = '==' + spec
+
+                try:
+                    spec = semantic_version.Spec(spec)
+                except:
+                    logging.exception('Invalid spec "%s" passed to query()!', spec)
+                    return -2
 
         try:
             return center.settings['mods'].query(mid, spec).get()
@@ -156,10 +167,13 @@ class WebBridge(QtCore.QObject):
             if spec == '':
                 spec = None
             else:
+                if re.search(r'^\d+', spec):
+                    spec = '==' + spec
+
                 try:
                     spec = semantic_version.Spec(spec)
                 except:
-                    logging.exception('Invalid spec "%s" passed to uninstall()!', spec)
+                    logging.exception('Invalid spec "%s" passed to a web API function!', spec)
                     return -2
 
         if mod_repo is None:
@@ -237,13 +251,13 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str, result=int)
     def showSettings(self, mid=None, spec=None):
         if mid is None:
-            SettingsWindow(None)
+            windows.SettingsWindow(None)
         else:
             mod = self._get_mod(mid, spec)
             if mod in (-1, -2):
                 return mod
 
-            FlagsWindow(center.main_win.win, mod)
+            windows.FlagsWindow(center.main_win.win, mod)
 
     @QtCore.Slot(str, str, result=int)
     def vercmp(self, a, b):
@@ -315,10 +329,13 @@ class BrowserCtrl(object):
         page.setNetworkAccessManager(self._nam)
 
         frame = page.mainFrame()
-        frame.javaScriptWindowObjectCleared.connect(self.insertBridge)
+        frame.javaScriptWindowObjectCleared.connect(self.insert_bridge)
 
         webView.load(QtCore.QUrl('./html/welcome.html'))
 
-    def insertBridge(self):
+    def insert_bridge(self):
         frame = self._view.page().mainFrame()
         frame.addToJavaScriptWindowObject('fs2mod', self._bridge)
+
+    def get_bridge(self):
+        return self._bridge
