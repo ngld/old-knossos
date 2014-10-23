@@ -1,4 +1,4 @@
-## Copyright 2014 fs2mod-py authors, see NOTICE file
+## Copyright 2014 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -623,12 +623,12 @@ class MainWindow(Window):
 
             msg = 'There\'s an update available!\nDo you want to install Knossos %s now?' % str(version)
             buttons = QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
-            result = QtGui.QMessageBox.question(center.app.activeWindow(), 'fs2mod-py', msg, buttons)
+            result = QtGui.QMessageBox.question(center.app.activeWindow(), 'Knossos', msg, buttons)
             if result == QtGui.QMessageBox.Yes:
                 self.run_update()
         else:
             msg = 'There\'s an update available!\nYou should update to Knossos %s.' % str(version)
-            QtGui.QMessageBox.information(center.app.activeWindow(), 'fs2mod-py', msg)
+            QtGui.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
 
     def run_update(self):
         run_task(WindowsUpdateTask())

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## Copyright 2014 fs2mod-py authors, see NOTICE file
+## Copyright 2014 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -37,17 +37,17 @@ from lib import util, center
 
 app = None
 ipc = None
-settings_path = os.path.expanduser('~/.fs2mod-py')
+settings_path = os.path.expanduser('~/.Knossos')
 
 if sys.platform.startswith('win'):
-    settings_path = os.path.expandvars('$APPDATA/fs2mod-py')
+    settings_path = os.path.expandvars('$APPDATA/Knossos')
 
 
 def handle_error():
     global app, ipc
     # TODO: Try again?
 
-    QtGui.QMessageBox.critical(None, 'fs2mod-py', 'Failed to connect to main process!')
+    QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to connect to main process!')
     if ipc is not None:
         ipc.clean()
 
@@ -73,8 +73,8 @@ def run_knossos():
 
     # Try to load our settings.
     spath = os.path.join(settings_path, 'settings.pick')
+    settings = center.settings
     if os.path.exists(spath):
-        settings = center.settings
         defaults = settings.copy()
         
         try:
@@ -137,14 +137,14 @@ def scheme_handler(link):
 
     if not link.startswith(('fs2://', 'fso://')):
         # NOTE: fs2:// is deprecated, we don't tell anyone about it.
-        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
+        QtGui.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
         app.quit()
         return
     
     link = urlparse.unquote(link.strip()).split('/')
     
     if len(link) < 3:
-        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'Not enough arguments!')
+        QtGui.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')
         app.quit()
         return
     
@@ -157,7 +157,7 @@ def scheme_handler(link):
         while not ipc.server_exists():
             if time.time() - start > 20:
                 # That's too long!
-                QtGui.QMessageBox.critical(None, 'fs2mod-py', 'Failed to start server!')
+                QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to start server!')
                 app.quit()
                 return
 
@@ -299,7 +299,7 @@ def main():
         logging.exception('Uncaught exeception! Quitting...')
 
         # Try to tell the user
-        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
+        QtGui.QMessageBox.critical(None, 'Knossos', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
 
 
 if __name__ == '__main__':

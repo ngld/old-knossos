@@ -1,4 +1,4 @@
-## Copyright 2014 fs2mod-py authors, see NOTICE file
+## Copyright 2014 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ class WebBridge(QtCore.QObject):
 
     # NOTE: Update https://github.com/ngld/knossos/wiki/JS%20API whenever you make an API change.
     # getVersion(): str
-    #   Returns fs2mod-py's version
+    #   Returns Knossos's version
     # isFsoInstalled(): bool
     #   Returns true if fs2_open is installed and configured.
     # isFs2PathSet(): bool
@@ -36,6 +36,8 @@ class WebBridge(QtCore.QObject):
     #   Launches the GOGExtract wizard.
     # getInstalledMods(): list of mod objects
     #   Returns a list of all installed mods (see the generated section of schema.txt)
+    # getUpdates(): object
+    #   Returns a map which follows this syntax: result[mid][local_version] = most_recent_version
     # isInstalled(mid, spec?): bool
     #   Returns true if the given mod is installed. The parameters are the same as query()'s.
     # query(mid, spec?): mod object
@@ -97,9 +99,16 @@ class WebBridge(QtCore.QObject):
     def getInstalledMods(self):
         return center.installed.get()
 
-    @QtCore.Slot(result='QVariantList')
+    @QtCore.Slot(result='QVariantMap')
     def getUpdates(self):
-        return center.installed.get_updates()
+        updates = center.installed.get_updates()
+        result = {}
+        for mid, items in updates.items():
+            versions = result[mid] = {}
+            for ver_a, ver_b in items.items():
+                versions[str(ver_a)] = str(ver_b)
+
+        return result
 
     @QtCore.Slot(str, result=bool)
     @QtCore.Slot(str, str, result=bool)

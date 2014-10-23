@@ -6,17 +6,14 @@ function list_mods() {
     var update_link = $('<a href="#">Update mod list</a>');
     var table = $('<table class="table">');
     var mods = fs2mod.getInstalledMods();
+    var updates = fs2mod.getUpdates();
 
     if(mods.length > 0) {
-        console.log(mods);
         $.each(mods, function (i, mod) {
             var row = $('<tr>');
 
             var logo = $('<td>').appendTo(row);
             var title = $('<td>').appendTo(row);
-
-            var recent = fs2mod.query(mod.id);
-            var has_update = fs2mod.vercmp(recent.version, mod.version) > 0;
 
             if(mod.logo) {
                 logo.append($('<img class="mod-logo">').attr('src', 'fsrs:///logo/' + mod.id + '/' + mod.version));
@@ -34,8 +31,8 @@ function list_mods() {
                 fs2mod.showSettings(mod.id);
             }));
 
-            if(has_update) {
-                title.append('<br><strong>Update available!</strong>');
+            if(updates[mod.id] && updates[mod.id][mod.version]) {
+                title.append('<br><strong>Update available! ' + updates[mod.id][mod.version] + ' has been released.</strong>');
                 actions.append(' | ').append($('<a href="#">Update</a>').click(function (e) {
                     e.preventDefault();
                     var my_pkgs = [];

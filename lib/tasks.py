@@ -1,4 +1,4 @@
-## Copyright 2014 fs2mod-py authors, see NOTICE file
+## Copyright 2014 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -687,7 +687,7 @@ class WindowsUpdateTask(progress.Task):
         res = self.get_results()
 
         if len(res) < 1 or not res[0]:
-            QtGui.QMessageBox.critical(center.app.activeWindow(), 'fs2mod-py', 'Failed to launch the update!')
+            QtGui.QMessageBox.critical(center.app.activeWindow(), 'Knossos', 'Failed to launch the update!')
 
 
 def run_task(task, cb=None):

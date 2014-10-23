@@ -1,4 +1,4 @@
-## Copyright 2014 fs2mod-py authors, see NOTICE file
+## Copyright 2014 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -207,7 +207,7 @@ def get_fso_flags():
             flags = util.FlagsReader(stream)
 
     if flags is None:
-        QtGui.QMessageBox.critical(center.app.activeWindow(), 'fs2mod-py', 'I can\'t run FS2 Open! Are you sure you selected the right file?')
+        QtGui.QMessageBox.critical(center.app.activeWindow(), 'Knossos', 'I can\'t run FS2 Open! Are you sure you selected the right file?')
 
     fso_flags = (center.settings['fs2_bin'], flags)
     return flags
@@ -437,13 +437,13 @@ def is_fso_installed():
 
 def get_mod(mid, version=None):
     if center.settings['mods'] is None:
-        QtGui.QMessageBox.critical(None, 'fs2mod-py', 'Hmm... I never got a mod list. Get a coder!')
+        QtGui.QMessageBox.critical(None, 'Knossos', 'Hmm... I never got a mod list. Get a coder!')
         return None
     else:
         try:
             return center.settings['mods'].query(mid, version)
         except ModNotFound:
-            QtGui.QMessageBox.critical(None, 'fs2mod-py', 'Mod "%s" could not be found!' % mid)
+            QtGui.QMessageBox.critical(None, 'Knossos', 'Mod "%s" could not be found!' % mid)
             return None
 
 
@@ -462,7 +462,7 @@ def install_pkgs(pkgs, name=None, cb=None):
         pkgs = [repo.query(pkg) for pkg in pkgs]
     except ModNotFound:
         logging.exception('Failed to find one of the packages!')
-        QtGui.QMessageBox.critical(center.app.activateWindow(), 'fs2mod-py', 'Failed to find one of the packages! I can\'t accept this install request.')
+        QtGui.QMessageBox.critical(center.app.activateWindow(), 'Knossos', 'Failed to find one of the packages! I can\'t accept this install request.')
         return
 
     deps = center.settings['mods'].process_pkg_selection(pkgs)
@@ -541,7 +541,7 @@ def install_scheme_handler(interactive=True):
         settings = QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', QtCore.QSettings.NativeFormat)
         settings.setFallbacksEnabled(False)
 
-        settings.setValue('Default', 'URL:fs2mod-py protocol')
+        settings.setValue('Default', 'URL:Knossos protocol')
         settings.setValue('URL Protocol', '')
         settings.setValue('DefaultIcon/Default', '"' + my_path + ',1"')
         
@@ -556,13 +556,13 @@ def install_scheme_handler(interactive=True):
 
         if settings.value('shell/open/command/Default') != '"' + my_path + '" "%1"':
             if interactive:
-                QtGui.QMessageBox.critical(None, 'fs2mod-py', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')
+                QtGui.QMessageBox.critical(None, 'Knossos', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')
 
             return
         
     elif sys.platform.startswith('linux'):
         tpl_desktop = r"""[Desktop Entry]
-Name=fs2mod-py
+Name=Knossos
 Exec={PYTHON} {PATH} %U
 Icon={ICON_PATH}
 Type=Application
@@ -570,10 +570,10 @@ Terminal=false
 MimeType=x-scheme-handler/fso;
 """
 
-        tpl_mime_type = 'x-scheme-handler/fso=fs2mod-py.desktop;'
+        tpl_mime_type = 'x-scheme-handler/fso=Knossos.desktop;'
 
         applications_path = os.path.expanduser('~/.local/share/applications/')
-        desktop_file = applications_path + 'fs2mod-py.desktop'
+        desktop_file = applications_path + 'Knossos.desktop'
         mime_types_file = applications_path + 'mimeapps.list'
         
         tpl_desktop = tpl_desktop.replace('{PYTHON}', os.path.abspath(sys.executable))
@@ -595,7 +595,7 @@ MimeType=x-scheme-handler/fso;
                 output_file.write(tpl_mime_type)
 
     if interactive:
-        QtGui.QMessageBox.information(None, 'fs2mod-py', 'Done!')
+        QtGui.QMessageBox.information(None, 'Knossos', 'Done!')
 
 
 def setup_ipc():
@@ -647,7 +647,7 @@ def handle_ipc(msg):
         if mod.mid not in center.installed.mods:
             install_pkgs(mod.resolve_deps() + pkgs, mod.name)
         else:
-            QtGui.QMessageBox.information(center.main_win.win, 'fs2mod-py', 'Mod "%s" is already installed!' % (mod.name))
+            QtGui.QMessageBox.information(center.main_win.win, 'Knossos', 'Mod "%s" is already installed!' % (mod.name))
     elif msg[0] == 'settings':
         center.main_win.win.activateWindow()
 
@@ -661,14 +661,16 @@ def handle_ipc(msg):
                     name = msg[1]
                 else:
                     name = mod.title
-                QtGui.QMessageBox.information(center.main_win.win, 'fs2mod-py', 'Mod "%s" is not yet installed!' % (name))
+                QtGui.QMessageBox.information(center.main_win.win, 'Knossos', 'Mod "%s" is not yet installed!' % (name))
             else:
                 SettingsWindow(mod)
     else:
-        QtGui.QMessageBox.critical(center.main_win.win, 'fs2mod-py', 'The action "%s" is unknown!' % (msg[0]))
+        QtGui.QMessageBox.critical(center.main_win.win, 'Knossos', 'The action "%s" is unknown!' % (msg[0]))
 
 
 def init_self():
     setup_ipc()
     run_task(CheckUpdateTask())
-    run_task(CheckTask())
+
+    if center.settings['fs2_path'] is not None:
+        run_task(CheckTask())

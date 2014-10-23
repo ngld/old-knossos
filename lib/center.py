@@ -1,3 +1,17 @@
+## Copyright 2014 Knossos authors, see NOTICE file
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+
 import os
 import sys
 from .qt import QtCore
@@ -32,9 +46,9 @@ settings = {
     'keyboard_setxkbmap': False
 }
 
-settings_path = os.path.expanduser('~/.fs2mod-py')
+settings_path = os.path.expanduser('~/.Knossos')
 if sys.platform.startswith('win'):
-    settings_path = os.path.expandvars('$APPDATA/fs2mod-py')
+    settings_path = os.path.expandvars('$APPDATA/Knossos')
 
 
 class _SignalContainer(QtCore.QObject):

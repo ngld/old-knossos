@@ -1,4 +1,4 @@
-## Copyright 2014 fs2mod-py authors, see NOTICE file
+## Copyright 2014 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -406,23 +406,22 @@ def download(link, dest, headers=None, random_ua=False):
             start = dest.tell()
             sc = SpeedCalc()
             while not _DL_CANCEL.is_set():
-                chunk = result.read(50 * 1024)  # Read 50KB chunks
+                chunk = result.read(512 * 1024)  # Read 512KB chunks
                 if not chunk:
                     break
 
                 dest.write(chunk)
-                sc.push(dest.tell())
-
-                if size > 0:
-                    by_done = dest.tell() - start
-                    speed = sc.get_speed()
-                    p = by_done / size
-                    text = ', ' + format_bytes(speed) + '/s, '
-                    text += time.strftime('%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
-                else:
-                    p = 0
-                    text = ''
-                progress.update(p, os.path.basename(link) + text)
+                if sc.push(dest.tell()) != -1:
+                    if size > 0:
+                        by_done = dest.tell() - start
+                        speed = sc.get_speed()
+                        p = by_done / size
+                        text = ', ' + format_bytes(speed) + '/s, '
+                        text += time.strftime('%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
+                    else:
+                        p = 0
+                        text = ''
+                    progress.update(p, os.path.basename(link) + text)
 
             if _DL_CANCEL.is_set():
                 return False

@@ -1,4 +1,4 @@
-## Copyright 2014 fs2mod-py authors, see NOTICE file
+## Copyright 2014 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ class UnityIntegration(Integration):
     launcher = None
 
     def __init__(self, Unity):
-        self.launcher = Unity.LauncherEntry.get_for_desktop_id('fs2mod-py.desktop')
+        self.launcher = Unity.LauncherEntry.get_for_desktop_id('Knossos.desktop')
 
     def show_progress(self, value):
         self.launcher.set_property('progress_visible', True)
