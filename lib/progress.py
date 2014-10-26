@@ -580,11 +580,6 @@ class ProgressDisplay(QtGui.QDialog):
         self.setModal(True)
         self.hideButton.clicked.connect(super(ProgressDisplay, self).hide)
         self.abortButton.clicked.connect(self.try_abort)
-
-        self._status_label = QtGui.QLabel()
-        self._status_pbar = QtGui.QProgressBar()
-        self._status_pbar.setMaximum(100)
-        self._status_btn = QtGui.QPushButton()
     
     def closeEvent(self, event):
         event.ignore()
@@ -604,11 +599,17 @@ class ProgressDisplay(QtGui.QDialog):
             self.move(main_win.pos() + main_win.rect().center() - self.rect().center())
 
         super(ProgressDisplay, self).show()
-        self._status_pbar.show()
-        self._status_btn.show()
+
+        if self._status_label is not None:
+            self._status_pbar.show()
+            self._status_btn.show()
     
     def set_statusbar(self, stbar):
-        self._status_btn.setParent(stbar)
+        self._status_label = QtGui.QLabel()
+        self._status_pbar = QtGui.QProgressBar()
+        self._status_pbar.setMaximum(100)
+
+        self._status_btn = QtGui.QPushButton(stbar)
         self._status_btn.setText('Show Progress')
         self._status_btn.clicked.connect(super(ProgressDisplay, self).show)
         self._status_btn.hide()
@@ -621,8 +622,9 @@ class ProgressDisplay(QtGui.QDialog):
         self.progressBar.setValue(percent * 100)
         self.label.setText(text)
 
-        self._status_pbar.setValue(percent * 100)
-        self._status_label.setText(text)
+        if self._status_label is not None:
+            self._status_pbar.setValue(percent * 100)
+            self._status_label.setText(text)
         
         integration.current.set_progress(percent)
     
@@ -675,15 +677,19 @@ class ProgressDisplay(QtGui.QDialog):
             self.progressBar.setValue(total * 100)
             self.progressBar.show()
 
-        self._status_pbar.setValue(total * 100)
+        if self._status_pbar is not None:
+            self._status_pbar.setValue(total * 100)
+
         integration.current.set_progress(total)
     
     def hide(self):
         set_callback(None)
 
-        self._status_label.setText('Ready.')
-        self._status_pbar.hide()
-        self._status_btn.hide()
+        if self._status_label is not None:
+            self._status_label.setText('Ready.')
+            self._status_pbar.hide()
+            self._status_btn.hide()
+
         integration.current.hide_progress()
         
         super(ProgressDisplay, self).hide()

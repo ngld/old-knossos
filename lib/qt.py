@@ -12,8 +12,12 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+import sys
 import os
 import logging
+
+# Make sure we initialize Xlib before we load Qt.
+from . import clibs
 
 default_variant = 'PySide'
 
@@ -52,7 +56,8 @@ if variant == 'PyQt4':
 
 if variant == 'headless':
     if os.environ.get('QT_API') != 'headless':
-        logging.warning('Falling back to headless mode. This WILL fail if you want to use the mod manager!')
+        logging.error('I was unable to load Qt! Tried %s.', os.environ.get('QT_API', default_variant))
+        sys.exit(1)
 
     # This is just a dummy implementation of the QtCore.Signal() system. Nothing else is provided by this variant.
     import threading
@@ -188,4 +193,28 @@ if variant == 'headless':
     QtWebKit = None
 
 logging.debug('Using Qt API %s.', variant)
-__all__ = ['QtCore', 'QtGui', 'QtNetwork', 'QtWebKit', 'variant']
+
+
+def read_file(path):
+    fd = QtCore.QFile(path)
+    fd.open(QtCore.QIODevice.ReadOnly)
+    data = str(fd.readAll())
+    fd.close()
+    
+    return data
+
+
+def load_styles(*names):
+    data = ''
+    for name in names:
+        if ':/' in name:
+            sheet = read_file(name)
+        else:
+            with open(name, 'r') as stream:
+                sheet = stream.read()
+
+        data += sheet.replace('url(./', 'url(' + os.path.dirname(name) + '/')
+
+    return data
+
+__all__ = ['QtCore', 'QtGui', 'QtNetwork', 'QtWebKit', 'variant', 'read_file', 'load_styles']

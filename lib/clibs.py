@@ -41,6 +41,13 @@ class SDL_DisplayMode(ctypes.Structure):
     ]
 
 
+class c_any_pointer(object):
+
+    @classmethod
+    def from_param(cls, val):
+        return val
+
+
 def load_lib(*names):
     exc = None
     
@@ -75,14 +82,22 @@ def double_zero_string(val):
 
 libc = load_lib('c')
 
+# Make sure Xlib is thread-safe *before* we load Qt or SDL.
+try:
+    xlib = load_lib('X11')
+    xlib.XInitThreads()
+except:
+    # Not all supported platforms have X11. Maybe we're on one of them.
+    logging.exception('Failed to call XInitThreads().')
+
 # Load SDL
 try:
-    sdl = load_lib('libSDL-1.2.so.0', 'SDL', 'SDL.dll')
-    SDL2 = False
-except:
-    # Try SDL 2
     sdl = load_lib('libSDL2.so', 'SDL2', 'SDL2.dll')
     SDL2 = True
+except:
+    # Try SDL 1.2
+    sdl = load_lib('libSDL-1.2.so.0', 'SDL', 'SDL.dll')
+    SDL2 = False
 
 # SDL constants
 if SDL2:
@@ -160,6 +175,44 @@ ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER = 0x311
 alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL')
 alc.alcIsExtensionPresent.restype = ctypes.c_bool
 alc.alcGetString.restype = ctypes.POINTER(ctypes.c_char)
+
+gtk = None
+gobject = None
+
+
+def init_gtk():
+    global gtk, gobject
+
+    if gtk:
+        return
+    
+    # Load GTK3
+    try:
+        gtk = load_lib('libgtk-3.so.0', 'gtk-3')
+        gobject = load_lib('libgobject-2.0.so.0', 'gobject-2.0')
+    except:
+        # Maybe GTK isn't used.
+        gtk = None
+        gobject = None
+        pass
+    else:
+        gtk.gtk_init_check.argtypes = [ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.POINTER(ctypes.c_char_p))]
+        gtk.gtk_init_check.restype = ctypes.c_bool
+
+        gtk.gtk_settings_get_default.argtypes = []
+        gtk.gtk_settings_get_default.restype = ctypes.c_void_p
+
+        gobject.g_object_get.argtypes = [ctypes.c_void_p, ctypes.c_char_p, c_any_pointer, ctypes.c_void_p]
+        gobject.g_object_get.restype = None
+
+        gobject.g_free.argtypes = [ctypes.c_void_p]
+        gobject.g_free.restype = None
+
+        gobject.g_object_unref.argtypes = [ctypes.c_void_p]
+        gobject.g_object_unref.restype = None
+
+        if not gtk.gtk_init_check(None, None):
+            logging.error('Failed to initialize GTK!')
 
 
 if SDL2:
@@ -257,3 +310,30 @@ def list_audio_devs():
     default_capture = ctypes.cast(default_capture, ctypes.c_char_p).value.decode(ENCODING, 'replace')
     
     return devs, default, captures, default_capture
+
+
+def g_object_get_string(obj, prop):
+    prop = ctypes.c_char_p(prop.encode('utf8'))
+    value = ctypes.c_char_p()
+
+    gobject.g_object_get(obj, prop, ctypes.byref(value), 0)
+
+    py_value = value.value
+    if py_value:
+        py_value = py_value.decode('utf8', 'replace')
+
+    gobject.g_free(value)
+    return py_value
+
+
+def get_gtk_theme():
+    global gtk, gobject
+
+    if not gtk:
+        return ''
+
+    settings = gtk.gtk_settings_get_default()
+    if settings:
+        return g_object_get_string(settings, 'gtk-theme-name')
+    else:
+        return None

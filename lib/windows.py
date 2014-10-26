@@ -688,7 +688,7 @@ class NebulaWindow(Window):
             self.support_win.win.raise_()
 
     def show_mod_list(self):
-        self.win.webView.load('./html/welcome.html')
+        self.win.webView.load('qrc:///html/welcome.html')
 
     def show_nebula(self):
         self.win.webView.load(center.settings['nebula_link'])
@@ -730,17 +730,26 @@ class HellWindow(Window):
 
         self.win.pageControls.hide()
         self.win.progressInfo.hide()
-        self.show_mod_list()
         self.open()
 
+        if center.settings['fs2_path'] is None:
+            self.win.webView.load('qrc:///html/welcome.html')
+            self.win.pageControls.setEnabled(False)
+
     def check_fso(self):
-        pass
+        if center.settings['fs2_path'] is not None:
+            self.show_mod_list()
+            self.update_repo_list()
+            self.win.pageControls.setEnabled(True)
+        else:
+            self.win.webView.load('qrc:///html/welcome.html')
+            self.win.pageControls.setEnabled(False)
 
     def update_repo_list(self):
-        pass
+        api.fetch_list()
 
     def show_mod_list(self):
-        self.win.webView.load('./html/modlist.html')
+        self.win.webView.load('qrc:///html/modlist.html')
 
     def search_mods(self):
         mode = self.win.filterSelect.currentIndex()
@@ -785,7 +794,7 @@ class HellWindow(Window):
         self.win.unsetCursor()
 
         page = self.win.webView.url().toString()
-        if page.endswith('modlist.html') and 'file://' in page:
+        if page == 'qrc:///html/modlist.html':
             self.win.listControls.show()
             self.win.pageControls.hide()
 

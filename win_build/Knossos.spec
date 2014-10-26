@@ -38,15 +38,11 @@ a.datas += [('7z.exe', '7z.exe', 'BINARY'),
             ('7z.dll', '7z.dll', 'BINARY'),
             ('commit', 'commit', 'DATA'),
             ('hlp.png', '../hlp.png', 'DATA'),
+            ('resources.rcc', '../resources.rcc', 'DATA'),
             ('SDL.dll', 'SDL.dll', 'BINARY'),
             ('openal.dll', 'openal.dll', 'BINARY'),
             ('taskbar.tlb', 'taskbar.tlb', 'BINARY')]
 
-for sub, dirs, files in os.walk('../html'):
-    relsub = sub[3:]
-
-    for name in files:
-        a.datas.append((os.path.join(relsub, name), os.path.join(sub, name), 'DATA'))
 
 if onefile:
   exe = EXE(pyz, a.scripts, a.binaries, a.zipfiles, a.datas,

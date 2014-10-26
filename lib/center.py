@@ -46,9 +46,9 @@ settings = {
     'keyboard_setxkbmap': False
 }
 
-settings_path = os.path.expanduser('~/.Knossos')
+settings_path = os.path.expanduser('~/.knossos')
 if sys.platform.startswith('win'):
-    settings_path = os.path.expandvars('$APPDATA/Knossos')
+    settings_path = os.path.expandvars('$APPDATA/knossos')
 
 
 class _SignalContainer(QtCore.QObject):

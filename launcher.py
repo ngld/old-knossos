@@ -29,7 +29,6 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(threadName)s:%(
 if six.PY2:
     import lib.py2_compat
 
-
 from lib.qt import QtCore, QtGui
 from lib.ipc import IPCComm
 from lib import util, center
@@ -37,10 +36,6 @@ from lib import util, center
 
 app = None
 ipc = None
-settings_path = os.path.expanduser('~/.Knossos')
-
-if sys.platform.startswith('win'):
-    settings_path = os.path.expandvars('$APPDATA/Knossos')
 
 
 def handle_error():
@@ -72,7 +67,7 @@ def run_knossos():
     from lib.windows import NebulaWindow, MainWindow, HellWindow
 
     # Try to load our settings.
-    spath = os.path.join(settings_path, 'settings.pick')
+    spath = os.path.join(center.settings_path, 'settings.pick')
     settings = center.settings
     if os.path.exists(spath):
         defaults = settings.copy()
@@ -100,12 +95,13 @@ def run_knossos():
         util.HASH_CACHE = settings['hash_cache']
 
     util.DL_POOL.set_capacity(settings['max_downloads'])
+    QtCore.QResource.registerResource('resources.rcc')
 
     center.app = app
     center.installed = repo.InstalledRepo(settings.get('installed_mods', []))
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
-    
+
     if os.path.isfile('hlp.png'):
         app.setWindowIcon(QtGui.QIcon('hlp.png'))
 
@@ -230,16 +226,25 @@ def init():
         if my_path != '':
             os.chdir(my_path)
     
-    if not os.path.isdir(settings_path):
-        os.makedirs(settings_path)
+    if not os.path.isdir(center.settings_path):
+        os.makedirs(center.settings_path)
     
     if sys.platform.startswith('win'):
         # Windows won't display a console. Let's write our log messages to a file.
         # We truncate the log file on every start to avoid filling the user's disk with useless data.
-        handler = logging.FileHandler(os.path.join(settings_path, 'log_' + str(os.getpid()) + '.txt'), 'w')
-        handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
-        handler.setLevel(logging.DEBUG)
-        logging.getLogger().addHandler(handler)
+        log_path = os.path.join(center.settings_path, 'log.txt')
+
+        try:
+            if os.path.isfile(log_path):
+                os.unlink(log_path)
+        except:
+            # This will only be visible if the user is running a console version.
+            logging.exception('The log is in use by someone!')
+        else:
+            handler = logging.FileHandler(log_path, 'w')
+            handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
+            handler.setLevel(logging.DEBUG)
+            logging.getLogger().addHandler(handler)
     
     app = QtGui.QApplication([])
     return app
@@ -249,7 +254,7 @@ def main():
     global ipc, app
 
     app = init()
-    ipc = IPCComm(settings_path)
+    ipc = IPCComm(center.settings_path)
 
     if len(sys.argv) > 1:
         if sys.argv[1] == '--cpuinfo':

@@ -331,7 +331,7 @@ class BrowserCtrl(object):
         frame = page.mainFrame()
         frame.javaScriptWindowObjectCleared.connect(self.insert_bridge)
 
-        webView.load(QtCore.QUrl('./html/welcome.html'))
+        webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
 
     def insert_bridge(self):
         frame = self._view.page().mainFrame()

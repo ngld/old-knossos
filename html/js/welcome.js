@@ -61,7 +61,7 @@ function list_mods() {
 }
 
 $(function () {
-    fs2mod.repoUpdated.connect(list_mods);
+    //fs2mod.repoUpdated.connect(list_mods);
 
     if(!fs2mod.isFs2PathSet()) {
         $('#install-note').removeClass('hide');
@@ -75,6 +75,7 @@ $(function () {
             fs2mod.runGogInstaller();
         });
     } else {    
-        list_mods();
+        //list_mods();
+        location.href = 'modlist.html';
     }
 });

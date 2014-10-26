@@ -17,7 +17,7 @@ import logging
 import ctypes
 import six
 
-from lib import center
+from lib import center, clibs, qt
 
 if six.PY2:
     ctypes.pythonapi.PyCObject_AsVoidPtr.argtypes = [ctypes.py_object]
@@ -110,16 +110,6 @@ current = None
 def init():
     global current
 
-    try:
-        from gi.repository import Unity
-    except ImportError:
-        # Can't find Unity.
-        pass
-    else:
-        logging.info('Activating Unity integration...')
-        current = UnityIntegration(Unity)
-        return
-
     if sys.platform.startswith('win'):
         try:
             import comtypes.client as cc
@@ -132,6 +122,23 @@ def init():
         else:
             logging.info('Activating Windows integration...')
             current = WindowsIntegration(taskbar)
+            return
+    elif sys.platform.startswith('linux'):
+        # TODO: Do we really have to initialize GTK?
+
+        clibs.init_gtk()
+        theme = clibs.get_gtk_theme()
+        if theme == 'Ambiance':
+            center.main_win.win.setStyleSheet(qt.load_styles(':/ui/themes/Ambiance/style.css'))
+
+        try:
+            from gi.repository import Unity
+        except ImportError:
+            # Can't find Unity.
+            pass
+        else:
+            logging.info('Activating Unity integration...')
+            current = UnityIntegration(Unity)
             return
 
     logging.info('No desktop integration active.')

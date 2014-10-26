@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'hell.ui'
 #
-# Created: Thu Oct 23 23:07:19 2014
+# Created: Sun Oct 26 02:13:12 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -17,9 +17,15 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtGui.QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName("verticalLayout")
+        self.toolbar = QtGui.QWidget(self.centralwidget)
+        self.toolbar.setObjectName("toolbar")
+        self.verticalLayout_3 = QtGui.QVBoxLayout(self.toolbar)
+        self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.horizontalLayout = QtGui.QHBoxLayout()
+        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
         self.horizontalLayout.setObjectName("horizontalLayout")
-        self.pageControls = QtGui.QWidget(self.centralwidget)
+        self.pageControls = QtGui.QWidget(self.toolbar)
         self.pageControls.setObjectName("pageControls")
         self.horizontalLayout_2 = QtGui.QHBoxLayout(self.pageControls)
         self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
@@ -31,7 +37,7 @@ class Ui_MainWindow(object):
         self.backButton.setObjectName("backButton")
         self.horizontalLayout_2.addWidget(self.backButton)
         self.horizontalLayout.addWidget(self.pageControls)
-        self.listControls = QtGui.QWidget(self.centralwidget)
+        self.listControls = QtGui.QWidget(self.toolbar)
         self.listControls.setObjectName("listControls")
         self.horizontalLayout_3 = QtGui.QHBoxLayout(self.listControls)
         self.horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
@@ -49,10 +55,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.listControls)
         spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem)
-        self.settingsButton = QtGui.QPushButton(self.centralwidget)
+        self.settingsButton = QtGui.QPushButton(self.toolbar)
         self.settingsButton.setObjectName("settingsButton")
         self.horizontalLayout.addWidget(self.settingsButton)
-        self.verticalLayout.addLayout(self.horizontalLayout)
+        self.verticalLayout_3.addLayout(self.horizontalLayout)
+        self.verticalLayout.addWidget(self.toolbar)
         self.webView = QtWebKit.QWebView(self.centralwidget)
         self.webView.setUrl(QtCore.QUrl("about:blank"))
         self.webView.setObjectName("webView")

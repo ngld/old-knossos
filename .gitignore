@@ -7,3 +7,4 @@ win_build/*.exe
 win_build/PyInstaller-*/
 win_build/_w
 win_build/commit
+resources.*rc*
