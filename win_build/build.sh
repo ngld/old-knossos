@@ -33,7 +33,6 @@ if [ ! -d _w ]; then
     download python.msi "https://www.python.org/ftp/python/2.7.8/python-2.7.8.msi"
     download pywin32.exe "http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win32-py2.7.exe/download"
     download get-pip.py "https://bootstrap.pypa.io/get-pip.py"
-    download pyinstaller.tar.gz "https://github.com/pyinstaller/pyinstaller/releases/download/v2.1/PyInstaller-2.1.tar.gz"
     download upx.zip "http://upx.sourceforge.net/download/upx391w.zip"
     download 7z-inst.exe "http://sourceforge.net/projects/sevenzip/files/7-Zip/9.22/7z922.exe/download"
     download SDL.zip "http://libsdl.org/release/SDL-1.2.15-win32.zip"
@@ -51,10 +50,13 @@ if [ ! -d _w ]; then
     wine python get-pip.py
     
     echo "==> Installing dependencies from PyPi..."
-    wine python -mpip install six semantic_version PySide comtypes
+    wine python -mpip install six semantic_version PySide comtypes requests ndg-httpsclient pyasn1
+
+    echo "==> Fixing ndg.httpsclient..."
+    wine python -c 'import ndg.httpsclient;import os.path;open(os.path.join(ndg.httpsclient.__path__[0], "__init__.py"), "w").close()'
     
-    echo "==> Unpacking PyInstaller..."
-    tar -xzf pyinstaller.tar.gz
+    echo "==> Cloning PyInstaller..."
+    git clone "https://github.com/pyinstaller/pyinstaller.git"
     
     echo "==> Unpacking upx..."
     unzip upx.zip
@@ -86,13 +88,22 @@ if [ ! -d _w ]; then
     rm -r tmp
     
     echo "==> Cleaning up..."
-    rm python.msi pywin32.exe get-pip.py pyinstaller.tar.gz 7z-inst.exe SDL.zip openal.zip nsis.exe nsProcess.7z
+    rm python.msi pywin32.exe get-pip.py 7z-inst.exe SDL.zip openal.zip nsis.exe nsProcess.7z
 fi
 
 echo "Building..."
-git log | head -1 | cut -d " " -f 2 | cut -b -7 > ./commit
+if [ ! -f build_num ]; then
+    echo 1 > build_num
+    num="1"
+else
+    num="$(cat build_num)"
+    num="$(($num + 1))"
+    echo "$num" > build_num
+fi
 
-wine python -OO PyInstaller-*/pyinstaller.py -y Knossos.spec
+git log | head -1 | cut -d " " -f 2 | cut -b -7 | awk '{ print "'"$num"'." $1 }' > ./commit
+
+wine python -OO pyinstaller/pyinstaller.py -y Knossos.spec
 
 echo "Packing installer..."
 wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\ nsis/installer.nsi

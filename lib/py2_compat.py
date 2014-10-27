@@ -14,10 +14,12 @@
 
 import os as _os
 import warnings as _warnings
+import logging
 import tempfile
 import subprocess
 import re
 import shlex
+import urllib2
 import six
 
 if six.PY3:

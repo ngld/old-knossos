@@ -5,7 +5,7 @@ onefile = False
 
 a = Analysis(['../launcher.py'],
              pathex=['.'],
-             hiddenimports=['urllib2'],
+             hiddenimports=[],
              hookspath=['.'],
              runtime_hooks=['PySide-rthook.py'])
 

@@ -26,12 +26,38 @@ from six.moves.urllib import parse as urlparse
 
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
 
+from lib import center
+
+# Initialize the FileHandler early to capture all log messages.
+if not os.path.isdir(center.settings_path):
+    os.makedirs(center.settings_path)
+
+if sys.platform.startswith('win'):
+    # Windows won't display a console. Let's write our log messages to a file.
+    # We truncate the log file on every start to avoid filling the user's disk with useless data.
+    log_path = os.path.join(center.settings_path, 'log.txt')
+
+    try:
+        if os.path.isfile(log_path):
+            os.unlink(log_path)
+    except:
+        # This will only be visible if the user is running a console version.
+        logging.exception('The log is in use by someone!')
+    else:
+        handler = logging.FileHandler(log_path, 'w')
+        handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
+        handler.setLevel(logging.DEBUG)
+        logging.getLogger().addHandler(handler)
+
+if __name__ == '__main__':
+    sys.modules['launcher'] = sys.modules['__main__']
+
 if six.PY2:
     import lib.py2_compat
 
 from lib.qt import QtCore, QtGui
 from lib.ipc import IPCComm
-from lib import util, center
+from lib import util
 
 
 app = None
@@ -111,7 +137,7 @@ def run_knossos():
 
     if os.path.isfile('commit'):
         with open('commit', 'r') as data:
-            center.VERSION += '-' + data.read().strip()
+            center.VERSION += '.' + data.read().strip()
 
     if settings['ui_mode'] == 'hell':
         center.main_win = HellWindow()
@@ -225,26 +251,6 @@ def init():
         my_path = os.path.dirname(__file__)
         if my_path != '':
             os.chdir(my_path)
-    
-    if not os.path.isdir(center.settings_path):
-        os.makedirs(center.settings_path)
-    
-    if sys.platform.startswith('win'):
-        # Windows won't display a console. Let's write our log messages to a file.
-        # We truncate the log file on every start to avoid filling the user's disk with useless data.
-        log_path = os.path.join(center.settings_path, 'log.txt')
-
-        try:
-            if os.path.isfile(log_path):
-                os.unlink(log_path)
-        except:
-            # This will only be visible if the user is running a console version.
-            logging.exception('The log is in use by someone!')
-        else:
-            handler = logging.FileHandler(log_path, 'w')
-            handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
-            handler.setLevel(logging.DEBUG)
-            logging.getLogger().addHandler(handler)
     
     app = QtGui.QApplication([])
     return app

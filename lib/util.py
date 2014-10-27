@@ -26,9 +26,7 @@ import time
 import json
 import semantic_version
 import random
-from six.moves.urllib.request import urlopen, Request
-from six.moves.urllib.parse import urlencode
-from six.moves.urllib.error import HTTPError, URLError
+import requests
 from collections import OrderedDict
 from threading import Condition, Event
 from collections import deque
@@ -98,6 +96,7 @@ USER_AGENTS = (
     'Opera/9.80 (Windows NT 6.1; U; en) Presto/2.8.131 Version/11.10',
     'Opera/9.80 (Windows NT 6.1; WOW64) Presto/2.12.388 Version/12.17'
 )
+HTTP_SESSION = requests.Session()
 QUIET = False
 QUIET_EXC = False
 HASH_CACHE = dict()
@@ -323,126 +322,72 @@ def format_bytes(value):
     return str(round(value)) + ' ' + unit
 
 
-def get(link, headers=None, random_ua=False, data=None):
-    if headers is None:
-        headers = {}
-    
-    headers['User-Agent'] = get_user_agent(random_ua)
+def get(link, headers=None, random_ua=False):
+    global HTTP_SESSION
 
-    if isinstance(data, dict):
-        data = urlencode(data).encode('utf8')
+    if random_ua:
+        if headers is None:
+            headers = {}
 
-    logging.info('Retrieving "%s"...', link)
+        headers['User-Agent'] = get_user_agent(True)
 
     try:
-        result = urlopen(Request(link, headers=headers), data=data)
-        if six.PY2:
-            code = result.getcode()
-        else:
-            code = result.status
-
-        if code == 200:
-            return result
-        elif code in (301, 302):
-            if six.PY2:
-                return get(result.info()['Location'])
-            else:
-                return get(result.getheader('Location'))
-        else:
-            return None
-    except KeyboardInterrupt:
-        raise
-    except HTTPError as exc:
-        if exc.code == 304:
+        result = HTTP_SESSION.get(link, headers=headers)
+        if result.status_code == 304:
             return 304
+        elif result.status_code != 200:
+            result.raise_for_status()
+    except:
+        logging.error('Failed to load "%s"! (%d %s)', link, result.status_code, result.reason)
+        return None
 
-        logging.exception('Failed to load "%s"!', link)
-    except URLError:
-        logging.exception('Failed to load "%s"!', link)
-
-    return None
+    return result.text
 
 
 def download(link, dest, headers=None, random_ua=False):
-    global _DL_CANCEL, DL_POOL
+    global HTTP_SESSION, DL_POOL
 
-    # NOTE: We have to import progress here to avoid a dependency cycle.
     from . import progress
 
-    if headers is None:
-        headers = {}
+    if random_ua:
+        if headers is None:
+            headers = {}
 
-    headers['User-Agent'] = get_user_agent(random_ua)
-    logging.info('Downloading "%s"...', link)
+        headers['User-Agent'] = get_user_agent(True)
 
     with DL_POOL:
+        result = HTTP_SESSION.get(link, headers=headers, stream=True)
+        if result.status_code == 304:
+            return 304
+        elif result.status_code != 200:
+            logging.error('Failed to load "%s"! (%d %s)', link, result.status_code, result.reason)
+            return False
+
         try:
-            result = urlopen(Request(link, headers=headers))
-            if six.PY2:
-                if result.getcode() in (301, 302):
-                    return download(result.info()['Location'], dest)
-                elif result.getcode() != 200:
-                    logging.error('Download of "%s" failed with code %d!', link, result.getcode())
-                    return False
-                
-                try:
-                    size = float(result.info()['Content-Length'])
-                except:
-                    logging.exception('Failed to parse Content-Length header!')
-                    size = 1024 ** 4  # = 1 TB
-            else:
-                if result.status in (301, 302):
-                    return download(result.getheader('Location'), dest)
-                elif result.status != 200:
-                    logging.error('Download of "%s" failed with code %d!', link, result.status)
-                    return False
-                
-                try:
-                    size = float(result.getheader('Content-Length', 0))
-                except:
-                    logging.exception('Failed to parse Content-Length header!')
-                    size = 1024 ** 4  # = 1 TB
+            size = float(result.headers.get('content-length', 0))
+        except:
+            logging.exception('Failed to parse Content-Length header!')
+            size = 1024 ** 4  # = 1 TB
 
-            start = dest.tell()
-            sc = SpeedCalc()
-            while not _DL_CANCEL.is_set():
-                chunk = result.read(512 * 1024)  # Read 512KB chunks
-                if not chunk:
-                    break
+        start = dest.tell()
+        sc = SpeedCalc()
+        for chunk in result.iter_content(512 * 1024):
+            dest.write(chunk)
 
-                dest.write(chunk)
-                if sc.push(dest.tell()) != -1:
-                    if size > 0:
-                        by_done = dest.tell() - start
-                        speed = sc.get_speed()
-                        p = by_done / size
-                        text = ', ' + format_bytes(speed) + '/s, '
-                        text += time.strftime('%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
-                    else:
-                        p = 0
-                        text = ''
-                    progress.update(p, os.path.basename(link) + text)
+            if sc.push(dest.tell()) != -1:
+                if size > 0:
+                    by_done = dest.tell() - start
+                    speed = sc.get_speed()
+                    p = by_done / size
+                    text = ', ' + format_bytes(speed) + '/s, '
+                    text += time.strftime('%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
+                else:
+                    p = 0
+                    text = ''
+                progress.update(p, os.path.basename(link) + text)
 
             if _DL_CANCEL.is_set():
                 return False
-        except KeyboardInterrupt:
-            raise
-        except HTTPError as exc:
-            if exc.code == 304:
-                # 304 Not Modified
-                return 304
-
-            if QUIET_EXC:
-                logging.error('Failed to load "%s"! (%s)', link, exc.msg)
-            else:
-                logging.exception('Failed to load "%s"!', link)
-            return False
-        except URLError as exc:
-            if QUIET_EXC:
-                logging.error('Failed to load "%s"! (%s)', link, exc.reason)
-            else:
-                logging.exception('Failed to load "%s"!', link)
-            return False
 
     return True
 
@@ -768,3 +713,4 @@ class Spec(semantic_version.Spec):
 
 
 DL_POOL = ResizableSemaphore(10)
+HTTP_SESSION.headers['User-Agent'] = get_user_agent()

@@ -109,7 +109,6 @@ class MainWindow(Window):
                                         ' and contains a 7z executable as well as SDL and OpenAL libraries.</p></body>'))
         
         if sys.platform.startswith('win') or sys.platform.startswith('linux'):
-            from . import api
             self.win.schemeHandler.clicked.connect(api.install_scheme_handler)
         else:
             self.win.schemeHandler.hide()

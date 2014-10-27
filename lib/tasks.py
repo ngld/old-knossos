@@ -62,7 +62,7 @@ class FetchTask(progress.Task):
         progress.update(0.1, 'Fetching "%s"...' % link)
 
         try:
-            raw_data = util.get(link).read().decode('utf8', 'replace')
+            raw_data = util.get(link)
 
             data = Repo()
             data.is_link = True
@@ -482,7 +482,7 @@ class GOGExtractTask(progress.Task):
         gog_path, dest_path = paths
         
         progress.start_task(0, 0.03, 'Looking for InnoExtract...')
-        data = util.get(center.settings['innoextract_link']).read().decode('utf8', 'replace')
+        data = util.get(center.settings['innoextract_link'])
         progress.finish_task()
         
         try:
@@ -638,7 +638,7 @@ class CheckUpdateTask(progress.Task):
         progress.update(0, 'Checking for updates...')
 
         update_base = center.settings['update_link']
-        version = util.get(update_base + '/version').read().decode('utf8', 'replace').strip()
+        version = util.get(update_base + '/version')
 
         try:
             version = semantic_version.Version(version)

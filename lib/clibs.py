@@ -186,9 +186,9 @@ def init_gtk():
     if gtk:
         return
     
-    # Load GTK3
+    # Load GTK2
     try:
-        gtk = load_lib('libgtk-3.so.0', 'gtk-3')
+        gtk = load_lib('libgtk-x11-2.0.so.0', 'gtk-x11-2.0')
         gobject = load_lib('libgobject-2.0.so.0', 'gobject-2.0')
     except:
         # Maybe GTK isn't used.
