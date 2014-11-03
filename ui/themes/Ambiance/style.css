@@ -1,8 +1,12 @@
 #toolbar {
+    padding:3px;
+    padding-bottom: 4px;
+    max-height: 50px;
     background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(63, 62, 58, 255), stop:1 rgba(88, 86, 78, 255));
 }
 
 #toolbar QPushButton {
+    height: 20px;
     color: #DFDBD2;
     background-color: transparent;
     border-image: url(./button-toolbar.png) 8;
@@ -20,7 +24,12 @@
     border-image: url(./button-toolbar-pressed.png) 8;
 }
 
+#toolbar QPushButton:focus {
+    border-image: url(./button-toolbar-focused.png) 8;
+}
+
 #toolbar QLineEdit {
+    height: 20px;
     background-color: transparent;
     border-image: url(./entry-toolbar.png) 8;
     border-top: 8px transparent;
@@ -30,14 +39,14 @@
     color: grey;
 }
 
-#toolbar QLineEdit:focus { /* shift the text when the popup opens */
+#toolbar QLineEdit:focus {
     color: #4C4C4C;
     border-image: url(./entry-toolbar-focused.png) 8;
 }
 
-
 #toolbar QComboBox {
     color: #DFDBD2;
+    height: 20px;
     padding: 0px;
     min-width: 6em;
     background-color: transparent;
@@ -52,11 +61,30 @@
     border-image: url(./button-toolbar-hover.png) 8;
 }
 
+#toolbar QComboBox:focus {
+    border-image: url(./button-toolbar-focused.png) 8;
+}
 
-QComboBox::drop-down {
+
+#toolbar QComboBox::drop-down {
     border: none;
 }
 
-QComboBox::down-arrow {
+#toolbar QComboBox::down-arrow {
     image: url(./combobox-arrow.png);
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    padding-left: 4px;
+    width: 20px;
+    height: 20px;
+    border-left-width: 1px;
+    border-left-color: #353531;
+    border-left-style: solid;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+}
+
+
+#toolbar QComboBox QAbstractItemView {
+    background-color: #353531;
 }
