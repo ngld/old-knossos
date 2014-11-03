@@ -127,6 +127,13 @@
           </spacer>
          </item>
          <item>
+          <widget class="QPushButton" name="updateButton">
+           <property name="text">
+            <string>Update List</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="settingsButton">
            <property name="text">
             <string>Settings</string>

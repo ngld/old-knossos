@@ -108,14 +108,14 @@ def run_knossos():
             logging.exception('Failed to load settings from "%s"!', spath)
         
         # Migration
-        if 's_version' not in settings:
+        if 's_version' not in settings or settings['s_version'] < 2:
             settings['repos'] = defaults['repos']
-            settings['s_version'] = 1
+            settings['s_version'] = 2
         
         del defaults
     else:
         # Most recent settings version
-        settings['s_version'] = 1
+        settings['s_version'] = 2
     
     if settings['hash_cache'] is not None:
         util.HASH_CACHE = settings['hash_cache']

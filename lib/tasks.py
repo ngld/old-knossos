@@ -226,11 +226,15 @@ class InstallTask(progress.MultistepTask):
     _pkg_names = None
     _dls = None
     _steps = 2
+    mod = None
 
-    def __init__(self, pkgs):
+    def __init__(self, pkgs, mod=None):
         self._pkgs = []
         self._pkg_names = []
         rmods = center.settings['mods']
+
+        if mod is not None:
+            self.mod = mod
 
         # Make sure we have remote mods here!
         for pkg in pkgs:
@@ -699,4 +703,5 @@ def run_task(task, cb=None):
     
     center.main_win.progress_win.add_task(task)
     center.pmaster.add_task(task)
+    center.signals.task_launched.emit(task)
     return task

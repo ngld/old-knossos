@@ -345,7 +345,7 @@ def get(link, headers=None, random_ua=False):
 
 
 def download(link, dest, headers=None, random_ua=False):
-    global HTTP_SESSION, DL_POOL
+    global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
     from . import progress
 
@@ -356,6 +356,9 @@ def download(link, dest, headers=None, random_ua=False):
         headers['User-Agent'] = get_user_agent(True)
 
     with DL_POOL:
+        if _DL_CANCEL.is_set():
+            return False
+        
         result = HTTP_SESSION.get(link, headers=headers, stream=True)
         if result.status_code == 304:
             return 304
@@ -703,6 +706,15 @@ def str_random(slen):
         s += random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
 
     return s
+
+
+def human_list(items):
+    if len(items) == 0:
+        return ''
+    elif len(items) == 1:
+        return items[0]
+    else:
+        return ', '.join(items[:-1]) + ' and ' + items[-1]
 
 
 class Spec(semantic_version.Spec):

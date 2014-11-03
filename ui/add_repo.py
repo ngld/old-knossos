@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'add_repo.ui'
 #
-# Created: Sun Oct 26 02:13:12 2014
+# Created: Tue Nov  4 00:16:14 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!

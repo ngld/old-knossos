@@ -1,4 +1,10 @@
 (function () {
+    function force_redraw(el) {
+      var t = el.ownerDocument.createTextNode(' ');
+      el.appendChild(t);
+      setTimeout(function() { el.removeChild(t); }, 0);
+    }
+
     function render_row(mvs, type) {
         var row = $('<div class="mod">');
         var mod;
@@ -38,6 +44,7 @@
             });
         } else if(type == 'downloading') {
             row.html($('#tpl-dl-mod').html());
+            row.find('progress').attr('id', 'mod-prg-' + mod.id);
 
             row.find('.noop-btn').click(function (e) {
                 e.preventDefault();
@@ -62,6 +69,8 @@
     }
 
     function update_mods(mods, type) {
+        $('#loading').hide();
+
         var names = [];
         var mod_list = $('#mods').html('');
 
@@ -79,8 +88,22 @@
         });
     }
 
+    function update_progress(id, percent, text) {
+        var prg_bar = $('#mod-prg-' + id);
+        if(prg_bar.length == 0) return;
+
+        var label = prg_bar.parent().find('.prg-label');
+        prg_bar.attr('value', percent * 100);
+        
+        if(text == '') {
+            label.html('<div style="visibility:hidden;">' + Math.random() + '</div>');
+        } else {
+            label.text(text);
+        }
+    }
+
     $(function () {
-        $('#loading').hide();
         fs2mod.updateModlist.connect(update_mods);
+        fs2mod.modProgress.connect(update_progress);
     });
 })();

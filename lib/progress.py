@@ -210,7 +210,7 @@ class Task(QtCore.QObject):
     can_abort = True
     aborted = False
     done = QtCore.Signal()
-    progress = QtCore.Signal()
+    progress = QtCore.Signal(tuple)
     
     def __init__(self, work=None, threads=0):
         super(Task, self).__init__()
@@ -261,7 +261,7 @@ class Task(QtCore.QObject):
         with self._progress_lock:
             self._progress[threading.get_ident()] = (prog, text)
         
-        self.progress.emit()
+        self.progress.emit(self.get_progress())
     
     def post(self, result):
         with self._result_lock:
@@ -618,6 +618,20 @@ class ProgressDisplay(QtGui.QDialog):
         stbar.addWidget(self._status_pbar, True)
         stbar.addPermanentWidget(self._status_btn)
 
+    def set_statusarea(self, area, label, bar):
+        self._status_label = label
+        self._status_pbar = bar
+        self._status_btn = area
+
+        bar.setMaximum(100)
+        area.hide()
+        area.mouseReleaseEvent = self._ar_mouse_release
+
+    def _ar_mouse_release(self, event):
+        event.accept()
+
+        super(ProgressDisplay, self).show()
+
     def update_prog(self, percent, text):
         self.progressBar.setValue(percent * 100)
         self.label.setText(text)
@@ -628,7 +642,7 @@ class ProgressDisplay(QtGui.QDialog):
         
         integration.current.set_progress(percent)
     
-    def update_tasks(self):
+    def update_tasks(self, pi=None):
         total = 0
         count = len(self._tasks)
         items = []

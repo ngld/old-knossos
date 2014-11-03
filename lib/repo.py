@@ -337,7 +337,7 @@ class Mod(object):
         return files
 
     def resolve_deps(self):
-        return self._repo.process_pkg_selection(self.packages)
+        return self._repo.process_pkg_selection([pkg for pkg in self.packages if pkg.status == 'required'])
 
     def save_logo(self, dest):
         if self.logo is None:

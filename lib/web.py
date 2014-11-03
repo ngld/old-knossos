@@ -66,6 +66,7 @@ class WebBridge(QtCore.QObject):
     
     repoUpdated = QtCore.Signal()
     updateModlist = QtCore.Signal('QVariantMap', str)
+    modProgress = QtCore.Signal(str, float, str)
 
     def __init__(self):
         super(WebBridge, self).__init__()
@@ -193,23 +194,7 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return mod
 
-        if pkgs is None:
-            plist = mod.resolve_deps()
-        else:
-            plist = []
-            pfound = set()
-            for pkg in mod.packages:
-                if pkg.name in pkgs:
-                    plist.append(pkg)
-                    pfound.add(pkg.name)
-
-            if len(pfound) < len(pkgs):
-                # Some packages are missing
-                pmissing = set(pkgs) - pfound
-                logging.warning('Missing packages %s.', ', '.join(pmissing))
-                return -3
-
-        return api.install_pkgs(plist, name=mod.title)
+        windows.ModInstallWindow(mod, pkgs)
 
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)
@@ -236,6 +221,11 @@ class WebBridge(QtCore.QObject):
                 return -2
 
         return api.uninstall_pkgs(plist, name=mod.title)
+
+    @QtCore.Slot(str, str)
+    def abortDownload(self, mid, version):
+        if hasattr(center.main_win, 'abort_mod_dl'):
+            center.main_win.abort_mod_dl(mid)
 
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)

@@ -37,7 +37,7 @@ settings = {
     'hash_cache': None,
     'enforce_deps': True,
     'max_downloads': 3,
-    'repos': [],
+    'repos': [('http://nebula.tproxy.de/__all.json', 'Test repos')],
     'innoextract_link': 'http://dev.tproxy.de/fs2/innoextract.txt',
     'nebula_link': 'http://nebula.tproxy.de/',
     'update_link': 'https://dev.tproxy.de/knossos',
@@ -58,5 +58,6 @@ class _SignalContainer(QtCore.QObject):
     list_updated = QtCore.Signal()
     repo_updated = QtCore.Signal()
     update_avail = QtCore.Signal('QVariant')
+    task_launched = QtCore.Signal(QtCore.QObject)
 
 signals = _SignalContainer()

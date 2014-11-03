@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'hell.ui'
 #
-# Created: Sun Oct 26 02:13:12 2014
+# Created: Tue Nov  4 00:16:15 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -55,6 +55,9 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.listControls)
         spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem)
+        self.updateButton = QtGui.QPushButton(self.toolbar)
+        self.updateButton.setObjectName("updateButton")
+        self.horizontalLayout.addWidget(self.updateButton)
         self.settingsButton = QtGui.QPushButton(self.toolbar)
         self.settingsButton.setObjectName("settingsButton")
         self.horizontalLayout.addWidget(self.settingsButton)
@@ -96,6 +99,7 @@ class Ui_MainWindow(object):
         self.filterSelect.setItemText(1, QtGui.QApplication.translate("MainWindow", "Available", None, QtGui.QApplication.UnicodeUTF8))
         self.filterSelect.setItemText(2, QtGui.QApplication.translate("MainWindow", "Updates", None, QtGui.QApplication.UnicodeUTF8))
         self.filterSelect.setItemText(3, QtGui.QApplication.translate("MainWindow", "Downloading", None, QtGui.QApplication.UnicodeUTF8))
+        self.updateButton.setText(QtGui.QApplication.translate("MainWindow", "Update List", None, QtGui.QApplication.UnicodeUTF8))
         self.settingsButton.setText(QtGui.QApplication.translate("MainWindow", "Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.progressLabel.setText(QtGui.QApplication.translate("MainWindow", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
 
