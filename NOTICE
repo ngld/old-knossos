@@ -1,5 +1,26 @@
-The following authors have all licensed their contributions to fs2mod-py
-under the licensing terms detailed in LICENSE.
+Knossos
+Copyright 2014 Knossos authors (see the list at the end of this file)
+
+This software contains the py-cpuinfo module which was written by
+Matthew Brennan Jones <matthew.brennan.jones@gmail.com> and is available at
+https://github.com/workhorsy/py-cpuinfo
+
+Knossos also uses the jQuery library which is licensed under the MIT license
+and copyrighted by the jQuery Foundation, Inc.
+
+We also use the Bootstrap framework which was released under the terms of the
+MIT license and copyrighted by Twitter, Inc.
+
+This project uses Font Awesome (http://fontawesome.io). The Font Awesome fonts
+are licensed under SIL OFL 1.1 and the CSS is licensed under the MIT license.
+
+The images in ui/themes/Ambiance are taken from the GTK Ambiance theme and
+licensed under CC-BY-SA-3.0.
+
+===============================================================================
+
+The following authors have all licensed their contributions to Knossos under
+the licensing terms detailed in LICENSE.
 
 (Authors keep copyright of their contributions, of course; they just grant
 a license to everyone to use it as detailed in LICENSE.)

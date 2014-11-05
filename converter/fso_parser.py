@@ -19,11 +19,11 @@ import shutil
 import tempfile
 import six
 
-from lib import progress
-from lib.util import get, download, movetree, ipath, pjoin, gen_hash, is_archive, extract_archive
+from knossos import progress
+from knossos.util import get, download, movetree, ipath, pjoin, gen_hash, is_archive, extract_archive
 
 if six.PY2:
-    import lib.py2_compat
+    import knossos.py2_compat
 
 
 class EntryPoint(object):

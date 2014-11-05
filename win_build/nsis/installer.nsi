@@ -8,7 +8,7 @@ SetCompressor lzma
 OutFile installer.exe
 
 
-!define MUI_ICON ${KNOSSOS_ROOT}hlp.ico
+!define MUI_ICON ${KNOSSOS_ROOT}knossos\data\hlp.ico
 
 Var StartMenuFolder
 !define MUI_STARTMENUPAGE_REGISTRY_ROOT "HKLM"
@@ -64,6 +64,10 @@ Section
     !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
+Section "Desktop icon"
+    CreateShortcut "$DESKTOP\Knossos.lnk" "$INSTDIR\Knossos.exe"
+SectionEnd
+
 Section "fso:// Support"
     ExecWait '"$INSTDIR\Knossos.exe" --install-scheme --silent'
 SectionEnd
@@ -78,7 +82,10 @@ Section "Uninstall"
     Delete "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"
     RMDir "$SMPROGRAMS\$StartMenuFolder"
 
+    Delete "$DESKTOP\Knossos.lnk"
+
     RMDir /r "$INSTDIR"
 
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos"
+    DeleteRegKey HKLM "Software\Knossos"
 SectionEnd

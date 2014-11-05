@@ -1,5 +1,6 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
+<file alias="hlp.png">knossos/data/hlp.png</file>
 <file>ui/themes/Ambiance/button-toolbar.png</file>
 <file>ui/themes/Ambiance/entry-toolbar-focused.png</file>
 <file>ui/themes/Ambiance/button-toolbar-hover.png</file>

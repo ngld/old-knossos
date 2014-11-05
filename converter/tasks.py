@@ -17,7 +17,7 @@ import tempfile
 import logging
 from threading import Lock
 
-from lib import progress, util
+from knossos import progress, util
 
 
 class ChecksumTask(progress.Task):

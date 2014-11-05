@@ -3,7 +3,7 @@ import os
 
 onefile = False
 
-a = Analysis(['../launcher.py'],
+a = Analysis(['../knossos/__main__.py'],
              pathex=['.'],
              hiddenimports=[],
              hookspath=['.'],
@@ -36,9 +36,9 @@ pyz = PYZ(a.pure)
 
 a.datas += [('7z.exe', '7z.exe', 'BINARY'),
             ('7z.dll', '7z.dll', 'BINARY'),
-            ('commit', 'commit', 'DATA'),
-            ('hlp.png', '../hlp.png', 'DATA'),
-            ('resources.rcc', '../resources.rcc', 'DATA'),
+            ('version', 'version', 'DATA'),
+            ('data/hlp.ico', '../knossos/data/hlp.ico', 'DATA'),
+            ('data/resources.rcc', '../knossos/data/resources.rcc', 'DATA'),
             ('SDL.dll', 'SDL.dll', 'BINARY'),
             ('openal.dll', 'openal.dll', 'BINARY'),
             ('taskbar.tlb', 'taskbar.tlb', 'BINARY')]
@@ -48,7 +48,7 @@ if onefile:
   exe = EXE(pyz, a.scripts, a.binaries, a.zipfiles, a.datas,
             exclude_binaries=False,
             name='Knossos.exe',
-            icon='../hlp.ico',
+            icon='../knossos/data/hlp.ico',
             debug=False,
             strip=None,
             upx=True,
@@ -58,7 +58,7 @@ else:
             a.scripts,
             exclude_binaries=True,
             name='Knossos.exe',
-            icon='../hlp.ico',
+            icon='../knossos/data/hlp.ico',
             debug=False,
             strip=None,
             upx=True,

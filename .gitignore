@@ -2,9 +2,11 @@
 *.pyo
 build
 dist
-win_build/*.dll
-win_build/*.exe
-win_build/PyInstaller-*/
-win_build/_w
-win_build/commit
-win_build/pyinstaller/
+/win_build/*.dll
+/win_build/*.exe
+/win_build/PyInstaller-*/
+/win_build/_w
+/win_build/commit
+/win_build/pyinstaller/
+/knossos.egg-info/
+/win_build/version

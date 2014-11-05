@@ -17,7 +17,7 @@ import sys
 import re
 import fnmatch
 
-from lib import util
+from knossos import util
 
 
 class VFSError(Exception):

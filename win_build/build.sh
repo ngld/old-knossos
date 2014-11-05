@@ -22,6 +22,15 @@ fi
 
 cd "$(dirname "$0")"
 
+variant="$1"
+
+if [ -z "$variant" ]; then
+    variant="develop"
+    echo "No variant specified. Assuming $variant."
+fi
+
+update_server="https://dev.tproxy.de/knossos/${variant}"
+
 export WINEPREFIX="$PWD/_w"
 export WINEARCH="win32"
 export WINEDEBUG="fixme-all"
@@ -92,17 +101,30 @@ if [ ! -d _w ]; then
 fi
 
 echo "Building..."
-if [ ! -f build_num ]; then
-    echo 1 > build_num
-    num="1"
+last_version="$(curl -s "${update_server}/version")"
+my_version="$(grep VERSION ../knossos/center.py | cut -d "'" -f 2)"
+
+last_vnum="$(echo "$last_version" | cut -d '-' -f 1)"
+my_vnum="$(echo "$my_version" | cut -d '-' -f 1)"
+
+if [ "$last_vnum" = "$my_vnum" ]; then
+    build_num="$(echo "$last_version" | cut -d '-' -f 2 | cut -d . -f 2)"
+    build_num=$(( $build_num + 1 ))
 else
-    num="$(cat build_num)"
-    num="$(($num + 1))"
-    echo "$num" > build_num
+    build_num="0"
 fi
 
-git log | head -1 | cut -d " " -f 2 | cut -b -7 | awk '{ print "'"$num"'." $1 }' > ./commit
+if [ "$variant" = "develop" ]; then
+    commit="$(git log | head -1 | cut -d " " -f 2 | cut -b -7)"
+    next_version="${my_version}.${build_num}+${commit}"
+else
+    if [ ! "$build_num" = "0" ]; then
+        echo "ERROR: This version has already been released!"
+        exit 1
+    fi
+fi
 
+echo "$next_version" > version
 wine python -OO pyinstaller/pyinstaller.py -y Knossos.spec
 
 echo "Packing installer..."

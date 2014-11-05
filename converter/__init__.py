@@ -24,9 +24,9 @@ import locale
 import shutil
 from six import StringIO
 
-from lib import util, progress
+from knossos import util, progress
 from .fso_parser import EntryPoint
-from lib.qt import QtCore
+from knossos.qt import QtCore
 from .repo import RepoConf
 from .tasks import ChecksumTask
 

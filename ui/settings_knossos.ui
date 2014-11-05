@@ -24,13 +24,6 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0">
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Parallel downloads:</string>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="1">
     <widget class="QLabel" name="versionLabel">
      <property name="text">
@@ -38,8 +31,47 @@
      </property>
     </widget>
    </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Parallel downloads:</string>
+     </property>
+    </widget>
+   </item>
    <item row="2" column="1">
-    <widget class="QSpinBox" name="maxDownloads"/>
+    <widget class="QSpinBox" name="maxDownloads">
+     <property name="maximum">
+      <number>5</number>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>Update channel: </string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QComboBox" name="updateChannel">
+     <item>
+      <property name="text">
+       <string>stable</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>develop</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QCheckBox" name="updateNotify">
+     <property name="text">
+      <string>Display update notifications</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

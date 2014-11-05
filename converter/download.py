@@ -4,7 +4,7 @@ import time
 import json
 from threading import Lock
 
-from lib import util
+from knossos import util
 
 MEDIAFIRE_CHECK = re.compile(r'^https?://(www\.)?mediafire\.com/(\?[a-z|0-9]+|download/.*)$')
 MEDIAFIRE_EXTRACT = re.compile(r'kNO = "(http://[^"]+)"')

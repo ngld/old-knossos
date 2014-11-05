@@ -18,7 +18,7 @@ import re
 import logging
 import semantic_version
 
-from lib.util import pjoin, is_archive, merge_dicts
+from knossos.util import pjoin, is_archive, merge_dicts
 from . import vfs
 
 
