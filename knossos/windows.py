@@ -148,9 +148,11 @@ class HellWindow(Window):
             self.show_mod_list()
             self.update_repo_list()
             self.win.pageControls.setEnabled(True)
+            self.win.updateButton.setEnabled(True)
         else:
             self.win.webView.load('qrc:///html/welcome.html')
             self.win.pageControls.setEnabled(False)
+            self.win.updateButton.setEnabled(False)
 
     def update_repo_list(self):
         api.fetch_list()
@@ -280,6 +282,12 @@ class SettingsWindow(Window):
         self._tabs['Audio'] = tab = util.init_ui(Ui_Settings_Audio(), QtGui.QWidget())
         self._tabs['Input'] = tab = util.init_ui(Ui_Settings_Input(), QtGui.QWidget())
         self._tabs['Network'] = tab = util.init_ui(Ui_Settings_Network(), QtGui.QWidget())
+
+        self._tabs['Default flags'] = tab = FlagsWindow(window=False)
+        if center.settings['fs2_path'] is not None:
+            tab.read_flags()
+
+        center.signals.fs2_bin_changed.connect(tab.read_flags)
 
         self.update_repo_list()
         self.read_config()
@@ -755,16 +763,19 @@ class SettingsWindow(Window):
         
         # Save the new configuration.
         config.sync()
+        self._tabs['Default flags'].save()
         api.save_settings()
 
     def save_build(self):
-        fs2_bin = str(self.win.build.currentText())
+        fs2_bin = str(self._tabs['Game settings'].build.currentText())
         if not os.path.isfile(os.path.join(center.settings['fs2_path'], fs2_bin)):
             return
 
         center.settings['fs2_bin'] = fs2_bin
         api.get_fso_flags()
         api.save_settings()
+
+        center.signals.fs2_bin_changed.emit()
 
     def save_update_settings(self, p=None):
         tab = self._tabs['Launcher settings']
@@ -842,22 +853,28 @@ class FlagsWindow(Window):
         self._mod = mod
         
         self.win = self._create_win(Ui_Flags)
-        self.win.setParent(center.app.activeWindow())
-        self.win.setModal(True)
+        if window:
+            self.win.setParent(center.app.activeWindow())
+            self.win.setModal(True)
+
+            self.win.okButton.clicked.connect(self.win.accept)
+            self.win.cancelButton.clicked.connect(self.win.reject)
+            self.win.accepted.connect(self.save)
+        else:
+            self.win.okButton.hide()
+            self.win.cancelButton.hide()
         
         self.win.easySetup.activated.connect(self._set_easy)
         self.win.easySetup.activated.connect(self.update_display)
         self.win.listType.activated.connect(self._update_list)
         self.win.customFlags.textEdited.connect(self.update_display)
         self.win.flagList.itemClicked.connect(self.update_display)
-        self.win.okButton.clicked.connect(self.win.accept)
+        
         self.win.defaultsButton.clicked.connect(self.set_defaults)
-        self.win.cancelButton.clicked.connect(self.win.reject)
         
-        self.win.accepted.connect(self.save)
-        
-        self.read_flags()
-        self.open()
+        if window:
+            self.read_flags()
+            self.open()
         
         if mod is None:
             self.win.defaultsButton.hide()
@@ -869,12 +886,13 @@ class FlagsWindow(Window):
         flags = api.get_fso_flags()
 
         if flags is None:
-            self.win.easySetup.setDisabled(True)
-            self.win.listType.setDisabled(True)
-            self.win.flagList.setDisabled(True)
-            self.win.defaultsButton.setDisabled(True)
+            self.win.setEnabled(False)
             return
-        
+
+        self.win.setEnabled(True)
+        self.win.easySetup.clear()
+        self.win.listType.clear()
+
         for key, name in flags.easy_flags.items():
             self.win.easySetup.addItem(name, key)
         

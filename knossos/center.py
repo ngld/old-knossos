@@ -57,6 +57,8 @@ class _SignalContainer(QtCore.QObject):
     fs2_launched = QtCore.Signal()
     fs2_failed = QtCore.Signal(int)
     fs2_quit = QtCore.Signal()
+    fs2_path_changed = QtCore.Signal()
+    fs2_bin_changed = QtCore.Signal()
     list_updated = QtCore.Signal()
     repo_updated = QtCore.Signal()
     update_avail = QtCore.Signal('QVariant')

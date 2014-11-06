@@ -114,8 +114,11 @@ class CheckTask(progress.MultistepTask):
         progress.update(0, 'Checking installed mods...')
 
     def init1(self):
-        center.installed.clear()
-        self.add_work(('',))
+        if center.settings['fs2_path'] is None:
+            logging.error('A CheckTask was launched even though no FS2 path was set!')
+        else:
+            center.installed.clear()
+            self.add_work(('',))
 
     def work1(self, p):
         fs2path = center.settings['fs2_path']
@@ -644,6 +647,10 @@ class CheckUpdateTask(progress.Task):
         update_base = util.pjoin(center.UPDATE_LINK, center.settings['update_channel'])
         version = util.get(update_base + '/version?me=' + center.VERSION)
 
+        if version is None:
+            logging.error('Update check failed!')
+            return
+        
         try:
             version = semantic_version.Version(version)
         except:

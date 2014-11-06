@@ -129,15 +129,10 @@ def run_knossos():
 
     util.DL_POOL.set_capacity(settings['max_downloads'])
 
-    logging.debug('Loading resources from %s.', get_file_path('resources.rcc'))
-    QtCore.QResource.registerResource(get_file_path('resources.rcc'))
-
     center.app = app
     center.installed = repo.InstalledRepo(settings.get('installed_mods', []))
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
-
-    app.setWindowIcon(QtGui.QIcon(':/hlp.png'))
 
     if not util.test_7z():
         QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
@@ -267,8 +262,12 @@ def init():
                     logging.error('Found invalid version file! The file contains %s but I\'m %s.', version, center.VERSION)
 
     logging.info('Running Knossos %s.', center.VERSION)
-    
     app = QtGui.QApplication([])
+
+    logging.debug('Loading resources from %s.', get_file_path('resources.rcc'))
+    QtCore.QResource.registerResource(get_file_path('resources.rcc'))
+
+    app.setWindowIcon(QtGui.QIcon(':/hlp.png'))
     return app
 
 

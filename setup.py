@@ -14,6 +14,14 @@
 ## limitations under the License.
 
 from setuptools import setup
+from codecs import open  # To use a consistent encoding
+from os import path
+
+here = path.abspath(path.dirname(__file__))
+
+# Get the long description from the relevant file
+with open(path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name='knossos',
@@ -23,7 +31,7 @@ setup(
     version='0.1.0.dev1',
 
     description='A simple mod manager for FreeSpace 2 Open',
-    long_description='',
+    long_description=long_description,
 
     # The project's main homepage.
     url='https://github.com/ngld/knossos',
@@ -31,8 +39,6 @@ setup(
     # Author details
     author='ngld',
     author_email='ngld@tproxy.de',
-
-    license='Apache2',
 
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[

@@ -173,20 +173,24 @@ def select_fs2_path(interact=True):
             center.settings['fs2_bin'] = None
 
         center.main_win.check_fso()
+        center.signals.fs2_path_changed.emit()
+
+        if center.settings['fs2_bin'] is not None:
+            center.signals.fs2_bin_changed.emit()
 
 
 def get_fso_flags():
     global fso_flags
 
     if center.settings['fs2_bin'] is None:
-        return
+        return None
 
     if center.fso_flags is not None and center.fso_flags[0] == center.settings['fs2_bin']:
         return center.fso_flags[1]
 
     fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
     if not os.path.isfile(fs2_bin):
-        return
+        return None
 
     flags_path = os.path.join(center.settings['fs2_path'], 'flags.lch')
     mode = os.stat(fs2_bin).st_mode
@@ -209,7 +213,7 @@ def get_fso_flags():
     if flags is None:
         QtGui.QMessageBox.critical(center.app.activeWindow(), 'Knossos', 'I can\'t run FS2 Open! Are you sure you selected the right file?')
 
-    fso_flags = (center.settings['fs2_bin'], flags)
+    center.fso_flags = (center.settings['fs2_bin'], flags)
     return flags
 
 

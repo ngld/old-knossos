@@ -12,7 +12,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
-#import sys
+import sys
 import logging
 import ctypes.util
 
@@ -82,23 +82,24 @@ def double_zero_string(val):
 
 libc = load_lib('c')
 
-# Make sure Xlib is thread-safe *before* we load Qt or SDL.
-try:
-    xlib = load_lib('X11')
-    xlib.XInitThreads()
-except:
-    # Not all supported platforms have X11. Maybe we're on one of them.
-    logging.exception('Failed to call XInitThreads().')
+if sys.platform.startswith('linux'):
+    # Make sure Xlib is thread-safe *before* we load Qt or SDL.
+    try:
+        xlib = load_lib('X11')
+        xlib.XInitThreads()
+    except:
+        # Not all supported platforms have X11. Maybe we're on one of them.
+        logging.exception('Failed to call XInitThreads().')
 
 # Load SDL
 try:
-    sdl = load_lib('libSDL2.so', 'SDL2', 'SDL2.dll')
+    sdl = load_lib('libSDL2.so', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
     SDL2 = True
 except:
     # Try SDL 1.2
-    sdl = load_lib('libSDL-1.2.so.0', 'SDL', 'SDL.dll')
+    sdl = load_lib('libSDL-1.2.so.0', 'SDL', 'SDL.dll', 'libSDL.dylib')
     SDL2 = False
-
+ 
 # SDL constants
 if SDL2:
     SDL_INIT_VIDEO = 0x00000020
