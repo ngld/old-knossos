@@ -53,7 +53,7 @@ class QMainWindow(QtGui.QMainWindow):
         e.accept()
 
     def changeEvent(self, event):
-        if event.type() == QtCore.QEvent.ActivationChange:
+        if event.type() == QtCore.QEvent.ActivationChange and integration.current is not None:
             integration.current.annoy_user(False)
     
         return super(QMainWindow, self).changeEvent(event)
@@ -142,6 +142,7 @@ class HellWindow(Window):
         if center.settings['fs2_path'] is None:
             self.win.webView.load('qrc:///html/welcome.html')
             self.win.pageControls.setEnabled(False)
+            self.win.updateButton.setEnabled(False)
 
     def check_fso(self):
         if center.settings['fs2_path'] is not None:
@@ -284,7 +285,9 @@ class SettingsWindow(Window):
         self._tabs['Network'] = tab = util.init_ui(Ui_Settings_Network(), QtGui.QWidget())
 
         self._tabs['Default flags'] = tab = FlagsWindow(window=False)
-        if center.settings['fs2_path'] is not None:
+        if center.settings['fs2_path'] is None:
+            tab.win.setEnabled(False)
+        else:
             tab.read_flags()
 
         center.signals.fs2_bin_changed.connect(tab.read_flags)

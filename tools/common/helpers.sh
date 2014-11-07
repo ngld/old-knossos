@@ -21,7 +21,10 @@ has() {
 }
 
 download() {
-    if has wget; then
+    if [ -f "$1" ]; then
+        # Do nothing.
+        msg2 "Skipped $1 because it has already been downloaded."
+    elif has wget; then
         wget -O "$1" "$2"
     elif has curl; then
         curl -# -o "$1" "$2"
@@ -35,18 +38,20 @@ check_variant() {
     if [ -z "$VARIANT" ]; then
         VARIANT="develop"
         msg "No variant specified. Assuming $VARIANT."
-    else if [ ! "$VARIANT" = "stable" ] && [ ! "$VARIANT" = "develop" ]; then
-        error "Invalid variant sepcified! Valid variants are: stable, develop"
-        exit 1
+    else
+        if [ ! "$VARIANT" = "stable" ] && [ ! "$VARIANT" = "develop" ]; then
+            error "Invalid variant sepcified! Valid variants are: stable, develop"
+            exit 1
+        fi
     fi
 }
 
 generate_version() {
     local build_num="0"
-    local next_version=""
 
     local last_version="$(curl -s "${UPDATE_SERVER}/${VARIANT}/version")"
     local my_version="$(grep VERSION ../../knossos/center.py | cut -d "'" -f 2)"
+    local next_version="$my_version"
 
     local last_vnum="$(echo "$last_version" | cut -d '-' -f 1)"
     local my_vnum="$(echo "$my_version" | cut -d '-' -f 1)"

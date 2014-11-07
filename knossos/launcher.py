@@ -86,6 +86,8 @@ def get_file_path(name):
     data_path = os.path.join(my_path, 'data')
     if os.path.isdir(data_path):
         return os.path.join(data_path, name)
+    elif os.path.isdir('data'):
+        return os.path.join('data', name)
     else:
         from pkg_resources import resource_filename
         return resource_filename(__package__, name)
@@ -240,16 +242,15 @@ def init():
             os.chdir(sys._MEIPASS)
         else:
             os.chdir(os.path.dirname(sys.executable))
-        
-        if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
-            util.SEVEN_PATH = os.path.abspath('7z.exe')
     else:
-        if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
-            util.SEVEN_PATH = os.path.abspath('7z.exe')
-        
         my_path = os.path.dirname(os.path.dirname(__file__))
         if my_path != '':
             os.chdir(my_path)
+
+    if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
+        util.SEVEN_PATH = os.path.abspath('7z.exe')
+    elif sys.platform == 'darwin' and os.path.isfile('7z'):
+        util.SEVEN_PATH = os.path.abspath('7z')
 
     if os.path.isfile('version'):
         with open('version', 'r') as data:

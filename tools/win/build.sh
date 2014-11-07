@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 cd "$(dirname "$0")"
 PLATFORM=windows
 . ../common/helpers.sh
@@ -52,6 +54,19 @@ if [ ! -d _w ]; then
     
     msg2 "Installing Python..."
     wine msiexec /i python.msi
+
+    msg2 "Checking Python..."
+    if ! wine python -c 'print("Works")'; then
+        if [ -d _w/drive_c/Python27 ]; then
+            pushd _w/drive_c/windows > /dev/null
+            ln -s ../Python27/python.exe
+            popd > /dev/null
+            msg2 "Fixed!"
+        else
+            error "Python wasn't added to PATH and it was not installed in C:\Python27."
+            exit 1
+        fi
+    fi
     
     msg2 "Installing pywin32..."
     wine pywin32.exe

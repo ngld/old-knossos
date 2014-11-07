@@ -68,6 +68,7 @@ python2 -OO ../common/pyinstaller/pyinstaller.py -y Knossos.spec
 msg "Packing DMG..."
 # See https://stackoverflow.com/q/96882 for a nice documentation of this procedure.
 
+[ -d tmp ] && rm -rf tmp
 mkdir tmp
 mv ../dist/Knossos.app tmp
 
@@ -106,10 +107,11 @@ echo '
    end tell
 ' | osascript
 
-chmod -Rf go-w /Volumes/"${dmg_title}"
+chmod -Rf go-w /Volumes/"${dmg_title}" || true
 sync
 sync
-hdiutil detach "${device}"
+unmount -f /Volumes/"${dmg_title}"
+hdiutil detach "${device}" || true
 
 msg2 "Compressing DMG..."
 hdiutil convert pack.temp.dmg -format UDZO -imagekey zlib-level=9 -o "Knossos.dmg"

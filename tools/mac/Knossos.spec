@@ -48,7 +48,7 @@ for i, item in enumerate(a.binaries):
         idx.append(i)
     elif item[0].startswith('Qt') and item[0] not in ('QtCore', 'QtGui', 'QtNetwork', 'QtWebKit'):
         idx.append(i)
-    elif item[0].startswith('plugins') and not item[0].endswith('libqjpeg.dylib', 'libqgif.dylib'):
+    elif item[0].startswith('plugins') and not item[0].endswith(('libqjpeg.dylib', 'libqgif.dylib')):
         idx.append(i)
 
 for i in reversed(idx):
@@ -64,15 +64,15 @@ for i in reversed(idx):
 
 pyz = PYZ(a.pure)
 
-a.datas += [(p7z_path, '7z', 'BINARY'),
+a.datas += [('7z', p7z_path, 'DATA'),
             ('version', 'version', 'DATA'),
             ('data/hlp.ico', '../../knossos/data/hlp.ico', 'DATA'),
             ('data/resources.rcc', '../../knossos/data/resources.rcc', 'DATA')]
 
 if sdl2_path:
-    a.datas += [(sdl2_path, 'libSDL2.dylib', 'BINARY')]
+    a.datas += [('libSDL2.dylib', sdl2_path, 'BINARY')]
 else:
-    a.datas += [(sdl_path, 'libSDL.dylib', 'BINARY')]
+    a.datas += [('libSDL.dylib', sdl_path, 'BINARY')]
 
 exe = EXE(pyz,
           a.scripts,
@@ -80,7 +80,7 @@ exe = EXE(pyz,
           name='Knossos',
           debug=False,
           strip=None,
-          upx=True,
+          upx=False,
           console=False)
 
 coll = COLLECT(exe,
@@ -88,7 +88,7 @@ coll = COLLECT(exe,
                a.zipfiles,
                a.datas,
                strip=None,
-               upx=True,
+               upx=False,
                name='Knossos')
 
 app = BUNDLE(coll,
