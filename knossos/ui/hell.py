@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'hell.ui'
 #
-# Created: Wed Nov  5 01:32:41 2014
+# Created: Fri Nov  7 23:56:04 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,18 +12,17 @@ from ..qt import QtCore, QtGui
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(490, 615)
+        MainWindow.resize(499, 615)
         self.centralwidget = QtGui.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtGui.QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName("verticalLayout")
-        self.toolbar = QtGui.QWidget(self.centralwidget)
+        self.toolbar = QtGui.QFrame(self.centralwidget)
         self.toolbar.setObjectName("toolbar")
         self.verticalLayout_3 = QtGui.QVBoxLayout(self.toolbar)
         self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.horizontalLayout = QtGui.QHBoxLayout()
-        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.pageControls = QtGui.QWidget(self.toolbar)
         self.pageControls.setObjectName("pageControls")
@@ -83,7 +82,7 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.progressInfo)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 490, 19))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 499, 19))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
 

@@ -187,10 +187,10 @@ class HellWindow(Window):
                 mods[mid] = [task.mod]
         
         # Now filter the mods.
-        query = self.win.searchEdit.text()
+        query = self.win.searchEdit.text().lower()
         result = {}
         for mid, mvs in mods.items():
-            if query in mvs[0].title:
+            if query in mvs[0].title.lower():
                 result[mid] = [mod.get() for mod in mvs]
 
         self.browser_ctrl.get_bridge().updateModlist.emit(result, mode_key)

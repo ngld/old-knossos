@@ -195,7 +195,6 @@ def init_gtk():
         # Maybe GTK isn't used.
         gtk = None
         gobject = None
-        pass
     else:
         gtk.gtk_init_check.argtypes = [ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.POINTER(ctypes.c_char_p))]
         gtk.gtk_init_check.restype = ctypes.c_bool

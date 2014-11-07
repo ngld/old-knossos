@@ -130,6 +130,8 @@ def init():
         theme = clibs.get_gtk_theme()
         if theme == 'Ambiance':
             center.main_win.win.setStyleSheet(qt.load_styles(':/ui/themes/Ambiance/style.css'))
+            center.main_win.win.setContentsMargins(-9, -9, -9, -9)
+            center.main_win.win.verticalLayout.setSpacing(0)
 
         try:
             from gi.repository import Unity
