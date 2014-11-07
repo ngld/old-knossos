@@ -26,13 +26,13 @@ def which(cmd):
 p7z_path = which('7z')
 if not p7z_path:
     logging.error('I can\'t find 7z! If you have Homebrew, just run "brew install p7zip".')
-    return
+    sys.exit(1)
 
 sdl2_path = ctypes.util.find_library('SDL2')
 sdl_path = ctypes.util.find_library('SDL')
 if not sdl2_path and not sdl_path:
     logging.error('I can\'t find SDL! If you have Homebrew, just run "brew install sdl2".')
-    return
+    sys.exit(1)
 
 # Use the PySide hooks from the windows build. They work for Mac OS, too.
 a = Analysis(['../../knossos/__main__.py'],
