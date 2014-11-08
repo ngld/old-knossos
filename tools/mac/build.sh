@@ -2,16 +2,23 @@
 
 set -e
 cd "$(dirname "$0")"
-export PATH="$PWD/buildenv/bin:$PATH"
 
 PLATFORM=mac
 . ../common/helpers.sh
 
+use_buildenv=n
 while [ ! "$1" = "" ]; do
     case "$1" in
         -h|--help)
             echo "Usage: $(basename "$0") [build variant]"
+            echo
+            echo "Options:"
+            echo "  --use-buildenv      Install all dependencies in ./buildenv to create"
+            echo "                      a clean build environment."
             exit 0
+        ;;
+        --use-buildenv)
+            use_buildenv=y
         ;;
         *)
             if [ "$VARIANT" = "" ]; then
@@ -27,28 +34,55 @@ done
 
 check_variant
 
-if [ ! -d buildenv ]; then
-    msg "Setting up a clean build environment..."
-    
-    mkdir buildenv
-    cd buildenv
+if [ "$use_buildenv" = "y" ]; then
+    export PATH="$PWD/buildenv/bin:$PATH"
 
-    msg2 "Installing Homebrew..."
-    curl -Lo homebrew.tar.gz https://github.com/Homebrew/homebrew/tarball/master
-    tar -xzf homebrew.tar.gz --strip 1
-    rm homebrew.tar.gz
+    if [ ! -d buildenv ]; then
+        msg "Setting up a clean build environment..."
+        
+        mkdir buildenv
+        cd buildenv
 
-    cd ..
-    msg2 "Installing Python, 7-zip, SDL2 and UPX..."
-    brew install python p7zip sdl2 upx
+        msg2 "Installing Homebrew..."
+        curl -Lo homebrew.tar.gz https://github.com/Homebrew/homebrew/tarball/master
+        tar -xzf homebrew.tar.gz --strip 1
+        rm homebrew.tar.gz
 
-    msg2 "Installing Qt..."
-    msg2 "NOTE: This might take a LONG time."
-    brew install --without-docs qt
+        cd ..
+        msg2 "Installing Python, 7-zip and SDL2..."
+        brew install python p7zip sdl2
 
-    msg2 "Installing virtualenv..."
-    pip2 install virtualenv
+        msg2 "Installing Qt..."
+        msg2 "NOTE: This might take a LONG time."
+        brew install qt
+
+        msg2 "Installing virtualenv..."
+        pip2 install virtualenv
+    fi
+else
+    msg "Installing missing dependencies..."
+    if ! has python2; then
+        brew install python
+    fi
+
+    if ! has 7z; then
+        brew install p7zip
+    fi
+
+    if [ ! -e /usr/local/lib/libSDL2.dylib ]; then
+        brew install sdl2
+    fi
+
+    if [ ! -e /usr/local/lib/QtCore.framework ]; then
+        brew install qt
+    fi
+
+    if ! has virtualenv; then
+        msg2 "Installing virtualenv..."
+        pip2 install virtualenv
+    fi
 fi
+
 
 if [ ! -d pyenv ]; then
     msg "Setting up my python environment..."
@@ -74,14 +108,19 @@ msg2 "Running PyInstaller..."
 [ -d dist ] && rm -r dist
 
 # Make sure PyInstaller find libpyside-*.dylib and the Qt libraries.
-export QTDIR="buildenv/lib"
+if [ "$use_buildenv" = "y" ]; then
+    export QTDIR="buildenv/lib"
+else
+    export QTDIR="/usr/local/lib"
+fi
+
 export DYLD_FRAMEWORK_PATH="$QTDIR"
-export DYLD_LIBRARY_PATH="py/lib/python2.7/site-packages/PySide"
+export DYLD_LIBRARY_PATH="pyenv/lib/python2.7/site-packages/PySide"
 
 python -OO ../common/pyinstaller/pyinstaller.py -y Knossos.spec
 
 msg "Packing DMG..."
-size="$(du -cm dist/Knossos.app | awk '{ print $1 }')"
+size="$(du -sm dist/Knossos.app | awk '{ print $1 }')"
 size=$(($size + 2))
 
 # dmgbuild needs the Quartz module. To avoid recompiling it, we use the installed version.
