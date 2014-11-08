@@ -7,7 +7,6 @@ export PATH="$PWD/buildenv/bin:$PATH"
 PLATFORM=mac
 . ../common/helpers.sh
 
-v_set=n
 while [ ! "$1" = "" ]; do
     case "$1" in
         -h|--help)
@@ -15,9 +14,8 @@ while [ ! "$1" = "" ]; do
             exit 0
         ;;
         *)
-            if [ "$v_set" = "n" ]; then
+            if [ "$VARIANT" = "" ]; then
                 VARIANT="$1"
-                v_set=y
             else
                 error "You passed an invalid option \"$1\". I don't know what to do with that..."
                 exit 1
@@ -26,7 +24,6 @@ while [ ! "$1" = "" ]; do
     esac
     shift
 done
-unset v_set
 
 check_variant
 
@@ -45,25 +42,43 @@ if [ ! -d buildenv ]; then
     msg2 "Installing Python, 7-zip, SDL2 and UPX..."
     brew install python p7zip sdl2 upx
 
-    msg2 "Installing PySide..."
+    msg2 "Installing Qt..."
     msg2 "NOTE: This might take a LONG time."
-    brew install --with-python --without-docs pyside
+    brew install --without-docs qt
 
-    msg2 "Installing Python packages..."
-    pip2 install six semantic_version requests ndg-httpsclient pyasn1 dmgbuild
-
-    msg2 "Fixing ndg.httpsclient..."
-    python2 -c 'import ndg.httpsclient;import os.path;open(os.path.join(ndg.httpsclient.__path__[0], "__init__.py"), "w").close()'
-
-    ensure_pyinstaller
+    msg2 "Installing virtualenv..."
+    pip2 install virtualenv
 fi
 
-msg "Building..."
+if [ ! -d pyenv ]; then
+    msg "Setting up my python environment..."
+    virtualenv pyenv
+
+    source pyenv/bin/activate
+
+    msg2 "Installing Python packages..."
+    pip install six semantic_version PySide requests ndg-httpsclient pyasn1 dmgbuild
+
+    msg2 "Fixing ndg.httpsclient..."
+    python -c 'import ndg.httpsclient;import os.path;open(os.path.join(ndg.httpsclient.__path__[0], "__init__.py"), "w").close()'
+else
+    source pyenv/bin/activate
+fi
+
 ensure_pyinstaller
+
+msg "Building..."
 generate_version > version
 
 msg2 "Running PyInstaller..."
-python2 -OO ../common/pyinstaller/pyinstaller.py -y Knossos.spec
+[ -d dist ] && rm -r dist
+
+# Make sure PyInstaller find libpyside-*.dylib and the Qt libraries.
+export QTDIR="buildenv/lib"
+export DYLD_FRAMEWORK_PATH="$QTDIR"
+export DYLD_LIBRARY_PATH="py/lib/python2.7/site-packages/PySide"
+
+python -OO ../common/pyinstaller/pyinstaller.py -y Knossos.spec
 
 msg "Packing DMG..."
 size="$(du -cm dist/Knossos.app | awk '{ print $1 }')"

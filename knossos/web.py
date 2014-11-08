@@ -91,7 +91,7 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot()
     def runGogInstaller(self):
-        windows.GogExtractWindow(center.main_win)
+        windows.GogExtractWindow()
 
     @QtCore.Slot(result='QVariantList')
     def getMods(self):

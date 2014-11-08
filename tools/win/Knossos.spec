@@ -1,10 +1,21 @@
 # -*- mode: python -*-
 
 onefile = False
+him = []
+
+# Build the TaskbarLib module.
+try:
+    import comtypes.client as cc
+    cc.GetModule('taskbar.tlb')
+
+    him.append('comtypes.gen.TaskbarLib')
+except:
+    import logging
+    logging.exception('Failed to generate comtypes.gen.TaskbarLib!')
 
 a = Analysis(['../../knossos/__main__.py'],
              pathex=['../..'],
-             hiddenimports=[],
+             hiddenimports=him,
              hookspath=['../common'],
              runtime_hooks=['../common/PySide-rthook.py'])
 

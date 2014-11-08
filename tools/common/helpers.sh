@@ -100,4 +100,4 @@ fi
 
 PLATFORM="${PLATFORM:-unknown}"
 UPDATE_SERVER="https://dev.tproxy.de/knossos"
-VARIANT="stable"
+VARIANT=""

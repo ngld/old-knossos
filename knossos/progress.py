@@ -207,6 +207,7 @@ class Task(QtCore.QObject):
     _progress_lock = None
     _running = 0
     _threads = 0
+    background = False
     can_abort = True
     aborted = False
     done = QtCore.Signal()
@@ -584,7 +585,7 @@ class ProgressDisplay(QtGui.QDialog):
     def closeEvent(self, event):
         event.ignore()
     
-    def show(self):
+    def show(self, show_window=True):
         set_callback(self.update_prog)
         integration.current.show_progress(0)
 
@@ -593,12 +594,13 @@ class ProgressDisplay(QtGui.QDialog):
         else:
             self.update_prog(_progress.value, _progress.text)
         
-        # Center on main window
-        main_win = QtGui.QApplication.activeWindow()
-        if main_win is not None:
-            self.move(main_win.pos() + main_win.rect().center() - self.rect().center())
+        if show_window:
+            # Center on main window
+            main_win = QtGui.QApplication.activeWindow()
+            if main_win is not None:
+                self.move(main_win.pos() + main_win.rect().center() - self.rect().center())
 
-        super(ProgressDisplay, self).show()
+            super(ProgressDisplay, self).show()
 
         if self._status_label is not None:
             self._status_pbar.show()
@@ -717,7 +719,7 @@ class ProgressDisplay(QtGui.QDialog):
         task.progress.connect(self.update_tasks)
         
         if not self.isVisible():
-            self.show()
+            self.show(not task.background)
     
     def try_abort(self):
         for task in self._tasks:

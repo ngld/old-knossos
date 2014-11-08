@@ -634,6 +634,7 @@ class GOGExtractTask(progress.Task):
 
 
 class CheckUpdateTask(progress.Task):
+    background = True
 
     def __init__(self):
         super(CheckUpdateTask, self).__init__()
@@ -682,6 +683,7 @@ class WindowsUpdateTask(progress.Task):
         with open(updater, 'wb') as stream:
             util.download(update_base + '/updater.exe', stream)
 
+        progress.finish_task()
         progress.update(0.99, 'Launching updater...')
 
         try:

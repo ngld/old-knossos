@@ -793,7 +793,6 @@ class GogExtractWindow(Window):
         super(GogExtractWindow, self).__init__(window)
 
         self.win = self._create_win(Ui_Gogextract)
-        self.win.setParent(center.app.activeWindow())
 
         self.win.gogPath.textChanged.connect(self.validate)
         self.win.destPath.textChanged.connect(self.validate)
@@ -804,6 +803,7 @@ class GogExtractWindow(Window):
         self.win.installButton.clicked.connect(self.do_install)
 
         if window:
+            self.win.setModal(True)
             self.open()
 
     def select_installer(self):
@@ -857,7 +857,6 @@ class FlagsWindow(Window):
         
         self.win = self._create_win(Ui_Flags)
         if window:
-            self.win.setParent(center.app.activeWindow())
             self.win.setModal(True)
 
             self.win.okButton.clicked.connect(self.win.accept)

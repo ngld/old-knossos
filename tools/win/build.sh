@@ -11,7 +11,6 @@ if ! has wine || ! has tar || ! has 7z || ! has unzip || ! has git; then
     exit 1
 fi
 
-v_set=n
 while [ ! "$1" = "" ]; do
     case "$1" in
         -h|--help)
@@ -19,9 +18,8 @@ while [ ! "$1" = "" ]; do
             exit 0
         ;;
         *)
-            if [ "$v_set" = "n" ]; then
+            if [ "$VARIANT" = "" ]; then
                 VARIANT="$1"
-                v_set=y
             else
                 error "You passed an invalid option \"$1\". I don't know what to do with that..."
                 exit 1
@@ -30,7 +28,6 @@ while [ ! "$1" = "" ]; do
     esac
     shift
 done
-unset v_set
 
 check_variant
 
@@ -120,6 +117,7 @@ generate_version > version
 ensure_pyinstaller
 
 msg2 "Running PyInstaller..."
+[ -d dist ] && rm -r dist
 wine python -OO ../common/pyinstaller/pyinstaller.py -y Knossos.spec
 
 msg2 "Packing installer..."

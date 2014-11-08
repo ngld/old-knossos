@@ -82,12 +82,13 @@ def get_cmd(args=[]):
 
 
 def get_file_path(name):
+    if hasattr(sys, 'frozen') and sys.frozen == 1:
+        return os.path.join('data', name)
+
     my_path = os.path.dirname(os.path.realpath(os.path.abspath(__file__)))
     data_path = os.path.join(my_path, 'data')
     if os.path.isdir(data_path):
         return os.path.join(data_path, name)
-    elif os.path.isdir('data'):
-        return os.path.join('data', name)
     else:
         from pkg_resources import resource_filename
         return resource_filename(__package__, name)

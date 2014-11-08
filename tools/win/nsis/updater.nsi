@@ -4,7 +4,7 @@
 Name Knossos
 InstallDir "$PROGRAMFILES\Knossos"
 InstallDirRegKey HKLM "Software\Knossos" "Install Dir"
-RequestExecutionLevel user
+RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 OutFile updater.exe
 
