@@ -1,4 +1,3 @@
-#!/usr/bin/python
 ## Copyright 2014 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +12,14 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
-from __future__ import absolute_import, print_function
 import sys
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
-logging.getLogger().addHandler(logging.FileHandler('converter.log'))
 
-import converter
-
-if __name__ == '__main__':
-    converter.main(sys.argv[1:])
+# ugly, hacky fix
+def uhf(n):
+    np = n.split('.')
+    if np[0] == __name__:
+        globals()[np[1]] = sys.modules[n]
+    else:
+        logging.error('I can\'t add module %s to %s!', n, __name__)

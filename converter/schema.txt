@@ -1,0 +1,157 @@
+/* Repo configuration */
+// Created by ngld, m!m and Hellzed
+// Most of this is similar to Goober's text files (http://www.hard-light.net/wiki/index.php/FSO_Installer_Text_Files)
+
+{
+    "mods": [
+        {
+            "id": "...", // required, internal *unique* identifier, should be URL friendly, never shown to the user
+            "title": "...", // required, a UTF-8 compatible string, displayed to the user
+            "version": "...", // required, http://semver.org/
+            "description": "...", // optional, should match the mod.ini's description
+            "logo": "<path to image>", // optional, default: null, will be extracted from the archive if null
+            "notes": "...", // optional, these will be displayed during the installation.
+            "folder": "<mod folder>", // optional, This folder will be created in the FS2 directory. default: mod ID
+            "cmdline": "<flags>", // optional, allows the modder to specify a default cmdline for this mod
+            "submods": ["<ID1>", "..."], // optional
+            "packages": [ // optional
+                {
+                    "name": "...", // required
+                    "notes": "...", // optional
+                    /*
+                        optional, default: "recommended"
+                        A feature can be:
+                        - "required" (always installed with the mod, in fact these are the base files of the mod),
+                        - "recommended" (automatically selected for installation, but the user can skip them),
+                        - "optional" (not automatically selected, but user can add them during the install process)
+                    */
+                    "status": "<required|recommended|optional>",
+                    "dependencies": [ // optional
+                        {
+                            "id": "<mod ID>", // required
+                            "version": "1.2.*", // required, https://getcomposer.org/doc/01-basic-usage.md#package-versions
+                            "packages": [] // optional, specifies which optional and recommended packages are also required
+                        },
+                        ...
+                    ],
+                    "environment": [ // optional
+                        {
+                            "type": "cpu_feature", // required
+                            "value": "<SSE|SSE2|AVX|...>", // required
+                            "not": false // optional, default: false, this value negates the requirement
+                            //              (The package isn't installed if the user's processor has this feature.)
+                        },
+                        {
+                            "type": "os", // required
+                            "value": "<windows|linux|macos>", // required
+                            "not": false, // optional, default: false, this value negates the requirement
+                            //              (The package isn't installed if the user uses the given OS.)
+                        },
+                        ...
+                    ],
+                    "files": [ // optional
+                        /* You can use this syntax ...
+                            [
+                                [ // required
+                                    "<link1>",
+                                    "..."
+                                ],
+                                {
+                                    "<filename>": {
+                                        "is_archive": true, // optional, default: true
+                                        "dest": "<destination path>" // optional, default: "", relative to the mod folder 
+                                    }
+                                }
+                            ],
+                            ...
+                        /* ... or this one: */
+                            {
+                                "filename": "<filename>", // required
+                                "is_archive": true, // optional, default: true
+                                "dest": "<destination path>", // optional, default: "", relative to the mod folder 
+                                "urls": ["<url1>", "<url2>"] // required
+                            },
+                            ...
+                        /* . */
+                    ]
+                },
+                ...
+            ],
+            "actions": [ // optional
+                // NOTE: Globbing only applies to the "paths" property.
+                {
+                    "type": "delete", // required
+                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
+                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                },
+                {
+                    "type": "move", // required
+                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
+                    "dest": "<path>", // required, specifies the destination relative to the mod folder
+                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                },
+                {
+                    "type": "copy", // required
+                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
+                    "dest": "<path>", // required, specifies the destination relative to the mod folder
+                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                },
+                {
+                    "type": "mkdir",
+                    "paths": ["<folder1>", "<folder2>", "..."],
+                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
+                }
+                ...
+            ]
+        },
+        ...
+    ],
+    "includes": [ // optional, These will be processed when generating repo files and should be relative paths.
+        "<repo file 1>",
+        "..."
+    ],
+    "remote_includes": [ // optional, These will be kept and should be full URLs.
+        "<URL1>",
+        "..."
+    ]
+}
+
+/* generated repo files */
+{
+    "generated": "<time of generation>",
+    "includes": ["<URL1>", "..."],
+    "mods": [
+        {
+            /* All of the above */
+            "packages": [
+                {
+                    /* All of the above */
+                    "files": [
+                        {
+                            "filename": "<filename>",
+                            "is_archive": true,
+                            "dest": "<destination path>",
+                            "md5sum": "<checksum>",
+                            "urls": ["<URL1>", "<URL2>"], // The URLs are full URLs (they contain the filename).
+
+                            /* if is_archive */
+                                "contents": {
+                                    "<filename>": "<checksum>"
+                                }
+                            /* endif */
+                        }
+                    ],
+                    "filelist": [
+                        {
+                            "filename": "<file path>",
+                            "archive": "...",
+                            "orig_name": "<name in archive>",
+                            "md5sum": "..."
+                        },
+                        ...
+                    ]
+                }
+            ]
+        }
+    ]
+}

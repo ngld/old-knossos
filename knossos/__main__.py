@@ -13,14 +13,12 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
-from __future__ import absolute_import, print_function
 import sys
-import logging
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
-logging.getLogger().addHandler(logging.FileHandler('converter.log'))
+if __package__ is None and not hasattr(sys, 'frozen'):
+    import os.path
+    path = os.path.realpath(os.path.abspath(__file__))
+    sys.path.append(os.path.dirname(os.path.dirname(path)))
 
-import converter
-
-if __name__ == '__main__':
-    converter.main(sys.argv[1:])
+from knossos import launcher
+launcher.main()

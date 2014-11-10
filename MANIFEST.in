@@ -1,0 +1,2 @@
+include DESCRIPTION.rst
+prune knossos/data/hlp.ic*

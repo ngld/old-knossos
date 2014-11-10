@@ -1,0 +1,31 @@
+.mod {
+    display: block;
+    padding: 10px;
+    padding-left: 40px;
+    border-bottom: 2px solid black;
+
+    position: relative;
+}
+
+.mod .title {
+    font-size: 1.4em;
+}
+
+.mod .actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+
+    padding: 10px;
+    display: none;
+}
+
+.mod:hover .actions {
+    display: block;
+}
+
+.mod progress {
+    margin-top: 10px;
+    width: 100%;
+}
