@@ -1,4 +1,5 @@
 # -*- mode: python -*-
+import sys
 import os
 import logging
 import ctypes.util
@@ -28,6 +29,9 @@ pd = config['PYZ_dependencies']
 for i, item in enumerate(pd):
     if 'Z:' in item[1]:
         pd[i] = (item[0], os.path.relpath(item[1]), item[2])
+
+# Fix a bug in PyInstaller's current hook-sysconfig.py
+sys.prefix = os.path.realpath(sys.prefix)
 
 # Look for our dependencies
 p7z_path = which('7z')

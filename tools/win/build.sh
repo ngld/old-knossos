@@ -95,15 +95,16 @@ if [ ! -d _w ]; then
     msg2 "Unpacking 7z..."
     mkdir tmp
     7z x -otmp 7z-inst.exe
-    mv tmp/7z.{exe,dll} .
+    mv tmp/7z.{exe,dll} support
     rm -r tmp
     
     msg2 "Unpacking SDL..."
     unzip -o SDL.zip SDL.dll
+    mv SDL.dll support
     
     msg2 "Unpacking OpenAL..."
     unzip openal.zip
-    mv openal-soft-*/bin/Win32/soft_oal.dll openal.dll
+    mv openal-soft-*/bin/Win32/soft_oal.dll support/openal.dll
     rm -r openal-soft-*
 
     msg2 "Installing NSIS..."
@@ -127,6 +128,8 @@ ensure_pyinstaller
 msg2 "Running PyInstaller..."
 [ -d dist ] && rm -r dist
 wine python -OO ../common/pyinstaller/pyinstaller.py -y --distpath=.\\dist --workpath=.\\build Knossos.spec
+
+mv version dist/
 
 if [ "$package" = "y" ]; then
     msg2 "Packing installer..."

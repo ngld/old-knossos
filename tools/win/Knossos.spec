@@ -14,7 +14,7 @@ for i, item in enumerate(pd):
 # Build the TaskbarLib module.
 try:
     import comtypes.client as cc
-    cc.GetModule('taskbar.tlb')
+    cc.GetModule('support/taskbar.tlb')
 
     him.append('comtypes.gen.TaskbarLib')
 except:
@@ -53,14 +53,14 @@ for i in reversed(idx):
 
 pyz = PYZ(a.pure)
 
-a.datas += [('7z.exe', '7z.exe', 'BINARY'),
-            ('7z.dll', '7z.dll', 'BINARY'),
+a.datas += [('7z.exe', 'support/7z.exe', 'BINARY'),
+            ('7z.dll', 'support/7z.dll', 'BINARY'),
             ('version', 'version', 'DATA'),
             ('data/hlp.ico', '../../knossos/data/hlp.ico', 'DATA'),
             ('data/resources.rcc', '../../knossos/data/resources.rcc', 'DATA'),
-            ('SDL.dll', 'SDL.dll', 'BINARY'),
-            ('openal.dll', 'openal.dll', 'BINARY'),
-            ('taskbar.tlb', 'taskbar.tlb', 'BINARY')]
+            ('SDL.dll', 'support/SDL.dll', 'BINARY'),
+            ('openal.dll', 'support/openal.dll', 'BINARY'),
+            ('taskbar.tlb', 'support/taskbar.tlb', 'BINARY')]
 
 
 if onefile:

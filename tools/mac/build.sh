@@ -153,7 +153,7 @@ if [ "$package" = "y" ]; then
     if [ ! -e PyObjC ]; then
         ln -s /System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/PyObjC .
     fi
-    PYTHONPATH="PyObjC" dmgbuild -s dmgbuild_cfg.py -Dsize="${size}M" Knossos Knossos.dmg
+    PYTHONPATH="PyObjC" dmgbuild -s dmgbuild_cfg.py -Dsize="${size}M" Knossos dist/Knossos.dmg
 fi
 
 msg "Done!"

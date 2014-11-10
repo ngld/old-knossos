@@ -5,7 +5,7 @@ InstallDir "$PROGRAMFILES\Knossos"
 InstallDirRegKey HKLM "Software\Knossos" "Install Dir"
 RequestExecutionLevel admin  # We need admin for the "fso:// Support" section
 SetCompressor lzma
-OutFile installer.exe
+OutFile dist\installer.exe
 
 
 !define MUI_ICON ${KNOSSOS_ROOT}knossos\data\hlp.ico
