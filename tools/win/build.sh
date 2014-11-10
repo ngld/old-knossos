@@ -11,11 +11,19 @@ if ! has wine || ! has tar || ! has 7z || ! has unzip || ! has git; then
     exit 1
 fi
 
+package=y
+
 while [ ! "$1" = "" ]; do
     case "$1" in
         -h|--help)
             echo "Usage: $(basename "$0") [build variant]"
+            echo
+            echo "Options:"
+            echo "  --compile,-c    Only build the files in dist/."
             exit 0
+        ;;
+        -c|--compile)
+            package=n
         ;;
         *)
             if [ "$VARIANT" = "" ]; then
@@ -118,10 +126,12 @@ ensure_pyinstaller
 
 msg2 "Running PyInstaller..."
 [ -d dist ] && rm -r dist
-wine python -OO ../common/pyinstaller/pyinstaller.py -y Knossos.spec
+wine python -OO ../common/pyinstaller/pyinstaller.py -y --distpath=.\\dist --workpath=.\\build Knossos.spec
 
-msg2 "Packing installer..."
-wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ nsis/installer.nsi
+if [ "$package" = "y" ]; then
+    msg2 "Packing installer..."
+    wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ nsis/installer.nsi
 
-msg2 "Packing updater..."
-wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ nsis/updater.nsi
+    msg2 "Packing updater..."
+    wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ nsis/updater.nsi
+fi

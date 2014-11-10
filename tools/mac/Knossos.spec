@@ -23,6 +23,13 @@ def which(cmd):
     return None
 
 
+# Make sure all paths that end up in the compiled executable are relative.
+pd = config['PYZ_dependencies']
+for i, item in enumerate(pd):
+    if 'Z:' in item[1]:
+        pd[i] = (item[0], os.path.relpath(item[1]), item[2])
+
+# Look for our dependencies
 p7z_path = which('7z')
 if not p7z_path:
     logging.error('I can\'t find 7z! If you have Homebrew, just run "brew install p7zip".')

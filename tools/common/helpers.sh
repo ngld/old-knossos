@@ -10,6 +10,12 @@ msg2() {
     printf "${BLUE}  ->${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
 }
 
+msg3() {
+    local mesg=$1
+    shift
+    printf "    ${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
+}
+
 error() {
     local mesg=$1
     shift

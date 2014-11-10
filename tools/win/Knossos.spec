@@ -1,7 +1,15 @@
 # -*- mode: python -*-
 
+import os.path
+
 onefile = False
 him = []
+
+# Make sure all paths that end up in the compiled executable are relative.
+pd = config['PYZ_dependencies']
+for i, item in enumerate(pd):
+    if 'Z:' in item[1]:
+        pd[i] = (item[0], os.path.relpath(item[1]), item[2])
 
 # Build the TaskbarLib module.
 try:
@@ -12,6 +20,7 @@ try:
 except:
     import logging
     logging.exception('Failed to generate comtypes.gen.TaskbarLib!')
+
 
 a = Analysis(['../../knossos/__main__.py'],
              pathex=['../..'],
