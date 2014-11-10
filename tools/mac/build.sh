@@ -130,7 +130,7 @@ msg "Building..."
 generate_version > version
 
 msg2 "Running PyInstaller..."
-[ -d dist ] && rm -r dist
+[ -d dist ] && rm -rf dist
 
 # Make sure PyInstaller finds libpyside-*.dylib and the Qt libraries.
 if [ "$use_buildenv" = "y" ]; then
