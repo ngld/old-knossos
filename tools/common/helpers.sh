@@ -28,7 +28,6 @@ has() {
 
 download() {
     if [ -f "$1" ]; then
-        # Do nothing.
         msg2 "Skipped $1 because it has already been downloaded."
     elif has wget; then
         wget -O "$1" "$2"
@@ -53,6 +52,11 @@ check_variant() {
 }
 
 generate_version() {
+    if [ ! "$FORCE_VERSION" = "" ]; then
+        echo "$FORCE_VERSION"
+        return
+    fi
+
     local build_num="0"
 
     local last_version="$(curl -s "${UPDATE_SERVER}/${VARIANT}/version")"
@@ -107,3 +111,55 @@ fi
 PLATFORM="${PLATFORM:-unknown}"
 UPDATE_SERVER="https://dev.tproxy.de/knossos"
 VARIANT=""
+FORCE_VERSION=""
+
+gen_package=y
+use_buildenv=n
+show_version=n
+
+while [ ! "$1" = "" ]; do
+    case "$1" in
+        -h|--help)
+            echo "Usage: $(basename "$0") [build variant]"
+            echo
+            echo "Options:"
+            echo "  --show-version      Display the version used in the next build and exit."
+            echo "  --version VERSION   Overrides the auto-generated version of the built package."
+            echo "  --compile,-c        Only build the files in dist/."
+
+            if [ "$PLATFORM" = "mac" ]; then
+                echo "  --use-buildenv      Install all dependencies in ./buildenv to create a clean build environment."
+            fi
+
+            exit 0
+        ;;
+        --show-version)
+            show_version=y
+        ;;
+        --version)
+            FORCE_VERSION="$2"
+            shift
+        ;;
+        -c|--compile)
+            gen_package=n
+        ;;
+        --use-buildenv)
+            use_buildenv=y
+        ;;
+        *)
+            if [ "$VARIANT" = "" ]; then
+                VARIANT="$1"
+            else
+                error "You passed an invalid option \"$1\". I don't know what to do with that..."
+                exit 1
+            fi
+        ;;
+    esac
+    shift
+done
+
+check_variant
+if [ "$show_version" = "y" ]; then
+    generate_version
+    exit 0
+fi

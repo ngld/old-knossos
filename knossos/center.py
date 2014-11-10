@@ -41,12 +41,15 @@ settings = {
     'max_downloads': 3,
     'repos': [('http://nebula.tproxy.de/__all.json', 'Test repos')],
     'nebula_link': 'http://nebula.tproxy.de/',
-    'update_channel': 'develop',
+    'update_channel': 'stable',
     'update_notify': True,
     'ui_mode': 'hell',
     'keyboard_layout': 'default',
     'keyboard_setxkbmap': False
 }
+
+if '-dev' in VERSION:
+    settings['update_channel'] = 'develop'
 
 settings_path = os.path.expanduser('~/.knossos')
 if sys.platform.startswith('win'):

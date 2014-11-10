@@ -6,7 +6,14 @@ ngld rewrote the manager in Python and extended it.
 
 After installing this package, you can launch Knossos with ``python -m knossos``.
 
-A `Windows installer <https://dev.tproxy.de/knossos/stable/installer.exe>`_ is availabe.
+Windows Installer:
+    https://dev.tproxy.de/knossos/develop/installer.exe
+
+Ubuntu PPA:
+    https://launchpad.net/~ngld/+archive/ubuntu/knossos-dev
+
+Macintosh DMG:
+    https://dev.tproxy.de/knossos/develop/Knossos.dmg
 
 Source Code:
     https://github.com/ngld/knossos

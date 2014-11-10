@@ -11,34 +11,6 @@ if ! has wine || ! has tar || ! has 7z || ! has unzip || ! has git; then
     exit 1
 fi
 
-package=y
-
-while [ ! "$1" = "" ]; do
-    case "$1" in
-        -h|--help)
-            echo "Usage: $(basename "$0") [build variant]"
-            echo
-            echo "Options:"
-            echo "  --compile,-c    Only build the files in dist/."
-            exit 0
-        ;;
-        -c|--compile)
-            package=n
-        ;;
-        *)
-            if [ "$VARIANT" = "" ]; then
-                VARIANT="$1"
-            else
-                error "You passed an invalid option \"$1\". I don't know what to do with that..."
-                exit 1
-            fi
-        ;;
-    esac
-    shift
-done
-
-check_variant
-
 export WINEPREFIX="$PWD/_w"
 export WINEARCH="win32"
 export WINEDEBUG="fixme-all"
@@ -126,12 +98,12 @@ generate_version > version
 ensure_pyinstaller
 
 msg2 "Running PyInstaller..."
-[ -d dist ] && rm -r dist
+[ -d dist ] && rm -rf dist
 wine python -OO ../common/pyinstaller/pyinstaller.py -y --distpath=.\\dist --workpath=.\\build Knossos.spec
 
 mv version dist/
 
-if [ "$package" = "y" ]; then
+if [ "$gen_package" = "y" ]; then
     msg2 "Packing installer..."
     wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ nsis/installer.nsi
 

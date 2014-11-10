@@ -6,38 +6,6 @@ cd "$(dirname "$0")"
 PLATFORM=mac
 . ../common/helpers.sh
 
-use_buildenv=n
-package=y
-while [ ! "$1" = "" ]; do
-    case "$1" in
-        -h|--help)
-            echo "Usage: $(basename "$0") [build variant]"
-            echo
-            echo "Options:"
-            echo "  --use-buildenv      Install all dependencies in ./buildenv to create a clean build environment."
-            echo "  --compile,-c        Only build the files in dist/."
-            exit 0
-        ;;
-        --use-buildenv)
-            use_buildenv=y
-        ;;
-        -c|--compile)
-            package=n
-        ;;
-        *)
-            if [ "$VARIANT" = "" ]; then
-                VARIANT="$1"
-            else
-                error "You passed an invalid option \"$1\". I don't know what to do with that..."
-                exit 1
-            fi
-        ;;
-    esac
-    shift
-done
-
-check_variant
-
 if [ "$use_buildenv" = "y" ]; then
     export PATH="$PWD/buildenv/bin:$PATH"
 
@@ -144,7 +112,7 @@ export DYLD_LIBRARY_PATH="pyenv/lib/python2.7/site-packages/PySide"
 
 python -OO ../common/pyinstaller/pyinstaller.py -y --distpath=./dist --workpath=./build  Knossos.spec
 
-if [ "$package" = "y" ]; then
+if [ "$gen_package" = "y" ]; then
     msg "Packing DMG..."
     size="$(du -sm dist/Knossos.app | awk '{ print $1 }')"
     size=$(($size + 2))
