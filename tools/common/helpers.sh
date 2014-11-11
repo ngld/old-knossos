@@ -60,14 +60,14 @@ generate_version() {
     local build_num="0"
 
     local last_version="$(curl -s "${UPDATE_SERVER}/${VARIANT}/version")"
-    local my_version="$(grep VERSION ../../knossos/center.py | cut -d "'" -f 2)"
+    local my_version="$(grep VERSION ../../knossos/center.py | cut -d "'" -f 2 | head -1)"
     local next_version="$my_version"
 
     local last_vnum="$(echo "$last_version" | cut -d '-' -f 1)"
     local my_vnum="$(echo "$my_version" | cut -d '-' -f 1)"
 
     if [ "$last_vnum" = "$my_vnum" ]; then
-        build_num="$(echo "$last_version" | cut -d '-' -f 2 | cut -d . -f 2)"
+        build_num="$(echo "$last_version" | cut -d '-' -f 2 | cut -d . -f 2 | cut -d + -f 1)"
         build_num=$(( $build_num + 1 ))
     fi
 

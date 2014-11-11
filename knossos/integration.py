@@ -13,11 +13,13 @@
 ## limitations under the License.
 
 import sys
+import os
 import logging
 import ctypes
+import shlex
 import six
 
-from . import center, clibs, qt
+from . import center, clibs, qt, launcher
 
 if six.PY2:
     ctypes.pythonapi.PyCObject_AsVoidPtr.argtypes = [ctypes.py_object]
@@ -44,12 +46,63 @@ class Integration(object):
     def annoy_user(self, activate=True):
         pass
 
+    def install_scheme_handler(self):
+        pass
 
-class UnityIntegration(Integration):
+
+class LinuxIntegration(Integration):
+
+    def install_scheme_handler(self):
+        my_cmd = launcher.get_cmd()
+
+        tpl_desktop = r"""[Desktop Entry]
+Name=Knossos
+Exec={PATH} %U
+Icon={ICON_PATH}
+Type=Application
+Terminal=false
+MimeType=x-scheme-handler/fso;
+"""
+
+        tpl_mime_type = 'x-scheme-handler/fso=Knossos.desktop;'
+
+        applications_path = os.path.expanduser('~/.local/share/applications/')
+        desktop_file = applications_path + 'knossos.desktop'
+        mime_types_file = applications_path + 'mimeapps.list'
+        my_path = ' '.join([shlex.quote(p) for p in my_cmd])
+
+        if os.path.isfile(desktop_file) or os.path.isfile('/usr/share/applications/knossos.desktop'):
+            return True
+        
+        tpl_desktop = tpl_desktop.replace('{PATH}', my_path)
+        tpl_desktop = tpl_desktop.replace('{ICON_PATH}', launcher.get_file_path('hlp.png'))
+        
+        if not os.path.isdir(applications_path):
+            os.makedirs(applications_path)
+
+        with open(desktop_file, 'w') as output_file:
+            output_file.write(tpl_desktop)
+        
+        found = False
+        if os.path.isfile(mime_types_file):
+            with open(mime_types_file, 'r') as lines:
+                for line in lines:
+                    if tpl_mime_type in line:
+                        found = True
+                        break
+        
+        if not found:
+            with open(mime_types_file, 'a') as output_file:
+                output_file.write(tpl_mime_type)
+
+        return True
+
+
+class UnityIntegration(LinuxIntegration):
     launcher = None
 
     def __init__(self, Unity):
-        self.launcher = Unity.LauncherEntry.get_for_desktop_id('Knossos.desktop')
+        self.launcher = Unity.LauncherEntry.get_for_desktop_id('knossos.desktop')
 
     def show_progress(self, value):
         self.launcher.set_property('progress_visible', True)
@@ -104,6 +157,30 @@ class WindowsIntegration(Integration):
     def annoy_user(self, activate=True):
         pass
 
+    def install_scheme_handler(self):
+        my_cmd = launcher.get_cmd()
+        
+        settings = qt.QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', qt.QtCore.QSettings.NativeFormat)
+        settings.setFallbacksEnabled(False)
+
+        settings.setValue('Default', 'URL:Knossos protocol')
+        settings.setValue('URL Protocol', '')
+        settings.setValue('DefaultIcon/Default', '"' + launcher.get_file_path('hlp.ico') + ',1"')
+
+        my_cmd.append('%1')
+        my_path = ' '.join(['"' + p + '"' for p in my_cmd])
+        
+        settings.setValue('shell/open/command/Default', my_path)
+
+        # Check
+        # FIXME: Is there any better way to detect whether this worked or not?
+
+        settings.sync()
+        settings = qt.QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', qt.QtCore.QSettings.NativeFormat)
+        settings.setFallbacksEnabled(False)
+
+        return settings.value('shell/open/command/Default') == my_path
+
 current = None
 
 
@@ -143,5 +220,9 @@ def init():
             current = UnityIntegration(Unity)
             return
 
-    logging.info('No desktop integration active.')
+        logging.info('Activating generic Linux integration...')
+        current = LinuxIntegration()
+        return
+
+    logging.warning('No desktop integration active.')
     current = Integration()

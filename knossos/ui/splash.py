@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'splash.ui'
 #
-# Created: Wed Nov  5 01:32:43 2014
+# Created: Tue Nov 11 21:40:39 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!

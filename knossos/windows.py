@@ -37,9 +37,10 @@ from .ui.settings_video import Ui_Form as Ui_Settings_Video
 from .ui.settings_audio import Ui_Form as Ui_Settings_Audio
 from .ui.settings_input import Ui_Form as Ui_Settings_Input
 from .ui.settings_network import Ui_Form as Ui_Settings_Network
+from .ui.settings_help import Ui_Form as Ui_Settings_Help
 from .ui.flags import Ui_Dialog as Ui_Flags
 from .ui.install import Ui_Dialog as Ui_Install
-from .tasks import run_task, GOGExtractTask, InstallTask
+from .tasks import run_task, GOGExtractTask, InstallTask, WindowsUpdateTask, CheckTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -133,6 +134,7 @@ class HellWindow(Window):
         self.win.webView.loadStarted.connect(self.show_indicator)
         self.win.webView.loadFinished.connect(self.check_loaded)
 
+        center.signals.update_avail.connect(self.ask_update)
         center.signals.repo_updated.connect(self.search_mods)
         center.signals.task_launched.connect(self.watch_mod_task)
 
@@ -146,14 +148,32 @@ class HellWindow(Window):
 
     def check_fso(self):
         if center.settings['fs2_path'] is not None:
-            self.show_mod_list()
-            self.update_repo_list()
+            if self.win.webView.url().toString() == 'qrc:///html/welcome.html':
+                self.show_mod_list()
+
+            if center.settings['mods'] is None:
+                self.update_repo_list()
+            else:
+                run_task(CheckTask())
+            
             self.win.pageControls.setEnabled(True)
             self.win.updateButton.setEnabled(True)
         else:
             self.win.webView.load('qrc:///html/welcome.html')
             self.win.pageControls.setEnabled(False)
             self.win.updateButton.setEnabled(False)
+
+    def ask_update(self, version):
+        # We only have an updater for windows.
+        if sys.platform.startswith('win'):
+            msg = 'There\'s an update available!\nDo you want to install Knossos %s now?' % str(version)
+            buttons = QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
+            result = QtGui.QMessageBox.question(center.app.activeWindow(), 'Knossos', msg, buttons)
+            if result == QtGui.QMessageBox.Yes:
+                run_task(WindowsUpdateTask())
+        else:
+            msg = 'There\'s an update available!\nYou should update to Knossos %s.' % str(version)
+            QtGui.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
 
     def update_repo_list(self):
         api.fetch_list()
@@ -290,6 +310,9 @@ class SettingsWindow(Window):
         else:
             tab.read_flags()
 
+        self._tabs['Help'] = util.init_ui(Ui_Settings_Help(), QtGui.QWidget())
+
+        center.signals.fs2_path_changed.connect(self.read_config)
         center.signals.fs2_bin_changed.connect(tab.read_flags)
 
         self.update_repo_list()
@@ -417,8 +440,9 @@ class SettingsWindow(Window):
         fs2_path = center.settings['fs2_path']
         fs2_bin = center.settings['fs2_bin']
 
-        build = self._tabs['Game settings'].build
-        build.clear()
+        tab = self._tabs['Game settings']
+        tab.fs2PathLabel.setText(fs2_path)
+        tab.build.clear()
 
         if fs2_path is not None and os.path.isdir(fs2_path):
             fs2_path = os.path.abspath(fs2_path)
@@ -429,16 +453,16 @@ class SettingsWindow(Window):
                 path = os.path.basename(path)
 
                 if not path.endswith(('.map', '.pdb')):
-                    build.addItem(path)
+                    tab.build.addItem(path)
                     
                     if path == fs2_bin:
-                        build.setCurrentIndex(idx)
+                        tab.build.setCurrentIndex(idx)
 
                     idx += 1
             
             if len(bins) == 1:
                 # Found only one binary, select it by default.
-                build.setEnabled(False)
+                tab.build.setEnabled(False)
                 self.save_build()
 
         # ---Read fs2_open.ini or the registry---

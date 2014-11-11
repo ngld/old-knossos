@@ -27,8 +27,8 @@ import pickle
 from . import uhf
 uhf(__name__)
 
-from . import center, util, repo
-from .qt import QtCore, QtGui
+from . import center, util, repo, integration
+from .qt import QtGui
 from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, InstallTask, UninstallTask
 from .ui.select_list import Ui_Dialog as Ui_SelectList
 from .windows import NebulaWindow, MainWindow, HellWindow, SettingsWindow
@@ -538,75 +538,14 @@ def switch_ui_mode(nmode):
 def install_scheme_handler(interactive=True):
     logging.info('Installing scheme handler...')
 
-    from . import launcher
-    my_cmd = launcher.get_cmd()
-    
-    if sys.platform.startswith('win'):
-        settings = QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', QtCore.QSettings.NativeFormat)
-        settings.setFallbacksEnabled(False)
-
-        settings.setValue('Default', 'URL:Knossos protocol')
-        settings.setValue('URL Protocol', '')
-        settings.setValue('DefaultIcon/Default', '"' + launcher.get_file_path('hlp.ico') + ',1"')
-
-        my_cmd.append('%1')
-        my_path = ' '.join(['"' + p + '"' for p in my_cmd])
-        
-        settings.setValue('shell/open/command/Default', my_path)
-
-        # Check
-        # FIXME: Is there any better way to detect whether this worked or not?
-
-        settings.sync()
-        settings = QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', QtCore.QSettings.NativeFormat)
-        settings.setFallbacksEnabled(False)
-
-        if settings.value('shell/open/command/Default') != my_path:
-            if interactive:
-                QtGui.QMessageBox.critical(None, 'Knossos', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')
-
+    try:
+        if integration.current.install_scheme_handler():
+            QtGui.QMessageBox.information(None, 'Knossos', 'Done!')
             return
-        
-    elif sys.platform.startswith('linux'):
-        tpl_desktop = r"""[Desktop Entry]
-Name=Knossos
-Exec={PATH} %U
-Icon={ICON_PATH}
-Type=Application
-Terminal=false
-MimeType=x-scheme-handler/fso;
-"""
-
-        tpl_mime_type = 'x-scheme-handler/fso=Knossos.desktop;'
-
-        applications_path = os.path.expanduser('~/.local/share/applications/')
-        desktop_file = applications_path + 'Knossos.desktop'
-        mime_types_file = applications_path + 'mimeapps.list'
-        my_path = ' '.join([shlex.quote(p) for p in my_cmd])
-        
-        tpl_desktop = tpl_desktop.replace('{PATH}', my_path)
-        tpl_desktop = tpl_desktop.replace('{ICON_PATH}', launcher.get_file_path('hlp.png'))
-        
-        if not os.path.isdir(applications_path):
-            os.makedirs(applications_path)
-
-        with open(desktop_file, 'w') as output_file:
-            output_file.write(tpl_desktop)
-        
-        found = False
-        if os.path.isfile(mime_types_file):
-            with open(mime_types_file, 'r') as lines:
-                for line in lines:
-                    if tpl_mime_type in line:
-                        found = True
-                        break
-        
-        if not found:
-            with open(mime_types_file, 'a') as output_file:
-                output_file.write(tpl_mime_type)
-
-    if interactive:
-        QtGui.QMessageBox.information(None, 'Knossos', 'Done!')
+    except:
+        logging.exception('Failed to install the scheme handler!')
+    
+    QtGui.QMessageBox.critical(None, 'Knossos', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')
 
 
 def setup_ipc():

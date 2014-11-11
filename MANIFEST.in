@@ -1,2 +1,4 @@
 include DESCRIPTION.rst
+include NOTICE
+include LICENSE
 prune knossos/data/hlp.ic*

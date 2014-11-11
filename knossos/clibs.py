@@ -93,7 +93,7 @@ if sys.platform.startswith('linux'):
 
 # Load SDL
 try:
-    sdl = load_lib('libSDL2.so', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
+    sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
     SDL2 = True
 except:
     # Try SDL 1.2
