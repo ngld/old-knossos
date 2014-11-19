@@ -97,7 +97,7 @@ class MediaFire(object):
                         'adcopy_response': code.replace(' ', '+')
                     }
 
-                    data = util.get(link, data=data, random_ua=True).read().decode('utf8', 'replace')
+                    data = util.get(link, data=data, random_ua=True)
                     if not data:
                         logging.error('Failed to submit captcha response!')
             elif re.search(r'(api\.recaptcha\.net|google\.com/recaptcha/api/)', data):
@@ -165,7 +165,7 @@ class SolveMedia(CaptchaSolver):
         path = '/papi/challenge.noscript?k='
         
         self.path = server + path + self.challenge
-        self.data = util.get(self.path, random_ua=True).read().decode('utf8', 'replace')
+        self.data = util.get(self.path, random_ua=True)
 
         if '>error: domain / ckey mismatch' in self.data:
             raise Exception('Domain / ckey mismatch')
@@ -206,7 +206,7 @@ class SolveMedia(CaptchaSolver):
         
         url = self.path
         url = url[:url.find('media?c=')] + 'verify.noscript'
-        data = util.get(url, data=data, random_ua=True).read().decode('utf8', 'replace')
+        data = util.get(url, data=data, random_ua=True)
         
         if not data:
             logging.error('Failed to submit challenge!')
@@ -244,7 +244,6 @@ class ReCaptcha(CaptchaSolver):
         if not data:
             return False
 
-        data = data.read().decode('utf8')
         challenge = re.search(r'Recaptcha\.finish\_reload\(\'(.*?)\', \'image\'')
         if not challenge:
             raise Exception('Failed to reload captcha!')
@@ -252,7 +251,7 @@ class ReCaptcha(CaptchaSolver):
         self.captcha_address = self.server + 'image?c=' + self.challenge
 
     def ask_for_code(self, link):
-        data = util.get('http://api.recaptcha.net/challenge?k=' + self.id_).read().decode('utf8', 'replace')
+        data = util.get('http://api.recaptcha.net/challenge?k=' + self.id_)
         challenge = re.search(r'challenge.*?:.*?\'(.*)?\',', data)
         server = re.search(r'server.*?:.*?\'(.*?)\',', data)
 
@@ -278,7 +277,7 @@ class ReCaptcha(CaptchaSolver):
             }
 
             self.tries += 1
-            self.data = util.get(link, data=data, random_ua=True).read().decode('utf8', 'replace')
+            self.data = util.get(link, data=data, random_ua=True)
 
             info = re.search(r'challenge\?k=(.+?)"')
             if not info:
