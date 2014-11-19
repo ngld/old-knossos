@@ -128,10 +128,11 @@
                     /* All of the above */
                     "files": [
                         {
-                            "filename": "<filename>",
+                            "filename": "...",
                             "is_archive": true,
                             "dest": "<destination path>",
-                            "md5sum": "<checksum>",
+                            "md5sum": "...",
+                            "filesize": "<size in bytes>",
                             "urls": ["<URL1>", "<URL2>"], // The URLs are full URLs (they contain the filename).
 
                             /* if is_archive */

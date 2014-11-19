@@ -146,6 +146,7 @@ class Master(object):
         for w in self._workers:
             w.join()
         
+        self._stop_workers = False
         self._workers = []
         self._tasks = []
     

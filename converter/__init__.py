@@ -53,7 +53,7 @@ def init_app():
 
 
 def run_task(task, prg_wrap=None):
-    def update_progress():
+    def update_progress(pi):
         total, items = task.get_progress()
         text = []
         for item in items.values():
@@ -159,7 +159,7 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
 
     results = {}
     logos = {}
-    for id_, csum, content in file_info:
+    for id_, csum, content, size in file_info:
         mid, pkg, name = id_
 
         if csum == 'FAILED':
@@ -177,7 +177,8 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
 
             results[mid][pkg][name] = {
                 'md5sum': csum,
-                'contents': content
+                'contents': content,
+                'size': size
             }
 
     outpath = os.path.dirname(output)
@@ -218,6 +219,7 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
                         else:
                             info['md5sum'] = c_files[name]['md5sum']
                             info['contents'] = c_files[name]['contents']
+                            info['size'] = c_files[name]['size']
             else:
                 logging.error('Checksums for "%s" are missing!', mid)
                 failed = True
@@ -228,6 +230,7 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
                 else:
                     info.md5sum = files[name]['md5sum']
                     info.contents = files[name]['contents']
+                    info.filesize = files[name]['size']
 
         mod.build_file_list()
         new_cache['mods'].append(mod.get())

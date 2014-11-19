@@ -52,7 +52,7 @@ class ChecksumTask(progress.Task):
 
             if res == 304:
                 # Nothing changed.
-                self.post((id_, 'CACHE', None))
+                self.post((id_, 'CACHE', None, 0))
             elif res:
                 logging.info('Inspecting "%s"...', name)
                 progress.update(1, 'Inspecting "%s"...' % name)
@@ -63,12 +63,12 @@ class ChecksumTask(progress.Task):
                     if self.dl_mirror is not None:
                         links.append(util.pjoin(self.dl_mirror, os.path.basename(path)))
 
-                    self.post((id_, csum, content))
+                    self.post((id_, csum, content, os.path.getsize(path)))
                 else:
-                    self.post((id_, 'FAILED', None))
+                    self.post((id_, 'FAILED', None, 0))
             else:
                 # None of the links worked!
-                self.post((id_, 'FAILED', None))
+                self.post((id_, 'FAILED', None, 0))
 
     def _download(self, links, path, tstamp):
         from . import download
@@ -136,4 +136,4 @@ class ChecksumTask(progress.Task):
         img.sort(key=lambda i: i[1])
         img = img[-1][0]
 
-        self.post(((mid, 'logo', 'logo.jpg'), util.convert_img(img, 'jpg'), {}))
+        self.post(((mid, 'logo', 'logo.jpg'), util.convert_img(img, 'jpg'), {}, 0))

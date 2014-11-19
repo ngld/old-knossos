@@ -184,6 +184,7 @@ if variant == 'headless':
         QCoreApplication = _App
         Signal = _Signal
         QTimer = _QTimer
+        QByteArray = None
 
     class QtGui(object):
         QApplication = _App
