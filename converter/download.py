@@ -97,7 +97,7 @@ class MediaFire(object):
                         'adcopy_response': code.replace(' ', '+')
                     }
 
-                    data = util.get(link, data=data, random_ua=True)
+                    data = util.post(link, data, random_ua=True)
                     if not data:
                         logging.error('Failed to submit captcha response!')
             elif re.search(r'(api\.recaptcha\.net|google\.com/recaptcha/api/)', data):
@@ -206,7 +206,7 @@ class SolveMedia(CaptchaSolver):
         
         url = self.path
         url = url[:url.find('media?c=')] + 'verify.noscript'
-        data = util.get(url, data=data, random_ua=True)
+        data = util.post(url, data, random_ua=True)
         
         if not data:
             logging.error('Failed to submit challenge!')
@@ -240,7 +240,7 @@ class ReCaptcha(CaptchaSolver):
         self.data = data
 
     def reload(self):
-        data = util.get('http://www.google.com/recaptcha/api/reload?c=' + self.challenge + '&k=' + self.id_ + '&reason=r&type=image&lang=en')
+        data = util.get('http://www.google.com/recaptcha/api/reload?c=' + self.challenge + '&k=' + self.id_ + '&reason=r&type=image&lang=en', random_ua=True)
         if not data:
             return False
 
@@ -251,7 +251,7 @@ class ReCaptcha(CaptchaSolver):
         self.captcha_address = self.server + 'image?c=' + self.challenge
 
     def ask_for_code(self, link):
-        data = util.get('http://api.recaptcha.net/challenge?k=' + self.id_)
+        data = util.get('http://api.recaptcha.net/challenge?k=' + self.id_, random_ua=True)
         challenge = re.search(r'challenge.*?:.*?\'(.*)?\',', data)
         server = re.search(r'server.*?:.*?\'(.*?)\',', data)
 
@@ -277,7 +277,7 @@ class ReCaptcha(CaptchaSolver):
             }
 
             self.tries += 1
-            self.data = util.get(link, data=data, random_ua=True)
+            self.data = util.post(link, data, random_ua=True)
 
             info = re.search(r'challenge\?k=(.+?)"')
             if not info:

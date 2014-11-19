@@ -347,6 +347,30 @@ def get(link, headers=None, random_ua=False):
     return result.text
 
 
+def post(link, data, headers=None, random_ua=False):
+    global HTTP_SESSION
+
+    if random_ua:
+        if headers is None:
+            headers = {}
+
+        headers['User-Agent'] = get_user_agent(True)
+
+    result = None
+    try:
+        result = HTTP_SESSION.post(link, data=data, headers=headers)
+        if result.status_code != 200:
+            result.raise_for_status()
+    except:
+        if result is None:
+            logging.exception('Failed to load "%s"!', link)
+        else:
+            logging.error('Failed to load "%s"! (%d %s)', link, result.status_code, result.reason)
+        return None
+
+    return result.text
+
+
 def download(link, dest, headers=None, random_ua=False):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
