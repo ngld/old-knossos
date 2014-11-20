@@ -205,7 +205,6 @@ class CheckTask(progress.MultistepTask):
 
     def finish(self):
         results = self.get_results()
-        #installed = center.installed
 
         for pkg, archives, s, c, m in results:
             mod = pkg.get_mod()
@@ -213,7 +212,9 @@ class CheckTask(progress.MultistepTask):
             if s == 0:
                 # Not Installed
                 # What?!
-                logging.warning('Package %s of mod %s (%s) is not installed but in the local repo.' % (pkg.name, mod.mid, mod.title))
+                logging.warning('Package %s of mod %s (%s) is not installed but in the local repo. Fixing...' % (pkg.name, mod.mid, mod.title))
+                mod.del_pkg(pkg)
+                mod.save()
             
             if pkg is not None:
                 pkg.check_notes = m
@@ -264,7 +265,6 @@ class InstallTask(progress.MultistepTask):
                     shutil.rmtree(ar['tpath'])
         else:
             mods = set()
-            fs2_path = center.settings['fs2_path']
 
             # Register installed pkgs
             for pkg in self._pkgs:
@@ -276,16 +276,7 @@ class InstallTask(progress.MultistepTask):
 
             # Generate knossos.json files.
             for mod in mods:
-                kpath = os.path.join(fs2_path, mod.folder, 'mod.json')
-                logo = os.path.join(fs2_path, mod.folder, 'knossos.' + mod.logo.split('.')[-1])
-                
-                # Copy the logo right next to the json file.
-                shutil.copy(mod.logo_path, logo)
-                info = mod.get()
-                info['logo'] = os.path.join(logo)
-
-                with open(kpath, 'w') as stream:
-                    json.dump(info, stream)
+                mod.save()
 
         run_task(CheckTask())
 
@@ -419,14 +410,14 @@ class UninstallTask(progress.MultistepTask):
     _steps = 2
 
     def __init__(self, pkgs):
-        super(UninstallTask, self).__init__()
-
         self._pkgs = []
         for pkg in pkgs:
             try:
                 self._pkgs.append(center.installed.query(pkg))
             except repo.ModNotFound:
                 logging.exception('Someone tried to uninstall a non-existant package (%s, %s)!', pkg.get_mod().mid, pkg.name)
+
+        super(UninstallTask, self).__init__()
 
         self.done.connect(self.finish)
         progress.update(0, 'Uninstalling mods...')
@@ -465,6 +456,8 @@ class UninstallTask(progress.MultistepTask):
             for path in my_files:
                 if os.path.isfile(path):
                     os.unlink(path)
+        else:
+            mod.save()
 
         # Remove empty directories.
         for path, dirs, files in os.walk(modpath, topdown=False):

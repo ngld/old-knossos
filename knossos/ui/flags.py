@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'flags.ui'
 #
-# Created: Wed Nov  5 01:32:41 2014
+# Created: Tue Nov 11 21:40:37 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!

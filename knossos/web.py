@@ -34,8 +34,10 @@ class WebBridge(QtCore.QObject):
     #   Prompts the user to select their FS2 directory.
     # runGogInstaller(): void
     #   Launches the GOGExtract wizard.
+    # getMods(): list of mod objects
+    #   Returns a list of all available mods (see the generated section of schema.txt).
     # getInstalledMods(): list of mod objects
-    #   Returns a list of all installed mods (see the generated section of schema.txt)
+    #   Returns a list of all installed mods (see the generated section of schema.txt).
     # getUpdates(): object
     #   Returns a map which follows this syntax: result[mid][local_version] = most_recent_version
     # isInstalled(mid, spec?): bool
@@ -57,10 +59,16 @@ class WebBridge(QtCore.QObject):
     # uninstall(mid, pkgs?): bool
     #   Uninstalls the given mod. The first parameter is the mod's ID. The second parameter should be used if only some packages should be uninstalled.
     #   Returns true on success.
+    # abortDownload(mid): void
+    #   Aborts the download for the given mod.
     # runMod(mid): void
     #   Launch fs2_open with the given mod selected.
     # showSettings(mid?): void
     #   Open the settings window for the given mod or fs2_open if no mid is given.
+    #   Returns -1 if the mod wasn't found, -2 if the spec is invalid and 1 on success.
+    # showPackageList(mid, spec?): int
+    #   Open a window which allows the user to install and uninstall packages for the given mod.
+    #   Returns -1 if the mod wasn't found, -2 if the spec is invalid and 1 on success.
     # vercmp(a, b): int
     #   Compares two versions
     
@@ -194,6 +202,8 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return mod
 
+        if pkgs is None:
+            pkgs = []
         windows.ModInstallWindow(mod, pkgs)
 
     @QtCore.Slot(str, result=int)
@@ -222,8 +232,8 @@ class WebBridge(QtCore.QObject):
 
         return api.uninstall_pkgs(plist, name=mod.title)
 
-    @QtCore.Slot(str, str)
-    def abortDownload(self, mid, version):
+    @QtCore.Slot(str)
+    def abortDownload(self, mid):
         if hasattr(center.main_win, 'abort_mod_dl'):
             center.main_win.abort_mod_dl(mid)
 
@@ -242,12 +252,26 @@ class WebBridge(QtCore.QObject):
     def showSettings(self, mid=None, spec=None):
         if mid is None:
             windows.SettingsWindow(None)
+            return 1
         else:
             mod = self._get_mod(mid, spec)
             if mod in (-1, -2):
                 return mod
 
-            windows.FlagsWindow(center.main_win.win, mod)
+            windows.ModSettingsWindow(mod)
+            return 1
+
+    @QtCore.Slot(str, result=int)
+    @QtCore.Slot(str, str, result=int)
+    def showPackageList(self, mid=None, spec=None):
+        mod = self._get_mod(mid, spec)
+        if mod in (-1, -2):
+            return mod
+
+        win = windows.ModSettingsWindow(mod)
+        win.show_pkg_tab()
+
+        return 1
 
     @QtCore.Slot(str, str, result=int)
     def vercmp(self, a, b):

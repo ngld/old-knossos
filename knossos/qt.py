@@ -16,15 +16,16 @@ import sys
 import os
 import logging
 
-# Make sure we initialize Xlib before we load Qt.
-from . import clibs
-
 default_variant = 'PySide'
 
 variant = os.environ.get('QT_API', default_variant)
 if variant not in ('PySide', 'PyQt4', 'headless'):
     logging.warning('Unknown QT_API "%s"! Using default...', variant)
     variant = default_variant
+
+if variant != 'headless':
+    # Make sure we initialize Xlib before we load Qt.
+    from . import clibs
 
 if variant == 'PySide':
     try:
@@ -184,6 +185,7 @@ if variant == 'headless':
         QCoreApplication = _App
         Signal = _Signal
         QTimer = _QTimer
+        QByteArray = None
 
     class QtGui(object):
         QApplication = _App

@@ -545,8 +545,9 @@ class PkgFile(object):
     urls = None
     contents = None
     md5sum = ''
+    filesize = 0
 
-    _fields = ('filename', 'is_archive', 'dest', 'urls', 'contents', 'md5sum')
+    _fields = ('filename', 'is_archive', 'dest', 'urls', 'contents', 'md5sum', 'filesize')
     _req = ('filename', 'urls')
 
     def __init__(self, values, package):
@@ -573,6 +574,7 @@ class PkgFile(object):
         self.urls = values['urls']
         self.contents = values.get('contents', {})
         self.md5sum = values.get('md5sum', '')
+        self.filesize = values.get('filesize', 0)
 
         if not isinstance(self.urls, list):
             logging.error('Unknown type for URL list for file "%s"!', self.filename)
@@ -588,7 +590,8 @@ class PkgFile(object):
             'dest': self.dest,
             'urls': self.urls,
             'contents': self.contents,
-            'md5sum': self.md5sum
+            'md5sum': self.md5sum,
+            'filesize': self.filesize
         }
 
     def copy(self):

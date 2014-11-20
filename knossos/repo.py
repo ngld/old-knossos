@@ -617,6 +617,23 @@ class InstalledMod(Mod):
                 del self.packages[i]
                 break
 
+    def save(self):
+        modpath = os.path.join(center.settings['fs2_path'], self.folder)
+        path = os.path.join(modpath, 'mod.json')
+        info = self.get()
+
+        if self.logo is not None and not self.logo.startswith('knossos.'):
+            logo = os.path.join(modpath, 'knossos.' + self.logo.split('.')[-1])
+    
+            if os.path.abspath(logo) != os.path.abspath(self.logo_path):
+                # Copy the logo right next to the json file.
+                shutil.copy(self.logo_path, logo)
+            
+            info['logo'] = os.path.basename(logo)
+
+        with open(path, 'w') as stream:
+            json.dump(info, stream)
+
 
 class InstalledPackage(Package):
     check_notes = ''

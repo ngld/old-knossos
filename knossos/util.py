@@ -347,6 +347,30 @@ def get(link, headers=None, random_ua=False):
     return result.text
 
 
+def post(link, data, headers=None, random_ua=False):
+    global HTTP_SESSION
+
+    if random_ua:
+        if headers is None:
+            headers = {}
+
+        headers['User-Agent'] = get_user_agent(True)
+
+    result = None
+    try:
+        result = HTTP_SESSION.post(link, data=data, headers=headers)
+        if result.status_code != 200:
+            result.raise_for_status()
+    except:
+        if result is None:
+            logging.exception('Failed to load "%s"!', link)
+        else:
+            logging.error('Failed to load "%s"! (%d %s)', link, result.status_code, result.reason)
+        return None
+
+    return result.text
+
+
 def download(link, dest, headers=None, random_ua=False):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
@@ -361,6 +385,8 @@ def download(link, dest, headers=None, random_ua=False):
     with DL_POOL:
         if _DL_CANCEL.is_set():
             return False
+
+        logging.info('Downloading "%s"...', link)
         
         result = HTTP_SESSION.get(link, headers=headers, stream=True)
         if result.status_code == 304:
@@ -729,3 +755,6 @@ class Spec(semantic_version.Spec):
 
 DL_POOL = ResizableSemaphore(10)
 HTTP_SESSION.headers['User-Agent'] = get_user_agent()
+
+if not __debug__:
+    logging.getLogger('requests.packages.urllib3.connectionpool').propagate = False
