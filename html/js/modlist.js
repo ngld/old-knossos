@@ -46,7 +46,7 @@
             row.find('.abort-btn').click(function (e) {
                 e.preventDefault();
 
-                fs2mod.abortDownload(mod.id, mod.version);
+                fs2mod.abortDownload(mod.id);
             });
         } else if(type == 'updates') {
             row.html($('#tpl-update-mod').html());

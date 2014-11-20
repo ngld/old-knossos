@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'mod_settings.ui'
 #
-# Created: Thu Nov 20 19:21:23 2014
+# Created: Thu Nov 20 21:22:56 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -27,6 +27,9 @@ class Ui_Dialog(object):
         self.pkgsLayout = QtGui.QVBoxLayout()
         self.pkgsLayout.setObjectName("pkgsLayout")
         self.verticalLayout_3.addLayout(self.pkgsLayout)
+        self.dlSizeLabel = QtGui.QLabel(self.tab_2)
+        self.dlSizeLabel.setObjectName("dlSizeLabel")
+        self.verticalLayout_3.addWidget(self.dlSizeLabel)
         spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         self.verticalLayout_3.addItem(spacerItem)
         self.applyPkgChanges = QtGui.QPushButton(self.tab_2)
@@ -36,12 +39,13 @@ class Ui_Dialog(object):
         self.verticalLayout.addWidget(self.tabWidget)
 
         self.retranslateUi(Dialog)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(QtGui.QApplication.translate("Dialog", "Mod settings", None, QtGui.QApplication.UnicodeUTF8))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.flagsTab), QtGui.QApplication.translate("Dialog", "Flags", None, QtGui.QApplication.UnicodeUTF8))
+        self.dlSizeLabel.setText(QtGui.QApplication.translate("Dialog", "Download size: {DL_SIZE}", None, QtGui.QApplication.UnicodeUTF8))
         self.applyPkgChanges.setText(QtGui.QApplication.translate("Dialog", "Apply changes", None, QtGui.QApplication.UnicodeUTF8))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QtGui.QApplication.translate("Dialog", "Packages", None, QtGui.QApplication.UnicodeUTF8))
 

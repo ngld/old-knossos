@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="flagsTab">
       <attribute name="title">
@@ -31,6 +31,13 @@
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
         <layout class="QVBoxLayout" name="pkgsLayout"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="dlSizeLabel">
+         <property name="text">
+          <string>Download size: {DL_SIZE}</string>
+         </property>
+        </widget>
        </item>
        <item>
         <spacer name="verticalSpacer">

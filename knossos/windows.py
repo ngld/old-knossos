@@ -65,9 +65,11 @@ class Window(object):
     win = None
     closed = True
     _is_window = True
+    _tpl_cache = None
 
     def __init__(self, window=True):
         self._is_window = window
+        self._tpl_cache = {}
 
     def _create_win(self, ui_class, qt_widget=util.QDialog):
         if not self._is_window:
@@ -104,7 +106,12 @@ class Window(object):
             _open_wins.remove(self)
 
     def label_tpl(self, label, **vars):
-        text = label.text()
+        name = label.objectName()
+        if name in self._tpl_cache:
+            text = self._tpl_cache[name]
+        else:
+            text = self._tpl_cache[name] = label.text()
+
         for name, value in vars.items():
             text = text.replace('{' + name + '}', value)
 
@@ -1082,9 +1089,6 @@ class ModInstallWindow(Window):
         self.close()
 
     def update_deps(self):
-        if self._dep_tpl is None:
-            self._dep_tpl = self.win.depsLabel.text()
-
         pkgs = self.get_selected_pkgs()
         all_pkgs = center.settings['mods'].process_pkg_selection(pkgs)
         deps = set(all_pkgs) - set(pkgs)
@@ -1092,13 +1096,14 @@ class ModInstallWindow(Window):
         dl_size = 0
 
         for pkg in all_pkgs:
-            for item in pkg.files.values():
-                dl_size += item.get('filesize', 0)
+            if not center.installed.is_installed(pkg):
+                for item in pkg.files.values():
+                    dl_size += item.get('filesize', 0)
 
         if len(names) == 0:
             self.win.depsLabel.setText('')
         else:
-            self.win.depsLabel.setText(self._dep_tpl.replace('{DEPS}', util.human_list(names)))
+            self.label_tpl(self.win.depsLabel, DEPS=util.human_list(names))
 
         self.label_tpl(self.win.dlSizeLabel, DL_SIZE=util.format_bytes(dl_size))
 
@@ -1124,19 +1129,24 @@ class ModSettingsWindow(Window):
             p_check = QtGui.QCheckBox(pkg.name)
             installed = False
 
-            if pkg.status != 'optional' or center.installed.is_installed(pkg):
+            if pkg.status == 'required' or center.installed.is_installed(pkg):
                 p_check.setCheckState(QtCore.Qt.Checked)
                 installed = True
 
-            if pkg.status == 'required':
-                p_check.setDisabled(True)
+                if pkg.status == 'required':
+                    p_check.setDisabled(True)
+            else:
+                p_check.setCheckState(QtCore.Qt.Unchecked)
 
+            p_check.stateChanged.connect(self.update_dlsize)
             self.win.pkgsLayout.addWidget(p_check)
             self._pkg_checks.append([p_check, installed, pkg])
 
         self.win.applyPkgChanges.clicked.connect(self.apply_pkg_selection)
 
         self._flags.read_flags()
+        self.update_dlsize()
+        self.show_flags_tab()
         self.open()
 
     def show_flags_tab(self):
@@ -1145,7 +1155,7 @@ class ModSettingsWindow(Window):
     def show_pkg_tab(self):
         self.win.tabWidget.setCurrentIndex(1)
 
-    def apply_pkg_selection(self):
+    def get_selected_pkgs(self):
         install = []
         remove = []
 
@@ -1160,12 +1170,29 @@ class ModSettingsWindow(Window):
                 else:
                     remove.append(pkg)
 
+        install = center.settings['mods'].process_pkg_selection(install)
+        remove = list(set(remove) - set(install))
+
+        return install, remove
+
+    def update_dlsize(self):
+        install, remove = self.get_selected_pkgs()
+        all_pkgs = center.settings['mods'].process_pkg_selection(install)
+        dl_size = 0
+
+        for pkg in all_pkgs:
+            if not center.installed.is_installed(pkg):
+                for item in pkg.files.values():
+                    dl_size += item.get('filesize', 0)
+
+        self.label_tpl(self.win.dlSizeLabel, DL_SIZE=util.format_bytes(dl_size))
+
+    def apply_pkg_selection(self):
+        install, remove = self.get_selected_pkgs()
+
         if len(remove) == 0 and len(install) == 0:
             # Nothing to do...
             return
-
-        install = center.settings['mods'].process_pkg_selection(install)
-        remove = list(set(remove) - set(install))
 
         msg = ''
         if len(remove) > 0:
