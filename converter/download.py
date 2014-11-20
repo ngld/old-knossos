@@ -212,7 +212,7 @@ class SolveMedia(CaptchaSolver):
             logging.error('Failed to submit challenge!')
             return None
 
-        info = re.search(r'URL=(http[^"]+)')
+        info = re.search(r'URL=(http[^"]+)', data)
         if not info:
             return None
 
@@ -242,12 +242,14 @@ class ReCaptcha(CaptchaSolver):
     def reload(self):
         data = util.get('http://www.google.com/recaptcha/api/reload?c=' + self.challenge + '&k=' + self.id_ + '&reason=r&type=image&lang=en', random_ua=True)
         if not data:
+            logging.error('Failed to reload ReCaptcha!')
             return False
 
-        challenge = re.search(r'Recaptcha\.finish\_reload\(\'(.*?)\', \'image\'')
+        challenge = re.search(r'Recaptcha\.finish\_reload\(\'(.*?)\', \'image\'', data)
         if not challenge:
             raise Exception('Failed to reload captcha!')
 
+        self.challenge = challenge.group(1)
         self.captcha_address = self.server + 'image?c=' + self.challenge
 
     def ask_for_code(self, link):
@@ -279,7 +281,7 @@ class ReCaptcha(CaptchaSolver):
             self.tries += 1
             self.data = util.post(link, data, random_ua=True)
 
-            info = re.search(r'challenge\?k=(.+?)"')
+            info = re.search(r'challenge\?k=(.+?)"', self.data)
             if not info:
                 # No ID found \o/
                 break
