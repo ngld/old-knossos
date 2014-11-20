@@ -194,6 +194,8 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return mod
 
+        if pkgs is None:
+            pkgs = []
         windows.ModInstallWindow(mod, pkgs)
 
     @QtCore.Slot(str, result=int)
@@ -247,7 +249,17 @@ class WebBridge(QtCore.QObject):
             if mod in (-1, -2):
                 return mod
 
-            windows.FlagsWindow(center.main_win.win, mod)
+            windows.ModSettingsWindow(mod)
+
+    @QtCore.Slot(str, result=int)
+    @QtCore.Slot(str, str, result=int)
+    def showPackageList(self, mid=None, spec=None):
+        mod = self._get_mod(mid, spec)
+        if mod in (-1, -2):
+            return mod
+
+        win = windows.ModSettingsWindow(mod)
+        win.show_pkg_tab()
 
     @QtCore.Slot(str, str, result=int)
     def vercmp(self, a, b):

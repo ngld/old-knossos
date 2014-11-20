@@ -1,10 +1,4 @@
 (function () {
-    function force_redraw(el) {
-      var t = el.ownerDocument.createTextNode(' ');
-      el.appendChild(t);
-      setTimeout(function() { el.removeChild(t); }, 0);
-    }
-
     function render_row(mvs, type) {
         var row = $('<div class="mod">');
         var mod;
@@ -44,7 +38,7 @@
             });
         } else if(type == 'downloading') {
             row.html($('#tpl-dl-mod').html());
-            row.find('progress').attr('id', 'mod-prg-' + mod.id);
+            row.find('.progress-bar').attr('id', 'mod-prg-' + mod.id);
 
             row.find('.noop-btn').click(function (e) {
                 e.preventDefault();
@@ -92,12 +86,15 @@
         var prg_bar = $('#mod-prg-' + id);
         if(prg_bar.length == 0) return;
 
-        var label = prg_bar.parent().find('.prg-label');
-        prg_bar.attr('value', percent * 100);
+        var label = prg_bar.parents('.mod').find('.prg-label');
+        prg_bar.css('width', (percent * 100) + '%');
+
+        if(percent == 1) {
+            prg_bar.removeClass('active');
+            prg_bar.removeClass('progress-bar-striped');
+        }
         
-        if(text == '') {
-            label.html('<div style="visibility:hidden;">' + Math.random() + '</div>');
-        } else {
+        if(text != '') {
             label.text(text);
         }
     }

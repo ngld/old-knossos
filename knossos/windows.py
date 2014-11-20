@@ -40,7 +40,8 @@ from .ui.settings_network import Ui_Form as Ui_Settings_Network
 from .ui.settings_help import Ui_Form as Ui_Settings_Help
 from .ui.flags import Ui_Dialog as Ui_Flags
 from .ui.install import Ui_Dialog as Ui_Install
-from .tasks import run_task, GOGExtractTask, InstallTask, WindowsUpdateTask, CheckTask
+from .ui.mod_settings import Ui_Dialog as Ui_Mod_Settings
+from .tasks import run_task, GOGExtractTask, InstallTask, UninstallTask, WindowsUpdateTask, CheckTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -873,7 +874,7 @@ class FlagsWindow(Window):
     _selected = None
     _mod = None
     
-    def __init__(self, parent=None, mod=None, window=True):
+    def __init__(self, mod=None, window=True):
         super(FlagsWindow, self).__init__(window)
         
         self._selected = []
@@ -1046,10 +1047,8 @@ class ModInstallWindow(Window):
 
         self._mod = mod
         self.win = util.init_ui(Ui_Install(), util.QDialog(center.app.activeWindow()))
-        dl_size = 0
 
         self.label_tpl(self.win.titleLabel, MOD=mod.title)
-        self.label_tpl(self.win.dlSizeLabel, DL_SIZE=util.format_bytes(dl_size))
 
         self._pkg_checks = []
         for pkg in mod.packages:
@@ -1090,11 +1089,101 @@ class ModInstallWindow(Window):
         all_pkgs = center.settings['mods'].process_pkg_selection(pkgs)
         deps = set(all_pkgs) - set(pkgs)
         names = [pkg.name for pkg in deps if not center.installed.is_installed(pkg)]
+        dl_size = 0
+
+        for pkg in all_pkgs:
+            for item in pkg.files.values():
+                dl_size += item.get('filesize', 0)
 
         if len(names) == 0:
             self.win.depsLabel.setText('')
         else:
             self.win.depsLabel.setText(self._dep_tpl.replace('{DEPS}', util.human_list(names)))
+
+        self.label_tpl(self.win.dlSizeLabel, DL_SIZE=util.format_bytes(dl_size))
+
+
+class ModSettingsWindow(Window):
+    _mod = None
+    _pkg_checks = None
+    _flags = None
+
+    def __init__(self, mod, window=True):
+        super(ModSettingsWindow, self).__init__(window)
+
+        self._mod = mod
+        self.win = self._create_win(Ui_Mod_Settings, util.QDialog)
+
+        lay = QtGui.QVBoxLayout(self.win.flagsTab)
+        self._flags = FlagsWindow(mod, False)
+        lay.addWidget(self._flags.win)
+
+        self._pkg_checks = []
+        rmod = center.settings['mods'].query(mod)
+        for pkg in rmod.packages:
+            p_check = QtGui.QCheckBox(pkg.name)
+            installed = False
+
+            if pkg.status != 'optional' or center.installed.is_installed(pkg):
+                p_check.setCheckState(QtCore.Qt.Checked)
+                installed = True
+
+            if pkg.status == 'required':
+                p_check.setDisabled(True)
+
+            self.win.pkgsLayout.addWidget(p_check)
+            self._pkg_checks.append([p_check, installed, pkg])
+
+        self.win.applyPkgChanges.clicked.connect(self.apply_pkg_selection)
+
+        self._flags.read_flags()
+        self.open()
+
+    def show_flags_tab(self):
+        self.win.tabWidget.setCurrentIndex(0)
+
+    def show_pkg_tab(self):
+        self.win.tabWidget.setCurrentIndex(1)
+
+    def apply_pkg_selection(self):
+        install = []
+        remove = []
+
+        for check, is_installed, pkg in self._pkg_checks:
+            if pkg.status == 'required':
+                continue
+
+            selected = check.checkState() == QtCore.Qt.Checked
+            if selected != is_installed:
+                if selected:
+                    install.append(pkg)
+                else:
+                    remove.append(pkg)
+
+        if len(remove) == 0 and len(install) == 0:
+            # Nothing to do...
+            return
+
+        install = center.settings['mods'].process_pkg_selection(install)
+        remove = list(set(remove) - set(install))
+
+        msg = ''
+        if len(remove) > 0:
+            msg += "I'm going to remove " + util.human_list([p.name for p in remove]) + ".\n"
+
+        if len(install) > 0:
+            msg += "I'm going to install " + util.human_list([p.name for p in install if not center.installed.is_installed(p)]) + ".\n"
+
+        box = QtGui.QMessageBox()
+        box.setIcon(QtGui.QMessageBox.Question)
+        box.setText(msg)
+        box.setInformativeText('Continue?')
+        box.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+        box.setDefaultButton(QtGui.QMessageBox.Yes)
+
+        if box.exec_() == QtGui.QMessageBox.Yes:
+            run_task(UninstallTask(remove))
+            run_task(InstallTask(install))
 
 
 from .legacy_windows import MainWindow, NebulaWindow

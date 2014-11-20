@@ -385,6 +385,8 @@ def download(link, dest, headers=None, random_ua=False):
     with DL_POOL:
         if _DL_CANCEL.is_set():
             return False
+
+        logging.info('Downloading "%s"...', link)
         
         result = HTTP_SESSION.get(link, headers=headers, stream=True)
         if result.status_code == 304:
@@ -753,3 +755,6 @@ class Spec(semantic_version.Spec):
 
 DL_POOL = ResizableSemaphore(10)
 HTTP_SESSION.headers['User-Agent'] = get_user_agent()
+
+if not __debug__:
+    logging.getLogger('requests.packages.urllib3.connectionpool').propagate = False
