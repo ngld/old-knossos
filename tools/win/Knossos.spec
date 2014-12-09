@@ -4,6 +4,7 @@ import os.path
 
 onefile = False
 him = []
+debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 
 # Make sure all paths that end up in the compiled executable are relative.
 pd = config['PYZ_dependencies']
@@ -71,7 +72,7 @@ if onefile:
               debug=False,
               strip=None,
               upx=True,
-              console=False)
+              console=debug)
 else:
     exe = EXE(pyz,
               a.scripts,
@@ -81,7 +82,7 @@ else:
               debug=False,
               strip=None,
               upx=True,
-              console=True)
+              console=debug)
     
     coll = COLLECT(exe,
                    a.binaries,

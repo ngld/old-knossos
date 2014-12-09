@@ -16,10 +16,7 @@ import sys
 import os
 import logging
 import json
-import threading
 import stat
-import subprocess
-import time
 import shlex
 import glob
 import pickle
@@ -31,74 +28,12 @@ from . import center, util, repo, integration
 from .qt import QtGui
 from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, InstallTask, UninstallTask
 from .ui.select_list import Ui_Dialog as Ui_SelectList
-from .windows import NebulaWindow, MainWindow, HellWindow, SettingsWindow
+from .windows import HellWindow, SettingsWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
+from .runner import run_fs2, run_fs2_silent
 
 ipc_block = None
-fs2_watcher = None
-
-
-class Fs2Watcher(threading.Thread):
-    _params = None
-    _key_layout = None
-    
-    def __init__(self, params=None):
-        super(Fs2Watcher, self).__init__()
-        
-        if params is None:
-            self._params = []
-        else:
-            self._params = params
-        
-        self.daemon = True
-        self.start()
-    
-    def run(self):
-        global settings, fs2_watcher
-
-        if center.settings['keyboard_layout'] != 'default':
-            self._params.append('-keyboard_layout')
-            self._params.append(center.settings['keyboard_layout'])
-        
-        fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
-        mode = os.stat(fs2_bin).st_mode
-        if mode & stat.S_IXUSR != stat.S_IXUSR:
-            # Make it executable.
-            os.chmod(fs2_bin, mode | stat.S_IXUSR)
-
-        if center.settings['keyboard_setxkbmap']:
-            self.set_us_layout()
-        
-        logging.debug('Launching FS2: %s', [fs2_bin] + self._params)
-        p = subprocess.Popen([fs2_bin] + self._params, cwd=center.settings['fs2_path'])
-
-        time.sleep(0.3)
-        if p.poll() is not None:
-            self.revert_layout()
-            center.signals.fs2_failed.emit(p.returncode)
-            self.failed_msg(p)
-            return
-        
-        center.signals.fs2_launched.emit()
-        p.wait()
-        self.revert_layout()
-        center.signals.fs2_quit.emit()
-    
-    @util.run_in_qt
-    def failed_msg(self, p):
-        msg = 'Starting FS2 Open (%s) failed! (return code: %d)' % (os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), p.returncode)
-        QtGui.QMessageBox.critical(center.app.activeWindow(), 'Failed', msg)
-
-    def set_us_layout(self):
-        key_layout = util.check_output(['setxkbmap', '-query'])
-        self._key_layout = key_layout.decode('utf8').splitlines()[2].split(':')[1].strip()
-
-        util.call(['setxkbmap', '-layout', 'us'])
-
-    def revert_layout(self):
-        if self._key_layout is not None:
-            util.call(['setxkbmap', '-layout', self._key_layout])
 
 
 def save_settings():
@@ -111,6 +46,8 @@ def save_settings():
     for mod in center.settings['cmdlines'].copy():
         if mod != '#default' and mod not in center.installed.mods:
             del center.settings['cmdlines'][mod]
+
+    center.settings['pins'] = center.installed.pins
     
     with open(os.path.join(center.settings_path, 'settings.pick'), 'wb') as stream:
         pickle.dump(center.settings, stream, 2)
@@ -130,16 +67,11 @@ def select_fs2_path(interact=True):
     if fs2_path is not None and os.path.isdir(fs2_path):
         center.settings['fs2_path'] = os.path.abspath(fs2_path)
 
-        if sys.platform.startswith('win'):
-            pattern = 'fs2_open_*.exe'
-        else:
-            pattern = 'fs2_open_*'
-
-        bins = glob.glob(os.path.join(fs2_path, pattern))
+        bins = get_executables()
         if len(bins) == 1:
             # Found only one binary, select it by default.
 
-            center.settings['fs2_bin'] = os.path.basename(bins[0])
+            center.settings['fs2_bin'] = bins[0]
         elif len(bins) > 1:
             # Let the user choose.
 
@@ -148,10 +80,6 @@ def select_fs2_path(interact=True):
             bins.sort()
 
             for i, path in enumerate(bins):
-                path = os.path.basename(path)
-                if path.endswith(('.map', '.pdb')):
-                    continue
-
                 select_win.listWidget.addItem(path)
 
                 if path.endswith('.exe'):
@@ -193,13 +121,15 @@ def get_fso_flags():
         return None
 
     flags_path = os.path.join(center.settings['fs2_path'], 'flags.lch')
-    mode = os.stat(fs2_bin).st_mode
+    # mode = os.stat(fs2_bin).st_mode
     
-    if mode & stat.S_IXUSR != stat.S_IXUSR:
-        # Make it executable.
-        os.chmod(fs2_bin, mode | stat.S_IXUSR)
+    # if mode & stat.S_IXUSR != stat.S_IXUSR:
+    #     # Make it executable.
+    #     os.chmod(fs2_bin, mode | stat.S_IXUSR)
     
-    rc = util.call([fs2_bin, '-get_flags'], cwd=center.settings['fs2_path'])
+    # rc = util.call([fs2_bin, '-get_flags'], cwd=center.settings['fs2_path'])
+    rc = run_fs2_silent(['-get_flags'])
+    
     flags = None
 
     if rc != 1 and rc != 0:
@@ -217,14 +147,30 @@ def get_fso_flags():
     return flags
 
 
-def run_fs2(params=None):
-    global fs2_watcher
-    
-    if fs2_watcher is None or not fs2_watcher.is_alive():
-        fs2_watcher = Fs2Watcher(params)
-        return True
-    else:
-        return False
+def get_executables():
+    exes = []
+    for mid, mvs in center.installed.mods.items():
+        for mod in mvs:
+            for pkg in mod.packages:
+                exes.extend([os.path.join(mod.folder, exe) for exe in pkg.executables])
+
+    fs2_path = center.settings['fs2_path']
+    if fs2_path is not None and os.path.isdir(fs2_path):
+        fs2_path = os.path.abspath(fs2_path)
+        if sys.platform == 'darwin':
+            for app in glob.glob(os.path.join(fs2_path, '*.app')):
+                name = os.path.basename(app)
+                exes.append(os.path.join(name, 'Contents', 'MacOS', name[:-4]))
+        else:
+            bins = glob.glob(os.path.join(fs2_path, 'fs2_open_*'))
+            
+            for path in bins:
+                path = os.path.basename(path)
+
+                if not path.endswith(('.map', '.pdb')):
+                    exes.append(path)
+
+    return exes
 
 
 def fetch_list():
@@ -254,7 +200,7 @@ def run_mod(mod):
         mod = repo.Mod()
     
     modpath = util.ipath(os.path.join(center.settings['fs2_path'], mod.folder))
-    ini = None
+    #ini = None
     mods = []
     
     def check_install():
@@ -276,7 +222,7 @@ def run_mod(mod):
         inst_mod = None
     
     if inst_mod is None:
-        deps = center.settings['mods'].process_pkg_selection(mod.resolve_deps())
+        deps = center.mods.process_pkg_selection(mod.resolve_deps())
         titles = [pkg.name for pkg in deps if not center.installed.is_installed(pkg)]
 
         msg = QtGui.QMessageBox()
@@ -293,76 +239,12 @@ def run_mod(mod):
         
         return
 
-    # Look for the mod.ini
-    for item in mod.get_files():
-        if item['filename'].lower() == 'mod.ini':
-            ini = item['filename']
-            break
+    mods = [mod.folder]
+    for dep in mod.resolve_deps():
+        folder = dep.get_mod().folder
+        if folder not in mods:
+            mods.append(folder)
 
-    if ini is not None and os.path.isfile(os.path.join(modpath, ini)):
-        # mod.ini was found, now read its "[multimod]" section.
-        primlist = []
-        seclist = []
-        
-        try:
-            with open(os.path.join(modpath, ini), 'r') as stream:
-                for line in stream:
-                    if line.strip() == '[multimod]':
-                        break
-                
-                for line in stream:
-                    line = [p.strip(' ;\n\r') for p in line.split('=')]
-                    if line[0] == 'primarylist':
-                        primlist = line[1].replace(',,', ',').strip(',').split(',')
-                    elif line[0] in ('secondrylist', 'secondarylist'):
-                        seclist = line[1].replace(',,', ',').strip(',').split(',')
-        except:
-            logging.exception('Failed to read %s!', os.path.join(modpath, ini))
-        
-        if ini == 'mod.ini':
-            ini = os.path.basename(modpath) + '/' + ini
-
-        try:
-            local_deps = mod.resolve_deps()
-            rem_deps = [center.installed.query(pkg) for pkg in local_deps]
-        except repo.ModNotFound:
-            logging.exception('Failed to resolve the dependencies of mod "%s"! I won\'t be able to generate a correct -mod list.', mod.title)
-        else:
-            dir_map = {}
-            local_mods = {}
-            rem_mods = {}
-
-            for pkg in local_deps:
-                mod = pkg.get_mod()
-                local_mods[mod.mid] = mod.folder
-
-            for pkg in rem_deps:
-                mod = pkg.get_mod()
-                rem_mods[mod.mid] = mod.folder
-
-            for mid, folder in local_mods.items():
-                dir_map[rem_mods[mid]] = folder
-
-            for i, item in enumerate(primlist):
-                if item in dir_map:
-                    primlist[i] = dir_map[item]
-
-            for i, item in enumerate(seclist):
-                if item in dir_map:
-                    seclist[i] = dir_map[item]
-
-            del local_mods, rem_mods, dir_map
-
-        # Build the whole list for -mod
-        mods = primlist + [os.path.dirname(ini)] + seclist
-    else:
-        # No mod.ini found, look for the first subdirectory then.
-        if mod.folder in ('', '.'):
-            # Well, this is no ordinary mod. No -mod flag for you!
-            pass
-        else:
-            mods = [mod.folder]
-    
     m = []
     for item in mods:
         if item.strip() != '':
@@ -440,12 +322,12 @@ def is_fso_installed():
 
 
 def get_mod(mid, version=None):
-    if center.settings['mods'] is None:
+    if center.mods is None:
         QtGui.QMessageBox.critical(None, 'Knossos', 'Hmm... I never got a mod list. Get a coder!')
         return None
     else:
         try:
-            return center.settings['mods'].query(mid, version)
+            return center.mods.query(mid, version)
         except ModNotFound:
             QtGui.QMessageBox.critical(None, 'Knossos', 'Mod "%s" could not be found!' % mid)
             return None
@@ -460,7 +342,7 @@ def install_mods(mods):
 
 
 def install_pkgs(pkgs, name=None, cb=None):
-    repo = center.settings['mods']
+    repo = center.mods
 
     try:
         pkgs = [repo.query(pkg) for pkg in pkgs]
@@ -469,7 +351,7 @@ def install_pkgs(pkgs, name=None, cb=None):
         QtGui.QMessageBox.critical(center.app.activateWindow(), 'Knossos', 'Failed to find one of the packages! I can\'t accept this install request.')
         return
 
-    deps = center.settings['mods'].process_pkg_selection(pkgs)
+    deps = center.mods.process_pkg_selection(pkgs)
     titles = [pkg.name + ' (%s)' % pkg.get_mod().version for pkg in deps if not center.installed.is_installed(pkg)]
 
     if name is None:
@@ -521,10 +403,8 @@ def switch_ui_mode(nmode):
     old_win = center.main_win
     if nmode == 'hell':
         center.main_win = HellWindow()
-    elif nmode == 'nebula':
-        center.main_win = NebulaWindow()
     else:
-        center.main_win = MainWindow()
+        logging.error('Unknown UI mode "%s"! (Maybe you tried to use a legacy UI...)' % nmode)
 
     center.main_win.open()
     old_win.close()
@@ -625,4 +505,7 @@ def init_self():
         run_task(CheckUpdateTask())
 
     if center.settings['fs2_path'] is not None:
-        run_task(CheckTask())
+        if center.mods.empty():
+            run_task(FetchTask())
+        else:
+            run_task(CheckTask())

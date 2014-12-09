@@ -67,7 +67,7 @@ generate_version() {
     local my_vnum="$(echo "$my_version" | cut -d '-' -f 1)"
 
     if [ "$last_vnum" = "$my_vnum" ]; then
-        build_num="$(echo "$last_version" | cut -d '-' -f 2 | cut -d . -f 2 | cut -d + -f 1)"
+        build_num="$(echo "$last_version" | cut -d '-' -f 2 | cut -d . -f 2 | cut -d '+' -f 1)"
         build_num=$(( $build_num + 1 ))
     fi
 
@@ -87,7 +87,92 @@ generate_version() {
 ensure_pyinstaller() {
     if [ ! -d ../common/pyinstaller ]; then
         msg2 "Downloading PyInstaller..."
-        git clone "https://github.com/pyinstaller/pyinstaller" ../common/pyinstaller
+        git clone -b develop "https://github.com/pyinstaller/pyinstaller" ../common/pyinstaller
+    fi
+}
+
+_cpr_add_files() {
+    while read path; do
+        echo "<file>$path</file>"
+    done >> "$QRC_PATH"
+}
+
+compile_resources() {
+    echo "Collecting resources..."
+
+    echo '<!DOCTYPE RCC><RCC version="1.0">' > "$QRC_PATH"
+    echo '<qresource>' >> "$QRC_PATH"
+
+    echo '<file alias="hlp.png">knossos/data/hlp.png</file>' >> "$QRC_PATH"
+    find ui -name '*.png' -or -name '*.jpg' -or -name '*.css' | _cpr_add_files
+    find html -type f | _cpr_add_files
+
+    echo '</qresource>' >> "$QRC_PATH"
+    echo '</RCC>' >> "$QRC_PATH"
+
+    echo "Packing resources..."
+    rcc -binary "$QRC_PATH" -o "$RCC_PATH"
+}
+
+init_build_script() {
+    gen_package=y
+    use_buildenv=n
+    show_version=n
+
+    while [ ! "$1" = "" ]; do
+        case "$1" in
+            -h|--help)
+                echo "Usage: $(basename "$0") [build variant]"
+                echo
+                echo "Options:"
+                echo "  --show-version      Display the version used in the next build and exit."
+                echo "  --version VERSION   Overrides the auto-generated version of the built package."
+                echo "  --compile,-c        Only generate the Knossos exectuable and no installer/updater/package."
+                echo "  --enable-debug,-d   Build a debug version."
+
+                if [ "$PLATFORM" = "mac" ]; then
+                    echo "  --use-buildenv      Install all dependencies in ./buildenv to create a clean build environment."
+                fi
+
+                exit 0
+            ;;
+            --show-version)
+                show_version=y
+            ;;
+            --version)
+                FORCE_VERSION="$2"
+                shift
+            ;;
+            -c|--compile)
+                gen_package=n
+            ;;
+            -d|--enable-debug)
+                export KN_BUILD_DEBUG=yes
+            ;;
+            --use-buildenv)
+                use_buildenv=y
+            ;;
+            # NOTE: Maybe I should switch to a real option parser?
+            -cd|-dc)
+                gen_package=n
+                export KN_BUILD_DEBUG=yes
+            ;;
+            *)
+                if [ "$VARIANT" = "" ]; then
+                    VARIANT="$1"
+                else
+                    error "You passed an invalid option \"$1\". I don't know what to do with that..."
+                    exit 1
+                fi
+            ;;
+        esac
+        shift
+    done
+
+    check_variant
+    if [ "$show_version" = "y" ]; then
+        generate_version
+        exit 0
     fi
 }
 
@@ -113,53 +198,5 @@ UPDATE_SERVER="https://dev.tproxy.de/knossos"
 VARIANT=""
 FORCE_VERSION=""
 
-gen_package=y
-use_buildenv=n
-show_version=n
-
-while [ ! "$1" = "" ]; do
-    case "$1" in
-        -h|--help)
-            echo "Usage: $(basename "$0") [build variant]"
-            echo
-            echo "Options:"
-            echo "  --show-version      Display the version used in the next build and exit."
-            echo "  --version VERSION   Overrides the auto-generated version of the built package."
-            echo "  --compile,-c        Only build the files in dist/."
-
-            if [ "$PLATFORM" = "mac" ]; then
-                echo "  --use-buildenv      Install all dependencies in ./buildenv to create a clean build environment."
-            fi
-
-            exit 0
-        ;;
-        --show-version)
-            show_version=y
-        ;;
-        --version)
-            FORCE_VERSION="$2"
-            shift
-        ;;
-        -c|--compile)
-            gen_package=n
-        ;;
-        --use-buildenv)
-            use_buildenv=y
-        ;;
-        *)
-            if [ "$VARIANT" = "" ]; then
-                VARIANT="$1"
-            else
-                error "You passed an invalid option \"$1\". I don't know what to do with that..."
-                exit 1
-            fi
-        ;;
-    esac
-    shift
-done
-
-check_variant
-if [ "$show_version" = "y" ]; then
-    generate_version
-    exit 0
-fi
+QRC_PATH="resources.qrc"
+RCC_PATH="knossos/data/resources.rcc"

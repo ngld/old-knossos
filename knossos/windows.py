@@ -41,6 +41,7 @@ from .ui.settings_help import Ui_Form as Ui_Settings_Help
 from .ui.flags import Ui_Dialog as Ui_Flags
 from .ui.install import Ui_Dialog as Ui_Install
 from .ui.mod_settings import Ui_Dialog as Ui_Mod_Settings
+from .ui.mod_versions import Ui_Dialog as Ui_Mod_Versions
 from .tasks import run_task, GOGExtractTask, InstallTask, UninstallTask, WindowsUpdateTask, CheckTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
@@ -159,7 +160,7 @@ class HellWindow(Window):
             if self.win.webView.url().toString() == 'qrc:///html/welcome.html':
                 self.show_mod_list()
 
-            if center.settings['mods'] is None:
+            if center.mods is None:
                 self.update_repo_list()
             else:
                 run_task(CheckTask())
@@ -200,7 +201,7 @@ class HellWindow(Window):
         elif mode == 1:
             mods = {}
             mode_key = 'available'
-            for mid, mvs in center.settings['mods'].mods.items():
+            for mid, mvs in center.mods.mods.items():
                 if mid not in center.installed.mods:
                     mods[mid] = mvs
         elif mode == 2:
@@ -452,21 +453,17 @@ class SettingsWindow(Window):
         tab.fs2PathLabel.setText(fs2_path)
         tab.build.clear()
 
-        if fs2_path is not None and os.path.isdir(fs2_path):
-            fs2_path = os.path.abspath(fs2_path)
-            bins = glob.glob(os.path.join(fs2_path, 'fs2_open_*'))
+        if fs2_path is not None:
+            bins = api.get_executables()
             
             idx = 0
             for path in bins:
-                path = os.path.basename(path)
+                tab.build.addItem(path)
+                
+                if path == fs2_bin:
+                    tab.build.setCurrentIndex(idx)
 
-                if not path.endswith(('.map', '.pdb')):
-                    tab.build.addItem(path)
-                    
-                    if path == fs2_bin:
-                        tab.build.setCurrentIndex(idx)
-
-                    idx += 1
+                idx += 1
             
             if len(bins) == 1:
                 # Found only one binary, select it by default.
@@ -1082,6 +1079,7 @@ class ModInstallWindow(Window):
             if check.checkState() == QtCore.Qt.Checked:
                 pkgs.append(self._mod.packages[i])
 
+        pkgs = center.mods.process_pkg_selection(pkgs)
         return pkgs
 
     def install(self):
@@ -1090,7 +1088,7 @@ class ModInstallWindow(Window):
 
     def update_deps(self):
         pkgs = self.get_selected_pkgs()
-        all_pkgs = center.settings['mods'].process_pkg_selection(pkgs)
+        all_pkgs = center.mods.process_pkg_selection(pkgs)
         deps = set(all_pkgs) - set(pkgs)
         names = [pkg.name for pkg in deps if not center.installed.is_installed(pkg)]
         dl_size = 0
@@ -1111,12 +1109,14 @@ class ModInstallWindow(Window):
 class ModSettingsWindow(Window):
     _mod = None
     _pkg_checks = None
+    _mod_versions = None
     _flags = None
 
     def __init__(self, mod, window=True):
         super(ModSettingsWindow, self).__init__(window)
 
         self._mod = mod
+        self._mod_versions = []
         self.win = self._create_win(Ui_Mod_Settings, util.QDialog)
 
         lay = QtGui.QVBoxLayout(self.win.flagsTab)
@@ -1124,7 +1124,7 @@ class ModSettingsWindow(Window):
         lay.addWidget(self._flags.win)
 
         self._pkg_checks = []
-        rmod = center.settings['mods'].query(mod)
+        rmod = center.mods.query(mod)
         for pkg in rmod.packages:
             p_check = QtGui.QCheckBox(pkg.name)
             installed = False
@@ -1147,6 +1147,7 @@ class ModSettingsWindow(Window):
         self._flags.read_flags()
         self.update_dlsize()
         self.show_flags_tab()
+        self.show_versions()
         self.open()
 
     def show_flags_tab(self):
@@ -1170,14 +1171,14 @@ class ModSettingsWindow(Window):
                 else:
                     remove.append(pkg)
 
-        install = center.settings['mods'].process_pkg_selection(install)
+        install = center.mods.process_pkg_selection(install)
         remove = list(set(remove) - set(install))
 
         return install, remove
 
     def update_dlsize(self):
         install, remove = self.get_selected_pkgs()
-        all_pkgs = center.settings['mods'].process_pkg_selection(install)
+        all_pkgs = center.mods.process_pkg_selection(install)
         dl_size = 0
 
         for pkg in all_pkgs:
@@ -1212,5 +1213,102 @@ class ModSettingsWindow(Window):
             run_task(UninstallTask(remove))
             run_task(InstallTask(install))
 
+    def show_versions(self):
+        mods = set()
+        for dep in self._mod.resolve_deps():
+            mods.add(dep.get_mod())
 
-from .legacy_windows import MainWindow, NebulaWindow
+        if self._mod not in mods:
+            mods.add(self._mod)
+
+        layout = QtGui.QGridLayout()
+        for i, mod in enumerate(mods):
+            sel = QtGui.QComboBox()
+            for mv in center.installed.query_all(mod.mid):
+                sel.addItem(str(mv.version), mv.version)
+
+            editBut = QtGui.QPushButton('Edit')
+
+            layout.addWidget(QtGui.QLabel(mod.title + ': '), i, 0)
+            layout.addWidget(sel, i, 1)
+            layout.addWidget(editBut, i, 2)
+
+            if mod == self._mod:
+                sel.currentIndexChanged.connect(functools.partial(self.update_versions, mod, sel))
+                editBut.clicked.connect(functools.partial(self.open_ver_edit, mod))
+            else:
+                # TODO: Finish code for pinning dependencies.
+                sel.setEnabled(False)
+                editBut.setEnabled(False)
+
+        layout.addItem(QtGui.QSpacerItem(0, 0, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
+        self.win.versionsTab.setLayout(layout)
+
+    def update_versions(self, mod, sel, idx):
+        version = sel.itemData(idx)
+        if mod == self._mod:
+            center.installed.pin(self._mod, version)
+            api.save_settings()
+        else:
+            raise NotImplemented
+
+    def open_ver_edit(self, mod):
+        ModVersionsWindow(mod)
+
+
+class ModVersionsWindow(Window):
+    _mod = None
+    _versions = None
+
+    def __init__(self, mod, window=True):
+        super(ModVersionsWindow, self).__init__(window)
+
+        self._mod = mod
+        self._versions = []
+        self.win = self._create_win(Ui_Mod_Versions, util.QDialog)
+
+        self.label_tpl(self.win.label, MOD=mod.title)
+
+        versions = center.mods.query_all(mod.mid)
+        inst_versions = [m.version for m in center.installed.query_all(mod.mid)]
+
+        for m in versions:
+            item = QtGui.QListWidgetItem(str(m.version), self.win.versionList)
+            item.setData(QtCore.Qt.UserRole + 1, m)
+
+            if m.version in inst_versions:
+                item.setCheckState(QtCore.Qt.Checked)
+                item.setData(QtCore.Qt.UserRole, True)
+            else:
+                item.setCheckState(QtCore.Qt.Unchecked)
+                item.setData(QtCore.Qt.UserRole, False)
+
+            self._versions.append(item)
+
+        self.win.applyButton.clicked.connect(self.apply_changes)
+        self.win.cancelButton.clicked.connect(self.close)
+        self.open()
+
+    def apply_changes(self):
+        install = set()
+        uninstall = set()
+
+        for item in self._versions:
+            was = item.data(QtCore.Qt.UserRole)
+            mod = item.data(QtCore.Qt.UserRole + 1)
+            checked = item.checkState() == QtCore.Qt.Checked
+
+            if was and not checked:
+                uninstall |= set(mod.packages)
+            elif not was and checked:
+                install |= set(mod.resolve_deps())
+
+        install = center.mods.process_pkg_selection(install)
+        
+        if len(install) > 0:
+            InstallTask(install, self._mod)
+
+        if len(uninstall) > 0:
+            UninstallTask(uninstall)
+
+        self.close()

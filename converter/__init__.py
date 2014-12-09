@@ -148,7 +148,7 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
         failed = True
         file_info = []
     else:
-        logging.info('Updating checksums...')
+        logging.info('Generating checksums...')
 
         init_app()
         task = ChecksumTask(items, dl_path, dl_mirror)

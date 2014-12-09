@@ -103,7 +103,7 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(result='QVariantList')
     def getMods(self):
-        return center.settings['mods'].get()
+        return center.mods.get()
 
     @QtCore.Slot(result='QVariantList')
     def getInstalledMods(self):
@@ -150,7 +150,7 @@ class WebBridge(QtCore.QObject):
                     return -2
 
         try:
-            return center.settings['mods'].query(mid, spec).get()
+            return center.mods.query(mid, spec).get()
         except:
             return None
 
@@ -198,7 +198,7 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str, result=int)
     @QtCore.Slot(str, str, 'QStringList', result=int)
     def install(self, mid, spec=None, pkgs=None):
-        mod = self._get_mod(mid, spec, center.settings['mods'])
+        mod = self._get_mod(mid, spec, center.mods)
         if mod in (-1, -2):
             return mod
 
@@ -307,7 +307,7 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
             if path.startswith('/logo'):
                 path = path.split('/')
                 try:
-                    mod = center.settings['mods'].query(path[2], semantic_version.Spec('==' + path[3]))
+                    mod = center.mods.query(path[2], semantic_version.Spec('==' + path[3]))
                 except:
                     try:
                         mod = center.installed.query(path[2], semantic_version.Spec('==' + path[3]))

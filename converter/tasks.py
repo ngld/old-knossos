@@ -131,9 +131,10 @@ class ChecksumTask(progress.Task):
 
                     img.append((line, info.st_size))
 
-        # Pick the biggest.
-        # TODO: Improve
-        img.sort(key=lambda i: i[1])
-        img = img[-1][0]
+        if len(img) > 0:
+            # Pick the biggest.
+            # TODO: Improve
+            img.sort(key=lambda i: i[1])
+            img = img[-1][0]
 
-        self.post(((mid, 'logo', 'logo.jpg'), util.convert_img(img, 'jpg'), {}, 0))
+            self.post(((mid, 'logo', 'logo.jpg'), util.convert_img(img, 'jpg'), {}, 0))

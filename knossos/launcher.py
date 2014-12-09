@@ -100,7 +100,7 @@ def run_knossos():
     import pickle
 
     from . import repo, progress, integration, api
-    from .windows import NebulaWindow, MainWindow, HellWindow
+    from .windows import HellWindow
 
     # Try to load our settings.
     spath = os.path.join(center.settings_path, 'settings.pick')
@@ -122,10 +122,15 @@ def run_knossos():
             settings['repos'] = defaults['repos']
             settings['s_version'] = 2
         
+        if settings['s_version'] < 3:
+            del settings['mods']
+            del settings['installed_mods']
+            settings['s_version'] = 3
+        
         del defaults
     else:
         # Most recent settings version
-        settings['s_version'] = 2
+        settings['s_version'] = 3
     
     if settings['hash_cache'] is not None:
         util.HASH_CACHE = settings['hash_cache']
@@ -133,20 +138,22 @@ def run_knossos():
     util.DL_POOL.set_capacity(settings['max_downloads'])
 
     center.app = app
-    center.installed = repo.InstalledRepo(settings.get('installed_mods', []))
+
+    center.installed = repo.InstalledRepo()
+    center.installed.pins = settings['pins']
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
+    center.mods = repo.Repo()
+    
+    mod_db = os.path.join(center.settings_path, 'mods.json')
+    if os.path.isfile(mod_db):
+        center.mods.load_json(mod_db)
 
     if not util.test_7z():
         QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
         return
 
-    if settings['ui_mode'] == 'hell':
-        center.main_win = HellWindow()
-    elif settings['ui_mode'] == 'nebula':
-        center.main_win = NebulaWindow()
-    else:
-        center.main_win = MainWindow()
+    center.main_win = HellWindow()
 
     integration.init()
     QtCore.QTimer.singleShot(1, api.init_self)

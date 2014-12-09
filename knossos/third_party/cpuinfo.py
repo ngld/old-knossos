@@ -515,7 +515,7 @@ class CPUID(object):
 			'smx' : is_bit_set(ecx, 6),
 			'est' : is_bit_set(ecx, 7),
 			'tm2' : is_bit_set(ecx, 8),
-			'ssse3' : is_bit_set(ecx, 9),
+			'sse3' : is_bit_set(ecx, 9),
 			'cid' : is_bit_set(ecx, 10),
 			#'reserved3' : is_bit_set(ecx, 11),
 			'fma' : is_bit_set(ecx, 12),

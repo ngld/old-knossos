@@ -24,6 +24,10 @@ MEDIAFIRE_CHECK = re.compile(r'^https?://(www\.)?mediafire\.com/(\?[a-z|0-9]+|do
 MEDIAFIRE_EXTRACT = re.compile(r'kNO = "(http://[^"]+)"')
 
 FSMODS_CHECK = re.compile(r'^https?://(?:www\.)(?:fsmods|freespacemods)\.net/(download\.php\?view\.|request\.php\?)([0-9]+)$')
+
+BOX_CHECK = re.compile(r'^https?://app\.box\.com/s/([a-z|0-9]+)$')
+BOX_EXTRACT = re.compile(r'itemTypedID:\s*"(f_[0-9]+)",')
+
 ASK_USER = None
 ASK_LOCK = Lock()
 
@@ -122,6 +126,31 @@ class MediaFire(object):
                 else:
                     with open(dest, 'wb') as stream:
                         return util.download(info.group(1), stream, random_ua=True)
+
+
+class Box(object):
+
+    @staticmethod
+    def supports(link):
+        return BOX_CHECK.match(link)
+
+    @staticmethod
+    def process(link, dest):
+        data = util.get(link, random_ua=True)
+        link_info = BOX_CHECK.match(link)
+        info = BOX_EXTRACT.search(data)
+
+        if not info:
+            logging.error('Failed to process the download page for "%s"!', link)
+            return False
+
+        dl_link = (
+            'https://app.box.com/index.php?rm=box_download_shared_file&shared_name=%s&file_id=%s'
+            % (link_info.group(1), info.group(1))
+        )
+
+        with open(dest, 'wb') as stream:
+            return util.download(dl_link, stream, random_ua=True)
 
 
 class CaptchaSolver(object):
@@ -289,7 +318,7 @@ class ReCaptcha(CaptchaSolver):
             self.id_ = info.group(1).replace('&amp;error=1', '')
 
 
-strategies = (FsMods, MediaFire)
+strategies = (FsMods, MediaFire, Box)
 
 
 def download(link, dest):

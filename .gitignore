@@ -4,6 +4,8 @@
 *.pyo
 build
 dist
+/knossos/ui/*
+/knossos/data/resources.rcc
 /tools/common/pyinstaller/
 /tools/win/support/*.dll
 /tools/win/support/*.exe

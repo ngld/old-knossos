@@ -59,68 +59,68 @@
        </column>
        <item>
         <property name="text">
-         <string>About Knossos</string>
+         <string notr="true">About Knossos</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Launcher settings</string>
+         <string notr="true">Launcher settings</string>
         </property>
         <property name="flags">
-         <set>ItemIsUserCheckable|ItemIsEnabled</set>
+         <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
         </property>
         <item>
          <property name="text">
-          <string>Retail install</string>
+          <string notr="true">Retail install</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Mod sources</string>
+          <string notr="true">Mod sources</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Mod versions</string>
+          <string notr="true">Mod versions</string>
          </property>
         </item>
        </item>
        <item>
         <property name="text">
-         <string>Game settings</string>
+         <string notr="true">Game settings</string>
         </property>
         <property name="flags">
-         <set>ItemIsUserCheckable|ItemIsEnabled</set>
+         <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
         </property>
         <item>
          <property name="text">
-          <string>Video</string>
+          <string notr="true">Video</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Audio</string>
+          <string notr="true">Audio</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Input</string>
+          <string notr="true">Input</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Network</string>
+          <string notr="true">Network</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Default flags</string>
+          <string notr="true">Default flags</string>
          </property>
         </item>
        </item>
        <item>
         <property name="text">
-         <string>Help</string>
+         <string notr="true">Help</string>
         </property>
        </item>
       </widget>

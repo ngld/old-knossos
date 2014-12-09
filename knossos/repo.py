@@ -52,15 +52,32 @@ class Repo(object):
     is_link = False
     mods = None
     includes = None
+    pins = None
 
     def __init__(self, data=None):
         self.mods = {}
+        self.pins = {}
 
         if data is not None:
             self.set(data)
 
-    def set(self, mods):
-        for mod in mods:
+    def empty(self):
+        return len(self.mods) == 0
+
+    def load_json(self, path):
+        self.base = os.path.dirname(path)
+        with open(path, 'r') as stream:
+            self.set(json.load(stream))
+
+    def save_json(self, path):
+        with open(path, 'w') as stream:
+            json.dump(self.get(), stream)
+
+    def set(self, info):
+        for m, v in info['pins'].items():
+            self.pins[m] = semantic_version.Version(v)
+
+        for mod in info['mods']:
             self.add_mod(Mod(mod, self))
 
     def get(self):
@@ -69,7 +86,14 @@ class Repo(object):
             for mod in v:
                 mods.append(mod.get())
 
-        return mods
+        pins = self.pins.copy()
+        for m, v in pins.items():
+            pins[m] = str(v)
+
+        return {
+            'pins': pins,
+            'mods': mods
+        }
 
     def fetch(self, link):
         self.base = os.path.dirname(link)
@@ -101,12 +125,6 @@ class Repo(object):
             self.merge(item)
 
         for mod in data.get('mods', []):
-            if mod.get('logo', None) is not None and self.base is not None and '://' not in mod['logo']:
-                if self.is_link:
-                    mod['logo'] = util.url_join(self.base, mod['logo'])
-                else:
-                    mod['logo'] = os.path.join(self.base, mod['logo'])
-
             self.add_mod(Mod(mod, self))
 
     def add_mod(self, mod):
@@ -134,6 +152,27 @@ class Repo(object):
         for mod in repo.get_list():
             self.add_mod(mod)
 
+    def pin(self, mod, version=None):
+        if isinstance(mod, Package):
+            mod = mod.get_mod()
+
+        if isinstance(mod, Mod):
+            version = mod.version
+            mod = mod.mid
+
+        if not isinstance(mod, str) or not isinstance(version, semantic_version.Version):
+            raise ValueError
+
+        self.pins[mod] = version
+
+    def unpin(self, mod):
+        if isinstance(mod, Package):
+            mod = mod.get_mod().mid
+        elif isinstance(mod, Mod):
+            mod = mod.mid
+
+        del self.pins[mod]
+
     def query(self, mid, spec=None, pname=None):
         if isinstance(mid, Package):
             mod = mid.get_mod()
@@ -148,6 +187,9 @@ class Repo(object):
 
         if mid not in self.mods:
             raise ModNotFound('Mod "%s" wasn\'t found!' % (mid), mid)
+
+        if spec is None and mid in self.pins:
+            spec = self.pins[mid]
 
         candidates = self.mods[mid]
         if spec is None:
@@ -176,7 +218,7 @@ class Repo(object):
             raise ModNotFound('Mod "%s" wasn\'t found!' % (mid), mid)
 
         for mod in self.mods[mid]:
-            if spec.match(mod.version):
+            if spec is None or spec.match(mod.version):
                 yield mod
 
     def get_tree(self):
@@ -274,7 +316,7 @@ class Mod(object):
         self.packages = []
 
         if repo is not None:
-            self._repo = self
+            self._repo = repo
 
         if values is not None:
             self.set(values)
@@ -296,6 +338,12 @@ class Mod(object):
             pkg = Package(pkg, self)
             if pkg.check_env():
                 self.packages.append(pkg)
+
+        if self._repo is not None and self._repo.base is not None:
+            if '://' in self._repo.base:
+                self.logo = util.url_join(self._repo.base, self.logo)
+            else:
+                self.logo = os.path.abspath(os.path.join(self._repo.base, self.logo))
 
         # Enforce relative paths
         for act in self.actions:
@@ -354,8 +402,7 @@ class Mod(object):
         else:
             shutil.copyfile(self.logo, path)
 
-        self.logo = os.path.relpath(path, dest)
-        self.logo_path = os.path.abspath(path)
+        self.logo = os.path.abspath(path)
 
 
 class Package(object):
@@ -367,6 +414,7 @@ class Package(object):
     environment = None
     files = None
     filelist = None
+    executables = None
 
     def __init__(self, values=None, mod=None):
         self._mod = mod
@@ -385,6 +433,7 @@ class Package(object):
         self.environment = values.get('environment', [])
         self.files = {}
         self.filelist = values.get('filelist', [])
+        self.executables = values.get('executables', [])
 
         _files = values.get('files', [])
 
@@ -469,6 +518,8 @@ class Package(object):
         return result
 
     def check_env(self):
+        bvars = None
+
         for check in self.environment:
             if check['type'] == 'os':
                 if check['value'] == 'windows':
@@ -485,8 +536,39 @@ class Package(object):
 
             elif check['type'] == 'cpu_feature':
                 return CPU_INFO is None or check['value'] in CPU_INFO['flags']
+            elif check['type'] == 'bool':
+                if bvars is None:
+                    bvars = {}
+                    bvars[CPU_INFO['arch']] = True  # this is either X86_32 or X86_64
+                    
+                    if sys.platform in ('win32', 'cygwin'):
+                        bvars['windows'] = True
+                    elif sys.platform.startswith('linux'):
+                        bvars['linux'] = True
+                    elif sys.platform == 'darwin':
+                        bvars['macosx'] = True
+                    else:
+                        logging.error('You are using an unrecognized OS! (%s)' % sys.platform)
+
+                    for flag in CPU_INFO['flags']:
+                        bvars[flag] = True
+
+                return self._solve_bool(check['value'], bvars)
 
         return True
+
+    @classmethod
+    def _solve_bool(cls, expr, vars):
+        if expr[0] == 'var':
+            return vars.get(expr[1])
+        elif expr[0] == 'not':
+            return not cls._solve_bool(expr[1], vars)
+        elif expr[0] == 'and':
+            return cls._solve_bool(expr[1], vars) and cls._solve_bool(expr[2], vars)
+        elif expr[0] == 'or':
+            return cls._solve_bool(expr[1], vars) or cls._solve_bool(expr[2], vars)
+        else:
+            raise Exception('Unknown operation %s! (%s)' % (expr[0], expr))
 
 
 # Keeps track of installed mods
@@ -495,8 +577,19 @@ class InstalledRepo(Repo):
     def clear(self):
         self.mods = {}
 
+    def save_pins(self, path):
+        with open(path, 'w') as stream:
+            json.dump(self.pins, stream)
+
+    def load_pins(self, path):
+        with open(path, 'r') as stream:
+            self.pins = json.load(stream)
+
     def set(self, mods):
-        for mod in mods:
+        for m, v in mods['pins'].items():
+            self.pins[m] = semantic_version.Version(v)
+
+        for mod in mods['mods']:
             self.add_mod(InstalledMod(mod))
 
     def add_pkg(self, pkg):
@@ -528,7 +621,7 @@ class InstalledRepo(Repo):
             return False
 
     def get_updates(self):
-        remote_mods = center.settings['mods']
+        remote_mods = center.mods
         updates = {}
 
         for mid, mods in self.mods.items():
@@ -625,9 +718,9 @@ class InstalledMod(Mod):
         if self.logo is not None and not self.logo.startswith('knossos.'):
             logo = os.path.join(modpath, 'knossos.' + self.logo.split('.')[-1])
     
-            if os.path.abspath(logo) != os.path.abspath(self.logo_path):
+            if os.path.abspath(logo) != os.path.abspath(self.logo):
                 # Copy the logo right next to the json file.
-                shutil.copy(self.logo_path, logo)
+                shutil.copy(self.logo, logo)
             
             info['logo'] = os.path.basename(logo)
 

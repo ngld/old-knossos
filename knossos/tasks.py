@@ -79,7 +79,7 @@ class FetchTask(progress.Task):
     
     def finish(self):
         if not self.aborted:
-            modlist = center.settings['mods'] = Repo()
+            modlist = center.mods = Repo()
             res = self.get_results()
             res.sort(key=lambda x: x[0])
             
@@ -97,6 +97,7 @@ class FetchTask(progress.Task):
                         else:
                             filelist[util.pjoin(path, name)] = (mod.mid, pkg.name)
 
+            modlist.save_json(os.path.join(center.settings_path, 'mods.json'))
             api.save_settings()
         
         run_task(CheckTask())
@@ -124,7 +125,7 @@ class CheckTask(progress.MultistepTask):
         fs2path = center.settings['fs2_path']
         mods = center.installed
 
-        for subdir in os.listdir(fs2path):
+        for subdir in os.listdir(fs2path) + [fs2path]:
             kfile = os.path.join(fs2path, subdir, 'mod.json')
             if os.path.isfile(kfile):
                 try:
@@ -235,7 +236,7 @@ class InstallTask(progress.MultistepTask):
     def __init__(self, pkgs, mod=None):
         self._pkgs = []
         self._pkg_names = []
-        rmods = center.settings['mods']
+        rmods = center.mods
 
         if mod is not None:
             self.mod = mod

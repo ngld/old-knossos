@@ -27,14 +27,14 @@ main_win = None
 shared_files = {}
 fs2_watcher = None
 pmaster = None
+mods = None
 installed = None
 fso_flags = None
 
 settings = {
     'fs2_bin': None,
     'fs2_path': None,
-    'mods': None,
-    'installed_mods': {},
+    'pins': {},
     'cmdlines': {},
     'hash_cache': None,
     'enforce_deps': True,

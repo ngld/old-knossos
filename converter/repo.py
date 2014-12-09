@@ -19,7 +19,7 @@ import logging
 import semantic_version
 
 from knossos.util import pjoin, is_archive, merge_dicts
-from . import vfs
+from . import vfs, bool_parser
 
 
 class RepoConf(object):
@@ -405,8 +405,9 @@ class Package(object):
     environment = None
     files = None
     filelist = None
+    executables = None
 
-    _fields = ('name', 'notes', 'status', 'dependencies', 'environment', 'files', 'filelist')
+    _fields = ('name', 'notes', 'status', 'dependencies', 'environment', 'files', 'filelist', 'executables')
 
     def __init__(self, values=None, mod=None):
         self._mod = mod
@@ -434,6 +435,7 @@ class Package(object):
         self.environment = values.get('environment', [])
         self.files = {}
         self.filelist = values.get('filelist', [])
+        self.executables = values.get('executables', [])
 
         # Validate this package's options
         if self.status not in ('required', 'recommended', 'optional'):
@@ -480,6 +482,10 @@ class Package(object):
                 if env['value'] not in ('windows', 'linux', 'macos'):
                     logging.error('Unknown operating system "%s" for package "%s"!', env['value'], self.name)
                     self._valid = False
+            elif env['type'] == 'bool':
+                env['value'] = bool_parser.parse(env['value'])
+                if not env['value']:
+                    logging.error('Invalid boolean expression "%s" for package "%s"!', env['value'], self.name)
             else:
                 logging.error('Unknown environment condition "%s" for package "%s"!', env['type'], self.name)
                 self._valid = False
@@ -516,7 +522,8 @@ class Package(object):
             'dependencies': self.dependencies,
             'environment': self.environment,
             'files': [f.get() for f in self.files.values()],
-            'filelist': self.filelist
+            'filelist': self.filelist,
+            'executables': self.executables
         }
 
     def copy(self):
@@ -589,7 +596,7 @@ class PkgFile(object):
             'is_archive': self.is_archive,
             'dest': self.dest,
             'urls': self.urls,
-            'contents': self.contents,
+            #'contents': self.contents,
             'md5sum': self.md5sum,
             'filesize': self.filesize
         }

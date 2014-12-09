@@ -27,7 +27,7 @@ def which(cmd):
 # Make sure all paths that end up in the compiled executable are relative.
 pd = config['PYZ_dependencies']
 for i, item in enumerate(pd):
-    if 'Z:' in item[1]:
+    if '/Users/' in item[1]:
         pd[i] = (item[0], os.path.relpath(item[1]), item[2])
 
 # Fix a bug in PyInstaller's current hook-sysconfig.py
@@ -85,6 +85,8 @@ if sdl2_path:
 else:
     a.datas += [('libSDL.dylib', sdl_path, 'BINARY')]
 
+debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
+
 exe = EXE(pyz,
           a.scripts,
           exclude_binaries=True,
@@ -92,7 +94,7 @@ exe = EXE(pyz,
           debug=False,
           strip=None,
           upx=False,
-          console=False)
+          console=debug)
 
 coll = COLLECT(exe,
                a.binaries,
@@ -102,6 +104,7 @@ coll = COLLECT(exe,
                upx=False,
                name='Knossos')
 
-app = BUNDLE(coll,
-             name='Knossos.app',
-             icon='../../knossos/data/hlp.icns')
+if not debug:
+    app = BUNDLE(coll,
+                 name='Knossos.app',
+                 icon='../../knossos/data/hlp.icns')

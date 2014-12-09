@@ -100,6 +100,7 @@ QUIET = False
 QUIET_EXC = False
 HASH_CACHE = dict()
 _HAS_CONVERT = None
+_HAS_TAR = None
 DL_POOL = None
 _DL_CANCEL = Event()
 _DL_CANCEL.clear()
@@ -298,6 +299,9 @@ def check_output(*args, **kwargs):
         si.wShowWindow = subprocess.SW_HIDE
         
         kwargs['startupinfo'] = si
+
+    if 'universal_newlines' not in kwargs:
+        kwargs['universal_newlines'] = True
 
     logging.debug('Running %s', args[0])
     return subprocess.check_output(*args, **kwargs)
@@ -594,6 +598,33 @@ def is_archive(path):
 
 
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
+    global _HAS_TAR
+
+    if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2')) and _HAS_TAR is not False:
+        if _HAS_TAR is None:
+            _HAS_TAR = call(['tar', '--version']) == 0
+
+        if _HAS_TAR:
+            cmd = ['tar', '-xf', archive, '-C', outpath]
+
+            if archive.endswith('.gz'):
+                cmd.append('-z')
+            elif archive.endswith('.xz'):
+                cmd.append('-J')
+            elif archive.endswith('.bz2'):
+                cmd.append('-j')
+
+            if overwrite:
+                cmd.append('--overwrite')
+
+            if files:
+                cmd.extend(files)
+
+            if QUIET:
+                return call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+            else:
+                return call(cmd) == 0
+
     if '.tar.' in archive and not _rec:
         # This is a file like whatever.tar.gz. We have to call 7z two times for this kind of file:
         # First to get whatever.tar and a second time to extract that tar archive.
@@ -705,8 +736,7 @@ def get_cpuinfo():
 
     # Try the cpuid method first but do so in a seperate process in case it segfaults.
     try:
-        info = check_output(get_cmd(['--cpuinfo']))
-        info = json.loads(info.decode('utf8', 'replace').strip())
+        info = json.loads(check_output(get_cmd(['--cpuinfo'])).strip())
     except subprocess.CalledProcessError:
         info = None
         logging.exception('The CPUID method failed!')
