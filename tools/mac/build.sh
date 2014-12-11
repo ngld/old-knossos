@@ -127,15 +127,22 @@ for item in ./dist/Knossos.app/Contents/MacOS/*; do
 done
 
 if [ "$gen_package" = "y" ]; then
-    msg "Packing DMG..."
-    size="$(du -sm dist/Knossos.app | awk '{ print $1 }')"
-    size=$(($size + 2))
+    if [ "$KN_BUILD_DEBUG" = "yes" ]; then
+        msg "Packing archive..."
 
-    # dmgbuild needs the Quartz module. To avoid recompiling it, we use the installed version.
-    if [ ! -e PyObjC ]; then
-        ln -s /System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/PyObjC .
+        pushd dist
+        tar -czf Knossos.tar.gz Knossos
+        popd
+    else
+        msg "Packing DMG..."
+        size="$(du -sm dist/Knossos.app | awk '{ print $1 }')"
+        size=$(($size + 2))
+
+        # dmgbuild needs the Quartz module. To avoid recompiling it, we use the installed version.
+        if [ ! -e PyObjC ]; then
+            ln -s /System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/PyObjC .
+        fi
+        PYTHONPATH="PyObjC" dmgbuild -s dmgbuild_cfg.py -Dsize="${size}M" Knossos dist/Knossos.dmg
     fi
-    PYTHONPATH="PyObjC" dmgbuild -s dmgbuild_cfg.py -Dsize="${size}M" Knossos dist/Knossos.dmg
 fi
-
 msg "Done!"
