@@ -21,7 +21,7 @@ import functools
 from . import uhf
 uhf(__name__)
 
-from . import center, util, clibs, progress, integration, api, web
+from . import center, util, clibs, progress, integration, api, web, repo
 from .qt import QtCore, QtGui
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.gogextract import Ui_Dialog as Ui_Gogextract
@@ -1215,8 +1215,12 @@ class ModSettingsWindow(Window):
 
     def show_versions(self):
         mods = set()
-        for dep in self._mod.resolve_deps():
-            mods.add(dep.get_mod())
+        try:
+            for dep in self._mod.resolve_deps():
+                mods.add(dep.get_mod())
+        except repo.ModNotFound as exc:
+            QtGui.QMessageBox.critical(None, 'Knossos', 'This mod is missing the dependency "%s"!' % exc.mid)
+            return
 
         if self._mod not in mods:
             mods.add(self._mod)

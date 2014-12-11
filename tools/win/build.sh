@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")"
 PLATFORM=windows
 . ../common/helpers.sh
-init_build_script
+init_build_script "$@"
 
 if ! has wine || ! has tar || ! has 7z || ! has unzip || ! has git; then
     error "Sorry, but I need wine, tar, 7z, unzip and git to generate a windows build."

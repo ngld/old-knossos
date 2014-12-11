@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 PLATFORM=mac
 . ../common/helpers.sh
-init_build_script
+init_build_script "$@"
 
 if [ "$use_buildenv" = "y" ]; then
     export PATH="$PWD/buildenv/bin:$PATH"
