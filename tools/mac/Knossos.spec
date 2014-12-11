@@ -23,6 +23,7 @@ def which(cmd):
 
     return None
 
+debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 
 # Make sure all paths that end up in the compiled executable are relative.
 pd = config['PYZ_dependencies']
@@ -46,11 +47,15 @@ if not sdl2_path and not sdl_path:
     sys.exit(1)
 
 # Use the PySide hooks from the windows build. They work for Mac OS, too.
+rthooks = ['../common/PySide-rthook.py']
+if debug:
+    rthooks.append('../common/debug-rthook.py')
+
 a = Analysis(['../../knossos/__main__.py'],
              pathex=['../..'],
              hiddenimports=[],
              hookspath=['../common'],
-             runtime_hooks=['../common/PySide-rthook.py'])
+             runtime_hooks=rthooks)
 
 # Exclude everything we don't need.
 idx = []
@@ -84,8 +89,6 @@ if sdl2_path:
     a.datas += [('libSDL2.dylib', sdl2_path, 'BINARY')]
 else:
     a.datas += [('libSDL.dylib', sdl_path, 'BINARY')]
-
-debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 
 exe = EXE(pyz,
           a.scripts,

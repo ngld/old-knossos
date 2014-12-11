@@ -23,14 +23,16 @@ import tempfile
 import re
 import time
 import json
-import semantic_version
 import random
+import functools
+import semantic_version
 import requests
 from collections import OrderedDict
 from threading import Condition, Event
 from collections import deque
 
 from .qt import QtCore, QtGui
+from . import center
 
 try:
     from PIL import Image
@@ -776,6 +778,15 @@ def human_list(items):
         return ', '.join(items[:-1]) + ' and ' + items[-1]
 
 
+def connect(sig, cb, *args):
+    cb = functools.partial(cb, *args)
+    if not hasattr(sig, '_pyl'):
+        sig._pyl = []
+
+    sig._pyl.append(cb)
+    sig.connect(cb)
+
+
 class Spec(semantic_version.Spec):
     
     @staticmethod
@@ -786,5 +797,5 @@ class Spec(semantic_version.Spec):
 DL_POOL = ResizableSemaphore(10)
 HTTP_SESSION.headers['User-Agent'] = get_user_agent()
 
-if not __debug__:
+if not center.DEBUG:
     logging.getLogger('requests.packages.urllib3.connectionpool').propagate = False

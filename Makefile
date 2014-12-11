@@ -1,5 +1,11 @@
 RCC_FILES = $(shell find html -type f) $(shell find ui -name '*.png' -or -name '*.jpg' -or -name '*.css') knossos/data/hlp.png
 UI_FILES = $(patsubst ui/%.ui,knossos/ui/%.py,$(wildcard ui/*.ui))
+SED_I = sed -i
+
+UNAME := $(shell uname -s)
+ifeq ($(UNAME),Darwin)
+	SED_I = sed -i ''
+endif
 
 dist:
 	python setup.py sdist bdist_wheel
@@ -22,4 +28,4 @@ knossos/data/resources.rcc: $(RCC_FILES)
 knossos/ui/%.py: ui/%.ui
 	@echo "Compiling $<..."
 	@pyside-uic -o $@ $<
-	@sed -i -e 's#from PySide import#from ..qt import#' -e '/^import resources.*/ d' $@
+	@$(SED_I) -e 's#from PySide import#from ..qt import#' -e '/^import resources.*/ d' $@

@@ -16,7 +16,6 @@ import sys
 import os
 import logging
 import json
-import stat
 import shlex
 import glob
 import pickle
@@ -121,13 +120,6 @@ def get_fso_flags():
         return None
 
     flags_path = os.path.join(center.settings['fs2_path'], 'flags.lch')
-    # mode = os.stat(fs2_bin).st_mode
-    
-    # if mode & stat.S_IXUSR != stat.S_IXUSR:
-    #     # Make it executable.
-    #     os.chmod(fs2_bin, mode | stat.S_IXUSR)
-    
-    # rc = util.call([fs2_bin, '-get_flags'], cwd=center.settings['fs2_path'])
     rc = run_fs2_silent(['-get_flags'])
     
     flags = None

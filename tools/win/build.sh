@@ -36,9 +36,9 @@ if [ ! -d _w ]; then
     msg2 "Checking Python..."
     if ! wine python -c 'print("Works")'; then
         if [ -d _w/drive_c/Python27 ]; then
-            pushd _w/drive_c/windows > /dev/null
+            pushd _w/drive_c/windows
             ln -s ../Python27/python.exe
-            popd > /dev/null
+            popd
             msg2 "Fixed!"
         else
             error "Python wasn't added to PATH and it was not installed in C:\Python27."
@@ -97,6 +97,10 @@ fi
 msg "Building..."
 generate_version > version
 ensure_pyinstaller
+
+pushd ../..
+make ui resources
+popd
 
 msg2 "Running PyInstaller..."
 [ -d dist ] && rm -rf dist

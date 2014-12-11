@@ -26,6 +26,14 @@ has() {
     which "$@" > /dev/null 2>&1
 }
 
+pushd() {
+    command pushd "$@" > /dev/null
+}
+
+popd() {
+    command popd "$@" > /dev/null
+}
+
 download() {
     if [ -f "$1" ]; then
         msg2 "Skipped $1 because it has already been downloaded."

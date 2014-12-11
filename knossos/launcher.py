@@ -48,6 +48,9 @@ if sys.platform.startswith('win'):
         handler.setLevel(logging.DEBUG)
         logging.getLogger().addHandler(handler)
 
+if not center.DEBUG:
+    logging.getLogger().setLevel(logging.INFO)
+
 if six.PY2:
     from . import py2_compat
 

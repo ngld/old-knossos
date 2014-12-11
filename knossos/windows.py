@@ -15,7 +15,6 @@
 import os
 import sys
 import logging
-import glob
 import shlex
 import functools
 
@@ -1110,6 +1109,7 @@ class ModSettingsWindow(Window):
     _mod = None
     _pkg_checks = None
     _mod_versions = None
+    _mvs_cbs = None
     _flags = None
 
     def __init__(self, mod, window=True):
@@ -1221,9 +1221,12 @@ class ModSettingsWindow(Window):
         if self._mod not in mods:
             mods.add(self._mod)
 
+        self._mvs_cbs = []
         layout = QtGui.QGridLayout()
         for i, mod in enumerate(mods):
             sel = QtGui.QComboBox()
+            sel.setItemData(0, mod)
+
             for mv in center.installed.query_all(mod.mid):
                 sel.addItem(str(mv.version), mv.version)
 
@@ -1234,8 +1237,14 @@ class ModSettingsWindow(Window):
             layout.addWidget(editBut, i, 2)
 
             if mod == self._mod:
-                sel.currentIndexChanged.connect(functools.partial(self.update_versions, mod, sel))
-                editBut.clicked.connect(functools.partial(self.open_ver_edit, mod))
+                cb_sel = functools.partial(self.update_versions, sel, mod)
+                cb_edit = functools.partial(self.open_ver_edit, mod)
+                # NOTE: We have to keep a reference around for PySide.
+                # PyQt4 handles these correctly...
+                self._mvs_cbs.append((cb_sel, cb_edit))
+
+                sel.currentIndexChanged.connect(cb_sel)
+                editBut.clicked.connect(cb_edit)
             else:
                 # TODO: Finish code for pinning dependencies.
                 sel.setEnabled(False)
@@ -1244,8 +1253,9 @@ class ModSettingsWindow(Window):
         layout.addItem(QtGui.QSpacerItem(0, 0, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
         self.win.versionsTab.setLayout(layout)
 
-    def update_versions(self, mod, sel, idx):
+    def update_versions(self, sel, mod, idx):
         version = sel.itemData(idx)
+
         if mod == self._mod:
             center.installed.pin(self._mod, version)
             api.save_settings()

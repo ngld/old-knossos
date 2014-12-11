@@ -17,10 +17,8 @@ if [ "$use_buildenv" = "y" ]; then
         cd buildenv
 
         msg2 "Installing Homebrew..."
-        curl -Lo homebrew.tar.gz https://github.com/Homebrew/homebrew/tarball/master
-        tar -xzf homebrew.tar.gz --strip 1
-        rm homebrew.tar.gz
-
+        git clone https://github.com/Homebrew/homebrew.git
+        
         cd ..
         msg2 "Installing Python, 7-zip and SDL2..."
         brew install python p7zip sdl2
@@ -52,7 +50,6 @@ else
         done
 
         ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-        brew update
         brew doctor
     fi
 
@@ -88,20 +85,26 @@ if [ ! -d pyenv ]; then
     pip install six semantic_version PySide requests ndg-httpsclient pyasn1 dmgbuild
 
     msg2 "Fixing ndg.httpsclient..."
-    python -c 'import ndg.httpsclient;import os.path;open(os.path.join(ndg.httpsclient.__path__[0], "__init__.py"), "w").close()'
+    python -c 'import os.path, ndg.httpsclient; open(os.path.join(ndg.httpsclient.__path__[0], "__init__.py"), "w").close()'
 else
     source pyenv/bin/activate
 fi
 
+# Make sure python finds libpyside-*.dylib and libshiboken-*.dylib.
+export DYLD_LIBRARY_PATH="$(python -c 'import os.path, PySide; print(os.path.dirname(PySide.__file__))')"
 ensure_pyinstaller
 
 msg "Building..."
 generate_version > version
 
+pushd ../..
+make ui resources
+popd
+
 msg2 "Running PyInstaller..."
 [ -d dist ] && rm -rf dist
 
-# Make sure PyInstaller finds libpyside-*.dylib and the Qt libraries.
+# Make sure PyInstaller finds the Qt libraries.
 if [ "$use_buildenv" = "y" ]; then
     export QTDIR="buildenv/lib"
 else
@@ -109,9 +112,19 @@ else
 fi
 
 export DYLD_FRAMEWORK_PATH="$QTDIR"
-export DYLD_LIBRARY_PATH="pyenv/lib/python2.7/site-packages/PySide"
 
 python -OO ../common/pyinstaller/pyinstaller.py -y --distpath=./dist --workpath=./build  Knossos.spec
+
+# Fix the symlinks in dist/Knossos.app/Contents/MacOS
+for item in ./dist/Knossos.app/Contents/MacOS/*; do
+    if [ -L "$item" ]; then
+        dest="$(readlink "$item")"
+        dest="$(echo "$dest" | sed 's#dist/Knossos.app/Contents#../#')"
+
+        unlink "$item"
+        ln -s "$dest" "$item"
+    fi
+done
 
 if [ "$gen_package" = "y" ]; then
     msg "Packing DMG..."

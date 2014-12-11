@@ -18,8 +18,6 @@ import ctypes.util
 
 
 ENCODING = 'utf8'
-#if sys.platform.startswith('win'):
-#    ENCODING = 'iso-8859-1'
 
 
 class SDL_Rect(ctypes.Structure):
@@ -88,7 +86,6 @@ if sys.platform.startswith('linux'):
         xlib = load_lib('X11')
         xlib.XInitThreads()
     except:
-        # Not all supported platforms have X11. Maybe we're on one of them.
         logging.exception('Failed to call XInitThreads().')
 
 # Load SDL
@@ -216,10 +213,6 @@ def init_gtk():
 
 
 if SDL2:
-    # TODO: This causes a segfault once the script ends.
-    # (It's caused by an invalid read in pthread_mutex_lock() which is called XCloseDisplay()
-    #  which in turn is called by QApplication's destructor.)
-    # I guess both SDL and Qt are closing the display, thus causing a double-free.
     def get_modes():
         if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0 or sdl.SDL_VideoInit(None) < 0:
             logging.error('Failed to init SDL\'s video subsystem!')

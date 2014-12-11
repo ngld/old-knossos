@@ -21,6 +21,7 @@ from .qt import QtCore
 VERSION = '0.1.0-dev'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'http://dev.tproxy.de/fs2/innoextract.txt'
+DEBUG = os.environ.get('KN_DEBUG') == '1'
 
 app = None
 main_win = None

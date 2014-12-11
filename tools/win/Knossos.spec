@@ -23,11 +23,15 @@ except:
     logging.exception('Failed to generate comtypes.gen.TaskbarLib!')
 
 
+rthooks = ['../common/PySide-rthook.py']
+if debug:
+    rthooks.append('../common/debug-rthook.py')
+
 a = Analysis(['../../knossos/__main__.py'],
              pathex=['../..'],
              hiddenimports=him,
              hookspath=['../common'],
-             runtime_hooks=['../common/PySide-rthook.py'])
+             runtime_hooks=rthooks)
 
 # Exclude everything we don't need.
 idx = []
