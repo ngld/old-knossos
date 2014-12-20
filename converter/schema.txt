@@ -49,6 +49,13 @@
                         },
                         ...
                     ],
+                    "executables": [ // optional
+                        {
+                            "version": "...", // required, http://semver.org
+                            "file": "...", // required, path to the executable (*.exe file on Windows), relative to the mod folder
+                            "debug": false // optional, default: true, Is this a debug build?
+                        }
+                    ],
                     "files": [ // optional
                         /* You can use this syntax ...
                             [

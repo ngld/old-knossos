@@ -52,14 +52,10 @@ if variant == 'PyQt4':
         QtCore.QString = str
         
     except ImportError:
-        # Fallback to headless
-        variant = 'headless'
-
-if variant == 'headless':
-    if os.environ.get('QT_API') != 'headless':
         logging.error('I was unable to load Qt! Tried %s.', os.environ.get('QT_API', default_variant))
         sys.exit(1)
 
+if variant == 'headless':
     # This is just a dummy implementation of the QtCore.Signal() system. Nothing else is provided by this variant.
     import threading
     import time
