@@ -26,6 +26,5 @@ knossos/data/resources.rcc: $(RCC_FILES)
 	@./tools/common/run_helper.sh compile_resources
 
 knossos/ui/%.py: ui/%.ui
-	@echo "Compiling $<..."
-	@pyside-uic -o $@ $<
+	pyside-uic -o $@ $<
 	@$(SED_I) -e 's#from PySide import#from ..qt import#' -e '/^import resources.*/ d' $@
