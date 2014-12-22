@@ -150,7 +150,7 @@ class HellWindow(Window):
         self.open()
 
         if center.settings['fs2_path'] is None:
-            self.win.webView.load('qrc:///html/welcome.html')
+            self.win.webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
             self.win.pageControls.setEnabled(False)
             self.win.updateButton.setEnabled(False)
 
@@ -167,7 +167,7 @@ class HellWindow(Window):
             self.win.pageControls.setEnabled(True)
             self.win.updateButton.setEnabled(True)
         else:
-            self.win.webView.load('qrc:///html/welcome.html')
+            self.win.webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
             self.win.pageControls.setEnabled(False)
             self.win.updateButton.setEnabled(False)
 
@@ -187,7 +187,7 @@ class HellWindow(Window):
         api.fetch_list()
 
     def show_mod_list(self):
-        self.win.webView.load('qrc:///html/modlist.html')
+        self.win.webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
 
     def search_mods(self):
         mode = self.win.filterSelect.currentIndex()
