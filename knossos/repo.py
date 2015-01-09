@@ -573,6 +573,7 @@ class Package(object):
 
 # Keeps track of installed mods
 class InstalledRepo(Repo):
+    base = '[INSTALLED]'
 
     def clear(self):
         self.mods = {}

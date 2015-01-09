@@ -190,9 +190,8 @@ def init():
     if sys.platform.startswith('win'):
         try:
             import comtypes.client as cc
-            cc.GetModule('taskbar.tlb')
-
-            import comtypes.gen.TaskbarLib as tbl
+            
+            tbl = cc.GetModule('taskbar.tlb')
             taskbar = cc.CreateObject('{56FDF344-FD6D-11d0-958A-006097C9A090}', interface=tbl.ITaskbarList3)
         except:
             logging.exception('Failed to load ITaskbarList3! Disabling Windows integration.')

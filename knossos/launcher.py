@@ -286,14 +286,15 @@ def init():
 def main():
     global ipc, app
 
+    if len(sys.argv) > 1 and sys.argv[1] == '--cpuinfo':
+        get_cpu_info()
+        return
+
     app = init()
     ipc = IPCComm(center.settings_path)
 
     if len(sys.argv) > 1:
-        if sys.argv[1] == '--cpuinfo':
-            get_cpu_info()
-            return
-        elif sys.argv[1] == '--install-scheme':
+        if sys.argv[1] == '--install-scheme':
             from . import api
             
             api.install_scheme_handler('--silent' not in sys.argv)

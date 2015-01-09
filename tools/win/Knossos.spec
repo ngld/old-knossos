@@ -17,7 +17,12 @@ try:
     import comtypes.client as cc
     cc.GetModule('support/taskbar.tlb')
 
-    him.append('comtypes.gen.TaskbarLib')
+    import comtypes.gen as cg
+    gen_path = os.path.dirname(cg.__file__)
+
+    for fname in os.listdir(gen_path):
+        if not fname.startswith('__'):
+            him.append('comtypes.gen.' + fname.split('.')[0])
 except:
     import logging
     logging.exception('Failed to generate comtypes.gen.TaskbarLib!')
@@ -50,8 +55,10 @@ for i in reversed(idx):
 
 idx = []
 for i, item in enumerate(a.pure):
-    if item[0].startswith('pydoc'):
+    if item[0].startswith(('pydoc', 'pycparser')):
         idx.append(i)
+    elif item[0] == 'comtypes.client._code_cache':
+        a.pure[i] = (item[0], './comtypes_code_cache.pyo', item[2])
 
 for i in reversed(idx):
     del a.pure[i]
@@ -63,7 +70,7 @@ a.datas += [('7z.exe', 'support/7z.exe', 'BINARY'),
             ('version', 'version', 'DATA'),
             ('data/hlp.ico', '../../knossos/data/hlp.ico', 'DATA'),
             ('data/resources.rcc', '../../knossos/data/resources.rcc', 'DATA'),
-            ('SDL.dll', 'support/SDL.dll', 'BINARY'),
+            ('SDL2.dll', 'support/SDL2.dll', 'BINARY'),
             ('openal.dll', 'support/openal.dll', 'BINARY'),
             ('taskbar.tlb', 'support/taskbar.tlb', 'BINARY')]
 

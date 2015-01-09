@@ -120,6 +120,7 @@ class Window(object):
 
 class HellWindow(Window):
     _mod_tasks = None
+    _mod_filter = 'installed'
     browser_ctrl = None
     progress_win = None
 
@@ -132,18 +133,24 @@ class HellWindow(Window):
         self.progress_win = progress.ProgressDisplay()
         self.progress_win.set_statusarea(self.win.progressInfo, self.win.progressLabel, self.win.progressBar)
 
-        self.win.modlistButton.clicked.connect(self.show_mod_list)
         self.win.backButton.clicked.connect(self.win.webView.back)
         self.win.searchEdit.textEdited.connect(self.search_mods)
-        self.win.filterSelect.currentIndexChanged.connect(self.search_mods)
+        # self.win.filterSelect.currentIndexChanged.connect(self.search_mods)
         self.win.updateButton.clicked.connect(api.fetch_list)
         self.win.settingsButton.clicked.connect(self.show_settings)
+
+        for button in ('installed', 'available', 'updates', 'progress'):
+            bt = getattr(self.win, button + 'Button')
+            hdl = functools.partial(self.update_mod_buttons, button)
+
+            setattr(self, '_mod_button_hdl_' + button, hdl)
+            bt.clicked.connect(hdl)
 
         self.win.webView.loadStarted.connect(self.show_indicator)
         self.win.webView.loadFinished.connect(self.check_loaded)
 
         center.signals.update_avail.connect(self.ask_update)
-        center.signals.repo_updated.connect(self.search_mods)
+        center.signals.repo_updated.connect(self.check_new_repo)
         center.signals.task_launched.connect(self.watch_mod_task)
 
         self.win.pageControls.hide()
@@ -171,6 +178,12 @@ class HellWindow(Window):
             self.win.pageControls.setEnabled(False)
             self.win.updateButton.setEnabled(False)
 
+    def check_new_repo(self):
+        updates = len(center.installed.get_updates())
+        self.win.updatesButton.setText('Updates (%d)' % updates)
+
+        self.search_mods()
+
     def ask_update(self, version):
         # We only have an updater for windows.
         if sys.platform.startswith('win'):
@@ -186,33 +199,24 @@ class HellWindow(Window):
     def update_repo_list(self):
         api.fetch_list()
 
-    def show_mod_list(self):
-        self.win.webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
-
     def search_mods(self):
-        mode = self.win.filterSelect.currentIndex()
-        mode_key = None
         mods = None
 
-        if mode == 0:
+        if self._mod_filter == 'installed':
             mods = center.installed.mods
-            mode_key = 'installed'
-        elif mode == 1:
+        elif self._mod_filter == 'available':
             mods = {}
-            mode_key = 'available'
             for mid, mvs in center.mods.mods.items():
                 if mid not in center.installed.mods:
                     mods[mid] = mvs
-        elif mode == 2:
+        elif self._mod_filter == 'updates':
             mods = {}
-            mode_key = 'updates'
             for mid in center.installed.get_updates():
                 mods[mid] = center.installed.mods[mid]
-        elif mode == 3:
+        elif self._mod_filter == 'progress':
             mods = {}
-            mode_key = 'downloading'
-            for mid, task in self._mod_tasks.items():
-                mods[mid] = [task.mod]
+            # for mid, task in self._mod_tasks.items():
+            #     mods[mid] = [task.mod]
         
         # Now filter the mods.
         query = self.win.searchEdit.text().lower()
@@ -221,7 +225,7 @@ class HellWindow(Window):
             if query in mvs[0].title.lower():
                 result[mid] = [mod.get() for mod in mvs]
 
-        self.browser_ctrl.get_bridge().updateModlist.emit(result, mode_key)
+        self.browser_ctrl.get_bridge().updateModlist.emit(result, self._mod_filter)
 
     def show_settings(self):
         SettingsWindow()
@@ -237,10 +241,21 @@ class HellWindow(Window):
             self.win.listControls.show()
             self.win.pageControls.hide()
 
-            self.search_mods()
+            self.update_mod_buttons(self._mod_filter)
         else:
             self.win.listControls.hide()
             self.win.pageControls.show()
+
+    def update_mod_buttons(self, clicked=None):
+        for button in ('installed', 'available', 'updates', 'progress'):
+            getattr(self.win, button + 'Button').setChecked(button == clicked)
+
+        self._mod_filter = clicked
+        page = self.win.webView.url().toString()
+        if page != 'qrc:///html/modlist.html':
+            self.win.webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
+        else:
+            self.search_mods()
 
     def watch_mod_task(self, task):
         mod = getattr(task, 'mod', None)
@@ -315,8 +330,6 @@ class SettingsWindow(Window):
         self._tabs['Default flags'] = tab = FlagsWindow(window=False)
         if center.settings['fs2_path'] is None:
             tab.win.setEnabled(False)
-        else:
-            tab.read_flags()
 
         self._tabs['Help'] = util.init_ui(Ui_Settings_Help(), QtGui.QWidget())
 
@@ -890,7 +903,9 @@ class FlagsWindow(Window):
             self.win.okButton.clicked.connect(self.win.accept)
             self.win.cancelButton.clicked.connect(self.win.reject)
             self.win.accepted.connect(self.save)
+            self.win.saveButton.hide()
         else:
+            self.win.saveButton.clicked.connect(self.save)
             self.win.okButton.hide()
             self.win.cancelButton.hide()
         
@@ -903,12 +918,12 @@ class FlagsWindow(Window):
         self.win.defaultsButton.clicked.connect(self.set_defaults)
         
         if window:
-            self.read_flags()
             self.open()
         
         if mod is None:
             self.win.defaultsButton.hide()
 
+        self.read_flags()
         if self._flags is not None:
             self.set_selection(api.get_cmdline(mod))
     
@@ -1032,10 +1047,19 @@ class FlagsWindow(Window):
         self.save()
 
     def save(self):
+        sel = self.get_selection()
+        clines = center.settings['cmdlines']
+
         if self._mod is None:
-            center.settings['cmdlines']['#default'] = self.get_selection()
+            clines['#default'] = self.get_selection()
         else:
-            center.settings['cmdlines'][self._mod.mid] = self.get_selection()
+            mid = self._mod.mid
+            if sel == clines['#default']:
+                logging.info('Not saving default flags!')
+                if mid in clines:
+                    del clines[mid]
+            else:
+                clines[mid] = self.get_selection()
         
         api.save_settings()
 
@@ -1144,7 +1168,6 @@ class ModSettingsWindow(Window):
 
         self.win.applyPkgChanges.clicked.connect(self.apply_pkg_selection)
 
-        self._flags.read_flags()
         self.update_dlsize()
         self.show_flags_tab()
         self.show_versions()

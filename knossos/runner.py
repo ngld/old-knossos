@@ -125,7 +125,7 @@ class Fs2Watcher(threading.Thread):
 
 
 def check_elf_libs(fpath):
-    out = util.check_output(['ldd', fpath]).splitlines()
+    out = util.check_output(['ldd', fpath], env={'LANG': 'C'}).splitlines()
     libs = {}
 
     for r_line in out:
@@ -175,7 +175,7 @@ def fix_missing_libs(fpath):
 
     if len(missing) == 0:
         # Yay, nothing to do.
-        return missing
+        return '', missing
 
     for lib in missing[:]:
         p_name = os.path.join(patch_dir, lib)

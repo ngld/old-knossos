@@ -20,15 +20,14 @@ if [ ! -d _w ]; then
     msg "Setting up toolchain..."
     msg2 "Downloading..."
     
-    download python.msi "https://www.python.org/ftp/python/2.7.8/python-2.7.8.msi"
+    download python.msi "https://www.python.org/ftp/python/2.7.9/python-2.7.9.msi"
     download pywin32.exe "http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win32-py2.7.exe/download"
-    download get-pip.py "https://bootstrap.pypa.io/get-pip.py"
     download upx.zip "http://upx.sourceforge.net/download/upx391w.zip"
-    download 7z-inst.exe "http://sourceforge.net/projects/sevenzip/files/7-Zip/9.22/7z922.exe/download"
-    download SDL.zip "http://libsdl.org/release/SDL-1.2.15-win32.zip"
+    download 7z-inst.exe "http://sourceforge.net/projects/sevenzip/files/7-Zip/9.20/7z920.exe/download"
+    download SDL2.zip "http://libsdl.org/release/SDL2-2.0.3-win32-x86.zip"
     download openal.zip "http://kcat.strangesoft.net/openal-soft-1.16.0-bin.zip"
     download nsis.exe "http://prdownloads.sourceforge.net/nsis/nsis-2.46-setup.exe?download"
-    download nsProcess.7z "http://dev.tproxy.de/mirror/nsProcess_1_6.7z"
+    download nsProcess.7z "https://dev.tproxy.de/mirror/nsProcess_1_6.7z"
     
     msg2 "Installing Python..."
     wine msiexec /i python.msi
@@ -48,9 +47,9 @@ if [ ! -d _w ]; then
     
     msg2 "Installing pywin32..."
     wine pywin32.exe
-    
-    msg2 "Installing pip..."
-    wine python get-pip.py
+
+    msg2 "Updating pip..."
+    wine python -mpip install -U pip
     
     msg2 "Installing dependencies from PyPi..."
     wine python -mpip install six semantic_version PySide comtypes requests ndg-httpsclient pyasn1
@@ -61,9 +60,10 @@ if [ ! -d _w ]; then
     ensure_pyinstaller
     
     msg2 "Unpacking upx..."
-    unzip upx.zip
-    mv upx*/upx.exe _w/drive_c/windows
-    rm -r upx*
+    mkdir tmp
+    unzip -qd tmp upx.zip
+    mv tmp/upx*/upx.exe _w/drive_c/windows
+    rm -r tmp
     
     msg2 "Unpacking 7z..."
     mkdir tmp
@@ -72,13 +72,14 @@ if [ ! -d _w ]; then
     rm -r tmp
     
     msg2 "Unpacking SDL..."
-    unzip -o SDL.zip SDL.dll
-    mv SDL.dll support
+    unzip -q SDL2.zip SDL2.dll
+    mv SDL2.dll support
     
     msg2 "Unpacking OpenAL..."
-    unzip openal.zip
-    mv openal-soft-*/bin/Win32/soft_oal.dll support/openal.dll
-    rm -r openal-soft-*
+    mkdir tmp
+    unzip -qd tmp openal.zip
+    mv tmp/openal-soft-*/bin/Win32/soft_oal.dll support/openal.dll
+    rm -r tmp
 
     msg2 "Installing NSIS..."
     wine nsis.exe
@@ -91,7 +92,7 @@ if [ ! -d _w ]; then
     rm -r tmp
     
     msg2 "Cleaning up..."
-    rm python.msi pywin32.exe get-pip.py 7z-inst.exe SDL.zip openal.zip nsis.exe nsProcess.7z
+    rm python.msi pywin32.exe upx.zip 7z-inst.exe SDL2.zip openal.zip nsis.exe nsProcess.7z
 fi
 
 msg "Building..."

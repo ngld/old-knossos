@@ -493,7 +493,7 @@ def handle_ipc(msg):
 def init_self():
     setup_ipc()
 
-    if center.settings['update_notify']:
+    if center.settings['update_notify'] and not center.VERSION.endswith('-dev'):
         run_task(CheckUpdateTask())
 
     if center.settings['fs2_path'] is not None:

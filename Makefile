@@ -1,26 +1,36 @@
-RCC_FILES = $(shell find html -type f) $(shell find ui -name '*.png' -or -name '*.jpg' -or -name '*.css') knossos/data/hlp.png
-UI_FILES = $(patsubst ui/%.ui,knossos/ui/%.py,$(wildcard ui/*.ui))
+RCC_FILES = \
+	$(shell find html -type f) \
+	$(shell find ui -name '*.png' -or -name '*.jpg' -or -name '*.css') \
+	knossos/data/hlp.png
+UI_FILES = $(wildcard ui/*.ui)
 SED_I = sed -i
+PYTHON = python
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME),Darwin)
 	SED_I = sed -i ''
 endif
 
+run: resources ui
+	$(PYTHON) -m knossos
+
+debug: resources ui
+	KN_DEBUG=1 $(PYTHON) -m knossos
+
 dist:
-	python setup.py sdist bdist_wheel
+	$(PYTHON) setup.py sdist bdist_wheel
 
 clean:
-	find knossos -type f -name '*.pyc' -delete -or -name '*.pyo' -delete
+	@# Delete all python bytecode files
+	find knossos -type f \( -name '*.pyc' -or -name '*.pyo' \) -delete
 	rm -f knossos/data/resources.rcc
-	rm -f knossos/ui/*.py{,c,o}
 
-run: resources ui
-	python -m knossos
+	@# Keep the __init__.py but delete all other *.py files in knossos/ui.
+	find knossos/ui -name '__init__.py' -or -name '*.py' -delete
 
 resources: knossos/data/resources.rcc
 
-ui: $(UI_FILES)
+ui: $(patsubst ui/%.ui,knossos/ui/%.py,$(UI_FILES))
 
 knossos/data/resources.rcc: $(RCC_FILES)
 	@./tools/common/run_helper.sh compile_resources

@@ -48,13 +48,6 @@
              <number>0</number>
             </property>
             <item>
-             <widget class="QPushButton" name="modlistButton">
-              <property name="text">
-               <string>Mod list</string>
-              </property>
-             </widget>
-            </item>
-            <item>
              <widget class="QPushButton" name="backButton">
               <property name="text">
                <string>Back</string>
@@ -84,30 +77,6 @@
               <property name="placeholderText">
                <string>Search</string>
               </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QComboBox" name="filterSelect">
-              <item>
-               <property name="text">
-                <string>Installed</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Available</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Updates</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Downloading</string>
-               </property>
-              </item>
              </widget>
             </item>
            </layout>
@@ -144,6 +113,62 @@
        </item>
       </layout>
      </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_4">
+      <item>
+       <widget class="QToolButton" name="installedButton">
+        <property name="text">
+         <string>Installed</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="autoRaise">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="availableButton">
+        <property name="text">
+         <string>Available</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="autoRaise">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="updatesButton">
+        <property name="text">
+         <string>Updates</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="autoRaise">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="progressButton">
+        <property name="text">
+         <string>Progress</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="autoRaise">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
     <item>
      <widget class="QWebView" name="webView">

@@ -40,6 +40,7 @@ download() {
     elif has wget; then
         wget -O "$1" "$2"
     elif has curl; then
+        msg2 "Downloading $1..."
         curl -# -o "$1" "$2"
     else
         echo "I need curl or wget!"
@@ -120,6 +121,7 @@ compile_resources() {
 
     echo "Packing resources..."
     rcc -binary "$QRC_PATH" -o "$RCC_PATH"
+    rm "$QRC_PATH"
 }
 
 init_build_script() {
