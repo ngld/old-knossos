@@ -211,6 +211,7 @@ class Task(QtCore.QObject):
     background = False
     can_abort = True
     aborted = False
+    title = None
     done = QtCore.Signal()
     progress = QtCore.Signal(tuple)
     
@@ -305,7 +306,7 @@ class Task(QtCore.QObject):
         for item in prog.values():
             total += item[0] * (1.0 / count)
         
-        return total, prog
+        return total, prog, self.title
     
     def is_done(self):
         if not self._done.is_set():
@@ -587,13 +588,11 @@ class ProgressDisplay(QtGui.QDialog):
         event.ignore()
     
     def show(self, show_window=True):
+        reset()
         set_callback(self.update_prog)
         integration.current.show_progress(0)
 
-        if _progress.value == 1:
-            update(0, 'Working...')
-        else:
-            self.update_prog(_progress.value, _progress.text)
+        self.update_prog(_progress.value, _progress.text)
         
         if show_window:
             # Center on main window

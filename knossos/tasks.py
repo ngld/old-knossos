@@ -32,7 +32,7 @@ class FetchTask(progress.Task):
 
     def __init__(self):
         super(FetchTask, self).__init__()
-        progress.update(0, 'Fetching mod list...')
+        self.title = 'Fetching mod list...'
 
         # Remove all logos.
         for path in glob.glob(os.path.join(center.settings_path, 'logo*.*')):
@@ -62,12 +62,12 @@ class FetchTask(progress.Task):
         progress.update(0.1, 'Fetching "%s"...' % link)
 
         try:
-            raw_data = util.get(link)
+            raw_data = util.get(link, raw=True)
 
             data = Repo()
             data.is_link = True
-            data.base = os.path.dirname(link)
-            data.parse(raw_data)
+            data.base = os.path.dirname(raw_data.url)
+            data.parse(raw_data.text)
         except:
             logging.exception('Failed to decode "%s"!', link)
             return
@@ -112,7 +112,7 @@ class CheckTask(progress.MultistepTask):
         super(CheckTask, self).__init__(threads=3)
         
         self.done.connect(self.finish)
-        progress.update(0, 'Checking installed mods...')
+        self.title = 'Checking installed mods...'
 
     def init1(self):
         if center.settings['fs2_path'] is None:
@@ -251,7 +251,7 @@ class InstallTask(progress.MultistepTask):
         super(InstallTask, self).__init__()
 
         self.done.connect(self.finish)
-        progress.update(0, 'Installing mods...')
+        self.title = 'Installing mods...'
 
     def abort(self):
         super(InstallTask, self).abort()
@@ -421,7 +421,7 @@ class UninstallTask(progress.MultistepTask):
         super(UninstallTask, self).__init__()
 
         self.done.connect(self.finish)
-        progress.update(0, 'Uninstalling mods...')
+        self.title = 'Uninstalling mods...'
 
     def init1(self):
         self.add_work(self._pkgs)
@@ -477,7 +477,7 @@ class GOGExtractTask(progress.Task):
         
         self.done.connect(self.finish)
         self.add_work([(gog_path, dest_path)])
-        progress.update(0, 'Installing FS2 from GOG...')
+        self.title = 'Installing FS2 from GOG...'
     
     def work(self, paths):
         gog_path, dest_path = paths
@@ -634,7 +634,7 @@ class CheckUpdateTask(progress.Task):
         super(CheckUpdateTask, self).__init__()
 
         self.add_work(('',))
-        progress.update(0, 'Checking for updates...')
+        self.title = 'Checking for updates...'
 
     def work(self, item):
         progress.update(0, 'Checking for updates...')
@@ -664,7 +664,7 @@ class WindowsUpdateTask(progress.Task):
 
         self.done.connect(self.finish)
         self.add_work(('',))
-        progress.update(0, 'Installing update...')
+        self.title = 'Installing update...'
 
     def work(self, item):
         # Download it.
@@ -704,7 +704,7 @@ def run_task(task, cb=None):
     if cb is not None:
         task.done.connect(wrapper)
     
-    center.main_win.progress_win.add_task(task)
+    # center.main_win.progress_win.add_task(task)
     center.pmaster.add_task(task)
     center.signals.task_launched.emit(task)
     return task

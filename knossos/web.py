@@ -76,6 +76,10 @@ class WebBridge(QtCore.QObject):
     updateModlist = QtCore.Signal('QVariantMap', str)
     modProgress = QtCore.Signal(str, float, str)
 
+    taskStarted = QtCore.Signal(float, str)
+    taskProgress = QtCore.Signal(float, float, 'QVariantList', str)
+    taskFinished = QtCore.Signal(float)
+
     def __init__(self):
         super(WebBridge, self).__init__()
 
@@ -232,10 +236,10 @@ class WebBridge(QtCore.QObject):
 
         return api.uninstall_pkgs(plist, name=mod.title)
 
-    @QtCore.Slot(str)
-    def abortDownload(self, mid):
-        if hasattr(center.main_win, 'abort_mod_dl'):
-            center.main_win.abort_mod_dl(mid)
+    @QtCore.Slot(float)
+    def abortTask(self, tid):
+        if hasattr(center.main_win, 'abort_task'):
+            center.main_win.abort_task(int(tid))
 
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)
@@ -279,7 +283,7 @@ class WebBridge(QtCore.QObject):
             a = semantic_version.Version(a)
             b = semantic_version.Version(b)
         except:
-            #logging.exception('Someone passed an invalid version to vercmp()!')
+            # logging.exception('Someone passed an invalid version to vercmp()!')
             return 0
 
         return a.__cmp__(b)
@@ -290,7 +294,7 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
     def __init__(self, old_manager):
         super(NetworkAccessManager, self).__init__()
 
-        self.old_manager = old_manager
+        # self.old_manager = old_manager
 
         self.setCache(old_manager.cache())
         self.setCookieJar(old_manager.cookieJar())

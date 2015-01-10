@@ -327,7 +327,7 @@ def format_bytes(value):
     return str(round(value)) + ' ' + unit
 
 
-def get(link, headers=None, random_ua=False):
+def get(link, headers=None, random_ua=False, raw=False):
     global HTTP_SESSION
 
     if random_ua:
@@ -350,7 +350,10 @@ def get(link, headers=None, random_ua=False):
             logging.error('Failed to load "%s"! (%d %s)', link, result.status_code, result.reason)
         return None
 
-    return result.text
+    if raw:
+        return result
+    else:
+        return result.text
 
 
 def post(link, data, headers=None, random_ua=False):
@@ -533,7 +536,7 @@ def pjoin(*args):
 
 
 def url_join(a, b):
-    if re.match(r'[a-z|A-Z]+://.*', b):
+    if re.match(r'[a-zA-Z]+://.*', b):
         # A full URL
         return b
 
@@ -548,7 +551,7 @@ def url_join(a, b):
             return proto + ':' + b
 
         # An absolute path
-        info = re.match(r'([a-z|A-Z]+://[^/]+).*')
+        info = re.match(r'([a-zA-Z]+://[^/]+).*', a)
         return info.group(1) + b
 
     return pjoin(a, b)

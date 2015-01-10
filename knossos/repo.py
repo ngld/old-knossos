@@ -134,7 +134,7 @@ class Repo(object):
 
             for i, item in enumerate(self.mods[mid]):
                 if item.version == mod.version:
-                    logging.info('Mod "%s" (%s) from "%s" overwrites an existing mod version!', mid, mod.version, self.base)
+                    logging.info('Mod "%s" (%s) from "%s" overwrites an existing mod version!', mid, mod.version, mod._repo.base)
 
                     self.mods[mid][i] = mod
                     inserted = True

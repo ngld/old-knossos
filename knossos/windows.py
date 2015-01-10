@@ -119,23 +119,20 @@ class Window(object):
 
 
 class HellWindow(Window):
-    _mod_tasks = None
+    _tasks = None
     _mod_filter = 'installed'
     browser_ctrl = None
     progress_win = None
 
     def __init__(self, window=True):
         super(HellWindow, self).__init__(window)
-        self._mod_tasks = {}
+        self._tasks = {}
 
         self.win = self._create_win(Ui_Hell, QMainWindow)
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
-        self.progress_win = progress.ProgressDisplay()
-        self.progress_win.set_statusarea(self.win.progressInfo, self.win.progressLabel, self.win.progressBar)
-
+        
         self.win.backButton.clicked.connect(self.win.webView.back)
         self.win.searchEdit.textEdited.connect(self.search_mods)
-        # self.win.filterSelect.currentIndexChanged.connect(self.search_mods)
         self.win.updateButton.clicked.connect(api.fetch_list)
         self.win.settingsButton.clicked.connect(self.show_settings)
 
@@ -151,32 +148,32 @@ class HellWindow(Window):
 
         center.signals.update_avail.connect(self.ask_update)
         center.signals.repo_updated.connect(self.check_new_repo)
-        center.signals.task_launched.connect(self.watch_mod_task)
+        center.signals.task_launched.connect(self.watch_task)
 
         self.win.pageControls.hide()
+        self.win.progressInfo.hide()
         self.open()
 
-        if center.settings['fs2_path'] is None:
-            self.win.webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
-            self.win.pageControls.setEnabled(False)
-            self.win.updateButton.setEnabled(False)
+        # self.check_fso()
 
     def check_fso(self):
         if center.settings['fs2_path'] is not None:
             if self.win.webView.url().toString() == 'qrc:///html/welcome.html':
-                self.show_mod_list()
+                self.update_mod_buttons('installed')
 
-            if center.mods is None:
+            if center.mods is None or center.mods.empty():
                 self.update_repo_list()
             else:
                 run_task(CheckTask())
             
             self.win.pageControls.setEnabled(True)
             self.win.updateButton.setEnabled(True)
+            self.win.tabButtons.setEnabled(True)
         else:
             self.win.webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
             self.win.pageControls.setEnabled(False)
             self.win.updateButton.setEnabled(False)
+            self.win.tabButtons.setEnabled(False)
 
     def check_new_repo(self):
         updates = len(center.installed.get_updates())
@@ -215,8 +212,6 @@ class HellWindow(Window):
                 mods[mid] = center.installed.mods[mid]
         elif self._mod_filter == 'progress':
             mods = {}
-            # for mid, task in self._mod_tasks.items():
-            #     mods[mid] = [task.mod]
         
         # Now filter the mods.
         query = self.win.searchEdit.text().lower()
@@ -257,23 +252,48 @@ class HellWindow(Window):
         else:
             self.search_mods()
 
-    def watch_mod_task(self, task):
-        mod = getattr(task, 'mod', None)
-        if mod is not None:
-            self._mod_tasks[mod.mid] = task
-            task.done.connect(functools.partial(self._forget_task, mod.mid))
-            task.progress.connect(functools.partial(self._track_mod_progress, mod.mid))
+    def watch_task(self, task):
+        self._tasks[id(task)] = task
+        self.browser_ctrl.get_bridge().taskStarted.emit(id(task), task.title)
 
-    def _track_mod_progress(self, mid, pi):
-        self.browser_ctrl.get_bridge().modProgress.emit(mid, pi[0], pi[1])
+        task.done.connect(functools.partial(self._forget_task, task))
+        task.progress.connect(functools.partial(self._track_progress, task))
 
-    def _forget_task(self, mid):
-        if mid in self._mod_tasks:
-            del self._mod_tasks[mid]
+        if len(self._tasks) == 1:
+            self.win.progressInfo.show()
+            self.win.progressLabel.setText(task.title)
+            self.win.progressBar.setValue(0)
 
-    def abort_mod_dl(self, mid):
-        if mid in self._mod_tasks:
-            self._mod_tasks[mid].abort()
+            integration.current.show_progress(0)
+        else:
+            # TODO: Stop being lazy and calculate the aggregate progress.
+            self.win.progressBar.hide()
+            self.win.progressLabel.setText('Working...')
+
+    def _track_progress(self, task, pi):
+        subs = [item for item in pi[1].values()]
+        self.browser_ctrl.get_bridge().taskProgress.emit(id(task), pi[0], subs, pi[2])
+
+        if len(self._tasks) == 1:
+            integration.current.set_progress(pi[0] * 100)
+            self.win.progressBar.setValue(pi[0] * 100)
+
+    def _forget_task(self, task):
+        self.browser_ctrl.get_bridge().taskFinished.emit(id(task))
+        del self._tasks[id(task)]
+
+        if len(self._tasks) == 1:
+            task = list(self._tasks.values())[0]
+            self.win.progressLabel.setText(task.title)
+            self.win.progressBar.setValue(task.get_progress()[0])
+            self.win.progressBar.show()
+        elif len(self._tasks) == 0:
+            self.win.progressInfo.hide()
+            integration.current.hide_progress()
+
+    def abort_task(self, task):
+        if task in self._tasks:
+            self._tasks[task].abort()
 
 
 class SettingsWindow(Window):

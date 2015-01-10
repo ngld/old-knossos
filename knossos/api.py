@@ -376,7 +376,7 @@ def uninstall_pkgs(pkgs, name=None, cb=None):
     msg = QtGui.QMessageBox()
     msg.setIcon(QtGui.QMessageBox.Question)
     msg.setText('Do you really want to uninstall %s?' % name)
-    msg.setInformativeText('%s will be installed.' % (', '.join(titles)))
+    msg.setInformativeText('%s will be removed.' % (', '.join(titles)))
     msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
     msg.setDefaultButton(QtGui.QMessageBox.Yes)
     
@@ -492,6 +492,7 @@ def handle_ipc(msg):
 
 def init_self():
     setup_ipc()
+    center.main_win.check_fso()
 
     if center.settings['update_notify'] and not center.VERSION.endswith('-dev'):
         run_task(CheckUpdateTask())

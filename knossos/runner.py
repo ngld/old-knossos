@@ -81,13 +81,27 @@ class Fs2Watcher(threading.Thread):
             self.set_us_layout()
         
         logging.debug('Launching FS2: %s', [fs2_bin] + self._params)
-        p = subprocess.Popen([fs2_bin] + self._params, cwd=center.settings['fs2_path'], env=env)
 
-        time.sleep(0.3)
-        if p.poll() is not None:
+        fail = False
+        rc = -999
+        reason = '???'
+        try:
+            p = subprocess.Popen([fs2_bin] + self._params, cwd=center.settings['fs2_path'], env=env)
+
+            time.sleep(0.3)
+            if p.poll() is not None:
+                rc = p.returncode
+                reason = 'return code: %d' % rc
+                fail = True
+        except OSError as exc:
+            logging.exception('Failed to launch FS2!')
+            reason = str(exc).decode('utf8', 'replace')
+            fail = True
+
+        if fail:
             self.revert_layout()
-            center.signals.fs2_failed.emit(p.returncode)
-            self.failed_msg(p)
+            center.signals.fs2_failed.emit(rc)
+            self.failed_msg(reason)
             return
         
         center.signals.fs2_launched.emit()
@@ -96,8 +110,8 @@ class Fs2Watcher(threading.Thread):
         center.signals.fs2_quit.emit()
     
     @util.run_in_qt
-    def failed_msg(self, p):
-        msg = 'Starting FS2 Open (%s) failed! (return code: %d)' % (os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), p.returncode)
+    def failed_msg(self, reason):
+        msg = 'Starting FS2 Open (%s) failed! (%s)' % (os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)
         QtGui.QMessageBox.critical(center.app.activeWindow(), 'Failed', msg)
 
     @util.run_in_qt
@@ -225,4 +239,7 @@ def run_fs2_silent(params):
 
         env['LD_LIBRARY_PATH'] = ld_path
 
-    return util.call([fs2_bin] + params, cwd=fs2_path, env=env)
+    try:
+        return util.call([fs2_bin] + params, cwd=fs2_path, env=env)
+    except OSError:
+        return -129
