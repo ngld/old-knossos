@@ -126,36 +126,32 @@ class CheckTask(progress.MultistepTask):
         mods = center.installed
 
         for subdir in os.listdir(fs2path) + [fs2path]:
-            kfile = os.path.join(fs2path, subdir, 'mod.json')
-            if os.path.isfile(kfile):
-                try:
-                    with open(kfile, 'r') as stream:
-                        data = json.load(stream)
-                        mod = repo.InstalledMod(data)
-                        mod.folder = subdir
-                        if mod.logo is not None:
-                            mod.logo_path = os.path.join(fs2path, subdir, mod.logo)
+            kfile = os.path.join(fs2path, subdir, 'mod.')
 
-                        mods.add_mod(mod)
-                except:
-                    logging.exception('Failed to parse "%s"!', kfile)
-                    continue
+            try:
+                if os.path.isfile(kfile + 'json'):
+                    mods.add_mod(repo.InstalledMod.load(kfile + 'json'))
+                elif os.path.isfile(kfile + 'ini'):
+                    mods.add_mod(repo.InstalledMod.load(kfile + 'ini'))
+            except:
+                logging.exception('Failed to parse "%s"!', kfile)
+                continue
                 
-                if mod.folder not in ('', '.'):
-                    fs2path = center.settings['fs2_path']
-                    modpath = os.path.join(fs2path, mod.folder)
-                    filenames = [util.pjoin(mod.folder, f['filename']).lower() for f in mod.get_files()]
-                    prefix = len(fs2path)
-                    lines = []
-                    
-                    for sub_path, dirs, files in os.walk(modpath):
-                        for name in files:
-                            my_path = os.path.join(sub_path[prefix:], name).replace('\\', '/').lstrip('/')
-                            if my_path.lower() not in filenames:
-                                lines.append('  * %s' % my_path)
-                    
-                    if len(lines) > 0:
-                        mod.check_notes = ['User-added files:\n' + '\n'.join(lines)]
+            # if mod.folder not in ('', '.'):
+            #     fs2path = center.settings['fs2_path']
+            #     modpath = os.path.join(fs2path, mod.folder)
+            #     filenames = [util.pjoin(mod.folder, f['filename']).lower() for f in mod.get_files()]
+            #     prefix = len(fs2path)
+            #     lines = []
+                
+            #     for sub_path, dirs, files in os.walk(modpath):
+            #         for name in files:
+            #             my_path = os.path.join(sub_path[prefix:], name).replace('\\', '/').lstrip('/')
+            #             if my_path.lower() not in filenames:
+            #                 lines.append('  * %s' % my_path)
+                
+            #     if len(lines) > 0:
+            #         mod.check_notes = ['User-added files:\n' + '\n'.join(lines)]
 
     def init2(self):
         pkgs = []

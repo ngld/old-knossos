@@ -25,7 +25,7 @@ uhf(__name__)
 
 from . import center, util, repo, integration
 from .qt import QtGui
-from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, InstallTask, UninstallTask
+from .tasks import run_task, CheckUpdateTask, FetchTask, InstallTask, UninstallTask
 from .ui.select_list import Ui_Dialog as Ui_SelectList
 from .windows import HellWindow, SettingsWindow
 from .repo import ModNotFound
@@ -192,7 +192,6 @@ def run_mod(mod):
         mod = repo.Mod()
     
     modpath = util.ipath(os.path.join(center.settings['fs2_path'], mod.folder))
-    #ini = None
     mods = []
     
     def check_install():
@@ -231,20 +230,8 @@ def run_mod(mod):
         
         return
 
-    mods = [mod.folder]
-    for dep in mod.resolve_deps():
-        folder = dep.get_mod().folder
-        if folder not in mods:
-            mods.append(folder)
-
-    m = []
-    for item in mods:
-        if item.strip() != '':
-            m.append(os.path.basename(util.ipath(os.path.join(center.settings['fs2_path'], item))))
-    
-    mods = m
-    del m
-    mod_found = False
+    mods = mod.get_mod_flag()
+    mod_flag_found = False
     
     # Look for the cmdline path.
     if sys.platform.startswith('linux'):
@@ -268,7 +255,7 @@ def run_mod(mod):
         
         for i, part in enumerate(cmdline):
             if part.strip() == '-mod':
-                mod_found = True
+                mod_flag_found = True
 
                 if len(cmdline) <= i + 1:
                     cmdline.apppend(','.join(mods))
@@ -277,10 +264,10 @@ def run_mod(mod):
                 break
     
     if len(mods) == 0:
-        if mod_found:
+        if mod_flag_found:
             cmdline.remove('-mod')
             cmdline.remove('')
-    elif not mod_found:
+    elif not mod_flag_found:
         cmdline.append('-mod')
         cmdline.append(','.join(mods))
     
@@ -496,9 +483,3 @@ def init_self():
 
     if center.settings['update_notify'] and not center.VERSION.endswith('-dev'):
         run_task(CheckUpdateTask())
-
-    if center.settings['fs2_path'] is not None:
-        if center.mods.empty():
-            run_task(FetchTask())
-        else:
-            run_task(CheckTask())

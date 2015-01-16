@@ -21,7 +21,7 @@ import functools
 from . import uhf
 uhf(__name__)
 
-from . import center, util, clibs, progress, integration, api, web, repo
+from . import center, util, clibs, integration, api, web, repo
 from .qt import QtCore, QtGui
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.gogextract import Ui_Dialog as Ui_Gogextract
@@ -158,8 +158,8 @@ class HellWindow(Window):
 
     def check_fso(self):
         if center.settings['fs2_path'] is not None:
-            if self.win.webView.url().toString() == 'qrc:///html/welcome.html':
-                self.update_mod_buttons('installed')
+            # if self.win.webView.url().toString() == 'qrc:///html/welcome.html':
+            #     self.update_mod_buttons('installed')
 
             if center.mods is None or center.mods.empty():
                 self.update_repo_list()

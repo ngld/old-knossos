@@ -252,6 +252,12 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
 
 
 def main(args, prg_wrap=None):
+    # Default to replace errors when de/encoding.
+    import codecs
+    
+    codecs.register_error('strict', codecs.replace_errors)
+    codecs.register_error('really_strict', codecs.strict_errors)
+    
     progress.reset()
     progress.set_callback(show_progress)
     

@@ -134,7 +134,12 @@ class Repo(object):
 
             for i, item in enumerate(self.mods[mid]):
                 if item.version == mod.version:
-                    logging.info('Mod "%s" (%s) from "%s" overwrites an existing mod version!', mid, mod.version, mod._repo.base)
+                    if mod._repo is None:
+                        mod_base = 'None'
+                    else:
+                        mod_base = mod._repo.base
+                    
+                    logging.info('Mod "%s" (%s) from "%s" overwrites an existing mod version!', mid, mod.version, mod_base)
 
                     self.mods[mid][i] = mod
                     inserted = True
@@ -659,6 +664,25 @@ class InstalledMod(Mod):
     check_notes = ''
 
     @staticmethod
+    def load(path):
+        if path.endswith('.json'):
+            with open(path, 'r') as stream:
+                data = json.load(stream)
+
+            mod = InstalledMod(data)
+        elif path.endswith('.ini'):
+            mod = IniMod()
+            mod.load(path)
+        else:
+            return None
+
+        mod.folder = os.path.dirname(path)
+        if mod.logo is not None and '://' not in mod.logo:
+            mod.logo_path = os.path.join(mod.folder, mod.logo)
+
+        return mod
+
+    @staticmethod
     def convert(mod):
         data = mod.get()
         data['packages'] = []
@@ -727,6 +751,66 @@ class InstalledMod(Mod):
 
         with open(path, 'w') as stream:
             json.dump(info, stream)
+
+    def get_mod_flag(self):
+        mods = [self.folder]
+        for dep in self.resolve_deps():
+            folder = dep.get_mod().folder
+            if folder not in mods:
+                mods.append(folder)
+
+        m = []
+        for item in mods:
+            if item.strip() != '':
+                m.append(os.path.basename(util.ipath(os.path.join(center.settings['fs2_path'], item))))
+        
+        return m
+
+
+class IniMod(InstalledMod):
+    _pr_list = None
+    _sc_list = None
+
+    def __init__(self, values=None):
+        super(IniMod, self).__init__(values=None)
+
+        self._pr_list = []
+        self._sc_list = []
+
+        pkg = InstalledPackage()
+        pkg.name = 'Content'
+        pkg.status = 'required'
+        self.add_pkg(pkg)
+
+    def load(self, path):
+        with open(path, 'r') as stream:
+            for line in stream:
+                if '=' not in line:
+                    continue
+
+                line = line.split('=')
+                name = line[0].strip()
+                value = line[1].strip(' \r\n\t;')
+
+                if name == 'modname':
+                    self.title = value + ' (ini)'
+                elif name == 'infotext':
+                    self.description = value
+                elif name.startswith('logo'):
+                    self.logo = value
+                elif name == 'primarylist':
+                    self._pr_list = value.split(',')
+                elif name in ('secondarylist', 'secondrylist'):
+                    self._sc_list = value.split(',')
+
+        self.id = '##INI_COMPAT#' + self.title
+
+    def get_mod_flag(self):
+        mods = self._pr_list[:]
+        mods.append(self.folder)
+        mods.extend(self._sc_list)
+
+        return mods
 
 
 class InstalledPackage(Package):

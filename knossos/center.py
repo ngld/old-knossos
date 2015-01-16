@@ -20,7 +20,7 @@ from .qt import QtCore
 # Only remove the -dev tag if you're making a release!
 VERSION = '0.1.0-dev'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
-INNOEXTRACT_LINK = 'https://dev.tproxy.de/fs2/innoextract.txt'
+INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
 DEBUG = os.environ.get('KN_DEBUG') == '1'
 
 app = None
@@ -38,7 +38,6 @@ settings = {
     'pins': {},
     'cmdlines': {},
     'hash_cache': None,
-    'enforce_deps': True,
     'max_downloads': 3,
     'repos': [('http://fsnebula.org/__all.json', 'Test repos')],
     'nebula_link': 'http://fsnebula.org/',

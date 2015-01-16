@@ -286,6 +286,12 @@ def init():
 def main():
     global ipc, app
 
+    # Default to replace errors when de/encoding.
+    import codecs
+    
+    codecs.register_error('strict', codecs.replace_errors)
+    codecs.register_error('really_strict', codecs.strict_errors)
+
     if len(sys.argv) > 1 and sys.argv[1] == '--cpuinfo':
         get_cpu_info()
         return
