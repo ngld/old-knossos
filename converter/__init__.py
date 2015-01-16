@@ -54,7 +54,7 @@ def init_app():
 
 def run_task(task, prg_wrap=None):
     def update_progress(pi):
-        total, items = task.get_progress()
+        total, items, title = task.get_progress()
         text = []
         for item in items.values():
             text.append('%3d%% %s' % (item[0] * 100, item[1]))

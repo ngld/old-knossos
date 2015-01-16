@@ -23,7 +23,6 @@ import six
 
 from . import util, integration
 from .qt import QtCore, QtGui
-from .ui.progress import Ui_Dialog as Ui_Progress
 
 try:
     import curses
@@ -578,6 +577,8 @@ class ProgressDisplay(QtGui.QDialog):
         
         self._task_bars = []
         self._tasks = []
+        
+        from .ui.progress import Ui_Dialog as Ui_Progress
         
         util.init_ui(Ui_Progress(), self)
         self.setModal(True)
