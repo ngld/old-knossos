@@ -480,7 +480,7 @@ class Package(object):
             'status': self.status,
             'dependencies': self.dependencies,
             'environment': self.environment,
-            'files': list(self.files.values()),
+            'files': list(self.files),
             'filelist': self.filelist
         }
 
@@ -676,9 +676,9 @@ class InstalledMod(Mod):
         else:
             return None
 
-        mod.folder = os.path.dirname(path)
+        mod.folder = os.path.basename(os.path.dirname(path))
         if mod.logo is not None and '://' not in mod.logo:
-            mod.logo_path = os.path.join(mod.folder, mod.logo)
+            mod.logo_path = os.path.join(os.path.dirname(path), mod.logo)
 
         return mod
 
@@ -777,10 +777,12 @@ class IniMod(InstalledMod):
         self._pr_list = []
         self._sc_list = []
 
-        pkg = InstalledPackage()
-        pkg.name = 'Content'
-        pkg.status = 'required'
-        self.add_pkg(pkg)
+        self.version = semantic_version.Version('1.0.0+ini')
+
+        # pkg = InstalledPackage()
+        # pkg.name = 'Content'
+        # pkg.status = 'required'
+        # self.add_pkg(pkg)
 
     def load(self, path):
         with open(path, 'r') as stream:
@@ -799,11 +801,17 @@ class IniMod(InstalledMod):
                 elif name.startswith('logo'):
                     self.logo = value
                 elif name == 'primarylist':
-                    self._pr_list = value.split(',')
+                    if value != '':
+                        self._pr_list = value.split(',')
                 elif name in ('secondarylist', 'secondrylist'):
-                    self._sc_list = value.split(',')
+                    if value != '':
+                        self._sc_list = value.split(',')
 
-        self.id = '##INI_COMPAT#' + self.title
+        folder = os.path.basename(os.path.dirname(path))
+        if self.title == '':
+            self.title = folder + ' (ini)'
+
+        self.mid = '##INI_COMPAT#' + folder
 
     def get_mod_flag(self):
         mods = self._pr_list[:]

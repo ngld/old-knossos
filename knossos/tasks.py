@@ -128,11 +128,15 @@ class CheckTask(progress.MultistepTask):
         for subdir in os.listdir(fs2path) + [fs2path]:
             kfile = os.path.join(fs2path, subdir, 'mod.')
 
+            if os.path.isfile(kfile + 'json'):
+                kfile = kfile + 'json'
+            elif os.path.isfile(kfile + 'ini'):
+                kfile = kfile + 'ini'
+            else:
+                continue
+
             try:
-                if os.path.isfile(kfile + 'json'):
-                    mods.add_mod(repo.InstalledMod.load(kfile + 'json'))
-                elif os.path.isfile(kfile + 'ini'):
-                    mods.add_mod(repo.InstalledMod.load(kfile + 'ini'))
+                mods.add_mod(repo.InstalledMod.load(kfile))
             except:
                 logging.exception('Failed to parse "%s"!', kfile)
                 continue

@@ -1168,23 +1168,27 @@ class ModSettingsWindow(Window):
         lay.addWidget(self._flags.win)
 
         self._pkg_checks = []
-        rmod = center.mods.query(mod)
-        for pkg in rmod.packages:
-            p_check = QtGui.QCheckBox(pkg.name)
-            installed = False
+        try:
+            rmod = center.mods.query(mod)
+        except repo.ModNotFound:
+            pass
+        else:
+            for pkg in rmod.packages:
+                p_check = QtGui.QCheckBox(pkg.name)
+                installed = False
 
-            if pkg.status == 'required' or center.installed.is_installed(pkg):
-                p_check.setCheckState(QtCore.Qt.Checked)
-                installed = True
+                if pkg.status == 'required' or center.installed.is_installed(pkg):
+                    p_check.setCheckState(QtCore.Qt.Checked)
+                    installed = True
 
-                if pkg.status == 'required':
-                    p_check.setDisabled(True)
-            else:
-                p_check.setCheckState(QtCore.Qt.Unchecked)
+                    if pkg.status == 'required':
+                        p_check.setDisabled(True)
+                else:
+                    p_check.setCheckState(QtCore.Qt.Unchecked)
 
-            p_check.stateChanged.connect(self.update_dlsize)
-            self.win.pkgsLayout.addWidget(p_check)
-            self._pkg_checks.append([p_check, installed, pkg])
+                p_check.stateChanged.connect(self.update_dlsize)
+                self.win.pkgsLayout.addWidget(p_check)
+                self._pkg_checks.append([p_check, installed, pkg])
 
         self.win.applyPkgChanges.clicked.connect(self.apply_pkg_selection)
 
