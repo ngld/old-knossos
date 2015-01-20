@@ -107,6 +107,9 @@ class Repo(object):
         h.close()
 
     def parse(self, obj):
+        if not obj:
+            return
+
         if isinstance(obj, six.string_types):
             data = json.loads(obj)
         else:
@@ -389,8 +392,13 @@ class Mod(object):
 
         return files
 
-    def resolve_deps(self):
-        return self._repo.process_pkg_selection([pkg for pkg in self.packages if pkg.status == 'required'])
+    def resolve_deps(self, only_required=True):
+        if only_required:
+            pkgs = [pkg for pkg in self.packages if pkg.status == 'required']
+        else:
+            pkgs = [pkg for pkg in self.packages if pkg.status in ('required', 'recommended')]
+
+        return self._repo.process_pkg_selection(pkgs)
 
     def save_logo(self, dest):
         if self.logo is None:
@@ -425,7 +433,7 @@ class Package(object):
         self._mod = mod
         self.dependencies = []
         self.environment = []
-        self.files = []
+        self.files = {}
 
         if values is not None:
             self.set(values)
@@ -480,7 +488,7 @@ class Package(object):
             'status': self.status,
             'dependencies': self.dependencies,
             'environment': self.environment,
-            'files': list(self.files),
+            'files': list(self.files.values()),
             'filelist': self.filelist
         }
 
@@ -511,10 +519,16 @@ class Package(object):
             pkgs = dep.get('packages', [])
             found_pkgs = []
 
-            for pkg in mod.packages:
-                if pkg.status == 'required' or pkg.name in pkgs:
-                    result.append((pkg, version))
-                    found_pkgs.append(pkg.name)
+            if len(pkgs) > 0:
+                for pkg in mod.packages:
+                    if pkg.status == 'required' or pkg.name in pkgs:
+                        result.append((pkg, version))
+                        found_pkgs.append(pkg.name)
+            else:
+                for pkg in mod.packages:
+                    if pkg.status != 'optional':
+                        result.append((pkg, version))
+                        found_pkgs.append(pkg.name)
 
             missing_pkgs = set(pkgs) - set(found_pkgs)
             if len(missing_pkgs) > 0:

@@ -25,10 +25,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# FIXME: Figure out how /proc/cpuinfo simulates cpuinfo on non x86 cpus
-# FIXME: See if running this in a multiprocessing process will stop it from segfaulting when it breaks
-# FIXME: Check how this compares to numpy. How does numpy get MHz and sse3 detection when the registry
-# does not have this info, and there is no /proc/cpuinfo ? Does it use win32 __cpuinfo ?
 
 import os, sys
 import re
@@ -42,107 +38,37 @@ PY2 = sys.version_info[0] == 2
 
 bits = platform.architecture()[0]
 is_windows = platform.system().lower() == 'windows'
+if not is_windows:
+	import ctypes.util
 
-def chomp(s):
-	for sep in ['\r\n', '\n', '\r']:
-		if s.endswith(sep):
-			return s[:-len(sep)]
+	libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
 
-	return s
+	libc.getpagesize.restype = ctypes.c_size_t
+	libc.valloc.argtypes = [ctypes.c_size_t]
+	libc.valloc.restype = ctypes.c_void_p
+	libc.mprotect.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int]
+	libc.mprotect.restype = ctypes.c_int
+	libc.memmove.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+	libc.memmove.restype = ctypes.c_void_p
+	libc.free.argtypes = [ctypes.c_void_p]
 
-class ProcessRunner(object):
-	def __init__(self, command):
-		self._command = command
-		self._process = None
-		self._return_code = None
-		self._stdout = None
-		self._stderr = None
 
-	def run(self):
-		self._stdout = []
-		self._stderr = []
-
-		# Start the process and save the output
-		self._process = subprocess.Popen(
-			self._command,
-			stderr = subprocess.PIPE,
-			stdout = subprocess.PIPE,
-			shell = True
-		)
-
-	def wait(self):
-		# Wait for the process to actually exit
-		self._process.wait()
-
-		# Get the return code
-		rc = self._process.returncode
-		if hasattr(os, 'WIFEXITED') and os.WIFEXITED(rc):
-			rc = os.WEXITSTATUS(rc)
-		self._return_code = rc
-
-		# Get strerr and stdout into byte strings
-		self._stderr = b''.join(self._stderr)
-		self._stdout = b''.join(self._stdout)
-
-		# Convert strerr and stdout into unicode
-		if PY2:
-			self._stderr = unicode(self._stderr, 'UTF-8')
-			self._stdout = unicode(self._stdout, 'UTF-8')
-		else:
-			self._stderr = str(self._stderr, 'UTF-8')
-			self._stdout = str(self._stdout, 'UTF-8')
-
-		# Chomp the terminating newline off the ends of output
-		self._stdout = chomp(self._stdout)
-		self._stderr = chomp(self._stderr)
-
-	def get_is_done(self):
-		# You have to poll a process to update the retval. Even if it has stopped already
-		if self._process.returncode == None:
-			self._process.poll()
-
-		# Read the output from the buffer
-		sout, serr = self._process.communicate()
-		self._stdout.append(sout)
-		self._stderr.append(serr)
-
-		# Return true if there is a return code
-		return self._process.returncode != None
-	is_done = property(get_is_done)
-
-	def get_stderr(self):
-		self._require_wait()
-		return self._stderr
-	stderr = property(get_stderr)
-
-	def get_stdout(self):
-		self._require_wait()
-		return self._stdout
-	stdout = property(get_stdout)
-
-	def get_stdall(self):
-		self._require_wait()
-		return self._stdout + '\n' + self._stderr
-	stdall = property(get_stdall)
-
-	def get_is_success(self):
-		self._require_wait()
-		return self._return_code == 0
-	is_success = property(get_is_success)
-
-	def _require_wait(self):
-		if self._return_code == None:
-			raise Exception("Wait needs to be called before any info on the process can be gotten.")
-
-def run_and_get_stdout(command):
-	runner = ProcessRunner(command)
-	runner.run()
-	runner.is_done
-	runner.wait()
-	if runner.is_success:
-		return runner.stdout
+def run_and_get_stdout(command, pipe_command=None):
+	if not pipe_command:
+		p1 = subprocess.Popen(command, stdout=subprocess.PIPE)
+		output = p1.stdout.read()
+		if not PY2:
+			output = output.decode(encoding='UTF-8')
+		return output
 	else:
-		return None
+		p1 = subprocess.Popen(command, stdout=subprocess.PIPE)
+		p2 = subprocess.Popen(pipe_command, stdin=p1.stdout, stdout=subprocess.PIPE)
+		p1.stdout.close()
+		output = p2.communicate()[0]
+		if not PY2:
+			output = output.decode(encoding='UTF-8')
+		return output
+
 
 def program_paths(program_name):
 	paths = []
@@ -157,6 +83,19 @@ def program_paths(program_name):
 			if os.access(pext, os.X_OK):
 				paths.append(pext)
 	return paths
+
+def _get_hz_string_from_brand(processor_brand):
+	scale = 1
+	if processor_brand.lower().endswith('mhz'):
+		scale = 6
+	elif processor_brand.lower().endswith('ghz'):
+		scale = 9
+	hz_brand = processor_brand.lower()
+	hz_brand = hz_brand.split('@')[1]
+	hz_brand = hz_brand.rstrip('mhz').rstrip('ghz').strip()
+	hz_brand = to_hz_string(hz_brand)
+
+	return (scale, hz_brand)
 
 def to_friendly_hz(ticks, scale):
 	# Get the raw Hz as a string
@@ -273,8 +212,8 @@ class CPUID(object):
 			return
 
 		# Figure out if we can execute heap and execute memory
-		can_selinux_exec_heap = os.popen("sestatus -b | grep -i \"allow_execheap\"").read().strip().lower().endswith('on')
-		can_selinux_exec_memory = os.popen("sestatus -b | grep -i \"allow_execmem\"").read().strip().lower().endswith('on')
+		can_selinux_exec_heap = run_and_get_stdout(['sestatus', '-b'], ['grep', '-i', '"allow_execheap"']).strip().lower().endswith('on')
+		can_selinux_exec_memory = run_and_get_stdout(['sestatus', '-b'], ['grep', '-i', '"allow_execmem"']).strip().lower().endswith('on')
 		self.is_selinux_enforcing = (not can_selinux_exec_heap or not can_selinux_exec_memory)
 
 	def _asm_func(self, restype=None, argtypes=(), byte_code=[]):
@@ -298,25 +237,33 @@ class CPUID(object):
 		else:
 			# Allocate a memory segment the size of the byte code
 			size = len(byte_code)
-			address = ctypes.pythonapi.valloc(size)
+			address = libc.valloc(size)
 			if not address:
-				raise Exception("Failed to valloc")
+				errno = ctypes.get_errno()
+				errmsg = os.strerror(errno)
+				raise Exception("Failed to valloc (%d: %s)" % (errno, errmsg))
 
 			# Mark the memory segment as writeable only
 			if not self.is_selinux_enforcing:
 				WRITE = 0x2
-				if ctypes.pythonapi.mprotect(address, size, WRITE) < 0:
-					raise Exception("Failed to mprotect")
+				if libc.mprotect(address, size, WRITE) < 0:
+					errno = ctypes.get_errno()
+					errmsg = os.strerror(errno)
+					raise Exception("Failed to mprotect (%d: %s)" % (errno, errmsg))
 
 			# Copy the byte code into the memory segment
-			if ctypes.pythonapi.memmove(address, byte_code, size) < 0:
-				raise Exception("Failed to memmove")
+			if libc.memmove(address, byte_code, size) < 0:
+				errno = ctypes.get_errno()
+				errmsg = os.strerror(errno)
+				raise Exception("Failed to memmove (%d: %s)" % (errno, errmsg))
 
 			# Mark the memory segment as writeable and executable only
 			if not self.is_selinux_enforcing:
 				WRITE_EXECUTE = 0x2 | 0x4
-				if ctypes.pythonapi.mprotect(address, size, WRITE_EXECUTE) < 0:
-					raise Exception("Failed to mprotect")
+				if libc.mprotect(address, size, WRITE_EXECUTE) < 0:
+					errno = ctypes.get_errno()
+					errmsg = os.strerror(errno)
+					raise Exception("Failed to mprotect (%d: %s)" % (errno, errmsg))
 
 		# Cast the memory segment into a function
 		functype = ctypes.CFUNCTYPE(restype, *argtypes)
@@ -339,7 +286,7 @@ class CPUID(object):
 		# Call the byte code like a function
 		retval = func()
 
-		size = ctypes.c_size_t(len(byte_code))
+		size = len(byte_code)
 
 		# Free the function memory segment
 		if is_windows:
@@ -348,10 +295,12 @@ class CPUID(object):
 		else:
 			# Remove the executable tag on the memory
 			READ_WRITE = 0x1 | 0x2
-			if ctypes.pythonapi.mprotect(address, size, READ_WRITE) < 0:
-				raise Exception("Failed to mprotect")
+			if libc.mprotect(address, size, READ_WRITE) < 0:
+				errno = ctypes.get_errno()
+				errmsg = os.strerror(errno)
+				raise Exception("Failed to mprotect (%d: %s)" % (errno, errmsg))
 
-			ctypes.pythonapi.free(address)
+			libc.free(address)
 
 		return retval
 
@@ -515,7 +464,7 @@ class CPUID(object):
 			'smx' : is_bit_set(ecx, 6),
 			'est' : is_bit_set(ecx, 7),
 			'tm2' : is_bit_set(ecx, 8),
-			'sse3' : is_bit_set(ecx, 9),
+			'ssse3' : is_bit_set(ecx, 9),
 			'cid' : is_bit_set(ecx, 10),
 			#'reserved3' : is_bit_set(ecx, 11),
 			'fma' : is_bit_set(ecx, 12),
@@ -797,15 +746,24 @@ def get_cpu_info_from_cpuid():
 	cache_info = cpuid.get_cache(max_extension_support)
 	info = cpuid.get_info()
 
+	processor_brand = cpuid.get_processor_brand(max_extension_support)
+
 	# Get the Hz and scale
-	processor_hz = cpuid.get_raw_hz()
-	processor_hz = to_hz_string(processor_hz)
+	hz_actual = cpuid.get_raw_hz()
+	hz_actual = to_hz_string(hz_actual)
+
+	# Get the Hz and scale
+	scale, hz_advertised = _get_hz_string_from_brand(processor_brand)
 
 	return {
 	'vendor_id' : cpuid.get_vendor_id(),
-	'brand' : cpuid.get_processor_brand(max_extension_support),
-	'hz' : to_friendly_hz(processor_hz, 0),
-	'raw_hz' : to_raw_hz(processor_hz, 0),
+	'brand' : processor_brand,
+
+	'hz_advertised' : to_friendly_hz(hz_advertised, scale),
+	'hz_actual' : to_friendly_hz(hz_actual, 6),
+	'hz_advertised_raw' : to_raw_hz(hz_advertised, scale),
+	'hz_actual_raw' : to_raw_hz(hz_actual, 6),
+
 	'arch' : arch,
 	'bits' : bits,
 	'count' : multiprocessing.cpu_count(),
@@ -845,9 +803,7 @@ def get_cpu_info_from_proc_cpuinfo():
 	if not os.path.exists('/proc/cpuinfo'):
 		return None
 
-	output = os.popen('cat /proc/cpuinfo').read()
-	# FIXME: See for how lscpu parses /proc/cpuinfo
-	# http://git.kernel.org/cgit/utils/util-linux/util-linux.git/tree/sys-utils/lscpu.c
+	output = run_and_get_stdout(['cat', '/proc/cpuinfo'])
 
 	# Various fields
 	vendor_id = _get_field(output, 'vendor_id', 'vendor id', 'vendor')
@@ -862,10 +818,12 @@ def get_cpu_info_from_proc_cpuinfo():
 	flags.sort()
 
 	# Convert from MHz string to Hz
-	processor_hz = _get_field(output, 'cpu MHz', 'cpu speed', 'clock')
-	processor_hz = processor_hz.lower().rstrip('mhz').strip()
-	#processor_hz = '01612.0'
-	processor_hz = to_hz_string(processor_hz)
+	hz_actual = _get_field(output, 'cpu MHz', 'cpu speed', 'clock')
+	hz_actual = hz_actual.lower().rstrip('mhz').strip()
+	hz_actual = to_hz_string(hz_actual)
+
+	# Convert from GHz/MHz string to Hz
+	scale, hz_advertised = _get_hz_string_from_brand(processor_brand)
 
 	# Get the CPU arch and bits
 	raw_arch_string = platform.machine()
@@ -874,8 +832,12 @@ def get_cpu_info_from_proc_cpuinfo():
 	return {
 	'vendor_id' : vendor_id,
 	'brand' : processor_brand,
-	'hz' : to_friendly_hz(processor_hz, 6),
-	'raw_hz' : to_raw_hz(processor_hz, 6),
+
+	'hz_advertised' : to_friendly_hz(hz_advertised, scale),
+	'hz_actual' : to_friendly_hz(hz_actual, 6),
+	'hz_advertised_raw' : to_raw_hz(hz_advertised, scale),
+	'hz_actual_raw' : to_raw_hz(hz_actual, 6),
+
 	'arch' : arch,
 	'bits' : bits,
 	'count' : multiprocessing.cpu_count(),
@@ -904,22 +866,31 @@ def get_cpu_info_from_dmesg():
 		return None
 
 	# If dmesg fails to have processor brand, return None
-	processor_brand = run_and_get_stdout('dmesg -a | grep "CPU:"')
-	if processor_brand == None:
+	long_brand = run_and_get_stdout(['dmesg', '-a'], ['grep', '"CPU:"'])
+	if long_brand == None:
 		return None
 
 	# If dmesg fails to have fields, return None
-	fields = run_and_get_stdout('dmesg -a | grep "Origin ="')
+	fields = run_and_get_stdout(['dmesg', '-a'], ['grep', '"Origin ="'])
 	if fields == None:
 		return None
 
 	# If dmesg fails to have flags, return None
-	flags = run_and_get_stdout('dmesg -a | grep "Features="')
+	flags = run_and_get_stdout(['dmesg', '-a'], ['grep', '"Features="'])
 	if flags == None:
 		return None
 
+	scale = 0
+	hz_actual = long_brand.rsplit('(', 1)[1].split(' ')[0].lower()
+	if hz_actual.endswith('mhz'):
+		scale = 6
+	elif hz_actual.endswith('ghz'):
+		scale = 9
+	hz_actual = hz_actual.split('-')[0]
+	hz_actual = to_hz_string(hz_actual)
+
 	# Processor Brand
-	processor_brand = processor_brand.rsplit('(', 1)[0]
+	processor_brand = long_brand.rsplit('(', 1)[0]
 	processor_brand = processor_brand.strip()
 
 	# Various fields
@@ -947,15 +918,7 @@ def get_cpu_info_from_dmesg():
 	flags.sort()
 
 	# Convert from GHz/MHz string to Hz
-	scale = 1
-	if processor_brand.lower().endswith('mhz'):
-		scale = 6
-	elif processor_brand.lower().endswith('ghz'):
-		scale = 9
-	processor_hz = processor_brand.lower()
-	processor_hz = processor_hz.split('@')[1]
-	processor_hz = processor_hz.rstrip('mhz').rstrip('ghz').strip()
-	processor_hz = to_hz_string(processor_hz)
+	scale, hz_advertised = _get_hz_string_from_brand(processor_brand)
 
 	# Get the CPU arch and bits
 	raw_arch_string = platform.machine()
@@ -964,8 +927,12 @@ def get_cpu_info_from_dmesg():
 	return {
 	'vendor_id' : vendor_id,
 	'brand' : processor_brand,
-	'hz' : to_friendly_hz(processor_hz, scale),
-	'raw_hz' : to_raw_hz(processor_hz, scale),
+
+	'hz_advertised' : to_friendly_hz(hz_advertised, scale),
+	'hz_actual' : to_friendly_hz(hz_actual, 6),
+	'hz_advertised_raw' : to_raw_hz(hz_advertised, scale),
+	'hz_actual_raw' : to_raw_hz(hz_actual, 6),
+
 	'arch' : arch,
 	'bits' : bits,
 	'count' : multiprocessing.cpu_count(),
@@ -994,7 +961,7 @@ def get_cpu_info_from_sysctl():
 		return None
 
 	# If sysctl fails return None
-	output = run_and_get_stdout('sysctl machdep.cpu')
+	output = run_and_get_stdout(['sysctl', 'machdep.cpu', 'hw.cpufrequency'])
 	if output == None:
 		return None
 
@@ -1011,15 +978,9 @@ def get_cpu_info_from_sysctl():
 	flags.sort()
 
 	# Convert from GHz/MHz string to Hz
-	scale = 1
-	if processor_brand.lower().endswith('mhz'):
-		scale = 6
-	elif processor_brand.lower().endswith('ghz'):
-		scale = 9
-	processor_hz = processor_brand.lower()
-	processor_hz = processor_hz.split('@')[1]
-	processor_hz = processor_hz.rstrip('mhz').rstrip('ghz').strip()
-	processor_hz = to_hz_string(processor_hz)
+	scale, hz_advertised = _get_hz_string_from_brand(processor_brand)
+	hz_actual = _get_field(output, 'hw.cpufrequency')
+	hz_actual = to_hz_string(hz_actual)
 
 	# Get the CPU arch and bits
 	raw_arch_string = platform.machine()
@@ -1028,8 +989,12 @@ def get_cpu_info_from_sysctl():
 	return {
 	'vendor_id' : vendor_id,
 	'brand' : processor_brand,
-	'hz' : to_friendly_hz(processor_hz, scale),
-	'raw_hz' : to_raw_hz(processor_hz, scale),
+
+	'hz_advertised' : to_friendly_hz(hz_advertised, scale),
+	'hz_actual' : to_friendly_hz(hz_actual, 0),
+	'hz_advertised_raw' : to_raw_hz(hz_advertised, scale),
+	'hz_actual_raw' : to_raw_hz(hz_actual, 0),
+
 	'arch' : arch,
 	'bits' : bits,
 	'count' : multiprocessing.cpu_count(),
@@ -1065,18 +1030,6 @@ def get_cpu_info_from_registry():
 	except ImportError as err:
 		import winreg
 
-	# Get the CPU arch and bits
-	key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
-	raw_arch_string = winreg.QueryValueEx(key, "PROCESSOR_ARCHITECTURE")[0]
-	winreg.CloseKey(key)
-	arch, bits = parse_arch(raw_arch_string)
-
-	# Get the CPU MHz
-	key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"Hardware\Description\System\CentralProcessor\0")
-	processor_hz = winreg.QueryValueEx(key, "~Mhz")[0]
-	winreg.CloseKey(key)
-	processor_hz = to_hz_string(processor_hz)
-
 	# Get the CPU name
 	key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"Hardware\Description\System\CentralProcessor\0")
 	processor_brand = winreg.QueryValueEx(key, "ProcessorNameString")[0]
@@ -1086,6 +1039,21 @@ def get_cpu_info_from_registry():
 	key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"Hardware\Description\System\CentralProcessor\0")
 	vendor_id = winreg.QueryValueEx(key, "VendorIdentifier")[0]
 	winreg.CloseKey(key)
+
+	# Get the CPU arch and bits
+	key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
+	raw_arch_string = winreg.QueryValueEx(key, "PROCESSOR_ARCHITECTURE")[0]
+	winreg.CloseKey(key)
+	arch, bits = parse_arch(raw_arch_string)
+
+	# Get the actual CPU Hz
+	key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"Hardware\Description\System\CentralProcessor\0")
+	hz_actual = winreg.QueryValueEx(key, "~Mhz")[0]
+	winreg.CloseKey(key)
+	hz_actual = to_hz_string(hz_actual)
+
+	# Get the advertised CPU Hz
+	scale, hz_advertised = _get_hz_string_from_brand(processor_brand)
 
 	# Get the CPU features
 	key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"Hardware\Description\System\CentralProcessor\0")
@@ -1142,8 +1110,12 @@ def get_cpu_info_from_registry():
 	return {
 	'vendor_id' : vendor_id,
 	'brand' : processor_brand,
-	'hz' : to_friendly_hz(processor_hz, 6),
-	'raw_hz' : to_raw_hz(processor_hz, 6),
+
+	'hz_advertised' : to_friendly_hz(hz_advertised, scale),
+	'hz_actual' : to_friendly_hz(hz_actual, 6),
+	'hz_advertised_raw' : to_raw_hz(hz_advertised, scale),
+	'hz_actual_raw' : to_raw_hz(hz_actual, 6),
+
 	'arch' : arch,
 	'bits' : bits,
 	'count' : multiprocessing.cpu_count(),
@@ -1162,49 +1134,45 @@ def get_cpu_info_from_registry():
 	'flags' : flags
 	}
 
-def get_cpu_info_from_solaris():
+def get_cpu_info_from_kstat():
 	'''
-	Returns the CPU info gathered from isainfo and psrinfo. Will 
-	return None if isainfo or psrinfo are not found.
+	Returns the CPU info gathered from isainfo and kstat. Will 
+	return None if isainfo or kstat are not found.
 	'''
-	# Just return None if there is no isainfo or psrinfo
-	if not program_paths('isainfo') or not program_paths('psrinfo'):
+	# Just return None if there is no isainfo or kstat
+	if not program_paths('isainfo') or not program_paths('kstat'):
 		return None
 
 	# If isainfo fails return None
-	flag_output = run_and_get_stdout('isainfo -vb')
+	flag_output = run_and_get_stdout(['isainfo', '-vb'])
 	if flag_output == None:
 		return None
 
-	# If psrinfo fails return None
-	output = run_and_get_stdout('psrinfo -v')
-	if output == None:
+	# If kstat fails return None
+	kstat = run_and_get_stdout(['kstat', '-m', 'cpu_info'])
+	if kstat == None:
 		return None
 
 	# Various fields
-	vendor_id = 'unknown'
-	processor_brand = 'unknown'
+	vendor_id = kstat.split('\tvendor_id ')[1].split('\n')[0].strip()
+	processor_brand = kstat.split('\tbrand ')[1].split('\n')[0].strip()
 	cache_size = 0
-	stepping = 0
-	model = 0
-	family = 0
+	stepping = kstat.split('\tstepping ')[1].split('\n')[0].strip()
+	model = kstat.split('\tmodel ')[1].split('\n')[0].strip()
+	family = kstat.split('\tfamily ')[1].split('\n')[0].strip()
 
 	# Flags
 	flags = flag_output.split('\n')[1].strip().lower().split()
 	flags.sort()
 
-	speed = output.split('\n')[2]
-	speed = speed.split(' at ')[1].split(',')[0].strip()
-	speed = speed.strip()
 	# Convert from GHz/MHz string to Hz
-	scale = 1
-	if speed.lower().endswith('mhz'):
-		scale = 6
-	elif speed.lower().endswith('ghz'):
-		scale = 9
-	processor_hz = speed
-	processor_hz = processor_hz.lower().rstrip('mhz').rstrip('ghz').strip()
-	processor_hz = to_hz_string(processor_hz)
+	scale = 6
+	hz_advertised = kstat.split('\tclock_MHz ')[1].split('\n')[0].strip()
+	hz_advertised = to_hz_string(hz_advertised)
+
+	# Convert from GHz/MHz string to Hz
+	hz_actual = kstat.split('\tcurrent_clock_Hz ')[1].split('\n')[0].strip()
+	hz_actual = to_hz_string(hz_actual)
 
 	# Get the CPU arch and bits
 	raw_arch_string = platform.machine()
@@ -1213,8 +1181,12 @@ def get_cpu_info_from_solaris():
 	return {
 	'vendor_id' : vendor_id,
 	'brand' : processor_brand,
-	'hz' : to_friendly_hz(processor_hz, scale),
-	'raw_hz' : to_raw_hz(processor_hz, scale),
+
+	'hz_advertised' : to_friendly_hz(hz_advertised, scale),
+	'hz_actual' : to_friendly_hz(hz_actual, 0),
+	'hz_advertised_raw' : to_raw_hz(hz_advertised, scale),
+	'hz_actual_raw' : to_raw_hz(hz_actual, 0),
+
 	'arch' : arch,
 	'bits' : bits,
 	'count' : multiprocessing.cpu_count(),
@@ -1248,9 +1220,9 @@ def get_cpu_info():
 	if not info:
 		info = get_cpu_info_from_sysctl()
 
-	# Try solaris
+	# Try kstat
 	if not info:
-		info = get_cpu_info_from_solaris()
+		info = get_cpu_info_from_kstat()
 
 	# Try dmesg
 	if not info:
@@ -1262,13 +1234,15 @@ def get_cpu_info():
 
 	return info
 
-if __name__ == '__main__':
+def main():
 	info = get_cpu_info()
 
 	print('Vendor ID: {0}'.format(info['vendor_id']))
 	print('Brand: {0}'.format(info['brand']))
-	print('Hz: {0}'.format(info['hz']))
-	print('Raw Hz: {0}'.format(info['raw_hz']))
+	print('Hz Advertised: {0}'.format(info['hz_advertised']))
+	print('Hz Actual: {0}'.format(info['hz_actual']))
+	print('Hz Advertised Raw: {0}'.format(info['hz_advertised_raw']))
+	print('Hz Actual Raw: {0}'.format(info['hz_actual_raw']))
 	print('Arch: {0}'.format(info['arch']))
 	print('Bits: {0}'.format(info['bits']))
 	print('Count: {0}'.format(info['count']))
@@ -1287,4 +1261,6 @@ if __name__ == '__main__':
 	print('Extended Family: {0}'.format(info['extended_family']))
 	print('Flags: {0}'.format(', '.join(info['flags'])))
 
+if __name__ == '__main__':
+    main()
 

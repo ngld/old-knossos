@@ -399,7 +399,8 @@ def install_scheme_handler(interactive=True):
 
     try:
         if integration.current.install_scheme_handler():
-            QtGui.QMessageBox.information(None, 'Knossos', 'Done!')
+            if interactive:
+                QtGui.QMessageBox.information(None, 'Knossos', 'Done!')
             return
     except:
         logging.exception('Failed to install the scheme handler!')

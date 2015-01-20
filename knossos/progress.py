@@ -367,6 +367,7 @@ class MultistepTask(Task):
                 self._work_lock.release()
                 self._next_step()
             else:
+                # TODO: This still happens on Windows. For some reason it doesn't happen on Linux...
                 logging.warning('Either we still have some work to do (unlikely) or there are still some other threads running (%d).', self._running)
                 self._work_lock.release()
             

@@ -112,17 +112,14 @@
         var prg_bar = cont.find('.master-prg');
         prg_bar.css('width', (info.progress * 100) + '%');
 
-        if(info.progress == 1) {
-            prg_bar.removeClass('active');
-            prg_bar.removeClass('progress-bar-striped');
-        }
-        
         label.text(info.title);
         
         var sub_well = cont.find('.well');
         sub_well.empty();
 
         $.each(info.subs, function (i, sub) {
+            if(sub[1] == 'Done') return;
+
             var row = $('<div>');
             row.append($('<span>').text(sub[1]));
             row.append('<br>');

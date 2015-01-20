@@ -64,7 +64,7 @@ def load_lib(*names):
 
 
 def double_zero_string(val):
-    global alc
+    global alc, libc
     
     off = 0
     data = []
@@ -182,13 +182,15 @@ def init_gtk():
     global gtk, gobject
 
     if gtk:
-        return
+        return True
     
     # Load GTK2
     try:
         gtk = load_lib('libgtk-x11-2.0.so.0', 'gtk-x11-2.0')
         gobject = load_lib('libgobject-2.0.so.0', 'gobject-2.0')
     except:
+        logging.exception('Failed to load GTK!')
+
         # Maybe GTK isn't used.
         gtk = None
         gobject = None
@@ -210,6 +212,10 @@ def init_gtk():
 
         if not gtk.gtk_init_check(None, None):
             logging.error('Failed to initialize GTK!')
+        else:
+            return True
+
+    return False
 
 
 if SDL2:
@@ -240,7 +246,7 @@ if SDL2:
         
         joys = []
         for i in range(sdl.SDL_NumJoysticks()):
-            joys.append(sdl.SDL_JoystickNameForIndex(i))
+            joys.append(sdl.SDL_JoystickNameForIndex(i).decode(ENCODING))
         
         sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
         return joys
