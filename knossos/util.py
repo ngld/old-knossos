@@ -31,7 +31,6 @@ from collections import OrderedDict
 from threading import Condition, Event
 from collections import deque
 
-from .qt import QtCore, QtGui
 from . import center
 
 try:
@@ -106,14 +105,6 @@ _HAS_TAR = None
 DL_POOL = None
 _DL_CANCEL = Event()
 _DL_CANCEL.clear()
-
-
-class QDialog(QtGui.QDialog):
-    closed = QtCore.Signal()
-    
-    def closeEvent(self, e):
-        self.closed.emit()
-        e.accept()
 
 
 # See code/cmdline/cmdline.cpp (in the SCP source) for details on the data structure.
@@ -229,7 +220,7 @@ class ResizableSemaphore(object):
 
             self._cond.notify_all()
 
-        #logging.debug('Capacity set to %d, was %d. I now have %d free slots.', self._capacity, self._capacity - diff, self._free)
+        # logging.debug('Capacity set to %d, was %d. I now have %d free slots.', self._capacity, self._capacity - diff, self._free)
     
     def get_consumed(self):
         with self._cond:
@@ -700,25 +691,6 @@ def init_ui(ui, win):
         setattr(win, attr, getattr(ui, attr))
 
     return win
-
-
-class SignalContainer(QtCore.QObject):
-    signal = QtCore.Signal(list)
-
-
-# This wrapper makes sure that the wrapped function is always run in the QT main thread.
-def run_in_qt(func):
-    cont = SignalContainer()
-    
-    def dispatcher(*args):
-        cont.signal.emit(args)
-    
-    def listener(params):
-        func(*params)
-    
-    cont.signal.connect(listener)
-    
-    return dispatcher
 
 
 def is_number(s):

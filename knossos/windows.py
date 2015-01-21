@@ -47,6 +47,14 @@ from .tasks import run_task, GOGExtractTask, InstallTask, UninstallTask, Windows
 _open_wins = []
 
 
+class QDialog(QtGui.QDialog):
+    closed = QtCore.Signal()
+    
+    def closeEvent(self, e):
+        self.closed.emit()
+        e.accept()
+
+
 class QMainWindow(QtGui.QMainWindow):
     closed = QtCore.Signal()
     
@@ -71,7 +79,7 @@ class Window(object):
         self._is_window = window
         self._tpl_cache = {}
 
-    def _create_win(self, ui_class, qt_widget=util.QDialog):
+    def _create_win(self, ui_class, qt_widget=QDialog):
         if not self._is_window:
             qt_widget = QtGui.QWidget
 
@@ -302,7 +310,7 @@ class SettingsWindow(Window):
 
     def __init__(self):
         self._tabs = {}
-        self.win = util.init_ui(Ui_Settings(), util.QDialog(center.app.activeWindow()))
+        self.win = util.init_ui(Ui_Settings(), QDialog(center.app.activeWindow()))
         self.win.treeWidget.expandAll()
         self.win.treeWidget.clicked.connect(self.select_tab)
         self.win.saveButton.clicked.connect(self.write_config)
@@ -386,7 +394,7 @@ class SettingsWindow(Window):
             item.setData(QtCore.Qt.UserRole, i)
 
     def _edit_repo(self, repo_=None, idx=None):
-        win = util.init_ui(Ui_AddRepo(), util.QDialog(self.win))
+        win = util.init_ui(Ui_AddRepo(), QDialog(self.win))
         
         win.okButton.clicked.connect(win.accept)
         win.cancelButton.clicked.connect(win.reject)
@@ -1094,7 +1102,7 @@ class ModInstallWindow(Window):
         super(ModInstallWindow, self).__init__()
 
         self._mod = mod
-        self.win = util.init_ui(Ui_Install(), util.QDialog(center.app.activeWindow()))
+        self.win = util.init_ui(Ui_Install(), QDialog(center.app.activeWindow()))
 
         self.label_tpl(self.win.titleLabel, MOD=mod.title)
 
@@ -1162,7 +1170,7 @@ class ModSettingsWindow(Window):
 
         self._mod = mod
         self._mod_versions = []
-        self.win = self._create_win(Ui_Mod_Settings, util.QDialog)
+        self.win = self._create_win(Ui_Mod_Settings, QDialog)
 
         lay = QtGui.QVBoxLayout(self.win.flagsTab)
         self._flags = FlagsWindow(mod, False)
@@ -1327,7 +1335,7 @@ class ModVersionsWindow(Window):
 
         self._mod = mod
         self._versions = []
-        self.win = self._create_win(Ui_Mod_Versions, util.QDialog)
+        self.win = self._create_win(Ui_Mod_Versions, QDialog)
 
         self.label_tpl(self.win.label, MOD=mod.title)
 
@@ -1368,9 +1376,9 @@ class ModVersionsWindow(Window):
         install = center.mods.process_pkg_selection(install)
         
         if len(install) > 0:
-            InstallTask(install, self._mod)
+            run_task(InstallTask(install, self._mod))
 
         if len(uninstall) > 0:
-            UninstallTask(uninstall)
+            run_task(UninstallTask(uninstall))
 
         self.close()

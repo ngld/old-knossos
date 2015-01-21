@@ -23,7 +23,7 @@ import ctypes.util
 import stat
 
 from . import center, util
-from .qt import QtGui
+from .qt import QtCore, QtGui
 
 # TODO: What happens if a SONAME contains a space?
 FILE_PATH_RE = r'[a-zA-Z0-9\./\-\_\+]+'
@@ -34,6 +34,25 @@ _LIB_CACHE = None
 
 
 fs2_watcher = None
+
+
+class SignalContainer(QtCore.QObject):
+    signal = QtCore.Signal(list)
+
+
+# This wrapper makes sure that the wrapped function is always run in the QT main thread.
+def run_in_qt(func):
+    cont = SignalContainer()
+    
+    def dispatcher(*args):
+        cont.signal.emit(args)
+    
+    def listener(params):
+        func(*params)
+    
+    cont.signal.connect(listener)
+    
+    return dispatcher
 
 
 class Fs2Watcher(threading.Thread):
@@ -109,16 +128,16 @@ class Fs2Watcher(threading.Thread):
         self.revert_layout()
         center.signals.fs2_quit.emit()
     
-    @util.run_in_qt
+    @run_in_qt
     def failed_msg(self, reason):
         msg = 'Starting FS2 Open (%s) failed! (%s)' % (os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)
         QtGui.QMessageBox.critical(center.app.activeWindow(), 'Failed', msg)
 
-    @util.run_in_qt
+    @run_in_qt
     def fs2_missing_msg(self, fs2_bin):
         QtGui.QMessageBox.critical(None, 'Knossos', 'I can\'t find FSO! (The file "%s" is missing!)' % fs2_bin)
 
-    @util.run_in_qt
+    @run_in_qt
     def complain_missing(self, missing):
         if len(missing) > 1:
             msg = "I can't start FSO because the libraries %s are missing!"
