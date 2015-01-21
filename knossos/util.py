@@ -598,7 +598,7 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
 
     if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2')) and _HAS_TAR is not False:
         if _HAS_TAR is None:
-            _HAS_TAR = call(['tar', '--version']) == 0
+            _HAS_TAR = call(['tar', '--version'], stdout=subprocess.DEVNULL) == 0
 
         if _HAS_TAR:
             cmd = ['tar', '-xf', archive, '-C', outpath]

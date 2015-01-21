@@ -489,7 +489,8 @@ class Package(object):
             'dependencies': self.dependencies,
             'environment': self.environment,
             'files': list(self.files.values()),
-            'filelist': self.filelist
+            'filelist': self.filelist,
+            'executables': self.executables
         }
 
     def get_mod(self):
@@ -540,22 +541,38 @@ class Package(object):
         bvars = None
 
         for check in self.environment:
-            if check['type'] == 'os':
-                if check['value'] == 'windows':
+            value = check['value'].lower()
+            c_type = check['type'].lower()
+
+            if c_type == 'os':
+                if value == 'windows':
                     if sys.platform not in ('win32', 'cygwin'):
                         return False
-                elif check['value'] == 'linux':
+                elif value == 'linux':
                     if not sys.platform.startswith('linux'):
                         return False
-                elif check['value'] == 'macos':
+                elif value == 'macos':
                     if sys.platform != 'darwin':
                         return False
                 else:
                     return False
 
-            elif check['type'] == 'cpu_feature':
-                return CPU_INFO is None or check['value'] in CPU_INFO['flags']
-            elif check['type'] == 'bool':
+            elif c_type == 'cpu_feature':
+                value = value.upper()
+
+                # return CPU_INFO is None or value in CPU_INFO['flags']
+                if CPU_INFO is None:
+                    # We don't have any information on the current CPU so we just ignore this check.
+                    return True
+
+                if value in CPU_INFO['flags']:
+                    return True
+
+                if value == CPU_INFO['arch']:
+                    return True
+
+                return False
+            elif c_type == 'bool':
                 if bvars is None:
                     bvars = {}
                     bvars[CPU_INFO['arch']] = True  # this is either X86_32 or X86_64
@@ -572,7 +589,7 @@ class Package(object):
                     for flag in CPU_INFO['flags']:
                         bvars[flag] = True
 
-                return self._solve_bool(check['value'], bvars)
+                return self._solve_bool(value, bvars)
 
         return True
 

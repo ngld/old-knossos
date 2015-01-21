@@ -307,6 +307,7 @@ class HellWindow(Window):
 
 class SettingsWindow(Window):
     _tabs = None
+    _builds = None
 
     def __init__(self):
         self._tabs = {}
@@ -495,11 +496,11 @@ class SettingsWindow(Window):
         tab.build.clear()
 
         if fs2_path is not None:
-            bins = api.get_executables()
+            self._builds = bins = api.get_executables()
             
             idx = 0
-            for path in bins:
-                tab.build.addItem(path)
+            for name, path in bins:
+                tab.build.addItem(name)
                 
                 if path == fs2_bin:
                     tab.build.setCurrentIndex(idx)
@@ -840,7 +841,8 @@ class SettingsWindow(Window):
         api.save_settings()
 
     def save_build(self):
-        fs2_bin = str(self._tabs['Game settings'].build.currentText())
+        # fs2_bin = str(self._tabs['Game settings'].build.currentText())
+        fs2_bin = self._builds[self._tabs['Game settings'].build.currentIndex()][1]
         if not os.path.isfile(os.path.join(center.settings['fs2_path'], fs2_bin)):
             return
 
@@ -1339,11 +1341,28 @@ class ModVersionsWindow(Window):
 
         self.label_tpl(self.win.label, MOD=mod.title)
 
-        versions = center.mods.query_all(mod.mid)
-        inst_versions = [m.version for m in center.installed.query_all(mod.mid)]
+        mods = list(center.mods.query_all(mod.mid))
+        installed = list(center.installed.query_all(mod.mid))
 
-        for m in versions:
-            item = QtGui.QListWidgetItem(str(m.version), self.win.versionList)
+        inst_versions = [m.version for m in installed]
+        rem_versions = [m.version for m in mods]
+        local_versions = set(inst_versions) - set(rem_versions)
+
+        # Add all local-only versions
+        for m in installed:
+            if m.version in local_versions:
+                mods.append(m)
+
+        for m in mods:
+            if len(m.packages) == 0:
+                logging.warning('Version "%s" for mod "%s" (%s) is empty! (It has no packages!!)', m.version, m.title, m.mid)
+                continue
+
+            label = str(m.version)
+            if m.version in local_versions:
+                label += ' (l)'
+
+            item = QtGui.QListWidgetItem(label, self.win.versionList)
             item.setData(QtCore.Qt.UserRole + 1, m)
 
             if m.version in inst_versions:

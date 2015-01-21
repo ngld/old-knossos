@@ -129,11 +129,15 @@ def run_knossos():
             del settings['mods']
             del settings['installed_mods']
             settings['s_version'] = 3
+
+        if settings['s_version'] < 4:
+            settings['repos'] = defaults['repos']
+            settings['s_version'] = 4
         
         del defaults
     else:
         # Most recent settings version
-        settings['s_version'] = 3
+        settings['s_version'] = 4
     
     if settings['hash_cache'] is not None:
         util.HASH_CACHE = settings['hash_cache']

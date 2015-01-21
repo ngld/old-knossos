@@ -86,16 +86,16 @@ class FetchTask(progress.Task):
             for part in res:
                 modlist.merge(part[1])
             
-            filelist = center.settings['known_files'] = {}
-            for mod in modlist.get_list():
-                for pkg in mod.packages:
-                    for name, ar in pkg.files.items():
-                        path = util.pjoin(mod.folder, ar['dest'])
-                        if ar['is_archive']:
-                            for item in ar['contents']:
-                                filelist[util.pjoin(path, item)] = (mod.mid, pkg.name)
-                        else:
-                            filelist[util.pjoin(path, name)] = (mod.mid, pkg.name)
+            # filelist = center.settings['known_files'] = {}
+            # for mod in modlist.get_list():
+            #     for pkg in mod.packages:
+            #         for name, ar in pkg.files.items():
+            #             path = util.pjoin(mod.folder, ar['dest'])
+            #             if ar['is_archive']:
+            #                 for item in ar['contents']:
+            #                     filelist[util.pjoin(path, item)] = (mod.mid, pkg.name)
+            #             else:
+            #                 filelist[util.pjoin(path, name)] = (mod.mid, pkg.name)
 
             modlist.save_json(os.path.join(center.settings_path, 'mods.json'))
             api.save_settings()
@@ -275,7 +275,7 @@ class InstallTask(progress.MultistepTask):
                 mod.logo_path = logo_path
                 mods.add(mod)
 
-            # Generate knossos.json files.
+            # Generate mod.json files.
             for mod in mods:
                 mod.save()
 
@@ -336,15 +336,25 @@ class InstallTask(progress.MultistepTask):
         for a in self.get_results():
             archives |= a
 
+        print((archives, [pkg.name for pkg in self._pkgs]))
+
         for pkg in self._pkgs:
             mod = pkg.get_mod()
             for item in pkg.files.values():
+                print(item)
                 if (mod.mid, pkg.name, item['filename']) in archives:
                     item = item.copy()
                     item['mod'] = mod
                     item['pkg'] = pkg
                     downloads.append(item)
 
+        if len(archives) == 0:
+            logging.info('Nothing to do for this InstallTask!')
+        elif len(downloads) == 0:
+            # TODO: Show the user some kind of error message.
+            logging.error('Somehow we didn\'t find any downloads for this InstallTask!')
+
+        logging.debug('Going to download %s.', downloads)
         self._threads = 0
         self.add_work(downloads)
 

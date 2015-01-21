@@ -39,18 +39,6 @@
 
                 fs2mod.uninstall(mod.id, mod.version);
             });
-        // } else if(type == 'downloading') {
-        //     row.html($('#tpl-dl-mod').html());
-        //     row.find('.progress-bar').attr('id', 'mod-prg-' + mod.id);
-
-        //     row.find('.noop-btn').click(function (e) {
-        //         e.preventDefault();
-        //     });
-        //     row.find('.abort-btn').click(function (e) {
-        //         e.preventDefault();
-
-        //         fs2mod.abortDownload(mod.id);
-        //     });
         } else if(type == 'updates') {
             row.html($('#tpl-update-mod').html());
 

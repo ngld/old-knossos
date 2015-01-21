@@ -70,7 +70,7 @@ def select_fs2_path(interact=True):
         if len(bins) == 1:
             # Found only one binary, select it by default.
 
-            center.settings['fs2_bin'] = bins[0]
+            center.settings['fs2_bin'] = bins[0][1]
         elif len(bins) > 1:
             # Let the user choose.
 
@@ -79,12 +79,9 @@ def select_fs2_path(interact=True):
             bins.sort()
 
             for i, path in enumerate(bins):
-                select_win.listWidget.addItem(path)
+                select_win.listWidget.addItem(path[0])
 
-                if path.endswith('.exe'):
-                    path = path[:-4]
-
-                if not has_default and not (path.endswith('_DEBUG') and '-DEBUG' not in path):
+                if not has_default and 'DEBUG' not in path[0]:
                     # Select the first non-debug build as default.
 
                     select_win.listWidget.setCurrentRow(i)
@@ -95,7 +92,7 @@ def select_fs2_path(interact=True):
             select_win.cancelButton.clicked.connect(select_win.reject)
 
             if select_win.exec_() == QtGui.QDialog.Accepted:
-                center.settings['fs2_bin'] = select_win.listWidget.currentItem().text()
+                center.settings['fs2_bin'] = bins[select_win.listWidget.currentRow()][1]
         else:
             center.settings['fs2_bin'] = None
 
@@ -141,18 +138,25 @@ def get_fso_flags():
 
 def get_executables():
     exes = []
+    fs2_path = center.settings['fs2_path']
+
     for mid, mvs in center.installed.mods.items():
         for mod in mvs:
             for pkg in mod.packages:
-                exes.extend([os.path.join(mod.folder, exe) for exe in pkg.executables])
+                for item in pkg.executables:
+                    name = mod.title + ' ' + item.get('version', '')
+                    if item.get('debug', False):
+                        name += ' (DEBUG)'
 
-    fs2_path = center.settings['fs2_path']
+                    path = os.path.join(mod.folder, item['file'])
+                    exes.append((name, path))
+
     if fs2_path is not None and os.path.isdir(fs2_path):
         fs2_path = os.path.abspath(fs2_path)
         if sys.platform == 'darwin':
             for app in glob.glob(os.path.join(fs2_path, '*.app')):
                 name = os.path.basename(app)
-                exes.append(os.path.join(name, 'Contents', 'MacOS', name[:-4]))
+                exes.append((name, os.path.join(name, 'Contents', 'MacOS', name[:-4])))
         else:
             bins = glob.glob(os.path.join(fs2_path, 'fs2_open_*'))
             
@@ -160,7 +164,7 @@ def get_executables():
                 path = os.path.basename(path)
 
                 if not path.endswith(('.map', '.pdb')):
-                    exes.append(path)
+                    exes.append((path, path))
 
     return exes
 
