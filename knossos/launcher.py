@@ -138,11 +138,15 @@ def run_knossos():
     if settings['hash_cache'] is not None:
         util.HASH_CACHE = settings['hash_cache']
 
-    if not os.path.isdir(settings['fs2_path']):
-        settings['fs2_path'] = None
-
-    if not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
+    if settings['fs2_path'] is None:
         settings['fs2_bin'] = None
+    else:
+        if not os.path.isdir(settings['fs2_path']):
+            settings['fs2_bin'] = None
+            settings['fs2_path'] = None
+        elif settings['fs2_bin'] is not None:
+            if not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
+                settings['fs2_bin'] = None
 
     util.DL_POOL.set_capacity(settings['max_downloads'])
 

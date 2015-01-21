@@ -34,9 +34,17 @@ Section
         DetailPrint "Um... we got an error here! ($R0)"
     ${EndIf}
 
-    DetailPrint "Starting Update..." 
+    DetailPrint "Starting Update..."
+
+    # Remove all obsolete files
+    Delete "$INSTDIR\hlp.png"
+    Delete "$INSTDIR\SDL.dll"
+    Delete "$INSTDIR\version"
     
-    File /r /x *.h dist\Knossos\*
+    SetOverwrite ifdiff
+    File /r dist\Knossos\*
+
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "DisplayVersion" "${KNOSSOS_VERSION}"
 
     DetailPrint "Launching Knossos..."
     ExecShell "open" '"$INSTDIR\Knossos.exe"' '--finish-update "$EXEPATH"'

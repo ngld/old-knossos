@@ -25,7 +25,8 @@
     display: block;
 }
 
-.mod progress {
-    margin-top: 10px;
-    width: 100%;
+.progress-bar.simple {
+    -webkit-transition: width 0s;
+         -o-transition: width 0s;
+            transition: width 0s;
 }

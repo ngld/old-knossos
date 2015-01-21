@@ -115,17 +115,22 @@
         label.text(info.title);
         
         var sub_well = cont.find('.well');
-        sub_well.empty();
-
+        
         $.each(info.subs, function (i, sub) {
-            if(sub[1] == 'Done') return;
+            var row = sub_well.find('.s-' + i);
+            if(row.length == 0) {
+                row = $('<div>').html('<span></span><br><div class="progress"><div class="progress-bar"></div></div>');
+                row.addClass('s-' + i);
+                sub_well.append(row);
+            }
 
-            var row = $('<div>');
-            row.append($('<span>').text(sub[1]));
-            row.append('<br>');
-
-            row.append($('<div class="progress">').html($('<div class="progress-bar">').css('width', (sub[0] * 100) + '%')));
-            sub_well.append(row);
+            if(sub[1] == 'Done' || sub[1] == 'Ready') {
+                row.hide();
+            } else {
+                row.show();
+                row.find('span').text(sub[1]);
+                row.find('.progress-bar').css('width', (sub[0] * 100) + '%');
+            }
         });
     }
 
@@ -155,6 +160,8 @@
     function remove_task(id) {
         delete tasks[id];
         $('#task-' + id).remove();
+
+        console.log(['Remove', id]);
     }
 
     function show_progress() {

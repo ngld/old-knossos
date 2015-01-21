@@ -36,21 +36,34 @@ Var StartMenuFolder
 
 !insertmacro MUI_LANGUAGE "English"
 
+LangString DESC_desk_icon ${LANG_ENGLISH} "Creates a shortcut icon on your desktop."
+LangString DESC_fso_support ${LANG_ENGLISH} "Allows you to open fso:// links with Knossos."
+LangString DESC_un_settings ${LANG_ENGLISH} "Removes all settings and cached files which were created by Knossos."
+
+Function .onVerifyInstDir
+    ${If} ${FileExists} "$INSTDIR\*.*"
+        Abort
+    ${EndIf}
+FunctionEnd
 
 Section
     SetOutPath "$INSTDIR"
     WriteRegStr HKLM "Software\Knossos" "Install Dir" "$INSTDIR"
 
-    File /r /x *.h dist\Knossos\*
+    File /r dist\Knossos\*
 
     WriteUninstaller "$INSTDIR\uninstall.exe"
 
-    # http://nsis.sourceforge.net/Add_uninstall_information_to_Add/Remove_Programs
+    # http://nsis.sourceforge.net/Docs/AppendixD.html#useful_add_uninst_infos
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "DisplayName" "Knossos"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "InstallLocation" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "DisplayIcon" "$\"$INSTDIR\Knossos.exe$\",0"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "Publisher" "ngld"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "InstallSource" "https://dev.tproxy.de/knossos/"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "URLInfoAbout" "https://dev.tproxy.de/knossos/"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "DisplayVersion" "${KNOSSOS_VERSION}"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "NoRepair" 1
 
@@ -64,17 +77,15 @@ Section
     !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
-Section "Desktop icon"
+Section "Desktop icon" desk_icon
     CreateShortcut "$DESKTOP\Knossos.lnk" "$INSTDIR\Knossos.exe"
 SectionEnd
 
-Section "fso:// Support"
+Section "fso:// Support" fso_support
     ExecWait '"$INSTDIR\Knossos.exe" --install-scheme --silent'
 SectionEnd
 
-Section "Uninstall"
-    # Should we also uninstall the fso:// registry keys?
-    
+Section -"Uninstall"
     !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
 
     Delete "$SMPROGRAMS\$StartMenuFolder\Knossos.lnk"
@@ -88,4 +99,23 @@ Section "Uninstall"
 
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos"
     DeleteRegKey HKLM "Software\Knossos"
+
+    # Only delete the fso:// entry if it was created by us.
+    ReadRegStr $0 HKCR "fso" "Default"
+    ${If} $0 == "URL:Knossos protocol"
+        DeleteRegKey HKCR "fso"
+    ${EndIf}
 SectionEnd
+
+Section "un.Remove Settings" un_settings
+    RMDir /r "$APPDATA\knossos"
+SectionEnd
+
+!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+    !insertmacro MUI_DESCRIPTION_TEXT ${desk_icon} $(DESC_desk_icon)
+    !insertmacro MUI_DESCRIPTION_TEXT ${fso_support} $(DESC_fso_support)
+!insertmacro MUI_FUNCTION_DESCRIPTION_END
+
+!insertmacro MUI_UNFUNCTION_DESCRIPTION_BEGIN
+    !insertmacro MUI_DESCRIPTION_TEXT ${un_settings} $(DESC_un_settings)
+!insertmacro MUI_UNFUNCTION_DESCRIPTION_END

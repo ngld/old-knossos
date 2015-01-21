@@ -279,6 +279,7 @@ class HellWindow(Window):
             self.win.progressBar.setValue(pi[0] * 100)
 
     def _forget_task(self, task):
+        logging.debug('Task "%s" (%d) finished.', task.title, id(task))
         self.browser_ctrl.get_bridge().taskFinished.emit(id(task))
         del self._tasks[id(task)]
 

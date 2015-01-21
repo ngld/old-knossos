@@ -111,8 +111,8 @@ mv version dist/
 
 if [ "$gen_package" = "y" ]; then
     msg2 "Packing installer..."
-    wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ nsis/installer.nsi
+    wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ /DKNOSSOS_VERSION="$(cat dist/version)" nsis/installer.nsi
 
     msg2 "Packing updater..."
-    wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ nsis/updater.nsi
+    wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ /DKNOSSOS_VERSION="$(cat dist/version)" nsis/updater.nsi
 fi

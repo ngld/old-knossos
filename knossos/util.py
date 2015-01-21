@@ -625,6 +625,9 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
             if files:
                 cmd.extend(files)
 
+            if not os.path.isdir(outpath):
+                os.makedirs(outpath)
+
             if QUIET:
                 return call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
             else:
