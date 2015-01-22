@@ -97,6 +97,7 @@ USER_AGENTS = (
     'Opera/9.80 (Windows NT 6.1; WOW64) Presto/2.12.388 Version/12.17'
 )
 HTTP_SESSION = requests.Session()
+HTTP_SESSION.verify = True
 QUIET = False
 QUIET_EXC = False
 HASH_CACHE = dict()
@@ -777,3 +778,18 @@ HTTP_SESSION.headers['User-Agent'] = get_user_agent()
 
 if not center.DEBUG:
     logging.getLogger('requests.packages.urllib3.connectionpool').propagate = False
+
+if sys.hexversion >= 0x020709F0:
+    # In Python 2.7.9 the ssl module from Python 3.x was backported which means we can get rid of
+    # the pyOpenSSL monkeypatch in urllib3.
+    # On MacOS pyOpenSSL should be avoided at all cost since it's linked (by default) against
+    # the system OpenSSL which is *very* old and doesn't support newer features like TLSv1.2.
+    # NOTE: It might be better to check ssl.OPENSSL_VERSION
+    # See also https://www.python.org/dev/peps/pep-0466/
+    
+    if 'requests.packages.urllib3.contrib.pyopenssl' in sys.modules:
+        logging.info('Deactivating pyOpenSSL...')
+        import requests.packages.urllib3.contrib.pyopenssl as pssl
+        
+        pssl.extract_from_urllib3()
+        del pssl

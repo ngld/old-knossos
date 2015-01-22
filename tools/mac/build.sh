@@ -82,10 +82,7 @@ if [ ! -d pyenv ]; then
     source pyenv/bin/activate
 
     msg2 "Installing Python packages..."
-    pip install six semantic_version PySide requests ndg-httpsclient pyasn1 dmgbuild
-
-    msg2 "Fixing ndg.httpsclient..."
-    python -c 'import os.path, ndg.httpsclient; open(os.path.join(ndg.httpsclient.__path__[0], "__init__.py"), "w").close()'
+    pip install six semantic_version PySide requests dmgbuild
 else
     source pyenv/bin/activate
 fi

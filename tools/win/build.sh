@@ -52,10 +52,7 @@ if [ ! -d _w ]; then
     wine python -mpip install -U pip
     
     msg2 "Installing dependencies from PyPi..."
-    wine python -mpip install six semantic_version PySide comtypes requests ndg-httpsclient pyasn1
-
-    msg2 "Fixing ndg.httpsclient..."
-    wine python -c 'import ndg.httpsclient;import os.path;open(os.path.join(ndg.httpsclient.__path__[0], "__init__.py"), "w").close()'
+    wine python -mpip install six semantic_version PySide comtypes requests
 
     ensure_pyinstaller
     

@@ -350,10 +350,11 @@ class MultistepTask(Task):
             if (self._threads > 0 and self._running >= self._threads) or self._sdone or self.aborted:
                 return None
             elif len(self._work) == 0:
-                if self._running == 0:
-                    return (self, ('MAGIC_MULTITASK_STEP_KEY_###',))
-                else:
-                    return None
+                with self._progress_lock:
+                    if self._running == 0:
+                        return (self, ('MAGIC_MULTITASK_STEP_KEY_###',))
+                    else:
+                        return None
             else:
                 return (self, (self._work.pop(0),))
 
@@ -367,7 +368,7 @@ class MultistepTask(Task):
                 self._work_lock.release()
                 self._next_step()
             else:
-                # TODO: This still happens on Windows. For some reason it doesn't happen on Linux...
+                # TODO: This still happens on Windows and Mac OS. For some reason it doesn't happen on Linux...
                 logging.warning('Either we still have some work to do (unlikely) or there are still some other threads running (%d).', self._running)
                 self._work_lock.release()
             
