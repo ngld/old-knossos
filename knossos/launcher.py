@@ -54,7 +54,7 @@ if not center.DEBUG:
 if six.PY2:
     from . import py2_compat
 
-from .qt import QtCore, QtGui
+from .qt import QtCore, QtGui, read_file
 from .ipc import IPCComm
 from . import util
 
@@ -292,6 +292,17 @@ def init():
 
     logging.debug('Loading resources from %s.', get_file_path('resources.rcc'))
     QtCore.QResource.registerResource(get_file_path('resources.rcc'))
+    QtGui.QFontDatabase.addApplicationFont(':/html/fonts/FontAwesome.otf')
+
+    if sys.platform == 'darwin':
+        # FIXME: QFontDatabase.addApplicationFont apparently doesn't work on Mac OS.
+        # We work around this issue by copying the font to ~/Library/Fonts and deleting it once we exit.
+        font_path = os.path.expanduser('$HOME/Library/Fonts/__tmp_Knossos_FontAwesome.otf')
+        with open(font_path, 'wb') as stream:
+            stream.write(read_file(':/html/fonts/FontAwesome.otf'))
+
+        import atexit
+        atexit.register(lambda: os.unlink(font_path))
 
     app.setWindowIcon(QtGui.QIcon(':/hlp.png'))
     integration.init()

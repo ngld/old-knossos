@@ -4,12 +4,19 @@ RCC_FILES = \
 	knossos/data/hlp.png
 UI_FILES = $(wildcard ui/*.ui)
 SED_I = sed -i
-PYTHON = python
+PYTHON ?= python
+PY3 := $(realpath $(shell which python3))
+ifneq ($(PY3),)
+	# Default to python3 by default
+	PYTHON = $(PY3)
+endif
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME),Darwin)
 	SED_I = sed -i ''
 endif
+
+.PHONY: run debug dist clean resources ui
 
 run: resources ui
 	$(PYTHON) -m knossos
@@ -17,7 +24,7 @@ run: resources ui
 debug: resources ui
 	KN_DEBUG=1 $(PYTHON) -m knossos
 
-dist:
+dist: resources ui
 	$(PYTHON) setup.py sdist bdist_wheel
 
 clean:
