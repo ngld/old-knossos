@@ -85,17 +85,6 @@ class FetchTask(progress.Task):
             
             for part in res:
                 modlist.merge(part[1])
-            
-            # filelist = center.settings['known_files'] = {}
-            # for mod in modlist.get_list():
-            #     for pkg in mod.packages:
-            #         for name, ar in pkg.files.items():
-            #             path = util.pjoin(mod.folder, ar['dest'])
-            #             if ar['is_archive']:
-            #                 for item in ar['contents']:
-            #                     filelist[util.pjoin(path, item)] = (mod.mid, pkg.name)
-            #             else:
-            #                 filelist[util.pjoin(path, name)] = (mod.mid, pkg.name)
 
             modlist.save_json(os.path.join(center.settings_path, 'mods.json'))
             api.save_settings()
@@ -103,7 +92,6 @@ class FetchTask(progress.Task):
         run_task(CheckTask())
 
 
-# TODO: Discover mods which don't have mod.json files.
 class CheckTask(progress.MultistepTask):
     can_abort = False
     _steps = 2
@@ -140,22 +128,6 @@ class CheckTask(progress.MultistepTask):
             except:
                 logging.exception('Failed to parse "%s"!', kfile)
                 continue
-                
-            # if mod.folder not in ('', '.'):
-            #     fs2path = center.settings['fs2_path']
-            #     modpath = os.path.join(fs2path, mod.folder)
-            #     filenames = [util.pjoin(mod.folder, f['filename']).lower() for f in mod.get_files()]
-            #     prefix = len(fs2path)
-            #     lines = []
-                
-            #     for sub_path, dirs, files in os.walk(modpath):
-            #         for name in files:
-            #             my_path = os.path.join(sub_path[prefix:], name).replace('\\', '/').lstrip('/')
-            #             if my_path.lower() not in filenames:
-            #                 lines.append('  * %s' % my_path)
-                
-            #     if len(lines) > 0:
-            #         mod.check_notes = ['User-added files:\n' + '\n'.join(lines)]
 
     def init2(self):
         pkgs = []
@@ -226,11 +198,13 @@ class CheckTask(progress.MultistepTask):
 
 
 # TODO: Optimize, make sure all paths are relative (no mod should be able to install to C:\evil)
+# TODO: Add error messages.
 class InstallTask(progress.MultistepTask):
     _pkgs = None
     _pkg_names = None
     _dls = None
     _steps = 2
+    _error = False
     mod = None
 
     def __init__(self, pkgs, mod=None):
@@ -264,6 +238,12 @@ class InstallTask(progress.MultistepTask):
                 # Need to remove all those temporary directories.
                 for ar in self.get_results():
                     shutil.rmtree(ar['tpath'])
+        elif self._error:
+            msg = (
+                'An error occured during the installation of a mod. It might be partially installed.\n' +
+                'If you need more help, ask ngld or read the debug log!'
+            )
+            QtGui.QMessageBox.critical(None, 'Knossos', msg)
         else:
             mods = set()
 
@@ -336,8 +316,6 @@ class InstallTask(progress.MultistepTask):
         for a in self.get_results():
             archives |= a
 
-        print((archives, [pkg.name for pkg in self._pkgs]))
-
         for pkg in self._pkgs:
             mod = pkg.get_mod()
             for item in pkg.files.values():
@@ -351,10 +329,9 @@ class InstallTask(progress.MultistepTask):
         if len(archives) == 0:
             logging.info('Nothing to do for this InstallTask!')
         elif len(downloads) == 0:
-            # TODO: Show the user some kind of error message.
             logging.error('Somehow we didn\'t find any downloads for this InstallTask!')
+            self._error = True
 
-        logging.debug('Going to download %s.', downloads)
         self._threads = 0
         self.add_work(downloads)
 
@@ -364,14 +341,38 @@ class InstallTask(progress.MultistepTask):
             fs2path = center.settings['fs2_path']
             modpath = os.path.join(fs2path, archive['mod'].folder)
 
-            with open(arpath, 'wb') as stream:
-                util.try_download(archive['urls'], stream)
+            # TODO: Maybe this should be an option?
+            retries = 3
+            done = False
+            while retries > 0:
+                retries -= 1
+
+                for url in archive['urls']:
+                    progress.start_task(0, 0.97, '%s')
+                    with open(arpath, 'wb') as stream:
+                        if not util.download(url, stream):
+                            logging.error('Download of "%s" failed!', url)
+                            continue
+
+                    progress.finish_task()
+
+                    if util.gen_hash(arpath) == archive['md5sum']:
+                        done = True
+                        retries = 0
+                        break
+                    else:
+                        logging.error('File "%s" is corrupted!', url)
+
+            if not done:
+                logging.error('Missing file "%s"!', archive['filename'])
+                self._error = True
+                break
 
             if self.aborted:
                 return
 
             if archive['is_archive']:
-                progress.update(1, 'Extracting %s...' % archive['filename'])
+                progress.update(0.98, 'Extracting %s...' % archive['filename'])
 
                 cpath = os.path.join(tpath, 'content')
                 os.mkdir(cpath)
@@ -492,9 +493,8 @@ class GOGExtractTask(progress.Task):
     def work(self, paths):
         gog_path, dest_path = paths
         
-        progress.start_task(0, 0.03, 'Looking for InnoExtract...')
+        progress.update(0.03, 'Looking for InnoExtract...')
         data = util.get(center.INNOEXTRACT_LINK)
-        progress.finish_task()
         
         try:
             data = json.loads(data)
@@ -606,7 +606,6 @@ class GOGExtractTask(progress.Task):
         shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
         shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
         
-        # TODO: Test & improve
         self.post(dest_path)
     
     def _makedirs(self, path):
@@ -714,7 +713,6 @@ def run_task(task, cb=None):
     if cb is not None:
         task.done.connect(wrapper)
     
-    # center.main_win.progress_win.add_task(task)
     center.pmaster.add_task(task)
     center.signals.task_launched.emit(task)
     return task
