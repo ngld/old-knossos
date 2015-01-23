@@ -353,6 +353,11 @@ class BrowserCtrl(object):
 
     def insert_bridge(self):
         frame = self._view.page().mainFrame()
+
+        # TODO: Do we have to create a new object here or is there a way around it?
+        # The biggest problems are the Signals. I would have to disconnect all their listeners.
+        del self._bridge
+        self._bridge = WebBridge()
         frame.addToJavaScriptWindowObject('fs2mod', self._bridge)
 
     def get_bridge(self):

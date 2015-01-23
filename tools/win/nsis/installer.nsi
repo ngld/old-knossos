@@ -41,7 +41,9 @@ LangString DESC_fso_support ${LANG_ENGLISH} "Allows you to open fso:// links wit
 LangString DESC_un_settings ${LANG_ENGLISH} "Removes all settings and cached files which were created by Knossos."
 
 Function .onVerifyInstDir
+    # Only allow empty directories or old installation directories.
     ${If} ${FileExists} "$INSTDIR\*.*"
+    ${AndIfNot} ${FileExists} "$INSTDIR\Knossos.exe"
         Abort
     ${EndIf}
 FunctionEnd
@@ -85,7 +87,7 @@ Section "fso:// Support" fso_support
     ExecWait '"$INSTDIR\Knossos.exe" --install-scheme --silent'
 SectionEnd
 
-Section -"Uninstall"
+Section "Uninstall"
     !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
 
     Delete "$SMPROGRAMS\$StartMenuFolder\Knossos.lnk"

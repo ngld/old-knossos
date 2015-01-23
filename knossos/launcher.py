@@ -105,6 +105,10 @@ def run_knossos():
     from . import repo, progress, api
     from .windows import HellWindow
 
+    if not util.test_7z():
+        QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
+        return
+
     # Try to load our settings.
     spath = os.path.join(center.settings_path, 'settings.pick')
     settings = center.settings
@@ -166,9 +170,18 @@ def run_knossos():
     if os.path.isfile(mod_db):
         center.mods.load_json(mod_db)
 
-    if not util.test_7z():
-        QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
-        return
+    QtGui.QFontDatabase.addApplicationFont(':/html/fonts/FontAwesome.otf')
+
+    if sys.platform == 'darwin':
+        # QFontDatabase.addApplicationFont apparently doesn't work on Mac OS.
+        # We work around this issue by copying the font to ~/Library/Fonts and deleting it once we exit.
+        # FIXME: Solve the actual problem and remove this workaround.
+        font_path = os.path.expandvars('$HOME/Library/Fonts/__tmp_Knossos_FontAwesome.otf')
+        with open(font_path, 'wb') as stream:
+            stream.write(read_file(':/html/fonts/FontAwesome.otf'))
+
+        import atexit
+        atexit.register(lambda: os.unlink(font_path))
 
     center.main_win = HellWindow()
     QtCore.QTimer.singleShot(1, api.init_self)
@@ -292,17 +305,6 @@ def init():
 
     logging.debug('Loading resources from %s.', get_file_path('resources.rcc'))
     QtCore.QResource.registerResource(get_file_path('resources.rcc'))
-    QtGui.QFontDatabase.addApplicationFont(':/html/fonts/FontAwesome.otf')
-
-    if sys.platform == 'darwin':
-        # FIXME: QFontDatabase.addApplicationFont apparently doesn't work on Mac OS.
-        # We work around this issue by copying the font to ~/Library/Fonts and deleting it once we exit.
-        font_path = os.path.expanduser('$HOME/Library/Fonts/__tmp_Knossos_FontAwesome.otf')
-        with open(font_path, 'wb') as stream:
-            stream.write(read_file(':/html/fonts/FontAwesome.otf'))
-
-        import atexit
-        atexit.register(lambda: os.unlink(font_path))
 
     app.setWindowIcon(QtGui.QIcon(':/hlp.png'))
     integration.init()
