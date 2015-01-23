@@ -915,6 +915,8 @@ class GogExtractWindow(Window):
             if self._is_window:
                 self.close()
 
+            center.main_win.update_mod_buttons('progress')
+
 
 class FlagsWindow(Window):
     _flags = None

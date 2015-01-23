@@ -366,7 +366,7 @@ class InstallTask(progress.MultistepTask):
             if not done:
                 logging.error('Missing file "%s"!', archive['filename'])
                 self._error = True
-                break
+                return
 
             if self.aborted:
                 return

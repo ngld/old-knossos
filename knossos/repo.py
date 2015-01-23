@@ -558,8 +558,6 @@ class Package(object):
                     return False
 
             elif c_type == 'cpu_feature':
-                value = value.upper()
-
                 # return CPU_INFO is None or value in CPU_INFO['flags']
                 if CPU_INFO is None:
                     # We don't have any information on the current CPU so we just ignore this check.
@@ -568,7 +566,7 @@ class Package(object):
                 if value in CPU_INFO['flags']:
                     return True
 
-                if value == CPU_INFO['arch']:
+                if value.upper() == CPU_INFO['arch']:
                     return True
 
                 return False
