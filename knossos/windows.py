@@ -22,7 +22,7 @@ from . import uhf
 uhf(__name__)
 
 from . import center, util, clibs, integration, api, web, repo
-from .qt import QtCore, QtGui
+from .qt import QtCore, QtGui, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.gogextract import Ui_Dialog as Ui_Gogextract
 from .ui.add_repo import Ui_Dialog as Ui_AddRepo
@@ -74,6 +74,7 @@ class Window(object):
     closed = True
     _is_window = True
     _tpl_cache = None
+    _styles = ''
 
     def __init__(self, window=True):
         self._is_window = window
@@ -124,6 +125,16 @@ class Window(object):
             text = text.replace('{' + name + '}', value)
 
         label.setText(text)
+
+    def load_styles(self, path, append=True):
+        data = load_styles(path)
+
+        if append:
+            self._styles += data
+        else:
+            self._styles = data
+
+        self.win.setStyleSheet(self._styles)
 
 
 class HellWindow(Window):
@@ -228,7 +239,11 @@ class HellWindow(Window):
             if query in mvs[0].title.lower():
                 result[mid] = [mod.get() for mod in mvs]
 
-        self.browser_ctrl.get_bridge().updateModlist.emit(result, self._mod_filter)
+        return result, self._mod_filter
+
+    def update_mod_list(self):
+        result, filter_ = self.search_mods()
+        self.browser_ctrl.get_bridge().updateModlist.emit(result, filter_)
 
     def show_settings(self):
         SettingsWindow()
@@ -244,7 +259,7 @@ class HellWindow(Window):
             self.win.listControls.show()
             self.win.pageControls.hide()
 
-            self.update_mod_buttons(self._mod_filter)
+            # QtCore.QTimer.singleShot(30, lambda: self.update_mod_buttons(self._mod_filter))
         else:
             self.win.listControls.hide()
             self.win.pageControls.show()
@@ -258,7 +273,7 @@ class HellWindow(Window):
         if page != 'qrc:///html/modlist.html':
             self.win.webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
         else:
-            self.search_mods()
+            self.update_mod_list()
 
     def watch_task(self, task):
         self._tasks[id(task)] = task
@@ -280,10 +295,10 @@ class HellWindow(Window):
 
     def _track_progress(self, task, pi):
         subs = [item for item in pi[1].values()]
-        self.browser_ctrl.get_bridge().taskProgress.emit(id(task), pi[0], subs, pi[2])
+        self.browser_ctrl.get_bridge().taskProgress.emit(id(task), pi[0] * 100, subs, pi[2])
 
         if len(self._tasks) == 1:
-            integration.current.set_progress(pi[0] * 100)
+            integration.current.set_progress(pi[0])
             self.win.progressBar.setValue(pi[0] * 100)
 
     def _forget_task(self, task):
@@ -910,12 +925,12 @@ class GogExtractWindow(Window):
     def do_install(self):
         # Just to be sure...
         if os.path.isfile(self.win.gogPath.text()) and os.path.isdir(self.win.destPath.text()):
+            center.main_win.update_mod_buttons('progress')
+
             run_task(GOGExtractTask(self.win.gogPath.text(), self.win.destPath.text()))
 
             if self._is_window:
                 self.close()
-
-            center.main_win.update_mod_buttons('progress')
 
 
 class FlagsWindow(Window):
@@ -965,6 +980,7 @@ class FlagsWindow(Window):
 
         if flags is None:
             self.win.setEnabled(False)
+            self.win.cmdLine.setPlainText('Until you select a working FS2 build, I won\'t be able to help you.')
             return
 
         self.win.setEnabled(True)
@@ -1135,7 +1151,7 @@ class ModInstallWindow(Window):
             if check.checkState() == QtCore.Qt.Checked:
                 pkgs.append(self._mod.packages[i])
 
-        pkgs = center.mods.process_pkg_selection(pkgs)
+        # pkgs = center.mods.process_pkg_selection(pkgs)
         return pkgs
 
     def install(self):
@@ -1175,6 +1191,7 @@ class ModSettingsWindow(Window):
         self._mod = mod
         self._mod_versions = []
         self.win = self._create_win(Ui_Mod_Settings, QDialog)
+        self.load_styles(':/ui/themes/default/mod_settings.css')
 
         lay = QtGui.QVBoxLayout(self.win.flagsTab)
         self._flags = FlagsWindow(mod, False)
@@ -1188,14 +1205,17 @@ class ModSettingsWindow(Window):
         else:
             for pkg in rmod.packages:
                 p_check = QtGui.QCheckBox(pkg.name)
-                installed = False
+                installed = center.installed.is_installed(pkg)
 
-                if pkg.status == 'required' or center.installed.is_installed(pkg):
+                if pkg.status == 'required' or installed:
                     p_check.setCheckState(QtCore.Qt.Checked)
-                    installed = True
-
+                    
                     if pkg.status == 'required':
                         p_check.setDisabled(True)
+
+                        if not installed:
+                            p_check.setProperty('error', True)
+                            p_check.setText(pkg.name + ' (missing)')
                 else:
                     p_check.setCheckState(QtCore.Qt.Unchecked)
 
@@ -1221,8 +1241,8 @@ class ModSettingsWindow(Window):
         remove = []
 
         for check, is_installed, pkg in self._pkg_checks:
-            if pkg.status == 'required':
-                continue
+            # if pkg.status == 'required':
+            #     continue
 
             selected = check.checkState() == QtCore.Qt.Checked
             if selected != is_installed:

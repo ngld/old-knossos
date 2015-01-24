@@ -21,6 +21,7 @@ import glob
 import stat
 import json
 import tempfile
+import time
 import semantic_version
 
 from . import center, util, progress, repo, api
@@ -202,6 +203,7 @@ class CheckTask(progress.MultistepTask):
 class InstallTask(progress.MultistepTask):
     _pkgs = None
     _pkg_names = None
+    _mods = None
     _dls = None
     _steps = 2
     _error = False
@@ -266,7 +268,13 @@ class InstallTask(progress.MultistepTask):
         for pkg in self._pkgs:
             mods.add(pkg.get_mod())
 
+        # Reload the mod DB to make sure that our changes aren't store there!!
+        # TODO: Shouldn't the path be stored elsewhere? It's also used in knossos.launcher.
+        center.mods.clear()
+        center.mods.load_json(os.path.join(center.settings_path, 'mods.json'))
+
         self._threads = 3
+        self._mods = mods
         self.add_work(mods)
 
     def work1(self, mod):
@@ -319,7 +327,6 @@ class InstallTask(progress.MultistepTask):
         for pkg in self._pkgs:
             mod = pkg.get_mod()
             for item in pkg.files.values():
-                print(item)
                 if (mod.mid, pkg.name, item['filename']) in archives:
                     item = item.copy()
                     item['mod'] = mod
@@ -347,6 +354,9 @@ class InstallTask(progress.MultistepTask):
             while retries > 0:
                 retries -= 1
 
+                if self.aborted:
+                    return
+
                 for url in archive['urls']:
                     progress.start_task(0, 0.97, '%s')
                     with open(arpath, 'wb') as stream:
@@ -355,6 +365,7 @@ class InstallTask(progress.MultistepTask):
                             continue
 
                     progress.finish_task()
+                    progress.update(0.97, 'Checking "%s"...' % archive['filename'])
 
                     if util.gen_hash(arpath) == archive['md5sum']:
                         done = True
@@ -376,7 +387,57 @@ class InstallTask(progress.MultistepTask):
 
                 cpath = os.path.join(tpath, 'content')
                 os.mkdir(cpath)
-                util.extract_archive(arpath, cpath)
+
+                needed_files = filter(lambda item: item['archive'] == archive['filename'], archive['pkg'].filelist)
+                retries = 5
+                done = False
+
+                while retries > 0:
+                    if self.aborted:
+                        return
+
+                    if retries == 4 and sys.platform.startswith('win'):
+                        # Make sure the file is unlocked
+                        import win32file
+                        import pywintypes
+
+                        fh = open(arpath, 'rb')
+                        hfile = win32file._get_osfhandle(fh.fileno())
+                        try:
+                            win32file.UnlockFileEx(hfile, 0, -0x10000, pywintypes.OVERLAPPED())
+                        except pywintypes.error as exc_value:
+                            if exc_value[0] != 158:
+                                logging.exception('Failed to unlock "%s"!', arpath)
+
+                        fh.close()
+
+                    # TODO: 7z sometimes can't extract the archive because it's still locked.
+                    util.extract_archive(arpath, cpath)
+
+                    done = True
+                    # Look for missing files
+                    for item in needed_files:
+                        src_path = os.path.join(cpath, item['orig_name'])
+
+                        if not os.path.isfile(src_path):
+                            logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)! I\'ll unpack the archive again!',
+                                            item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
+                            done = False
+                            break
+
+                    if done:
+                        break
+                    else:
+                        retries -= 1
+                        shutil.rmtree(cpath, ignore_errors=True)
+                        os.mkdir(cpath)
+                        time.sleep(0.3)
+
+                if not done:
+                    logging.error('Failed to unpack archive "%s" for package "%s" (%s)!',
+                                  archive['filename'], archive['pkg'].name, archive['mod'].title)
+                    self._error = True
+                    return
 
                 for item in archive['pkg'].filelist:
                     if item['archive'] != archive['filename']:
@@ -385,19 +446,16 @@ class InstallTask(progress.MultistepTask):
                     src_path = os.path.join(cpath, item['orig_name'])
                     dest_path = util.ipath(os.path.join(modpath, item['filename']))
 
-                    if not os.path.isfile(src_path):
-                        logging.error('Missing file "%s" from archive "%s" for package "%s" (%s)!',
-                                      item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
-                    else:
-                        try:
-                            dparent = os.path.dirname(dest_path)
-                            if not os.path.isdir(dparent):
-                                os.makedirs(dparent)
+                    try:
+                        dparent = os.path.dirname(dest_path)
+                        if not os.path.isdir(dparent):
+                            os.makedirs(dparent)
 
-                            shutil.move(src_path, dest_path)
-                        except:
-                            logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
-                                              src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
+                        shutil.move(src_path, dest_path)
+                    except:
+                        logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
+                                          src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
+                        self._error = True
             else:
                 for item in archive['pkg'].filelist:
                     if item['archive'] != archive['filename']:
@@ -414,6 +472,7 @@ class InstallTask(progress.MultistepTask):
                     except:
                         logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
                                           arpath, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
+                        self._error = True
 
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
@@ -461,7 +520,6 @@ class UninstallTask(progress.MultistepTask):
     def work2(self, mod):
         modpath = os.path.join(center.settings['fs2_path'], mod.folder)
 
-        print(mod.title, mod.packages)
         # Remove our files
         if len(mod.packages) == 0:
             my_files = (os.path.join(modpath, 'mod.json'), mod.logo_path)
@@ -478,6 +536,49 @@ class UninstallTask(progress.MultistepTask):
 
     def finish(self):
         run_task(CheckTask())
+
+
+class UpdateTask(InstallTask):
+    _old_mod = None
+    _new_mod = None
+
+    def __init__(self, mod):
+        self._old_mod = mod
+        self._new_mod = center.mods.query(mod.mid)
+        old_pkgs = [pkg.name for pkg in mod.packages]
+        pkgs = []
+
+        for pkg in self._new_mod.packages:
+            if pkg.name in old_pkgs or pkg.status == 'required':
+                pkgs.append(pkg)
+
+        super(UpdateTask, self).__init__(pkgs, mod)
+
+    def finish(self):
+        super(UpdateTask, self).finish()
+
+        if not self.aborted and not self._error:
+            # The new version has been succesfully installed, remove the old version.
+            next_task = UninstallTask(self._old_mod.packages)
+            next_task.done.connect(self._finish2)
+            run_task(next_task)
+
+    def _finish2(self):
+        fs2path = center.settings['fs2_path']
+        modpath = os.path.join(fs2path, self._old_mod.folder)
+        temppath = os.path.join(fs2path, self._new_mod.folder)
+
+        # Move all files from the temporary directory to the new one.
+        try:
+            for item in os.listdir(temppath):
+                shutil.move(os.path.join(temppath, item), os.path.join(modpath, item))
+        except:
+            logging.exception('Failed to move a file!')
+            QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to replace the old mod files with the updated files!')
+            return
+
+        # Remove the now empty temporary folder
+        os.rmdir(temppath)
 
 
 class GOGExtractTask(progress.Task):
@@ -621,7 +722,7 @@ class GOGExtractTask(progress.Task):
             QtGui.QMessageBox.critical(center.main_win.win, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
             return
         else:
-            QtGui.QMessageBox.information(center.main_win.win, 'Done', 'FS2 was successfully installed.')
+            QtGui.QMessageBox.information(center.main_win.win, 'Done', 'FS2 has been successfully installed.')
 
         fs2_path = results[0]
         center.settings['fs2_path'] = fs2_path

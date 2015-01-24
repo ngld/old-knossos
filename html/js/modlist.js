@@ -20,6 +20,7 @@
                 e.preventDefault();
 
                 fs2mod.install(mod.id, mod.version);
+                show_progress();
             });
         } else if(type == 'installed') {
             row.html($('#tpl-installed-mod').html());
@@ -38,6 +39,7 @@
                 e.preventDefault();
 
                 fs2mod.uninstall(mod.id, mod.version);
+                show_progress();
             });
         } else if(type == 'updates') {
             row.html($('#tpl-update-mod').html());
@@ -46,6 +48,7 @@
                 e.preventDefault();
 
                 fs2mod.updateMod(mod.id, mod.version);
+                show_progress();
             });
         }
 
@@ -98,7 +101,7 @@
     function _update_task(cont, info) {
         var label = cont.find('.title');
         var prg_bar = cont.find('.master-prg');
-        prg_bar.css('width', (info.progress * 100) + '%');
+        prg_bar.css('width', info.progress + '%');
 
         label.text(info.title);
         
@@ -139,9 +142,11 @@
 
         if(progress_visible) {
             var task_cont = $('#task-' + id);
-            if(task_cont.length == 0) return;
-
-            _update_task(task_cont, tasks[id]);
+            if(task_cont.length == 0) {
+                $('#mods').append(_render_task(id, tasks[id]));
+            } else {
+                _update_task(task_cont, tasks[id]);
+            }
         }
     }
 
@@ -153,6 +158,7 @@
     }
 
     function show_progress() {
+        progress_visible = true;
         var modlist = $('#mods').empty();
 
         $.each(tasks, function (id, obj) {
@@ -165,5 +171,7 @@
         fs2mod.taskStarted.connect(add_task);
         fs2mod.taskProgress.connect(update_progress);
         fs2mod.taskFinished.connect(remove_task);
+
+        fs2mod.requestModlist(true);
     });
 //})();

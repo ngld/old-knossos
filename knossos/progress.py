@@ -295,7 +295,7 @@ class Task(QtCore.QObject):
             work = len(self._work)
             results = len(self._results)
         
-        count = float(results + work + self._running)
+        count = float(results + work + len(prog))
         if count == 0:
             count = 0.00001
             total = 1

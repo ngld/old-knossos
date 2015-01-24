@@ -18,7 +18,7 @@ import re
 import semantic_version
 
 from .qt import QtCore, QtNetwork, QtWebKit
-from . import center, api, repo, windows
+from . import center, api, repo, windows, tasks
 
 
 class WebBridge(QtCore.QObject):
@@ -162,6 +162,15 @@ class WebBridge(QtCore.QObject):
     def fetchModlist(self):
         api.fetch_list()
 
+    @QtCore.Slot(result='QVariantList')
+    @QtCore.Slot(bool, result='QVariantList')
+    def requestModlist(self, async=False):
+        if async:
+            center.main_win.update_mod_list()
+            return None
+        else:
+            return center.main_win.search_mods()
+
     @QtCore.Slot(str, str)
     def addRepo(self, repo_url, repo_name):
         repos = center.settings['repos']
@@ -235,6 +244,25 @@ class WebBridge(QtCore.QObject):
                 return -2
 
         return api.uninstall_pkgs(plist, name=mod.title)
+
+    @QtCore.Slot(str, result=int)
+    @QtCore.Slot(str, str, result=int)
+    def updateMode(self, mid, spec=None):
+        mod = self._get_mod(mid, spec)
+        if mod in (-1, -2):
+            return mod
+
+        all_vers = list(center.installed.query_all(mid))
+        if len(all_vers) == 1:
+            # Only one version is installed, let's update it.
+            tasks.run_task(tasks.UpdateTask(mod))
+        else:
+            # Just install the new version
+            cur_pkgs = list(mod.packages)
+            for i, pkg in enumerate(cur_pkgs):
+                cur_pkgs[i] = center.mods.query(mod.mid, semantic_version.Version('*'), pkg.name)
+            
+            tasks.run_task(tasks.InstallTask(cur_pkgs, cur_pkgs[0].get_mod()))
 
     @QtCore.Slot(float)
     def abortTask(self, tid):

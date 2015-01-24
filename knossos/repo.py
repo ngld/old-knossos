@@ -64,6 +64,10 @@ class Repo(object):
     def empty(self):
         return len(self.mods) == 0
 
+    def clear(self):
+        self.mods = {}
+        self.pins = {}
+
     def load_json(self, path):
         self.base = os.path.dirname(path)
         with open(path, 'r') as stream:

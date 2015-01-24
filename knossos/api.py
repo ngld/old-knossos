@@ -129,8 +129,8 @@ def get_fso_flags():
         with open(flags_path, 'rb') as stream:
             flags = util.FlagsReader(stream)
 
-    if flags is None:
-        QtGui.QMessageBox.critical(center.app.activeWindow(), 'Knossos', 'I can\'t run FS2 Open! Are you sure you selected the right file?')
+    # if flags is None:
+    #     QtGui.QMessageBox.critical(center.app.activeWindow(), 'Knossos', 'I can\'t run FS2 Open! Are you sure you selected the right file?')
 
     center.fso_flags = (center.settings['fs2_bin'], flags)
     return flags

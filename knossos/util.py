@@ -258,7 +258,7 @@ class SpeedCalc(object):
 
 
 def call(*args, **kwargs):
-    if sys.platform.startswith('win'):
+    if False and sys.platform.startswith('win'):
         # Provide the called program with proper I/O on Windows.
         if 'stdin' not in kwargs:
             kwargs['stdin'] = subprocess.DEVNULL

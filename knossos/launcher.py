@@ -74,6 +74,10 @@ def handle_error():
     app.quit()
 
 
+def my_excepthook(type, value, traceback):
+    logging.exception('UNCAUGHT EXCEPTION!')
+
+
 def get_cmd(args=[]):
     if hasattr(sys, 'frozen') and sys.frozen == 1:
         my_path = [os.path.abspath(sys.executable)]
@@ -273,6 +277,8 @@ def get_cpu_info():
 
 
 def init():
+    sys.excepthook = my_excepthook
+
     from . import integration
 
     if hasattr(sys, 'frozen'):
