@@ -41,7 +41,8 @@ from .ui.flags import Ui_Dialog as Ui_Flags
 from .ui.install import Ui_Dialog as Ui_Install
 from .ui.mod_settings import Ui_Dialog as Ui_Mod_Settings
 from .ui.mod_versions import Ui_Dialog as Ui_Mod_Versions
-from .tasks import run_task, GOGExtractTask, InstallTask, UninstallTask, WindowsUpdateTask, CheckTask
+from .ui.log_viewer import Ui_Dialog as Ui_Log_Viewer
+from .tasks import run_task, GOGExtractTask, InstallTask, UninstallTask, WindowsUpdateTask, CheckTask, CheckFilesTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -361,11 +362,11 @@ class SettingsWindow(Window):
         tab.sourceList.itemDoubleClicked.connect(self.edit_repo)
 
         self._tabs['Mod versions'] = tab = util.init_ui(Ui_Settings_Versions(), QtGui.QWidget())
-        # TODO: Do we really need to implement this?
         
         self._tabs['Game settings'] = tab = util.init_ui(Ui_Settings_Fso(), QtGui.QWidget())
         tab.browseButton.clicked.connect(api.select_fs2_path)
         tab.build.activated.connect(self.save_build)
+        tab.openLog.clicked.connect(self.show_fso_log)
 
         self._tabs['Video'] = tab = util.init_ui(Ui_Settings_Video(), QtGui.QWidget())
         self._tabs['Audio'] = tab = util.init_ui(Ui_Settings_Audio(), QtGui.QWidget())
@@ -712,7 +713,7 @@ class SettingsWindow(Window):
         if len(joysticks) == 0:
             ctrl_joystick.setEnabled(False)
         
-        #---Keyboard settings---
+        # ---Keyboard settings---
         kls = self._tabs['Input'].keyLayout
         if sys.platform.startswith('linux'):
             kls.clear()
@@ -729,7 +730,7 @@ class SettingsWindow(Window):
             kls.setDisabled(True)
             self._tabs['Input'].useSetxkbmap.setDisabled(True)
 
-        #---Network settings---
+        # ---Network settings---
         net_type = self._tabs['Network'].connectionType
         net_speed = self._tabs['Network'].connectionSpeed
         net_ip_f = self._tabs['Network'].forceAddress
@@ -856,7 +857,6 @@ class SettingsWindow(Window):
         api.save_settings()
 
     def save_build(self):
-        # fs2_bin = str(self._tabs['Game settings'].build.currentText())
         fs2_bin = self._builds[self._tabs['Game settings'].build.currentIndex()][1]
         if not os.path.isfile(os.path.join(center.settings['fs2_path'], fs2_bin)):
             return
@@ -872,6 +872,9 @@ class SettingsWindow(Window):
         center.settings['update_channel'] = tab.updateChannel.currentText()
         center.settings['update_notify'] = tab.updateNotify.checkState() == QtCore.Qt.Checked
         api.save_settings()
+
+    def show_fso_log(self):
+        LogViewer(os.path.join(api.get_fso_profile_path(), 'data/fs2_open.log'))
 
 
 class GogExtractWindow(Window):
@@ -937,6 +940,7 @@ class FlagsWindow(Window):
     _flags = None
     _selected = None
     _mod = None
+    _mod_arg = ''
     
     def __init__(self, mod=None, window=True):
         super(FlagsWindow, self).__init__(window)
@@ -970,6 +974,8 @@ class FlagsWindow(Window):
         
         if mod is None:
             self.win.defaultsButton.hide()
+        else:
+            self._mod_arg = ','.join(mod.get_mod_flag())
 
         self.read_flags()
         if self._flags is not None:
@@ -1041,7 +1047,7 @@ class FlagsWindow(Window):
             
             self.win.flagList.addItem(item)
     
-    def get_selection(self):
+    def get_selection(self, split_mod_flag=False):
         count = self.win.flagList.count()
         
         for i in range(count):
@@ -1059,12 +1065,35 @@ class FlagsWindow(Window):
         except ValueError:
             # Invalid user input...
             custom = []
-        
-        return self._selected + custom
+
+        if split_mod_flag:
+            idx = -1
+            for i, flag in enumerate(custom):
+                if flag == '-mod':
+                    idx = i
+                    break
+
+            if idx > -1 and idx + 1 < len(custom):
+                mod_arg = ['-mod', custom[idx + 1]]
+                custom = custom[:idx] + custom[idx + 2:]
+            else:
+                mod_arg = []
+
+            return self._selected + custom, mod_arg
+        else:
+            return self._selected + custom
     
     def update_display(self):
         fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
-        cmdline = ' '.join([fs2_bin] + [shlex.quote(opt) for opt in self.get_selection()])
+        sel, mod_flag = self.get_selection(True)
+        if self._mod is not None:
+            if len(mod_flag) > 0:
+                mod_flag[1] = mod_flag[1].strip(',') + ',' + self._mod_arg
+            else:
+                mod_flag = ['-mod', self._mod_arg]
+
+        cmdline = ' '.join([fs2_bin] + [shlex.quote(opt) for opt in sel + mod_flag])
+
         self.win.cmdLine.setPlainText(cmdline)
     
     def set_selection(self, flags):
@@ -1196,6 +1225,10 @@ class ModSettingsWindow(Window):
         self.win = self._create_win(Ui_Mod_Settings, QDialog)
         self.load_styles(':/ui/themes/default/mod_settings.css')
 
+        self.win.modTitle.setText(self._mod.title)
+        self.win.modLogo.setPixmap(QtGui.QPixmap(mod.logo_path))
+        self.win.modDesc.setPlainText(mod.description)
+
         lay = QtGui.QVBoxLayout(self.win.flagsTab)
         self._flags = FlagsWindow(mod, False)
         lay.addWidget(self._flags.win)
@@ -1228,6 +1261,10 @@ class ModSettingsWindow(Window):
 
         self.win.applyPkgChanges.clicked.connect(self.apply_pkg_selection)
 
+        self.win.checkFiles.clicked.connect(self.check_files)
+        self.win.delLoose.clicked.connect(self.delete_loose_files)
+        self.win.replaceFiles.clicked.connect(self.repair_files)
+
         self.update_dlsize()
         self.show_flags_tab()
         self.show_versions()
@@ -1244,9 +1281,6 @@ class ModSettingsWindow(Window):
         remove = []
 
         for check, is_installed, pkg in self._pkg_checks:
-            # if pkg.status == 'required':
-            #     continue
-
             selected = check.checkState() == QtCore.Qt.Checked
             if selected != is_installed:
                 if selected:
@@ -1352,6 +1386,68 @@ class ModSettingsWindow(Window):
     def open_ver_edit(self, mod):
         ModVersionsWindow(mod)
 
+    def check_files(self):
+        self.win.setCursor(QtCore.Qt.BusyCursor)
+        
+        task = CheckFilesTask(self._mod)
+        task.done.connect(functools.partial(self.__check_files, task))
+        run_task(task)
+
+    def __check_files(self, task):
+        report = ''
+
+        for pkg, s, c, info in task.get_results():
+            if pkg is None:
+                if len(info['loose']) > 0:
+                    report += '<h2>Loose files (%d)</h2>' % (len(info['loose']))
+                    report += '<ul><li>' + '</li><li>'.join(info['loose']) + '</li></ul>'
+            else:
+                report += '<h2>%s (%d/%d files OK)</h2>' % (pkg.name, s, c)
+                ok_count = len(info['ok'])
+                corr_count = len(info['corrupt'])
+
+                report += '<ul>'
+
+                if ok_count > 0:
+                    if corr_count > 0:
+                        report += '<ul><li>OK<ul>'
+                        report += '<li>' + '</li><li>'.join(info['ok']) + '</li>'
+                        report += '</ul></li>'
+                    else:
+                        report += '<li>' + '</li><li>'.join(info['ok']) + '</li>'
+
+                if corr_count > 0:
+                    report += '<li>Corrupted<ul>'
+                    report += '<li>' + '</li><li>'.join(info['corrupt']) + '</li>'
+                    report += '</ul></li>'
+
+                report += '</ul>'
+
+        self.win.logDisplay.setHtml(report)
+        self.win.unsetCursor()
+
+    def delete_loose_files(self):
+        self.win.setCursor(QtCore.Qt.BusyCursor)
+        
+        task = CheckFilesTask(self._mod)
+        task.done.connect(functools.partial(self.__delete_loose_files, task))
+        run_task(task)
+
+    def __delete_loose_files(self, task):
+        modpath = os.path.join(center.settings['fs2_path'], self._mod.folder)
+
+        for pkg, s, c, info in task.get_results():
+            if pkg is None:
+                for name in info['loose']:
+                    item = os.path.join(modpath, name)
+                    logging.info('Deleteing "%s"...', item)
+
+        self.win.unsetCursor()
+        QtGui.QMessageBox.information(None, 'Knossos', 'Done!')
+
+    def repair_files(self):
+        run_task(InstallTask(self._mod.packages))
+
 
 class ModVersionsWindow(Window):
     _mod = None
@@ -1426,3 +1522,17 @@ class ModVersionsWindow(Window):
             run_task(UninstallTask(uninstall))
 
         self.close()
+
+
+class LogViewer(Window):
+
+    def __init__(self, path, window=True):
+        super(LogViewer, self).__init__(window)
+
+        self.win = self._create_win(Ui_Log_Viewer)
+        self.win.pathLabel.setText(path)
+
+        with open(path, 'r') as stream:
+            self.win.content.setPlainText(stream.read())
+
+        self.open()

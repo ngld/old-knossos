@@ -21,6 +21,7 @@ import subprocess
 import time
 import ctypes.util
 import stat
+import shutil
 
 from . import center, util
 from .qt import QtCore, QtGui
@@ -73,6 +74,8 @@ class Fs2Watcher(threading.Thread):
     def run(self):
         global fs2_watcher
 
+        old_path = None
+
         if center.settings['keyboard_layout'] != 'default':
             self._params.append('-keyboard_layout')
             self._params.append(center.settings['keyboard_layout'])
@@ -101,6 +104,24 @@ class Fs2Watcher(threading.Thread):
         
         logging.debug('Launching FS2: %s', [fs2_bin] + self._params)
 
+        if sys.platform.startswith('win'):
+            bin_path = center.settings['fs2_bin']
+            
+            if os.path.basename(bin_path) != bin_path:
+                # On Windows, the FSO engine changes the CWD to the directory the EXE file is in.
+                # Since the fs2_bin is in a subdirectory we'll have to copy it!
+                old_path = fs2_bin
+                fs2_bin = os.path.join(center.settings['fs2_path'], '__tmp_fso.exe')
+
+                shutil.copy2(old_path, fs2_bin)
+
+                # Make sure FSO still finds any DLL files located in the original EXE's folder.
+                old_parent = os.path.abspath(os.path.dirname(old_path))
+                if 'PATH' in env:
+                    env['PATH'] = old_parent + os.pathsep + env['PATH']
+                else:
+                    env['PATH'] = old_parent
+
         fail = False
         rc = -999
         reason = '???'
@@ -116,6 +137,10 @@ class Fs2Watcher(threading.Thread):
             logging.exception('Failed to launch FS2!')
             reason = str(exc).decode('utf8', 'replace')
             fail = True
+
+        if sys.platform.startswith('win') and old_path is not None:
+            # Cleanup
+            os.unlink(fs2_bin)
 
         if fail:
             self.revert_layout()

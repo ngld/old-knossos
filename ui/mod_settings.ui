@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>457</width>
-    <height>587</height>
+    <height>552</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,10 +15,54 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
+    <widget class="QLabel" name="modTitle">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>TextLabel</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>1</number>
+      <number>4</number>
      </property>
+     <widget class="QWidget" name="tab">
+      <attribute name="title">
+       <string>Infos</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QLabel" name="modLogo">
+         <property name="text">
+          <string>TextLabel</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPlainTextEdit" name="modDesc">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::NoTextInteraction</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
      <widget class="QWidget" name="flagsTab">
       <attribute name="title">
        <string>Flags</string>
@@ -65,6 +109,41 @@
       <attribute name="title">
        <string>Versions</string>
       </attribute>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>Troubleshoot</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <widget class="QPushButton" name="checkFiles">
+           <property name="text">
+            <string>Check Files</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="delLoose">
+           <property name="text">
+            <string>Delete loose files</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="replaceFiles">
+           <property name="text">
+            <string>Replace corrupted files</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QTextBrowser" name="logDisplay"/>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>

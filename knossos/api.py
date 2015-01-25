@@ -189,6 +189,15 @@ def get_cmdline(mod):
         return center.settings['cmdlines'].get('#default', [])[:]
 
 
+def get_fso_profile_path():
+    if sys.platform.startswith('linux'):
+        return os.path.expanduser('~/.fs2_open')
+    elif sys.platform == 'darwin':
+        return os.path.expanduser('~/Library/FS2_Open')
+    else:
+        return center.settings['fs2_path']
+
+
 def run_mod(mod):
     global installed
 
@@ -238,13 +247,7 @@ def run_mod(mod):
     mod_flag_found = False
     
     # Look for the cmdline path.
-    if sys.platform.startswith('linux'):
-        # TODO: What about Mac OS ?
-        path = os.path.expanduser('~/.fs2_open')
-    else:
-        path = center.settings['fs2_path']
-    
-    path = os.path.join(path, 'data/cmdline_fso.cfg')
+    path = os.path.join(get_fso_profile_path(), 'data/cmdline_fso.cfg')
     cmdline = get_cmdline(mod)
     
     if len(cmdline) == 0:

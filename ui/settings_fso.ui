@@ -68,6 +68,13 @@
      </item>
     </layout>
    </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="openLog">
+     <property name="text">
+      <string>Open fs2_open.log</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>
