@@ -97,6 +97,10 @@ ensure_pyinstaller() {
     if [ ! -d ../common/pyinstaller ]; then
         msg2 "Downloading PyInstaller..."
         git clone -b develop "https://github.com/pyinstaller/pyinstaller" ../common/pyinstaller
+    else
+        pushd ../common/pyinstaller
+        git pull
+        popd
     fi
 }
 

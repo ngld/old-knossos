@@ -749,6 +749,9 @@ def str_random(slen):
 
 
 def human_list(items):
+    if not isinstance(items, list):
+        items = list(items)
+    
     if len(items) == 0:
         return ''
     elif len(items) == 1:

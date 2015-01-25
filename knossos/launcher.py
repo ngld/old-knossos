@@ -20,6 +20,7 @@ import logging
 import subprocess
 import time
 import json
+import traceback
 import six
 from six.moves.urllib import parse as urlparse
 
@@ -74,8 +75,10 @@ def handle_error():
     app.quit()
 
 
-def my_excepthook(type, value, traceback):
-    logging.exception('UNCAUGHT EXCEPTION!')
+def my_excepthook(type, value, tb):
+    # NOTE: We can't use logging.exception() here because it uses traceback.print_exception
+    # which (for some reason) doesn't work here.
+    logging.error('UNCAUGHT EXCEPTION!\n%s%s: %s', ''.join(traceback.format_tb(tb)), type.__name__, value)
 
 
 def get_cmd(args=[]):

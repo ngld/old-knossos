@@ -1151,24 +1151,27 @@ class ModInstallWindow(Window):
             if check.checkState() == QtCore.Qt.Checked:
                 pkgs.append(self._mod.packages[i])
 
-        # pkgs = center.mods.process_pkg_selection(pkgs)
+        pkgs = center.mods.process_pkg_selection(pkgs)
         return pkgs
 
     def install(self):
+        center.main_win.update_mod_buttons('progress')
+
         run_task(InstallTask(self.get_selected_pkgs(), self._mod))
         self.close()
 
     def update_deps(self):
         pkgs = self.get_selected_pkgs()
-        all_pkgs = center.mods.process_pkg_selection(pkgs)
-        deps = set(all_pkgs) - set(pkgs)
-        names = [pkg.name for pkg in deps if not center.installed.is_installed(pkg)]
         dl_size = 0
+        names = set()
 
-        for pkg in all_pkgs:
+        for pkg in pkgs:
+            names.add(pkg.get_mod().title)
             if not center.installed.is_installed(pkg):
                 for item in pkg.files.values():
                     dl_size += item.get('filesize', 0)
+
+        names.remove(self._mod.title)
 
         if len(names) == 0:
             self.win.depsLabel.setText('')

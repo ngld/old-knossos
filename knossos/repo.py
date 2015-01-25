@@ -333,6 +333,9 @@ class Mod(object):
         if values is not None:
             self.set(values)
 
+    def __repr__(self):
+        return '<Mod "%s" (%s)>' % (self.title, self.mid)
+
     def set(self, values):
         self.mid = values['id']
         self.title = values['title']
@@ -442,6 +445,9 @@ class Package(object):
         if values is not None:
             self.set(values)
 
+    def __repr__(self):
+        return '<Package "%s" of %s>' % (self.name, self._mod)
+
     def set(self, values):
         self.name = values['name']
         self.notes = values.get('notes', '')
@@ -482,7 +488,7 @@ class Package(object):
             self.dependencies.append({
                 'id': self.get_mod().mid,
                 'version': '==' + str(self.get_mod().version),
-                'packages': []
+                'packages': ['<required>']
             })
 
     def get(self):
@@ -525,6 +531,9 @@ class Package(object):
             found_pkgs = []
 
             if len(pkgs) > 0:
+                if len(pkgs) == 1 and pkgs[0] == '<required>':
+                    pkgs = []
+
                 for pkg in mod.packages:
                     if pkg.status == 'required' or pkg.name in pkgs:
                         result.append((pkg, version))

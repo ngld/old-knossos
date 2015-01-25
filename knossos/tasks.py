@@ -22,6 +22,7 @@ import stat
 import json
 import tempfile
 import time
+import random
 import semantic_version
 
 from . import center, util, progress, repo, api
@@ -351,16 +352,19 @@ class InstallTask(progress.MultistepTask):
             # TODO: Maybe this should be an option?
             retries = 3
             done = False
+            urls = list(archive['urls'])
+            random.shuffle(urls)
+
             while retries > 0:
                 retries -= 1
 
-                if self.aborted:
-                    return
-
-                for url in archive['urls']:
+                for url in urls:
                     progress.start_task(0, 0.97, '%s')
                     with open(arpath, 'wb') as stream:
                         if not util.download(url, stream):
+                            if self.aborted:
+                                return
+
                             logging.error('Download of "%s" failed!', url)
                             continue
 

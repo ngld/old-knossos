@@ -20,7 +20,6 @@
                 e.preventDefault();
 
                 fs2mod.install(mod.id, mod.version);
-                show_progress();
             });
         } else if(type == 'installed') {
             row.html($('#tpl-installed-mod').html());
@@ -39,7 +38,6 @@
                 e.preventDefault();
 
                 fs2mod.uninstall(mod.id, mod.version);
-                show_progress();
             });
         } else if(type == 'updates') {
             row.html($('#tpl-update-mod').html());
@@ -48,7 +46,6 @@
                 e.preventDefault();
 
                 fs2mod.updateMod(mod.id, mod.version);
-                show_progress();
             });
         }
 
