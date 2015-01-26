@@ -1,4 +1,4 @@
-## Copyright 2014 Knossos authors, see NOTICE file
+## Copyright 2015 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -443,42 +443,6 @@ def try_download(links, dest):
             return True
     
     return False
-
-
-# This function will move the contents of src inside dest so that src/a/r/z.dat ends up as dest/a/r/z.dat.
-# It will overwrite everything already present in the destination directory!
-def movetree(src, dest, ifix=False):
-    if ifix:
-        dest = ipath(dest)
-    
-    if not os.path.isdir(dest):
-        os.makedirs(dest)
-
-    if ifix:
-        siblings = os.listdir(dest)
-        l_siblings = [s.lower() for s in siblings]
-
-    for item in os.listdir(src):
-        spath = os.path.join(src, item)
-        dpath = os.path.join(dest, item)
-
-        if ifix and not os.path.exists(dpath):
-            if item.lower() in l_siblings:
-                l_item = siblings[l_siblings.index(item.lower())]
-                logging.warning('Changing path "%s" to "%s" to avoid case problems...', dpath, os.path.join(dest, l_item))
-
-                dpath = os.path.join(dest, l_item)
-            else:
-                siblings.append(item)
-                l_siblings.append(item.lower())
-
-        if os.path.isdir(spath):
-            movetree(spath, dpath)
-        else:
-            if os.path.exists(dpath):
-                os.unlink(dpath)
-            
-            shutil.move(spath, dpath)
 
 
 # Actually transforms a given path into a platform-specific one.
