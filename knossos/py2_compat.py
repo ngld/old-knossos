@@ -1,16 +1,61 @@
-## Copyright 2014 Knossos authors, see NOTICE file
-##
-## Licensed under the Apache License, Version 2.0 (the "License");
-## you may not use this file except in compliance with the License.
-## You may obtain a copy of the License at
-##
-##     http://www.apache.org/licenses/LICENSE-2.0
-##
-## Unless required by applicable law or agreed to in writing, software
-## distributed under the License is distributed on an "AS IS" BASIS,
-## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-## See the License for the specific language governing permissions and
-## limitations under the License.
+# This file mostly contains small parts of code from Python 3.4's stdlib.
+# The code is used to make functions where were added or improved in Python 3
+# available to Python 2 installations.
+
+# The copied code has been slightly changed to make sure that all references
+# work. However, the code's function has not been changed.
+
+# The copied code is licensed under the PSF2 which is embedded below.
+
+# PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
+# --------------------------------------------
+
+# 1. This LICENSE AGREEMENT is between the Python Software Foundation
+# ("PSF"), and the Individual or Organization ("Licensee") accessing and
+# otherwise using this software ("Python") in source or binary form and
+# its associated documentation.
+
+# 2. Subject to the terms and conditions of this License Agreement, PSF hereby
+# grants Licensee a nonexclusive, royalty-free, world-wide license to reproduce,
+# analyze, test, perform and/or display publicly, prepare derivative works,
+# distribute, and otherwise use Python alone or in any derivative version,
+# provided, however, that PSF's License Agreement and PSF's notice of copyright,
+# i.e., "Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
+# 2011, 2012, 2013, 2014 Python Software Foundation; All Rights Reserved" are
+# retained in Python alone or in any derivative version prepared by Licensee.
+
+# 3. In the event Licensee prepares a derivative work that is based on
+# or incorporates Python or any part thereof, and wants to make
+# the derivative work available to others as provided herein, then
+# Licensee hereby agrees to include in any such work a brief summary of
+# the changes made to Python.
+
+# 4. PSF is making Python available to Licensee on an "AS IS"
+# basis.  PSF MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
+# IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, PSF MAKES NO AND
+# DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
+# FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON WILL NOT
+# INFRINGE ANY THIRD PARTY RIGHTS.
+
+# 5. PSF SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
+# FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS
+# A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON,
+# OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
+
+# 6. This License Agreement will automatically terminate upon a material
+# breach of its terms and conditions.
+
+# 7. Nothing in this License Agreement shall be deemed to create any
+# relationship of agency, partnership, or joint venture between PSF and
+# Licensee.  This License Agreement does not grant permission to use PSF
+# trademarks or trade name in a trademark sense to endorse or promote
+# products or services of Licensee, or any third party.
+
+# 8. By copying, installing or otherwise using Python, Licensee
+# agrees to be bound by the terms and conditions of this License
+# Agreement.
+
+from __future__ import absolute_import, print_function, unicode_literals
 
 import os as _os
 import warnings as _warnings
@@ -18,6 +63,7 @@ import tempfile
 import subprocess
 import re
 import shlex
+import shutil
 import six
 
 if six.PY3:
@@ -123,6 +169,59 @@ def shlex_quote(s):
     return "'" + s.replace("'", "'\"'\"'") + "'"
 
 
+# This code is copied straight from /usr/lib/python3.4/shutil.py
+# Python >= 2.3 already had this function but in Python 3 support for symlinks was added.
+def shutil_move(src, dst):
+    """Recursively move a file or directory to another location. This is
+    similar to the Unix "mv" command. Return the file or directory's
+    destination.
+
+    If the destination is a directory or a symlink to a directory, the source
+    is moved inside the directory. The destination path must not already
+    exist.
+
+    If the destination already exists but is not a directory, it may be
+    overwritten depending on os.rename() semantics.
+
+    If the destination is on our current filesystem, then rename() is used.
+    Otherwise, src is copied to the destination and then removed. Symlinks are
+    recreated under the new name if os.rename() fails because of cross
+    filesystem renames.
+
+    A lot more could be done here...  A look at a mv.c shows a lot of
+    the issues this implementation glosses over.
+
+    """
+    real_dst = dst
+    if _os.path.isdir(dst):
+        if shutil._samefile(src, dst):
+            # We might be on a case insensitive filesystem,
+            # perform the rename anyway.
+            _os.rename(src, dst)
+            return
+
+        real_dst = _os.path.join(dst, shutil._basename(src))
+        if _os.path.exists(real_dst):
+            raise shutil.Error("Destination path '%s' already exists" % real_dst)
+    try:
+        _os.rename(src, real_dst)
+    except OSError:
+        if _os.path.islink(src):
+            linkto = _os.readlink(src)
+            _os.symlink(linkto, real_dst)
+            _os.unlink(src)
+        elif _os.path.isdir(src):
+            if shutil._destinsrc(src, dst):
+                raise shutil.Error("Cannot move a directory '%s' into itself '%s'." % (src, dst))
+            shutil.copytree(src, real_dst, symlinks=True)
+            shutil.rmtree(src)
+        else:
+            shutil.copy2(src, real_dst)
+            _os.unlink(src)
+    return real_dst
+
+
 tempfile.TemporaryDirectory = TemporaryDirectory
 shlex.quote = shlex_quote
+shutil.move = shutil_move
 subprocess.DEVNULL = open(_os.devnull, 'wb')

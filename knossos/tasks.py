@@ -1,4 +1,4 @@
-## Copyright 2014 Knossos authors, see NOTICE file
+## Copyright 2015 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -11,6 +11,8 @@
 ## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
+
+from __future__ import absolute_import, print_function, unicode_literals
 
 import os
 import sys
@@ -513,18 +515,17 @@ class InstallTask(progress.MultistepTask):
                         fh.close()
 
                     # TODO: 7z sometimes can't extract the archive because it's still locked.
-                    util.extract_archive(arpath, cpath)
+                    if util.extract_archive(arpath, cpath):
+                        done = True
+                        # Look for missing files
+                        for item in needed_files:
+                            src_path = os.path.join(cpath, item['orig_name'])
 
-                    done = True
-                    # Look for missing files
-                    for item in needed_files:
-                        src_path = os.path.join(cpath, item['orig_name'])
-
-                        if not os.path.isfile(src_path):
-                            logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)! I\'ll unpack the archive again!',
-                                            item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
-                            done = False
-                            break
+                            if not os.path.isfile(src_path):
+                                logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)! I\'ll unpack the archive again!',
+                                                item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
+                                done = False
+                                break
 
                     if done:
                         break
@@ -552,7 +553,15 @@ class InstallTask(progress.MultistepTask):
                         if not os.path.isdir(dparent):
                             os.makedirs(dparent)
 
-                        shutil.move(src_path, dest_path)
+                        # NOTE: We can't use shutil.move() here because in Python 2 it couldn't handle symlinks.
+                        try:
+                            os.rename(src_path, dest_path)
+                        except OSError:
+                            if os.path.islink(src_path):
+                                linkto = os.readlink(src_path)
+                                os.symlink(linkto, dest_path)
+                            else:
+                                shutil.copy2(src_path, dest_path)
                     except:
                         logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
                                           src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
