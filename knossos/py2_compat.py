@@ -55,7 +55,7 @@
 # agrees to be bound by the terms and conditions of this License
 # Agreement.
 
-from __future__ import absolute_import, print_function, unicode_literals
+from __future__ import absolute_import, print_function
 
 import os as _os
 import warnings as _warnings
