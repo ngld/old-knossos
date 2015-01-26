@@ -176,13 +176,8 @@ class HellWindow(Window):
         self.win.progressInfo.hide()
         self.open()
 
-        # self.check_fso()
-
     def check_fso(self):
         if center.settings['fs2_path'] is not None:
-            # if self.win.webView.url().toString() == 'qrc:///html/welcome.html':
-            #     self.update_mod_buttons('installed')
-
             if center.mods is None or center.mods.empty():
                 self.update_repo_list()
             else:
@@ -201,7 +196,7 @@ class HellWindow(Window):
         updates = len(center.installed.get_updates())
         self.win.updatesButton.setText('Updates (%d)' % updates)
 
-        self.search_mods()
+        self.update_mod_list()
 
     def ask_update(self, version):
         # We only have an updater for windows.

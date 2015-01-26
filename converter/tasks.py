@@ -106,7 +106,11 @@ class ChecksumTask(progress.Task):
                         subpath += '/'
 
                     for name in files:
-                        content[subpath + name] = util.gen_hash(os.path.join(cur_path, name))
+                        fpath = os.path.join(cur_path, name)
+
+                        # Don't generate checksums for symlinks.
+                        if not os.path.islink(fpath):
+                            content[subpath + name] = util.gen_hash(fpath)
 
                         if name == 'mod.ini':
                             self._inspect_mod_ini(os.path.join(cur_path, name), id_[0])

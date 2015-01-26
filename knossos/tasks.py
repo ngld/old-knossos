@@ -553,18 +553,33 @@ class InstallTask(progress.MultistepTask):
                         if not os.path.isdir(dparent):
                             os.makedirs(dparent)
 
-                        if os.path.islink(src_path):
-                            linkto = os.readlink(src_path)
-                            os.symlink(linkto, dest_path)
-                        else:
-                            try:
-                                os.rename(src_path, dest_path)
-                            except OSError:
-                                shutil.copy2(src_path, dest_path)
+                        shutil.move(src_path, dest_path)
                     except:
                         logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
                                           src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
                         self._error = True
+
+                # Copy the remaining empty dirs and symlinks.
+                for path, dirs, files in os.walk(cpath):
+                    for name in dirs:
+                        src_path = os.path.join(cpath, path, name)
+                        dest_path = util.ipath(os.path.join(modpath, path, name))
+
+                        if os.path.islink(src_path):
+                            if not os.path.lexists(dest_path):
+                                linkto = os.readlink(src_path)
+                                os.symlink(linkto, dest_path)
+                        elif not os.path.exists(dest_path):
+                            os.makedirs(dest_path)
+
+                    for name in files:
+                        src_path = os.path.join(cpath, path, name)
+
+                        if os.path.islink(src_path):
+                            dest_path = util.ipath(os.path.join(modpath, path, name))
+                            if not os.path.lexists(dest_path):
+                                linkto = os.readlink(src_path)
+                                os.symlink(linkto, dest_path)
             else:
                 for item in archive['pkg'].filelist:
                     if item['archive'] != archive['filename']:
