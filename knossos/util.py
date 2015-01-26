@@ -15,7 +15,6 @@
 import sys
 import os
 import logging
-import shutil
 import subprocess
 import struct
 import hashlib
@@ -389,7 +388,12 @@ def download(link, dest, headers=None, random_ua=False):
 
         logging.info('Downloading "%s"...', link)
         
-        result = HTTP_SESSION.get(link, headers=headers, stream=True)
+        try:
+            result = HTTP_SESSION.get(link, headers=headers, stream=True)
+        except ConnectionError:
+            logging.exception('Failed to load "%s"!', link)
+            return False
+
         if result.status_code == 304:
             return 304
         elif result.status_code != 200:
@@ -402,25 +406,29 @@ def download(link, dest, headers=None, random_ua=False):
             logging.exception('Failed to parse Content-Length header!')
             size = 1024 ** 4  # = 1 TB
 
-        start = dest.tell()
-        sc = SpeedCalc()
-        for chunk in result.iter_content(512 * 1024):
-            dest.write(chunk)
+        try:
+            start = dest.tell()
+            sc = SpeedCalc()
+            for chunk in result.iter_content(512 * 1024):
+                dest.write(chunk)
 
-            if sc.push(dest.tell()) != -1:
-                if size > 0:
-                    by_done = dest.tell() - start
-                    speed = sc.get_speed()
-                    p = by_done / size
-                    text = ', ' + format_bytes(speed) + '/s, '
-                    text += time.strftime('%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
-                else:
-                    p = 0
-                    text = ''
-                progress.update(p, os.path.basename(link) + text)
+                if sc.push(dest.tell()) != -1:
+                    if size > 0:
+                        by_done = dest.tell() - start
+                        speed = sc.get_speed()
+                        p = by_done / size
+                        text = ', ' + format_bytes(speed) + '/s, '
+                        text += time.strftime('%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
+                    else:
+                        p = 0
+                        text = ''
+                    progress.update(p, os.path.basename(link) + text)
 
-            if _DL_CANCEL.is_set():
-                return False
+                if _DL_CANCEL.is_set():
+                    return False
+        except:
+            logging.exception('Download of "%s" was interrupted!', link)
+            return False
 
     return True
 

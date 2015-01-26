@@ -1407,11 +1407,12 @@ class ModSettingsWindow(Window):
                 report += '<h2>%s (%d/%d files OK)</h2>' % (pkg.name, s, c)
                 ok_count = len(info['ok'])
                 corr_count = len(info['corrupt'])
+                miss_count = len(info['missing'])
 
                 report += '<ul>'
 
                 if ok_count > 0:
-                    if corr_count > 0:
+                    if corr_count > 0 or miss_count > 0:
                         report += '<ul><li>OK<ul>'
                         report += '<li>' + '</li><li>'.join(info['ok']) + '</li>'
                         report += '</ul></li>'
@@ -1421,6 +1422,11 @@ class ModSettingsWindow(Window):
                 if corr_count > 0:
                     report += '<li>Corrupted<ul>'
                     report += '<li>' + '</li><li>'.join(info['corrupt']) + '</li>'
+                    report += '</ul></li>'
+
+                if miss_count > 0:
+                    report += '<li>Missing<ul>'
+                    report += '<li>' + '</li><li>'.join(info['missing']) + '</li>'
                     report += '</ul></li>'
 
                 report += '</ul>'

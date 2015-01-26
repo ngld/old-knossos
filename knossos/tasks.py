@@ -553,14 +553,13 @@ class InstallTask(progress.MultistepTask):
                         if not os.path.isdir(dparent):
                             os.makedirs(dparent)
 
-                        # NOTE: We can't use shutil.move() here because in Python 2 it couldn't handle symlinks.
-                        try:
-                            os.rename(src_path, dest_path)
-                        except OSError:
-                            if os.path.islink(src_path):
-                                linkto = os.readlink(src_path)
-                                os.symlink(linkto, dest_path)
-                            else:
+                        if os.path.islink(src_path):
+                            linkto = os.readlink(src_path)
+                            os.symlink(linkto, dest_path)
+                        else:
+                            try:
+                                os.rename(src_path, dest_path)
+                            except OSError:
                                 shutil.copy2(src_path, dest_path)
                     except:
                         logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
