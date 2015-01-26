@@ -347,7 +347,7 @@ class MultistepTask(Task):
         with self._work_lock:
             if (self._threads > 0 and self._running >= self._threads) or self._sdone or self.aborted:
                 return None
-            elif len(self._work) == 0:
+            elif len(self._work) == 0 or self._cur_step < 0:
                 with self._progress_lock:
                     if self._running == 0:
                         return (self, ('MAGIC_MULTITASK_STEP_KEY_###',))

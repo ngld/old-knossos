@@ -370,6 +370,7 @@ class InstallTask(progress.MultistepTask):
 
         # Reload the mod DB to make sure that our changes aren't store there!! (Maybe there's a better way to do this?)
         # TODO: Shouldn't the path be stored elsewhere? It's also used in knossos.launcher.
+        # TODO: There *HAS* to be a better solution than this!
         center.mods.clear()
         center.mods.load_json(os.path.join(center.settings_path, 'mods.json'))
 
@@ -561,6 +562,8 @@ class InstallTask(progress.MultistepTask):
 
                 # Copy the remaining empty dirs and symlinks.
                 for path, dirs, files in os.walk(cpath):
+                    path = os.path.relpath(path, cpath)
+
                     for name in dirs:
                         src_path = os.path.join(cpath, path, name)
                         dest_path = util.ipath(os.path.join(modpath, path, name))

@@ -390,7 +390,7 @@ def download(link, dest, headers=None, random_ua=False):
         
         try:
             result = HTTP_SESSION.get(link, headers=headers, stream=True)
-        except ConnectionError:
+        except requests.exceptions.ConnectionError:
             logging.exception('Failed to load "%s"!', link)
             return False
 
