@@ -842,7 +842,7 @@ class IniMod(InstalledMod):
                     self.title = value + ' (ini)'
                 elif name == 'infotext':
                     self.description = value
-                elif name.startswith('logo'):
+                elif name.startswith('image'):
                     self.logo = value
                 elif name == 'primarylist':
                     if value != '':

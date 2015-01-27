@@ -32,6 +32,7 @@ from . import center
 if not os.path.isdir(center.settings_path):
     os.makedirs(center.settings_path)
 
+log_path = None
 if sys.platform.startswith('win'):
     # Windows won't display a console. Let's write our log messages to a file.
     # We truncate the log file on every start to avoid filling the user's disk with useless data.

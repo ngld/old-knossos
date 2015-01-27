@@ -24,6 +24,7 @@ import time
 import ctypes.util
 import stat
 import shutil
+import six
 
 from . import center, util
 from .qt import QtCore, QtGui
@@ -113,7 +114,7 @@ class Fs2Watcher(threading.Thread):
                 # On Windows, the FSO engine changes the CWD to the directory the EXE file is in.
                 # Since the fs2_bin is in a subdirectory we'll have to copy it!
                 old_path = fs2_bin
-                fs2_bin = os.path.join(center.settings['fs2_path'], '__tmp_fso.exe')
+                fs2_bin = os.path.join(center.settings['fs2_path'], '__tmp_' + os.path.basename(old_path))
 
                 shutil.copy2(old_path, fs2_bin)
 
@@ -123,6 +124,9 @@ class Fs2Watcher(threading.Thread):
                     env['PATH'] = old_parent + os.pathsep + env['PATH']
                 else:
                     env['PATH'] = old_parent
+
+                if six.PY2:
+                    env['PATH'] = env['PATH'].encode('utf8')
 
         fail = False
         rc = -999
@@ -140,19 +144,15 @@ class Fs2Watcher(threading.Thread):
             reason = str(exc).decode('utf8', 'replace')
             fail = True
 
-        if sys.platform.startswith('win') and old_path is not None:
-            # Cleanup
-            os.unlink(fs2_bin)
-
         if fail:
-            self.revert_layout()
+            self.cleanup(fs2_bin, old_path)
             center.signals.fs2_failed.emit(rc)
             self.failed_msg(reason)
             return
         
         center.signals.fs2_launched.emit()
         p.wait()
-        self.revert_layout()
+        self.cleanup(fs2_bin, old_path)
         center.signals.fs2_quit.emit()
     
     @run_in_qt
@@ -179,9 +179,25 @@ class Fs2Watcher(threading.Thread):
 
         util.call(['setxkbmap', '-layout', 'us'])
 
-    def revert_layout(self):
+    def cleanup(self, fs2_bin, old_path=None):
         if self._key_layout is not None:
             util.call(['setxkbmap', '-layout', self._key_layout])
+
+        if sys.platform.startswith('win') and old_path is not None:
+            # Cleanup
+            retries = 3
+
+            while retries > 0:
+                try:
+                    os.unlink(fs2_bin)
+                except:
+                    logging.exception('Failed to delete FSO file "%s"!', fs2_bin)
+
+                if os.path.isfile(fs2_bin):
+                    time.sleep(1)
+                    retries -= 1
+                else:
+                    break
 
 
 def check_elf_libs(fpath):

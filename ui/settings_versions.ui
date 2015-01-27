@@ -15,9 +15,9 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QCheckBox" name="allModVersions">
+    <widget class="QLabel" name="label">
      <property name="text">
-      <string>Show all mod versions</string>
+      <string>Nothing to see here... move along.</string>
      </property>
     </widget>
    </item>

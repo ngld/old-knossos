@@ -36,7 +36,7 @@ if [ ! -d _w ]; then
     download python.msi "https://www.python.org/ftp/python/2.7.9/python-2.7.9.msi"
     download pywin32.exe "http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win32-py2.7.exe/download"
     download upx.zip "http://upx.sourceforge.net/download/upx391w.zip"
-    download 7z-inst.exe "http://sourceforge.net/projects/sevenzip/files/7-Zip/9.20/7z920.exe/download"
+    download 7z-inst.exe "http://7-zip.org/a/7z938.exe"
     download SDL2.zip "http://libsdl.org/release/SDL2-2.0.3-win32-x86.zip"
     download openal.zip "http://kcat.strangesoft.net/openal-soft-1.16.0-bin.zip"
     download nsis.exe "http://prdownloads.sourceforge.net/nsis/nsis-2.46-setup.exe?download"

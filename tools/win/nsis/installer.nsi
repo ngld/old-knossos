@@ -18,7 +18,7 @@ Name Knossos
 InstallDir "$PROGRAMFILES\Knossos"
 InstallDirRegKey HKLM "Software\Knossos" "Install Dir"
 RequestExecutionLevel admin  # We need admin for the "fso:// Support" section
-SetCompressor lzma
+SetCompressor /SOLID lzma
 OutFile dist\installer.exe
 
 

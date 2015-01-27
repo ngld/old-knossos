@@ -402,7 +402,7 @@ class InstallTask(progress.MultistepTask):
 
         if mod.folder not in ('', '.') and os.path.isdir(modpath):
             for path, dirs, files in os.walk(modpath):
-                relpath = path[len(modpath):].lstrip('/')
+                relpath = path[len(modpath):].lstrip('/\\')
                 for item in files:
                     itempath = util.pjoin(relpath, item)
                     if itempath not in mnames:
@@ -500,20 +500,23 @@ class InstallTask(progress.MultistepTask):
                     if self.aborted:
                         return
 
-                    if retries == 4 and sys.platform.startswith('win'):
-                        # Make sure the file is unlocked
-                        import win32file
-                        import pywintypes
+                    if sys.platform.startswith('win'):
+                        if retries == 4:
+                            # Make sure the file is unlocked
+                            import win32file
+                            import pywintypes
 
-                        fh = open(arpath, 'rb')
-                        hfile = win32file._get_osfhandle(fh.fileno())
-                        try:
-                            win32file.UnlockFileEx(hfile, 0, -0x10000, pywintypes.OVERLAPPED())
-                        except pywintypes.error as exc_value:
-                            if exc_value[0] != 158:
-                                logging.exception('Failed to unlock "%s"!', arpath)
+                            fh = open(arpath, 'rb')
+                            hfile = win32file._get_osfhandle(fh.fileno())
+                            try:
+                                win32file.UnlockFileEx(hfile, 0, -0x10000, pywintypes.OVERLAPPED())
+                            except pywintypes.error as exc_value:
+                                if exc_value[0] != 158:
+                                    logging.exception('Failed to unlock "%s"!', arpath)
 
-                        fh.close()
+                            fh.close()
+                        else:
+                            time.sleep(1)
 
                     # TODO: 7z sometimes can't extract the archive because it's still locked.
                     if util.extract_archive(arpath, cpath):

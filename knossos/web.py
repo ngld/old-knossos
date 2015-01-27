@@ -74,7 +74,6 @@ class WebBridge(QtCore.QObject):
     # vercmp(a, b): int
     #   Compares two versions
     
-    repoUpdated = QtCore.Signal()
     updateModlist = QtCore.Signal('QVariantMap', str)
     modProgress = QtCore.Signal(str, float, str)
 
@@ -84,8 +83,6 @@ class WebBridge(QtCore.QObject):
 
     def __init__(self):
         super(WebBridge, self).__init__()
-
-        center.signals.repo_updated.connect(self.repoUpdated.emit)
 
     @QtCore.Slot(result=str)
     def getVersion(self):

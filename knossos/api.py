@@ -118,7 +118,11 @@ def get_fso_flags():
     if not os.path.isfile(fs2_bin):
         return None
 
-    flags_path = os.path.join(center.settings['fs2_path'], 'flags.lch')
+    if sys.platform.startswith('win'):
+        flags_path = os.path.join(center.settings['fs2_path'], os.path.dirname(center.settings['fs2_bin']), 'flags.lch')
+    else:
+        flags_path = os.path.join(center.settings['fs2_path'], 'flags.lch')
+    
     rc = run_fs2_silent(['-get_flags'])
     
     flags = None
@@ -130,9 +134,6 @@ def get_fso_flags():
     else:
         with open(flags_path, 'rb') as stream:
             flags = util.FlagsReader(stream)
-
-    # if flags is None:
-    #     QtGui.QMessageBox.critical(center.app.activeWindow(), 'Knossos', 'I can\'t run FS2 Open! Are you sure you selected the right file?')
 
     center.fso_flags = (center.settings['fs2_bin'], flags)
     return flags

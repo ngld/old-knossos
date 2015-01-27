@@ -23,7 +23,7 @@ import functools
 from . import uhf
 uhf(__name__)
 
-from . import center, util, clibs, integration, api, web, repo
+from . import center, util, clibs, integration, api, web, repo, launcher
 from .qt import QtCore, QtGui, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.gogextract import Ui_Dialog as Ui_Gogextract
@@ -334,6 +334,11 @@ class SettingsWindow(Window):
         self._tabs['Launcher settings'] = tab = util.init_ui(Ui_Settings_Knossos(), QtGui.QWidget())
         tab.versionLabel.setText(center.VERSION)
         tab.maxDownloads.setValue(center.settings['max_downloads'])
+        
+        if launcher.log_path is None:
+            tab.debugLog.hide()
+        else:
+            tab.debugLog.clicked.connect(self.show_knossos_log)
 
         if center.settings['update_channel'] == 'stable':
             tab.updateChannel.setCurrentIndex(0)
@@ -871,7 +876,15 @@ class SettingsWindow(Window):
         api.save_settings()
 
     def show_fso_log(self):
-        LogViewer(os.path.join(api.get_fso_profile_path(), 'data/fs2_open.log'))
+        logpath = os.path.join(api.get_fso_profile_path(), 'data/fs2_open.log')
+
+        if not os.path.isfile(logpath):
+            QtGui.QMessageBox.warning(None, 'Knossos', 'Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?')
+        else:
+            LogViewer(logpath)
+
+    def show_knossos_log(self):
+        LogViewer(launcher.log_path)
 
 
 class GogExtractWindow(Window):
@@ -1436,6 +1449,7 @@ class ModSettingsWindow(Window):
         task.done.connect(functools.partial(self.__delete_loose_files, task))
         run_task(task)
 
+    # TODO: Should this be moved into a task?
     def __delete_loose_files(self, task):
         modpath = os.path.join(center.settings['fs2_path'], self._mod.folder)
 
@@ -1444,6 +1458,7 @@ class ModSettingsWindow(Window):
                 for name in info['loose']:
                     item = os.path.join(modpath, name)
                     logging.info('Deleteing "%s"...', item)
+                    os.unlink(item)
 
         self.win.unsetCursor()
         QtGui.QMessageBox.information(None, 'Knossos', 'Done!')
@@ -1534,6 +1549,10 @@ class LogViewer(Window):
 
         self.win = self._create_win(Ui_Log_Viewer)
         self.win.pathLabel.setText(path)
+
+        if not os.path.isfile(path):
+            QtGui.QMessageBox.critical(None, 'Knossos', 'Log file %s can\'t be shown because it\'s missing!' % path)
+            return
 
         with open(path, 'r') as stream:
             self.win.content.setPlainText(stream.read())

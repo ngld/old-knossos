@@ -73,6 +73,13 @@
      </property>
     </widget>
    </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="debugLog">
+     <property name="text">
+      <string>Open Knossos' debug log</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>

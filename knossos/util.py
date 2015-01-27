@@ -45,7 +45,7 @@ ARCHIVE_FORMATS = ('zip', 'tar', 'split', 'rar', 'lzma', 'iso', 'hfs', 'gzip', '
                    'nsis', 'deb', 'rpm', 'udf', 'wim', 'xar')
 # TODO: Too many?
 USER_AGENTS = (
-    'Mozilla/5.0 (compatible; Knossos +http://nebula.tproxy.de)',
+    'Mozilla/5.0 (compatible; Knossos %s +http://dev.tproxy.de/knossos/)' % (center.VERSION),
     'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/5.0)',
     'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; Trident/6.0)',
     'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; WOW64; Trident/6.0)',
@@ -257,7 +257,7 @@ class SpeedCalc(object):
 
 
 def call(*args, **kwargs):
-    if False and sys.platform.startswith('win'):
+    if sys.platform.startswith('win') and not center.DEBUG:
         # Provide the called program with proper I/O on Windows.
         if 'stdin' not in kwargs:
             kwargs['stdin'] = subprocess.DEVNULL

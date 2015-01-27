@@ -55,7 +55,7 @@ Section
     Delete "$INSTDIR\SDL.dll"
     Delete "$INSTDIR\version"
     
-    SetOverwrite ifdiff
+    SetOverwrite on
     File /r dist\Knossos\*
 
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "DisplayVersion" "${KNOSSOS_VERSION}"
