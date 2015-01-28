@@ -187,6 +187,15 @@ class Repo(object):
 
         del self.pins[mod]
 
+    def get_pin(self, mod):
+        if isinstance(mod, Package):
+            mod = mod.get_mod()
+
+        if isinstance(mod, Mod):
+            mod = mod.mid
+
+        return self.pins.get(mod, None)
+
     def query(self, mid, spec=None, pname=None):
         if isinstance(mid, Package):
             mod = mid.get_mod()
@@ -234,6 +243,13 @@ class Repo(object):
         for mod in self.mods[mid]:
             if spec is None or spec.match(mod.version):
                 yield mod
+
+    def has(self, mid, spec=None, pname=None):
+        try:
+            self.query(mid, spec, pname)
+            return True
+        except ModNotFound:
+            return False
 
     def get_tree(self):
         submod_ids = []
@@ -336,7 +352,7 @@ class Mod(object):
             self.set(values)
 
     def __repr__(self):
-        return '<Mod "%s" (%s)>' % (self.title, self.mid)
+        return '<Mod "%s" %s (%s)>' % (self.title, self.version, self.mid)
 
     def set(self, values):
         self.mid = values['id']
@@ -695,6 +711,7 @@ class InstalledRepo(Repo):
 
                 if rem_files == my_files:
                     logging.warning('Detected an empty update for mod "%s"! (%s -> %s)', mods[0].title, str(mods[0].version), str(rem_mod.version))
+                    # TODO: Resolve this situation! (Update the local metadata?)
                 else:
                     if mid not in updates:
                         updates[mid] = {}
@@ -798,10 +815,14 @@ class InstalledMod(Mod):
 
     def get_mod_flag(self):
         mods = [self.folder]
-        for dep in self.resolve_deps():
-            folder = dep.get_mod().folder
-            if folder not in mods:
-                mods.append(folder)
+
+        try:
+            for dep in self.resolve_deps():
+                folder = dep.get_mod().folder
+                if folder not in mods:
+                    mods.append(folder)
+        except repo.ModNotFound as exc:
+            logging.exception('A dependency for an installed mod is missing!')
 
         m = []
         for item in mods:

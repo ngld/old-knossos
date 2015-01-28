@@ -361,18 +361,18 @@ class InstallTask(progress.MultistepTask):
             for mod in mods:
                 mod.save()
 
+        # Revert all changes made to the mod object.
+        for mod in self._mods:
+            p = mod.folder.rfind('_kv_')
+            if p > -1:
+                mod.folder = mod.folder[:p]
+
         run_task(CheckTask())
 
     def init1(self):
         mods = set()
         for pkg in self._pkgs:
             mods.add(pkg.get_mod())
-
-        # Reload the mod DB to make sure that our changes aren't store there!! (Maybe there's a better way to do this?)
-        # TODO: Shouldn't the path be stored elsewhere? It's also used in knossos.launcher.
-        # TODO: There *HAS* to be a better solution than this!
-        center.mods.clear()
-        center.mods.load_json(os.path.join(center.settings_path, 'mods.json'))
 
         self._threads = 3
         self._mods = mods
@@ -616,7 +616,7 @@ class UninstallTask(progress.MultistepTask):
             try:
                 self._pkgs.append(center.installed.query(pkg))
             except repo.ModNotFound:
-                logging.exception('Someone tried to uninstall a non-existant package (%s, %s)!', pkg.get_mod().mid, pkg.name)
+                logging.exception('Someone tried to uninstall a non-existant package (%s, %s)! Skipping it...', pkg.get_mod().mid, pkg.name)
 
         super(UninstallTask, self).__init__()
 

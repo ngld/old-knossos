@@ -52,7 +52,11 @@ _open_wins = []
 
 class QDialog(QtGui.QDialog):
     closed = QtCore.Signal()
-    
+
+    def __init__(self, *args):
+        super(QDialog, self).__init__(*args)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
     def closeEvent(self, e):
         self.closed.emit()
         e.accept()
@@ -60,15 +64,21 @@ class QDialog(QtGui.QDialog):
 
 class QMainWindow(QtGui.QMainWindow):
     closed = QtCore.Signal()
-    
+
+    def __init__(self, *args):
+        super(QMainWindow, self).__init__(*args)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
     def closeEvent(self, e):
         self.closed.emit()
         e.accept()
 
+        center.app.quit()
+
     def changeEvent(self, event):
         if event.type() == QtCore.QEvent.ActivationChange and integration.current is not None:
             integration.current.annoy_user(False)
-    
+
         return super(QMainWindow, self).changeEvent(event)
 
 
@@ -187,6 +197,12 @@ class HellWindow(Window):
             self.win.updateButton.setEnabled(True)
             self.win.tabButtons.setEnabled(True)
         else:
+            # Make sure the user has a complete configuration
+            if not SettingsWindow.has_config():
+                tmp = SettingsWindow()
+                tmp.write_config()
+                tmp.close()
+
             self.win.webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
             self.win.pageControls.setEnabled(False)
             self.win.updateButton.setEnabled(False)
@@ -318,6 +334,7 @@ class HellWindow(Window):
             self._tasks[task].abort()
 
 
+# TODO: Move the settings read/write logic into another module.
 class SettingsWindow(Window):
     _tabs = None
     _builds = None
@@ -505,6 +522,19 @@ class SettingsWindow(Window):
             ratio_string = 'custom'
         return ratio_string
     
+    @staticmethod
+    def has_config(self):
+        if sys.platform.startswith('win'):
+            config = QtCore.QSettings('HKEY_LOCAL_MACHINE\\Software\\Volition\\Freespace2', QtCore.QSettings.NativeFormat)
+        else:
+            config_file = os.path.join(api.get_fso_profile_path(), 'fs2_open.ini')
+            config = QtCore.QSettings(config_file, QtCore.QSettings.IniFormat)
+
+        if not sys.platform.startswith('win'):
+            config.beginGroup('Default')
+
+        return config.contains('VideocardFs2open')
+
     def read_config(self):
         fs2_path = center.settings['fs2_path']
         fs2_bin = center.settings['fs2_bin']
@@ -534,7 +564,7 @@ class SettingsWindow(Window):
         if sys.platform.startswith('win'):
             self.config = config = QtCore.QSettings('HKEY_LOCAL_MACHINE\\Software\\Volition\\Freespace2', QtCore.QSettings.NativeFormat)
         else:
-            config_file = os.path.expanduser('~/.fs2_open/fs2_open.ini')
+            config_file = os.path.join(api.get_fso_profile_path(), 'fs2_open.ini')
             self.config = config = QtCore.QSettings(config_file, QtCore.QSettings.IniFormat)
         
         # Be careful with any change, the keys are all case sensitive.
@@ -1247,27 +1277,27 @@ class ModSettingsWindow(Window):
         try:
             rmod = center.mods.query(mod)
         except repo.ModNotFound:
-            pass
-        else:
-            for pkg in rmod.packages:
-                p_check = QtGui.QCheckBox(pkg.name)
-                installed = center.installed.is_installed(pkg)
+            rmod = mod
 
-                if pkg.status == 'required' or installed:
-                    p_check.setCheckState(QtCore.Qt.Checked)
-                    
-                    if pkg.status == 'required':
-                        p_check.setDisabled(True)
+        for pkg in rmod.packages:
+            p_check = QtGui.QCheckBox(pkg.name)
+            installed = center.installed.is_installed(pkg)
 
-                        if not installed:
-                            p_check.setProperty('error', True)
-                            p_check.setText(pkg.name + ' (missing)')
-                else:
-                    p_check.setCheckState(QtCore.Qt.Unchecked)
+            if pkg.status == 'required' or installed:
+                p_check.setCheckState(QtCore.Qt.Checked)
+                
+                if pkg.status == 'required':
+                    p_check.setDisabled(True)
 
-                p_check.stateChanged.connect(self.update_dlsize)
-                self.win.pkgsLayout.addWidget(p_check)
-                self._pkg_checks.append([p_check, installed, pkg])
+                    if not installed:
+                        p_check.setProperty('error', True)
+                        p_check.setText(pkg.name + ' (missing)')
+            else:
+                p_check.setCheckState(QtCore.Qt.Unchecked)
+
+            p_check.stateChanged.connect(self.update_dlsize)
+            self.win.pkgsLayout.addWidget(p_check)
+            self._pkg_checks.append([p_check, installed, pkg])
 
         self.win.applyPkgChanges.clicked.connect(self.apply_pkg_selection)
 
@@ -1275,10 +1305,54 @@ class ModSettingsWindow(Window):
         self.win.delLoose.clicked.connect(self.delete_loose_files)
         self.win.replaceFiles.clicked.connect(self.repair_files)
 
-        self.update_dlsize()
+        center.signals.repo_updated.connect(self.update_repo_related)
+
         self.show_flags_tab()
+        self.update_dlsize()
         self.show_versions()
         self.open()
+
+    def update_repo_related(self):
+        try:
+            self._mod = center.installed.query(self._mod)
+        except repo.ModNotFound:
+            self.close()
+
+            # Try to open a new window showing the latest version.
+            try:
+                m2 = center.installed.query(self._mod.mid)
+            except repo.ModNotFound:
+                pass
+            else:
+                print((self._mod, m2))
+                ModSettingsWindow(m2)
+
+            return
+
+        self.show_versions()
+
+        for i, item in enumerate(self._pkg_checks):
+            checked = item[0].checkState() == QtCore.Qt.Checked
+            was_inst = item[1]
+            is_inst = center.installed.is_installed(item[2])
+
+            if was_inst != is_inst:
+                if checked == was_inst:
+                    if is_inst:
+                        item[0].setCheckState(QtCore.Qt.Checked)
+                    else:
+                        item[0].setCheckState(QtCore.Qt.Unchecked)
+
+                if is_inst and item[0].property('error'):
+                    item[0].setProperty('error', False)
+                    item[0].setText(item[2].name)
+                elif not is_inst and item[2].status == 'required' and not item[0].property('error'):
+                    item[0].setProperty('error', True)
+                    item[0].setText(item[2].name + ' (missing)')
+
+                item[1] = is_inst
+
+        self.update_dlsize()
 
     def show_flags_tab(self):
         self.win.tabWidget.setCurrentIndex(0)
@@ -1298,14 +1372,28 @@ class ModSettingsWindow(Window):
                 else:
                     remove.append(pkg)
 
-        install = center.mods.process_pkg_selection(install)
+        if len(install) > 0:
+            try:
+                install = center.mods.process_pkg_selection(install)
+            except repo.ModNotFound as exc:
+                if center.mods.has(self._mod):
+                    QtGui.QMessageBox.critical(None, 'Knossos', "I'm sorry but I can't install the selected packages because some the dependency \"%s\" is missing!" % exc.mid)
+                else:
+                    QtGui.QMessageBox.critical(None, 'Knossos', "I'm sorry but I can't install new packages for this mod since it's not available anymore!")
+
+                install = []
+
         remove = list(set(remove) - set(install))
 
         return install, remove
 
     def update_dlsize(self):
         install, remove = self.get_selected_pkgs()
-        all_pkgs = center.mods.process_pkg_selection(install)
+        try:
+            all_pkgs = center.mods.process_pkg_selection(install)
+        except repo.ModNotFound:
+            all_pkgs = []
+
         dl_size = 0
 
         for pkg in all_pkgs:
@@ -1349,21 +1437,42 @@ class ModSettingsWindow(Window):
             QtGui.QMessageBox.critical(None, 'Knossos', 'This mod is missing the dependency "%s"!' % exc.mid)
             return
 
-        if self._mod not in mods:
-            mods.add(self._mod)
-
+        mods.add(self._mod)
         self._mvs_cbs = []
-        layout = QtGui.QGridLayout()
-        for i, mod in enumerate(mods):
-            sel = QtGui.QComboBox()
-            sel.setItemData(0, mod)
 
-            for mv in center.installed.query_all(mod.mid):
+        layout = self.win.versionsTab.layout()
+        if layout:
+            # Clear the current layout
+            item = layout.takeAt(0)
+            while item:
+                w = item.widget()
+                if w:
+                    w.deleteLater()
+
+                item = layout.takeAt(0)
+        else:
+            layout = QtGui.QGridLayout()
+            self.win.versionsTab.setLayout(layout)
+
+        mods = sorted(mods, key=lambda m: m.title)
+        for i, mod in enumerate(mods):
+            versions = list(center.installed.query_all(mod.mid))
+            label = QtGui.QLabel(mod.title + ': ')
+            label.setWordWrap(True)
+
+            sel = QtGui.QComboBox()
+            sel.addItem('Latest (%s)' % versions[0].version, None)
+
+            pin = center.installed.get_pin(mod)
+            for n, mv in enumerate(versions):
                 sel.addItem(str(mv.version), mv.version)
+
+                if pin == mv.version:
+                    sel.setCurrentIndex(n + 1)
 
             editBut = QtGui.QPushButton('Edit')
 
-            layout.addWidget(QtGui.QLabel(mod.title + ': '), i, 0)
+            layout.addWidget(label, i, 0)
             layout.addWidget(sel, i, 1)
             layout.addWidget(editBut, i, 2)
 
@@ -1382,13 +1491,16 @@ class ModSettingsWindow(Window):
                 editBut.setEnabled(False)
 
         layout.addItem(QtGui.QSpacerItem(0, 0, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
-        self.win.versionsTab.setLayout(layout)
 
     def update_versions(self, sel, mod, idx):
         version = sel.itemData(idx)
 
         if mod == self._mod:
-            center.installed.pin(self._mod, version)
+            if version is None:
+                center.installed.unpin(self._mod)
+            else:
+                center.installed.pin(self._mod, version)
+
             api.save_settings()
         else:
             raise NotImplemented
@@ -1504,6 +1616,9 @@ class ModVersionsWindow(Window):
             item = QtGui.QListWidgetItem(label, self.win.versionList)
             item.setData(QtCore.Qt.UserRole + 1, m)
 
+            if m.version in local_versions:
+                item.setToolTip('This version is installed locally but not available anymore!')
+
             if m.version in inst_versions:
                 item.setCheckState(QtCore.Qt.Checked)
                 item.setData(QtCore.Qt.UserRole, True)
@@ -1527,7 +1642,7 @@ class ModVersionsWindow(Window):
             checked = item.checkState() == QtCore.Qt.Checked
 
             if was and not checked:
-                uninstall |= set(mod.packages)
+                uninstall |= set(center.installed.query(mod).packages)
             elif not was and checked:
                 install |= set(mod.resolve_deps())
 
