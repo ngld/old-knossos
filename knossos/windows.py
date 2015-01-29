@@ -177,6 +177,13 @@ class HellWindow(Window):
         self.win.progressInfo.hide()
         self.open()
 
+    def _del(self):
+        center.signals.update_avail.disconnect(self.ask_update)
+        center.signals.repo_updated.disconnect(self.check_new_repo)
+        center.signals.task_launched.disconnect(self.watch_task)
+
+        super(HellWindow, self)._del()
+
     def check_fso(self):
         if center.settings['fs2_path'] is not None:
             if center.mods is None or center.mods.empty():
@@ -400,6 +407,12 @@ class SettingsWindow(Window):
 
         self.show_tab('About Knossos')
         self.open()
+
+    def _del(self):
+        center.signals.fs2_path_changed.disconnect(self.read_config)
+        center.signals.fs2_bin_changed.disconnect(tab.read_flags)
+
+        super(SettingsWindow, self)._del()
 
     def show_tab(self, tab):
         if tab not in self._tabs:
@@ -1387,6 +1400,11 @@ class ModSettingsWindow(Window):
 
         self.show_flags_tab()
         self.open()
+
+    def _del(self):
+        center.signals.repo_updated.disconnect(self.update_repo_related)
+
+        super(ModSettingsWindow, self)._del()
 
     def update_repo_related(self):
         try:

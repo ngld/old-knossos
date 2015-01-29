@@ -27,6 +27,7 @@ import json
 import random
 import functools
 import io
+import glob
 import semantic_version
 import requests
 from collections import OrderedDict
@@ -620,11 +621,27 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
         
         # ... and put it together again.
         unc_archive = '.'.join(unc_archive)
-        res = extract_archive(unc_archive, outpath, overwrite, files)
+        res = extract_archive(unc_archive, outpath, overwrite, files, True)
         
         # Cleanup
         os.unlink(unc_archive)
         return res
+
+    if archive.endswith('.dmg') and not _rec:
+        # We have to call 7z twice for this file type. The first time, 7z only extracts the section contained in the file.
+        # The second time, 7z extracts the actual contents from the HFS image.
+        
+        with tempfile.TemporaryDirectory() as tp:
+            if not extract_archive(archive, tp, False, None, True):
+                return False
+
+            # Now look for the [0-9].hfs file. It could be that the number is always 3 but I want to be safe.
+            image = glob.glob(os.path.join(tp, '*.hfs'))
+            if len(image) < 1:
+                return False
+
+            # Now extract the image...
+            return extract_archive(image[0], outpath, overwrite, files, True)
         
     cmd = [SEVEN_PATH, 'x', '-o' + outpath]
     if overwrite:

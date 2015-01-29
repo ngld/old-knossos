@@ -296,13 +296,14 @@ class Task(QtCore.QObject):
         with self._work_lock:
             wc_left = len(self._work)
             wc_total = self._work_count
+            pending = self._pending
         
         count = float(wc_total + len(prog))
         if count == 0:
             count = 0.00001
             total = 1
         else:
-            total = (wc_total - wc_left) / count
+            total = (wc_total - wc_left - pending) / count
         
         for item in prog.values():
             total += item[0] * (1.0 / count)
