@@ -20,10 +20,46 @@ import tempfile
 import six
 
 from knossos import progress
-from knossos.util import get, download, movetree, ipath, pjoin, gen_hash, is_archive, extract_archive
+from knossos.util import get, download, ipath, pjoin, gen_hash, is_archive, extract_archive
 
 if six.PY2:
     import knossos.py2_compat
+
+
+# This function will move the contents of src inside dest so that src/a/r/z.dat ends up as dest/a/r/z.dat.
+# It will overwrite everything already present in the destination directory!
+def movetree(src, dest, ifix=False):
+    if ifix:
+        dest = ipath(dest)
+    
+    if not os.path.isdir(dest):
+        os.makedirs(dest)
+
+    if ifix:
+        siblings = os.listdir(dest)
+        l_siblings = [s.lower() for s in siblings]
+
+    for item in os.listdir(src):
+        spath = os.path.join(src, item)
+        dpath = os.path.join(dest, item)
+
+        if ifix and not os.path.exists(dpath):
+            if item.lower() in l_siblings:
+                l_item = siblings[l_siblings.index(item.lower())]
+                logging.warning('Changing path "%s" to "%s" to avoid case problems...', dpath, os.path.join(dest, l_item))
+
+                dpath = os.path.join(dest, l_item)
+            else:
+                siblings.append(item)
+                l_siblings.append(item.lower())
+
+        if os.path.isdir(spath):
+            movetree(spath, dpath)
+        else:
+            if os.path.exists(dpath):
+                os.unlink(dpath)
+            
+            shutil.move(spath, dpath)
 
 
 class EntryPoint(object):
@@ -59,7 +95,7 @@ class EntryPoint(object):
     def get_lines(cls, file):
         lines = set()
         for result in cls.get(file, False):
-            lines |= set(result.readlines())
+            lines |= set(result.splitlines())
             result.close()
 
         return lines
@@ -67,26 +103,26 @@ class EntryPoint(object):
     @classmethod
     def get_version(cls):
         # version.txt contains 2 lines: The version and the link to the installer's jar.
-        return cls.get('version.txt').readlines()[0].decode('utf8').strip()
+        return cls.get('version.txt').strip()
 
     @classmethod
     def get_basic_config(cls):
         # basic_config.txt contains one mod or installation option per line.
         # It contains all options which should be enabled for the "Basic" installation.
 
-        return [line.decode('utf8').strip() for line in cls.get_lines('basic_config.txt')]
+        return [line.strip() for line in cls.get_lines('basic_config.txt')]
 
     @classmethod
     def get_mods(cls):
         mods = []
 
         for link in cls.get_lines('filenames.txt'):
-            data = get(link.decode('utf8').strip())
+            data = get(link.strip())
 
             if data is None:
                 continue
             else:
-                mods.extend(ModParser().parse(data.read().decode('utf8')))
+                mods.extend(ModParser().parse(data))
 
         return mods
 

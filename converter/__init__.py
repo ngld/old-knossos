@@ -25,7 +25,7 @@ import shutil
 from six import StringIO
 
 from knossos import util, progress
-from .fso_parser import EntryPoint
+# from .fso_parser import EntryPoint
 from knossos.qt import QtCore
 from .repo import RepoConf
 from .tasks import ChecksumTask
@@ -264,8 +264,8 @@ def main(args, prg_wrap=None):
     parser = argparse.ArgumentParser()
     subs = parser.add_subparsers(dest='action')
     
-    import_parser = subs.add_parser('import', help='import installer text files')
-    import_parser.add_argument('repofile', help='The imported files will be stored inside this file.')
+    # import_parser = subs.add_parser('import', help='import installer text files')
+    # import_parser.add_argument('repofile', help='The imported files will be stored inside this file.')
 
     checksums_parser = subs.add_parser('checksums', help='Generate checksums for all referenced files.')
     checksums_parser.add_argument('--save-files', dest='dl_path', help='Save the downloaded files.', default=None)
@@ -277,22 +277,22 @@ def main(args, prg_wrap=None):
 
     args = parser.parse_args(args)
     
-    if args.action == 'import':
-        if not os.path.isfile(args.repofile):
-            logging.warning('The file "%s" wasn\'t found. I will be creating it from scratch.', args.repofile)
-            mods = RepoConf()
-        else:
-            mods = RepoConf(args.repofile)
+    # if args.action == 'import':
+    #     if not os.path.isfile(args.repofile):
+    #         logging.warning('The file "%s" wasn\'t found. I will be creating it from scratch.', args.repofile)
+    #         mods = RepoConf()
+    #     else:
+    #         mods = RepoConf(args.repofile)
 
-        logging.info('Fetching installer text files...')
-        mod_tree = EntryPoint.get_mods()
+    #     logging.info('Fetching installer text files...')
+    #     mod_tree = EntryPoint.get_mods()
 
-        logging.info('Converting...')
-        mods.import_tree(mod_tree)
+    #     logging.info('Converting...')
+    #     mods.import_tree(mod_tree)
 
-        mods.write(args.repofile, True)
-        logging.info('Done')
-    elif args.action == 'checksums':
+    #     mods.write(args.repofile, True)
+    #     logging.info('Done')
+    if args.action == 'checksums':
         generate_checksums(args.repofile, args.outfile, dl_path=args.dl_path)
     elif args.action == 'list':
         mods = RepoConf(args.repofile)
