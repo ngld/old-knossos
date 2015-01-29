@@ -56,7 +56,7 @@ idx = []
 for i, item in enumerate(a.binaries):
     if item[0].startswith('PySide.') and item[0] not in ('PySide.QtCore', 'PySide.QtGui', 'PySide.QtNetwork', 'PySide.QtWebKit'):
         idx.append(i)
-    elif item[0].lower().startswith('qt') and item[0] not in ('QtCore4.dll', 'QtGui4.dll', 'QtNetwork4.dll', 'QtWebKit4.dll'):
+    elif item[0].lower().startswith('qt') and item[0].lower() not in ('qtcore4.dll', 'qtgui4.dll', 'qtnetwork4.dll', 'qtwebkit4.dll'):
         idx.append(i)
     elif item[0].startswith('plugins') and not item[0].endswith(('qjpeg4.dll', 'qgif4.dll')):
         idx.append(i)

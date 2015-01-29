@@ -246,8 +246,16 @@ def run_mod(mod):
         
         return
 
-    mods = mod.get_mod_flag()
+    try:
+        mods = mod.get_mod_flag()
+    except repo.ModNotFound as exc:
+        QtGui.QMessageBox.critical(None, 'Knossos', 'Sorry, I can\'t start this mod because its dependency "%s" is missing!' % exc.mid)
+        return
+    
     mod_flag_found = False
+
+    if mods is None:
+        return
     
     # Look for the cmdline path.
     path = os.path.join(get_fso_profile_path(), 'data/cmdline_fso.cfg')

@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>Settings</string>
   </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
   <layout class="QHBoxLayout" name="layout">
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">

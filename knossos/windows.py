@@ -51,26 +51,19 @@ _open_wins = []
 
 
 class QDialog(QtGui.QDialog):
-    closed = QtCore.Signal()
-
+    
     def __init__(self, *args):
         super(QDialog, self).__init__(*args)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
-    def closeEvent(self, e):
-        self.closed.emit()
-        e.accept()
-
 
 class QMainWindow(QtGui.QMainWindow):
-    closed = QtCore.Signal()
-
+    
     def __init__(self, *args):
         super(QMainWindow, self).__init__(*args)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
     def closeEvent(self, e):
-        self.closed.emit()
         e.accept()
 
         center.app.quit()
@@ -82,48 +75,46 @@ class QMainWindow(QtGui.QMainWindow):
         return super(QMainWindow, self).changeEvent(event)
 
 
-class Window(object):
+class Window(QtCore.QObject):
     win = None
     closed = True
     _is_window = True
     _tpl_cache = None
     _styles = ''
+    _qchildren = None
 
     def __init__(self, window=True):
+        super(Window, self).__init__()
+
         self._is_window = window
         self._tpl_cache = {}
+        self._qchildren = []
 
     def _create_win(self, ui_class, qt_widget=QDialog):
         if not self._is_window:
             qt_widget = QtGui.QWidget
 
-        return util.init_ui(ui_class(), qt_widget())
+        self.win = util.init_ui(ui_class(), qt_widget())
     
     def open(self):
         global _open_wins
+
+        if not self.closed:
+            return
         
         self.closed = False
         _open_wins.append(self)
-
-        if hasattr(self.win, 'closed'):
-            self.win.closed.connect(self._del)
-
-        if hasattr(self.win, 'finished'):
-            self.win.finished.connect(self._del)
-
+        self.win.destroyed.connect(self._del)
         self.win.show()
     
     def close(self):
         self.win.close()
     
     def _del(self):
-        # Make sure all events are processed.
-        QtCore.QTimer.singleShot(3, self._del2)
-    
-    def _del2(self):
         global _open_wins
 
         self.closed = True
+
         if self in _open_wins:
             _open_wins.remove(self)
 
@@ -160,7 +151,7 @@ class HellWindow(Window):
         super(HellWindow, self).__init__(window)
         self._tasks = {}
 
-        self.win = self._create_win(Ui_Hell, QMainWindow)
+        self._create_win(Ui_Hell, QMainWindow)
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
         
         self.win.backButton.clicked.connect(self.win.webView.back)
@@ -195,6 +186,7 @@ class HellWindow(Window):
             
             self.win.pageControls.setEnabled(True)
             self.win.updateButton.setEnabled(True)
+            self.win.searchEdit.setEnabled(True)
             self.win.tabButtons.setEnabled(True)
         else:
             # Make sure the user has a complete configuration
@@ -206,6 +198,7 @@ class HellWindow(Window):
             self.win.webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
             self.win.pageControls.setEnabled(False)
             self.win.updateButton.setEnabled(False)
+            self.win.searchEdit.setEnabled(False)
             self.win.tabButtons.setEnabled(False)
 
     def check_new_repo(self):
@@ -341,7 +334,8 @@ class SettingsWindow(Window):
 
     def __init__(self):
         self._tabs = {}
-        self.win = util.init_ui(Ui_Settings(), QDialog(center.app.activeWindow()))
+        self._create_win(Ui_Settings)
+
         self.win.treeWidget.expandAll()
         self.win.treeWidget.clicked.connect(self.select_tab)
         self.win.saveButton.clicked.connect(self.write_config)
@@ -523,7 +517,7 @@ class SettingsWindow(Window):
         return ratio_string
     
     @staticmethod
-    def has_config(self):
+    def has_config():
         if sys.platform.startswith('win'):
             config = QtCore.QSettings('HKEY_LOCAL_MACHINE\\Software\\Volition\\Freespace2', QtCore.QSettings.NativeFormat)
         else:
@@ -922,7 +916,7 @@ class GogExtractWindow(Window):
     def __init__(self, window=True):
         super(GogExtractWindow, self).__init__(window)
 
-        self.win = self._create_win(Ui_Gogextract)
+        self._create_win(Ui_Gogextract)
 
         self.win.gogPath.textChanged.connect(self.validate)
         self.win.destPath.textChanged.connect(self.validate)
@@ -988,7 +982,7 @@ class FlagsWindow(Window):
         self._selected = []
         self._mod = mod
         
-        self.win = self._create_win(Ui_Flags)
+        self._create_win(Ui_Flags)
         if window:
             self.win.setModal(True)
 
@@ -1015,7 +1009,10 @@ class FlagsWindow(Window):
         if mod is None:
             self.win.defaultsButton.hide()
         else:
-            self._mod_arg = ','.join(mod.get_mod_flag())
+            try:
+                self._mod_arg = ','.join(mod.get_mod_flag())
+            except repo.ModNotFound:
+                pass
 
         self.read_flags()
         if self._flags is not None:
@@ -1191,63 +1188,136 @@ class ModInstallWindow(Window):
         super(ModInstallWindow, self).__init__()
 
         self._mod = mod
-        self.win = util.init_ui(Ui_Install(), QDialog(center.app.activeWindow()))
+        self._create_win(Ui_Install)
+        self.win.splitter.setStretchFactor(0, 2)
+        self.win.splitter.setStretchFactor(1, 1)
 
         self.label_tpl(self.win.titleLabel, MOD=mod.title)
+        self.win.notesField.setPlainText(mod.notes)
 
         self._pkg_checks = []
-        for pkg in mod.packages:
-            p_check = QtGui.QCheckBox(pkg.name)
-            if pkg.status != 'optional' or pkg.name in sel_pkgs:
-                p_check.setCheckState(QtCore.Qt.Checked)
-
-            if pkg.status == 'required':
-                p_check.setDisabled(True)
-
-            p_check.stateChanged.connect(self.update_deps)
-            self.win.pkgsLayout.addWidget(p_check)
-            self._pkg_checks.append(p_check)
-
+        self.show_packages()
         self.update_deps()
-        self.win.installButton.clicked.connect(self.install)
-        self.win.cancelButton.clicked.connect(self.close)
+
+        self.win.treeWidget.itemChanged.connect(self.update_selection)
+
+        self.win.accepted.connect(self.install)
+        self.win.rejected.connect(self.close)
 
         self.open()
 
+    def show_packages(self):
+        pkgs = self._mod.packages
+        try:
+            all_pkgs = center.mods.process_pkg_selection(pkgs)
+        except repo.ModNotFound as exc:
+            logging.exception('Well, I won\'t be installing that...')
+            msg = 'I\'m sorry but you won\'t be able to install "%s" because "%s" is missing!' % (self._mod.title, exc.mid)
+            QtGui.QMessageBox.critical(None, 'Knossos', msg)
+
+            self.close()
+            return
+
+        needed_pkgs = self._mod.resolve_deps()
+        mods = set()
+
+        for pkg in all_pkgs:
+            mods.add(pkg.get_mod())
+
+        # Make sure our current mod comes first.
+        mods.remove(self._mod)
+        mods = [self._mod] + list(mods)
+        for mod in mods:
+            item = QtGui.QTreeWidgetItem(self.win.treeWidget, [mod.title, ''])
+            item.setExpanded(True)
+            item.setData(0, QtCore.Qt.UserRole, mod)
+            c = 0
+
+            for pkg in mod.packages:
+                fsize = 0
+                for f_item in pkg.files.values():
+                    fsize += f_item.get('filesize', 0)
+
+                if fsize > 0:
+                    fsize = util.format_bytes(fsize)
+                else:
+                    fsize = '?'
+
+                sub = QtGui.QTreeWidgetItem(item, [pkg.name, fsize])
+                is_installed = center.installed.is_installed(pkg)
+
+                if is_installed:
+                    sub.setText(1, 'Installed')
+
+                if pkg.status == 'required' or pkg in needed_pkgs or is_installed:
+                    sub.setCheckState(0, QtCore.Qt.Checked)
+                    sub.setDisabled(True)
+
+                    c += 1
+                elif pkg.status == 'recommended':
+                    sub.setCheckState(0, QtCore.Qt.Checked)
+                    c += 1
+                if pkg.status == 'optional':
+                    sub.setCheckState(0, QtCore.Qt.Unchecked)
+
+                sub.setData(0, QtCore.Qt.UserRole, pkg)
+                sub.setData(0, QtCore.Qt.UserRole + 1, is_installed)
+                self._pkg_checks.append(sub)
+
+            if c == len(mod.packages):
+                item.setCheckState(0, QtCore.Qt.Checked)
+            elif c > 0:
+                item.setCheckState(0, QtCore.Qt.PartiallyChecked)
+            else:
+                item.setCheckState(0, QtCore.Qt.Unchecked)
+
+        self.win.treeWidget.header().resizeSections(QtGui.QHeaderView.ResizeToContents)
+
+    def update_selection(self, item, col):
+        obj = item.data(0, QtCore.Qt.UserRole)
+        if isinstance(obj, repo.Mod):
+            cs = item.checkState(0)
+
+            for i in range(item.childCount()):
+                child = item.child(i)
+                if not child.isDisabled():
+                    child.setCheckState(0, cs)
+
+        self.update_deps()
+
     def get_selected_pkgs(self):
         pkgs = []
-        for i, check in enumerate(self._pkg_checks):
-            if check.checkState() == QtCore.Qt.Checked:
-                pkgs.append(self._mod.packages[i])
+        for item in self._pkg_checks:
+            if item.checkState(0) == QtCore.Qt.Checked:
+                pkgs.append(item.data(0, QtCore.Qt.UserRole))
 
         pkgs = center.mods.process_pkg_selection(pkgs)
         return pkgs
+
+    def update_deps(self):
+        pkg_sel = self.get_selected_pkgs()
+        dl_size = 0
+        for item in self._pkg_checks:
+            pkg = item.data(0, QtCore.Qt.UserRole)
+
+            if not item.data(0, QtCore.Qt.UserRole + 1):
+                if item.checkState(0) == QtCore.Qt.Checked or pkg in pkg_sel:
+                    for f_item in pkg.files.values():
+                        dl_size += f_item.get('filesize', 0)
+
+            if item.isDisabled():
+                continue
+
+            if pkg in pkg_sel:
+                item.setCheckState(0, QtCore.Qt.Checked)
+
+        self.label_tpl(self.win.dlSizeLabel, DL_SIZE=util.format_bytes(dl_size))
 
     def install(self):
         center.main_win.update_mod_buttons('progress')
 
         run_task(InstallTask(self.get_selected_pkgs(), self._mod))
         self.close()
-
-    def update_deps(self):
-        pkgs = self.get_selected_pkgs()
-        dl_size = 0
-        names = set()
-
-        for pkg in pkgs:
-            names.add(pkg.get_mod().title)
-            if not center.installed.is_installed(pkg):
-                for item in pkg.files.values():
-                    dl_size += item.get('filesize', 0)
-
-        names.remove(self._mod.title)
-
-        if len(names) == 0:
-            self.win.depsLabel.setText('')
-        else:
-            self.label_tpl(self.win.depsLabel, DEPS=util.human_list(names))
-
-        self.label_tpl(self.win.dlSizeLabel, DL_SIZE=util.format_bytes(dl_size))
 
 
 class ModSettingsWindow(Window):
@@ -1262,7 +1332,7 @@ class ModSettingsWindow(Window):
 
         self._mod = mod
         self._mod_versions = []
-        self.win = self._create_win(Ui_Mod_Settings, QDialog)
+        self._create_win(Ui_Mod_Settings, QDialog)
         self.load_styles(':/ui/themes/default/mod_settings.css')
 
         self.win.modTitle.setText(self._mod.title)
@@ -1274,42 +1344,48 @@ class ModSettingsWindow(Window):
         lay.addWidget(self._flags.win)
 
         self._pkg_checks = []
-        try:
-            rmod = center.mods.query(mod)
-        except repo.ModNotFound:
-            rmod = mod
+        if isinstance(mod, repo.IniMod):
+            self.win.tabWidget.setTabEnabled(2, False)  # Packages
+            self.win.tabWidget.setTabEnabled(3, False)  # Versions
+            self.win.tabWidget.setTabEnabled(4, False)  # Troubleshooting
+        else:
+            try:
+                rmod = center.mods.query(mod)
+            except repo.ModNotFound:
+                rmod = mod
 
-        for pkg in rmod.packages:
-            p_check = QtGui.QCheckBox(pkg.name)
-            installed = center.installed.is_installed(pkg)
+            for pkg in rmod.packages:
+                p_check = QtGui.QCheckBox(pkg.name)
+                installed = center.installed.is_installed(pkg)
 
-            if pkg.status == 'required' or installed:
-                p_check.setCheckState(QtCore.Qt.Checked)
-                
-                if pkg.status == 'required':
-                    p_check.setDisabled(True)
+                if pkg.status == 'required' or installed:
+                    p_check.setCheckState(QtCore.Qt.Checked)
+                    
+                    if pkg.status == 'required':
+                        p_check.setDisabled(True)
 
-                    if not installed:
-                        p_check.setProperty('error', True)
-                        p_check.setText(pkg.name + ' (missing)')
-            else:
-                p_check.setCheckState(QtCore.Qt.Unchecked)
+                        if not installed:
+                            p_check.setProperty('error', True)
+                            p_check.setText(pkg.name + ' (missing)')
+                else:
+                    p_check.setCheckState(QtCore.Qt.Unchecked)
 
-            p_check.stateChanged.connect(self.update_dlsize)
-            self.win.pkgsLayout.addWidget(p_check)
-            self._pkg_checks.append([p_check, installed, pkg])
+                p_check.stateChanged.connect(self.update_dlsize)
+                self.win.pkgsLayout.addWidget(p_check)
+                self._pkg_checks.append([p_check, installed, pkg])
 
-        self.win.applyPkgChanges.clicked.connect(self.apply_pkg_selection)
+            self.win.applyPkgChanges.clicked.connect(self.apply_pkg_selection)
 
-        self.win.checkFiles.clicked.connect(self.check_files)
-        self.win.delLoose.clicked.connect(self.delete_loose_files)
-        self.win.replaceFiles.clicked.connect(self.repair_files)
+            self.win.checkFiles.clicked.connect(self.check_files)
+            self.win.delLoose.clicked.connect(self.delete_loose_files)
+            self.win.replaceFiles.clicked.connect(self.repair_files)
+
+            self.update_dlsize()
+            self.show_versions()
 
         center.signals.repo_updated.connect(self.update_repo_related)
 
         self.show_flags_tab()
-        self.update_dlsize()
-        self.show_versions()
         self.open()
 
     def update_repo_related(self):
@@ -1324,7 +1400,6 @@ class ModSettingsWindow(Window):
             except repo.ModNotFound:
                 pass
             else:
-                print((self._mod, m2))
                 ModSettingsWindow(m2)
 
             return
@@ -1588,7 +1663,7 @@ class ModVersionsWindow(Window):
 
         self._mod = mod
         self._versions = []
-        self.win = self._create_win(Ui_Mod_Versions, QDialog)
+        self._create_win(Ui_Mod_Versions, QDialog)
 
         self.label_tpl(self.win.label, MOD=mod.title)
 
@@ -1657,12 +1732,34 @@ class ModVersionsWindow(Window):
         self.close()
 
 
+class ModInfoWindow(Window):
+    _mod = None
+
+    def __init__(self, mod, window=True):
+        super(ModInfoWindow, self).__init__(window)
+
+        self._mod = mod
+        self._create_win(Ui_Mod_Settings, QDialog)
+
+        self.win.modTitle.setText(mod.title)
+        self.win.modLogo.setPixmap(QtGui.QPixmap(mod.logo))
+        self.win.modDesc.setPlainText(mod.description)
+
+        self.win.flagsTab.deleteLater()
+        self.win.pkgTab.deleteLater()
+        self.win.versionsTab.deleteLater()
+        self.win.troubleTab.deleteLater()
+        self.win.tabWidget.setCurrentIndex(0)
+
+        self.open()
+
+
 class LogViewer(Window):
 
     def __init__(self, path, window=True):
         super(LogViewer, self).__init__(window)
 
-        self.win = self._create_win(Ui_Log_Viewer)
+        self._create_win(Ui_Log_Viewer)
         self.win.pathLabel.setText(path)
 
         if not os.path.isfile(path):

@@ -18,10 +18,11 @@ import sys
 import os
 import logging
 
-default_variant = 'PySide'
+default_variant = 'auto'
+QtCore = None
 
 variant = os.environ.get('QT_API', default_variant)
-if variant not in ('PySide', 'PyQt4', 'headless'):
+if variant not in ('PySide', 'PyQt4', 'headless', default_variant):
     logging.warning('Unknown QT_API "%s"! Using default...', variant)
     variant = default_variant
 
@@ -29,14 +30,20 @@ if variant != 'headless':
     # Make sure we initialize Xlib before we load Qt.
     from . import clibs
 
-if variant == 'PySide':
+if variant in ('PySide', 'auto'):
     try:
         from PySide import QtCore, QtGui, QtNetwork, QtWebKit
-    except ImportError:
-        # Fallback to PyQt4
-        variant = 'PyQt4'
 
-if variant == 'PyQt4':
+        # Success!
+        variant = 'PySide'
+    except ImportError:
+        logging.exception('I was unable to load Qt! Tried PySide.')
+
+        # If variant is 'auto', we fallback to PyQt4.
+        if variant != 'auto':
+            sys.exit(1)
+
+if variant in ('PyQt4', 'auto'):
     try:
         import sip
         api2_classes = [
@@ -52,9 +59,12 @@ if variant == 'PyQt4':
         QtCore.Signal = QtCore.pyqtSignal
         QtCore.Slot = QtCore.pyqtSlot
         QtCore.QString = str
+
+        # Success!
+        variant = 'PySide'
         
     except ImportError:
-        logging.error('I was unable to load Qt! Tried %s.', os.environ.get('QT_API', default_variant))
+        logging.exception('I was unable to load Qt! Tried PyQt4.')
         sys.exit(1)
 
 if variant == 'headless':

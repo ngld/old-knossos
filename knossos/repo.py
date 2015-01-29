@@ -138,6 +138,7 @@ class Repo(object):
 
     def add_mod(self, mod):
         mid = mod.mid
+
         if mid in self.mods:
             inserted = False
 
@@ -506,7 +507,7 @@ class Package(object):
             self.dependencies.append({
                 'id': self.get_mod().mid,
                 'version': '==' + str(self.get_mod().version),
-                'packages': ['<required>']
+                'packages': []
             })
 
     def get(self):
@@ -548,23 +549,14 @@ class Package(object):
             pkgs = dep.get('packages', [])
             found_pkgs = []
 
-            if len(pkgs) > 0:
-                if len(pkgs) == 1 and pkgs[0] == '<required>':
-                    pkgs = []
-
-                for pkg in mod.packages:
-                    if pkg.status == 'required' or pkg.name in pkgs:
-                        result.append((pkg, version))
-                        found_pkgs.append(pkg.name)
-            else:
-                for pkg in mod.packages:
-                    if pkg.status != 'optional':
-                        result.append((pkg, version))
-                        found_pkgs.append(pkg.name)
+            for pkg in mod.packages:
+                if pkg.status == 'required' or pkg.name in pkgs:
+                    result.append((pkg, version))
+                    found_pkgs.append(pkg.name)
 
             missing_pkgs = set(pkgs) - set(found_pkgs)
             if len(missing_pkgs) > 0:
-                raise PackageNotFound('Package %s of mod %s (%s) couldn\'t be found!' % (missing_pkgs[0], mod.mid, version))
+                raise PackageNotFound('Package %s of mod %s (%s) couldn\'t be found!' % (next(iter(missing_pkgs)), mod.mid, version), mod.mid, missing_pkgs)
 
         return result
 
@@ -821,8 +813,9 @@ class InstalledMod(Mod):
                 folder = dep.get_mod().folder
                 if folder not in mods:
                     mods.append(folder)
-        except repo.ModNotFound as exc:
+        except ModNotFound:
             logging.exception('A dependency for an installed mod is missing!')
+            raise
 
         m = []
         for item in mods:
@@ -843,11 +836,6 @@ class IniMod(InstalledMod):
         self._sc_list = []
 
         self.version = semantic_version.Version('1.0.0+ini')
-
-        # pkg = InstalledPackage()
-        # pkg.name = 'Content'
-        # pkg.status = 'required'
-        # self.add_pkg(pkg)
 
     def load(self, path):
         with open(path, 'r') as stream:
@@ -877,6 +865,12 @@ class IniMod(InstalledMod):
             self.title = folder + ' (ini)'
 
         self.mid = '##INI_COMPAT#' + folder
+
+        pkg = InstalledPackage({
+            'name': 'Content',
+            'status': 'required'
+        }, self)
+        self.add_pkg(pkg)
 
     def get_mod_flag(self):
         mods = self._pr_list[:]

@@ -21,6 +21,12 @@
 
                 fs2mod.install(mod.id, mod.version);
             });
+
+            row.find('.info-btn').click(function (e) {
+                e.preventDefault();
+
+                fs2mod.showInfo(mod.id, mod.version);
+            });
         } else if(type == 'installed') {
             row.html($('#tpl-installed-mod').html());
 

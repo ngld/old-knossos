@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>Mod settings</string>
   </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="modTitle">
@@ -68,7 +71,7 @@
        <string>Flags</string>
       </attribute>
      </widget>
-     <widget class="QWidget" name="tab_2">
+     <widget class="QWidget" name="pkgTab">
       <attribute name="title">
        <string>Packages</string>
       </attribute>
@@ -110,7 +113,7 @@
        <string>Versions</string>
       </attribute>
      </widget>
-     <widget class="QWidget" name="tab_3">
+     <widget class="QWidget" name="troubleTab">
       <attribute name="title">
        <string>Troubleshoot</string>
       </attribute>

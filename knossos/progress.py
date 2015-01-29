@@ -196,6 +196,7 @@ class Task(QtCore.QObject):
     _results = None
     _result_lock = None
     _work = None
+    _work_count = 0
     _work_lock = None
     _done = None
     _master = None
@@ -203,6 +204,7 @@ class Task(QtCore.QObject):
     _progress = None
     _progress_lock = None
     _running = 0
+    _pending = 0
     _threads = 0
     background = False
     can_abort = True
@@ -233,6 +235,7 @@ class Task(QtCore.QObject):
             elif self._threads > 0 and self._running >= self._threads:
                 return None
             else:
+                self._pending += 1
                 return (self, (self._work.pop(0),))
     
     def _has_work(self):
@@ -245,16 +248,16 @@ class Task(QtCore.QObject):
             self._running += 1
     
     def _deinit(self):
-        running = 0
-        
         with self._progress_lock:
+            with self._work_lock:
+                self._pending -= 1
+
             self._progress[threading.get_ident()] = (1, 'Done')
             self._running -= 1
-            running = self._running
-
-        if running == 0 and not self._has_work():
-            self._done.set()
-            self.done.emit()
+            
+            if self._running == 0 and not self._has_work() and not self._done.is_set():
+                self._done.set()
+                self.done.emit()
     
     def _track_progress(self, prog, text):
         with self._progress_lock:
@@ -269,6 +272,7 @@ class Task(QtCore.QObject):
     def add_work(self, work):
         with self._work_lock:
             self._work.extend(work)
+            self._work_count = max(self._work_count, len(self._work))
         
         if not self._attached and self._master is not None:
             self._master.add_task(self)
@@ -290,15 +294,15 @@ class Task(QtCore.QObject):
             prog = self._progress.copy()
         
         with self._work_lock:
-            work = len(self._work)
-            results = len(self._results)
+            wc_left = len(self._work)
+            wc_total = self._work_count
         
-        count = float(results + work + len(prog))
+        count = float(wc_total + len(prog))
         if count == 0:
             count = 0.00001
             total = 1
         else:
-            total = results / count
+            total = (wc_total - wc_left) / count
         
         for item in prog.values():
             total += item[0] * (1.0 / count)
@@ -348,12 +352,13 @@ class MultistepTask(Task):
             if (self._threads > 0 and self._running >= self._threads) or self._sdone or self.aborted:
                 return None
             elif len(self._work) == 0 or self._cur_step < 0:
-                with self._progress_lock:
-                    if self._running == 0:
-                        return (self, ('MAGIC_MULTITASK_STEP_KEY_###',))
-                    else:
-                        return None
+                if self._pending == 0 and self._running == 0:
+                    self._pending += 1
+                    return (self, ('MAGIC_MULTITASK_STEP_KEY_###',))
+                else:
+                    return None
             else:
+                self._pending += 1
                 return (self, (self._work.pop(0),))
 
     def work(self, arg):
@@ -362,7 +367,7 @@ class MultistepTask(Task):
             # Maybe we need to advance to the next step.
             self._work_lock.acquire()
 
-            if self._running == 1 and len(self._work) == 0:
+            if self._pending == 1 and self._running == 1 and len(self._work) == 0:
                 self._work_lock.release()
                 self._next_step()
             else:

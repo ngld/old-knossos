@@ -12,6 +12,8 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+from __future__ import absolute_import, print_function, division
+
 import sys
 import os
 import logging
@@ -24,13 +26,14 @@ import time
 import json
 import random
 import functools
+import io
 import semantic_version
 import requests
 from collections import OrderedDict
 from threading import Condition, Event
 from collections import deque
 
-from . import center
+from . import center, progress
 
 try:
     from PIL import Image
@@ -521,7 +524,7 @@ def url_join(a, b):
     return pjoin(a, b)
 
 
-def gen_hash(path, algo='md5'):
+def gen_hash(path, algo='md5', track_progress=False):
     global HASH_CACHE
     
     path = os.path.abspath(path)
@@ -534,12 +537,19 @@ def gen_hash(path, algo='md5'):
     
     h = hashlib.new(algo)
     with open(path, 'rb') as stream:
+        if track_progress:
+            size = stream.seek(0, io.SEEK_END)
+            stream.seek(0)
+
         while True:
             chunk = stream.read(16 * h.block_size)
             if not chunk:
                 break
 
             h.update(chunk)
+
+            if track_progress:
+                progress.update(stream.tell() / size, 'Calcuating hash...')
 
     chksum = h.hexdigest()
     if algo == 'md5':

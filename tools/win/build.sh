@@ -43,7 +43,7 @@ if [ ! -d _w ]; then
     download nsProcess.7z "https://dev.tproxy.de/mirror/nsProcess_1_6.7z"
     
     msg2 "Installing Python..."
-    wine msiexec /i python.msi
+    wine msiexec /i python.msi /q INSTALLDIR="C:\\Python27"
 
     msg2 "Checking Python..."
     if ! wine python -c 'print("Works")'; then

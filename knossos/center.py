@@ -43,7 +43,7 @@ settings = {
     'max_downloads': 3,
     'repos': [('https://fsnebula.org/repo/test.json', 'Test repos')],
     'nebula_link': 'https://fsnebula.org/',
-    'update_channel': 'stable',
+    'update_channel': 'develop',
     'update_notify': True,
     'ui_mode': 'hell',
     'keyboard_layout': 'default',

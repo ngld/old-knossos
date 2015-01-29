@@ -23,7 +23,7 @@ import glob
 import stat
 import json
 import tempfile
-import time
+import threading
 import random
 import semantic_version
 
@@ -163,13 +163,15 @@ class CheckTask(progress.MultistepTask):
             mypath = util.ipath(os.path.join(modpath, info['filename']))
             fix = False
             if os.path.isfile(mypath):
-                progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
+                progress.start_task(checked / count, 1 / count, 'Checking "%s"...' % (info['filename']))
                 
-                if util.gen_hash(mypath) == info['md5sum']:
+                if util.gen_hash(mypath, track_progress=True) == info['md5sum']:
                     success += 1
                 else:
                     msgs.append('File "%s" is corrupted. (checksum mismatch)' % (info['filename']))
                     fix = True
+
+                progress.finish_task()
             else:
                 msgs.append('File "%s" is missing.' % (info['filename']))
                 missing += 1
@@ -195,7 +197,7 @@ class CheckTask(progress.MultistepTask):
                     logging.warning('Package %s of mod %s (%s) is not installed but in the local repo. Fixing...' % (pkg.name, mod.mid, mod.title))
                     mod.del_pkg(pkg)
                     mod.save()
-                else:
+                elif c > 0:
                     logging.warning('Package %s of mod %s (%s) is completely corrupted!!' % (pkg.name, mod.mid, mod.title))
             
             if pkg is not None:
@@ -307,11 +309,16 @@ class InstallTask(progress.MultistepTask):
     _dls = None
     _steps = 2
     _error = False
+    _7z_lock = None
     mod = None
 
     def __init__(self, pkgs, mod=None):
         self._pkgs = []
         self._pkg_names = []
+
+        if sys.platform == 'win32':
+            self._7z_lock = threading.Lock()
+
         rmods = center.mods
 
         if mod is not None:
@@ -408,13 +415,18 @@ class InstallTask(progress.MultistepTask):
                     if itempath not in mnames:
                         logging.info('File "%s" is left over.', itempath)
 
-        for info in mfiles:
+        amount = float(len(mfiles))
+        for i, info in enumerate(mfiles):
             if (mod.mid, info['package']) not in self._pkg_names:
                 continue
 
+            progress.start_task(i / amount, 1 / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
+
             itempath = util.ipath(os.path.join(modpath, info['filename']))
-            if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
+            if not os.path.isfile(itempath) or util.gen_hash(itempath, track_progress=True) != info['md5sum']:
                 archives.add((mod.mid, info['package'], info['archive']))
+
+            progress.finish_task()
 
         self.post(archives)
 
@@ -460,6 +472,8 @@ class InstallTask(progress.MultistepTask):
 
                 for url in urls:
                     progress.start_task(0, 0.97, '%s')
+                    progress.update(0, 'Ready')
+
                     with open(arpath, 'wb') as stream:
                         if not util.download(url, stream):
                             if self.aborted:
@@ -487,61 +501,43 @@ class InstallTask(progress.MultistepTask):
                 return
 
             if archive['is_archive']:
-                progress.update(0.98, 'Extracting %s...' % archive['filename'])
-
                 cpath = os.path.join(tpath, 'content')
                 os.mkdir(cpath)
 
                 needed_files = filter(lambda item: item['archive'] == archive['filename'], archive['pkg'].filelist)
-                retries = 5
                 done = False
 
-                while retries > 0:
-                    if self.aborted:
-                        return
+                if sys.platform == 'win32':
+                    # Apparently I can't run multiple 7z instances on Windows. If I do, I always get the error
+                    # "The archive can't be opened because it is still in use by another process."
+                    # I have no idea why. It works fine on Linux and Mac OS.
+                    # TODO: Is there a better solution?
+                    
+                    progress.update(0.98, 'Waiting...')
+                    self._7z_lock.acquire()
 
-                    if sys.platform.startswith('win'):
-                        if retries == 4:
-                            # Make sure the file is unlocked
-                            import win32file
-                            import pywintypes
+                progress.update(0.98, 'Extracting %s...' % archive['filename'])
 
-                            fh = open(arpath, 'rb')
-                            hfile = win32file._get_osfhandle(fh.fileno())
-                            try:
-                                win32file.UnlockFileEx(hfile, 0, -0x10000, pywintypes.OVERLAPPED())
-                            except pywintypes.error as exc_value:
-                                if exc_value[0] != 158:
-                                    logging.exception('Failed to unlock "%s"!', arpath)
+                if util.extract_archive(arpath, cpath):
+                    done = True
+                    # Look for missing files
+                    for item in needed_files:
+                        src_path = os.path.join(cpath, item['orig_name'])
 
-                            fh.close()
-                        else:
-                            time.sleep(1)
+                        if not os.path.isfile(src_path):
+                            logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)!',
+                                            item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
+                            
+                            done = False
+                            break
 
-                    # TODO: 7z sometimes can't extract the archive because it's still locked.
-                    if util.extract_archive(arpath, cpath):
-                        done = True
-                        # Look for missing files
-                        for item in needed_files:
-                            src_path = os.path.join(cpath, item['orig_name'])
-
-                            if not os.path.isfile(src_path):
-                                logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)! I\'ll unpack the archive again!',
-                                                item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
-                                done = False
-                                break
-
-                    if done:
-                        break
-                    else:
-                        retries -= 1
-                        shutil.rmtree(cpath, ignore_errors=True)
-                        os.mkdir(cpath)
-                        time.sleep(0.3)
+                if sys.platform == 'win32':
+                    self._7z_lock.release()
 
                 if not done:
                     logging.error('Failed to unpack archive "%s" for package "%s" (%s)!',
                                   archive['filename'], archive['pkg'].name, archive['mod'].title)
+                    shutil.rmtree(cpath, ignore_errors=True)
                     self._error = True
                     return
 
@@ -650,8 +646,13 @@ class UninstallTask(progress.MultistepTask):
     def work2(self, mod):
         modpath = os.path.join(center.settings['fs2_path'], mod.folder)
 
-        # Remove our files
-        if len(mod.packages) == 0:
+        print(mod)
+
+        if isinstance(mod, repo.IniMod):
+            shutil.rmtree(modpath)
+        elif len(mod.packages) == 0:
+            # Remove our files
+            
             my_files = (os.path.join(modpath, 'mod.json'), mod.logo_path)
             for path in my_files:
                 if os.path.isfile(path):

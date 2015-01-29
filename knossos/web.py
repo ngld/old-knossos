@@ -208,6 +208,15 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)
+    def showInfo(self, mid, spec=None):
+        mod = self._get_mod(mid, spec, center.mods)
+        if mod in (-1, -2):
+            return mod
+
+        windows.ModInfoWindow(mod)
+
+    @QtCore.Slot(str, result=int)
+    @QtCore.Slot(str, str, result=int)
     @QtCore.Slot(str, str, 'QStringList', result=int)
     def install(self, mid, spec=None, pkgs=None):
         mod = self._get_mod(mid, spec, center.mods)
