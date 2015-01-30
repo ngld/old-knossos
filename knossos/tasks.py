@@ -311,10 +311,12 @@ class InstallTask(progress.MultistepTask):
     _error = False
     _7z_lock = None
     mod = None
+    check_after = True
 
-    def __init__(self, pkgs, mod=None):
+    def __init__(self, pkgs, mod=None, check_after=True):
         self._pkgs = []
         self._pkg_names = []
+        self.check_after = check_after
 
         if sys.platform == 'win32':
             self._7z_lock = threading.Lock()
@@ -374,7 +376,8 @@ class InstallTask(progress.MultistepTask):
             if p > -1:
                 mod.folder = mod.folder[:p]
 
-        run_task(CheckTask())
+        if self.check_after:
+            run_task(CheckTask())
 
     def init1(self):
         mods = set()
@@ -605,9 +608,12 @@ class InstallTask(progress.MultistepTask):
 class UninstallTask(progress.MultistepTask):
     _pkgs = None
     _steps = 2
+    check_after = True
 
-    def __init__(self, pkgs):
+    def __init__(self, pkgs, check_after=True):
         self._pkgs = []
+        self.check_after = check_after
+
         for pkg in pkgs:
             try:
                 self._pkgs.append(center.installed.query(pkg))
@@ -646,8 +652,6 @@ class UninstallTask(progress.MultistepTask):
     def work2(self, mod):
         modpath = os.path.join(center.settings['fs2_path'], mod.folder)
 
-        print(mod)
-
         if isinstance(mod, repo.IniMod):
             shutil.rmtree(modpath)
         elif len(mod.packages) == 0:
@@ -657,6 +661,17 @@ class UninstallTask(progress.MultistepTask):
             for path in my_files:
                 if os.path.isfile(path):
                     os.unlink(path)
+
+            libs = os.path.join(modpath, '__k_plibs')
+            if os.path.isdir(libs):
+                for link in os.listdir(libs):
+                    item = os.path.join(libs, link)
+                    if os.path.islink(item):
+                        os.unlink(item)
+
+                shutil.rmtree(libs)
+
+            center.installed.del_mod(mod)
         else:
             mod.save()
 
@@ -666,16 +681,20 @@ class UninstallTask(progress.MultistepTask):
                 os.rmdir(path)
 
     def finish(self):
-        run_task(CheckTask())
+        if self.check_after:
+            run_task(CheckTask())
 
 
 class UpdateTask(InstallTask):
     _old_mod = None
     _new_mod = None
+    __check_after = True
 
-    def __init__(self, mod):
+    def __init__(self, mod, check_after=True):
         self._old_mod = mod
         self._new_mod = center.mods.query(mod.mid)
+        self.__check_after = check_after
+        
         old_pkgs = [pkg.name for pkg in mod.packages]
         pkgs = []
 
@@ -683,14 +702,14 @@ class UpdateTask(InstallTask):
             if pkg.name in old_pkgs or pkg.status == 'required':
                 pkgs.append(pkg)
 
-        super(UpdateTask, self).__init__(pkgs, mod)
+        super(UpdateTask, self).__init__(pkgs, self._new_mod, check_after=False)
 
     def finish(self):
         super(UpdateTask, self).finish()
 
         if not self.aborted and not self._error:
             # The new version has been succesfully installed, remove the old version.
-            next_task = UninstallTask(self._old_mod.packages)
+            next_task = UninstallTask(self._old_mod.packages, check_after=False)
             next_task.done.connect(self._finish2)
             run_task(next_task)
 
@@ -699,17 +718,21 @@ class UpdateTask(InstallTask):
         modpath = os.path.join(fs2path, self._old_mod.folder)
         temppath = os.path.join(fs2path, self._new_mod.folder)
 
-        # Move all files from the temporary directory to the new one.
-        try:
-            for item in os.listdir(temppath):
-                shutil.move(os.path.join(temppath, item), os.path.join(modpath, item))
-        except:
-            logging.exception('Failed to move a file!')
-            QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to replace the old mod files with the updated files!')
-            return
+        if '_kv_' not in modpath:
+            # Move all files from the temporary directory to the new one.
+            try:
+                for item in os.listdir(temppath):
+                    shutil.move(os.path.join(temppath, item), os.path.join(modpath, item))
+            except:
+                logging.exception('Failed to move a file!')
+                QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to replace the old mod files with the updated files!')
+                return
 
-        # Remove the now empty temporary folder
-        os.rmdir(temppath)
+            # Remove the now empty temporary folder
+            os.rmdir(temppath)
+
+        if self.__check_after:
+            run_task(CheckTask())
 
 
 class GOGExtractTask(progress.Task):

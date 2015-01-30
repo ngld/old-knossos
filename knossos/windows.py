@@ -410,7 +410,7 @@ class SettingsWindow(Window):
 
     def _del(self):
         center.signals.fs2_path_changed.disconnect(self.read_config)
-        center.signals.fs2_bin_changed.disconnect(tab.read_flags)
+        center.signals.fs2_bin_changed.disconnect(self._tabs['Default flags'].read_flags)
 
         super(SettingsWindow, self)._del()
 
@@ -1682,6 +1682,7 @@ class ModVersionsWindow(Window):
         self._mod = mod
         self._versions = []
         self._create_win(Ui_Mod_Versions, QDialog)
+        self.win.setModal(True)
 
         self.label_tpl(self.win.label, MOD=mod.title)
 

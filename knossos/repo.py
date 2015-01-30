@@ -164,8 +164,9 @@ class Repo(object):
         mod._repo = self
 
     def merge(self, repo):
-        for mod in repo.get_list():
-            self.add_mod(mod)
+        for mvs in repo.mods.values():
+            for mod in mvs:
+                self.add_mod(mod)
 
     def pin(self, mod, version=None):
         if isinstance(mod, Package):
@@ -671,6 +672,22 @@ class InstalledRepo(Repo):
 
         my_mod.del_pkg(pkg)
 
+    def del_mod(self, mod):
+        if mod.mid in self.mods:
+            vs = self.mods[mod.mid]
+            rem = None
+            for m in vs:
+                if m.version == mod.version:
+                    rem = m
+                    break
+
+            if rem is None:
+                logging.error('Tried to delete missing mod version!')
+            else:
+                vs.remove(rem)
+                if len(vs) == 0:
+                    del self.mods[mod.mid]
+
     def is_installed(self, mid, spec=None, pname=None):
         try:
             self.query(mid, spec, pname)
@@ -704,6 +721,7 @@ class InstalledRepo(Repo):
                 if rem_files == my_files:
                     logging.warning('Detected an empty update for mod "%s"! (%s -> %s)', mods[0].title, str(mods[0].version), str(rem_mod.version))
                     # TODO: Resolve this situation! (Update the local metadata?)
+                    print(rem_files, my_files)
                 else:
                     if mid not in updates:
                         updates[mid] = {}

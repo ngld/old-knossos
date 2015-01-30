@@ -255,7 +255,7 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)
-    def updateMode(self, mid, spec=None):
+    def updateMod(self, mid, spec=None):
         mod = self._get_mod(mid, spec)
         if mod in (-1, -2):
             return mod
@@ -271,6 +271,8 @@ class WebBridge(QtCore.QObject):
                 cur_pkgs[i] = center.mods.query(mod.mid, semantic_version.Version('*'), pkg.name)
             
             tasks.run_task(tasks.InstallTask(cur_pkgs, cur_pkgs[0].get_mod()))
+
+        center.main_win.update_mod_buttons('progress')
 
     @QtCore.Slot(float)
     def abortTask(self, tid):
