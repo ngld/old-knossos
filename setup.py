@@ -28,7 +28,7 @@ setup(
 
     # This version should comply with PEP440 (http://legacy.python.org/dev/peps/pep-0440/).
     # The first three numbers should be the same as VERSION in knossos/center.py.
-    version='XXX',
+    version='0.1.0',
 
     description='A simple mod manager for FreeSpace 2 Open',
     long_description=long_description,
@@ -46,7 +46,7 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
 
         'Intended Audience :: End Users/Desktop',
         'License :: OSI Approved :: Apache Software License',
@@ -55,7 +55,6 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4'
     ],
