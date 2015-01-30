@@ -721,7 +721,6 @@ class InstalledRepo(Repo):
                 if rem_files == my_files:
                     logging.warning('Detected an empty update for mod "%s"! (%s -> %s)', mods[0].title, str(mods[0].version), str(rem_mod.version))
                     # TODO: Resolve this situation! (Update the local metadata?)
-                    print(rem_files, my_files)
                 else:
                     if mid not in updates:
                         updates[mid] = {}

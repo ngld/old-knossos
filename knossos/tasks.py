@@ -726,10 +726,16 @@ class UpdateTask(InstallTask):
             except:
                 logging.exception('Failed to move a file!')
                 QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to replace the old mod files with the updated files!')
+
+                if self.__check_after:
+                    run_task(CheckTask())
                 return
 
-            # Remove the now empty temporary folder
-            os.rmdir(temppath)
+            try:
+                # Remove the now empty temporary folder
+                os.rmdir(temppath)
+            except:
+                logging.warning('Failed to remove supposedly empty folder "%s"!', temppath, exc_info=True)
 
         if self.__check_after:
             run_task(CheckTask())
