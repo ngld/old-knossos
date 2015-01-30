@@ -165,7 +165,7 @@ class CheckTask(progress.MultistepTask):
             if os.path.isfile(mypath):
                 progress.start_task(checked / count, 1 / count, 'Checking "%s"...' % (info['filename']))
                 
-                if util.gen_hash(mypath, track_progress=True) == info['md5sum']:
+                if util.gen_hash(mypath) == info['md5sum']:
                     success += 1
                 else:
                     msgs.append('File "%s" is corrupted. (checksum mismatch)' % (info['filename']))
@@ -426,7 +426,7 @@ class InstallTask(progress.MultistepTask):
             progress.start_task(i / amount, 1 / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
 
             itempath = util.ipath(os.path.join(modpath, info['filename']))
-            if not os.path.isfile(itempath) or util.gen_hash(itempath, track_progress=True) != info['md5sum']:
+            if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
                 archives.add((mod.mid, info['package'], info['archive']))
 
             progress.finish_task()

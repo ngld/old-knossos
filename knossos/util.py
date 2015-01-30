@@ -525,7 +525,7 @@ def url_join(a, b):
     return pjoin(a, b)
 
 
-def gen_hash(path, algo='md5', track_progress=False):
+def gen_hash(path, algo='md5'):
     global HASH_CACHE
     
     path = os.path.abspath(path)
@@ -538,19 +538,12 @@ def gen_hash(path, algo='md5', track_progress=False):
     
     h = hashlib.new(algo)
     with open(path, 'rb') as stream:
-        if track_progress:
-            size = stream.seek(0, io.SEEK_END)
-            stream.seek(0)
-
         while True:
             chunk = stream.read(16 * h.block_size)
             if not chunk:
                 break
 
             h.update(chunk)
-
-            if track_progress:
-                progress.update(stream.tell() / size, 'Calcuating hash...')
 
     chksum = h.hexdigest()
     if algo == 'md5':
