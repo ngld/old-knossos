@@ -76,7 +76,7 @@ def select_fs2_path(interact=True):
         elif len(bins) > 1:
             # Let the user choose.
 
-            select_win = util.init_ui(Ui_SelectList(), QDialog(center.main_win.win))
+            select_win = util.init_ui(Ui_SelectList(), QtGui.QDialog(center.main_win.win))
             has_default = False
             bins.sort()
 
@@ -95,6 +95,8 @@ def select_fs2_path(interact=True):
 
             if select_win.exec_() == QtGui.QDialog.Accepted:
                 center.settings['fs2_bin'] = bins[select_win.listWidget.currentRow()][1]
+
+            select_win.deleteLater()
         else:
             center.settings['fs2_bin'] = None
 

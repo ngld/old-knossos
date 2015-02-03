@@ -100,7 +100,7 @@ USER_AGENTS = (
 )
 HTTP_SESSION = requests.Session()
 HTTP_SESSION.verify = True
-QUIET = False
+QUIET = True
 QUIET_EXC = False
 HASH_CACHE = dict()
 _HAS_CONVERT = None

@@ -390,7 +390,7 @@ class InstallTask(progress.MultistepTask):
         fs2_path = center.settings['fs2_path']
         modpath = os.path.join(fs2_path, mod.folder)
         mfiles = mod.get_files()
-        mnames = [f['filename'] for f in mfiles]
+        mnames = [f['filename'] for f in mfiles] + ['knossos.bmp', 'mod.json']
 
         archives = set()
         progress.update(0, 'Checking %s...' % mod.title)
@@ -413,7 +413,7 @@ class InstallTask(progress.MultistepTask):
                 relpath = path[len(modpath):].lstrip('/\\')
                 for item in files:
                     itempath = util.pjoin(relpath, item)
-                    if itempath not in mnames:
+                    if not itempath.startswith('__k_plibs') and itempath not in mnames:
                         logging.info('File "%s" is left over.', itempath)
 
         amount = float(len(mfiles))
