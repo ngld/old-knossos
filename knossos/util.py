@@ -26,7 +26,6 @@ import time
 import json
 import random
 import functools
-import io
 import glob
 import semantic_version
 import requests
@@ -378,8 +377,6 @@ def post(link, data, headers=None, random_ua=False):
 def download(link, dest, headers=None, random_ua=False):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
-    from . import progress
-
     if random_ua:
         if headers is None:
             headers = {}
@@ -573,7 +570,7 @@ def is_archive(path):
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
     global _HAS_TAR
 
-    if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2')) and _HAS_TAR is not False:
+    if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2', '.tgz')) and _HAS_TAR is not False:
         if _HAS_TAR is None:
             _HAS_TAR = call(['tar', '--version'], stdout=subprocess.DEVNULL) == 0
 
@@ -601,7 +598,7 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
             else:
                 return call(cmd) == 0
 
-    if '.tar.' in archive and not _rec:
+    if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2', '.tgz')) and not _rec:
         # This is a file like whatever.tar.gz. We have to call 7z two times for this kind of file:
         # First to get whatever.tar and a second time to extract that tar archive.
         

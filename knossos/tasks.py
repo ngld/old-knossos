@@ -163,15 +163,13 @@ class CheckTask(progress.MultistepTask):
             mypath = util.ipath(os.path.join(modpath, info['filename']))
             fix = False
             if os.path.isfile(mypath):
-                progress.start_task(checked / count, 1 / count, 'Checking "%s"...' % (info['filename']))
+                progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
                 
                 if util.gen_hash(mypath) == info['md5sum']:
                     success += 1
                 else:
                     msgs.append('File "%s" is corrupted. (checksum mismatch)' % (info['filename']))
                     fix = True
-
-                progress.finish_task()
             else:
                 msgs.append('File "%s" is missing.' % (info['filename']))
                 missing += 1
@@ -423,13 +421,11 @@ class InstallTask(progress.MultistepTask):
             if (mod.mid, info['package']) not in self._pkg_names:
                 continue
 
-            progress.start_task(i / amount, 1 / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
+            progress.update(i / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
 
             itempath = util.ipath(os.path.join(modpath, info['filename']))
             if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
                 archives.add((mod.mid, info['package'], info['archive']))
-
-            progress.finish_task()
 
         self.post(archives)
 
