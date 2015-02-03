@@ -163,15 +163,13 @@ class CheckTask(progress.MultistepTask):
             mypath = util.ipath(os.path.join(modpath, info['filename']))
             fix = False
             if os.path.isfile(mypath):
-                progress.start_task(checked / count, 1 / count, 'Checking "%s"...' % (info['filename']))
+                progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
                 
-                if util.gen_hash(mypath, track_progress=True) == info['md5sum']:
+                if util.gen_hash(mypath) == info['md5sum']:
                     success += 1
                 else:
                     msgs.append('File "%s" is corrupted. (checksum mismatch)' % (info['filename']))
                     fix = True
-
-                progress.finish_task()
             else:
                 msgs.append('File "%s" is missing.' % (info['filename']))
                 missing += 1
@@ -392,7 +390,7 @@ class InstallTask(progress.MultistepTask):
         fs2_path = center.settings['fs2_path']
         modpath = os.path.join(fs2_path, mod.folder)
         mfiles = mod.get_files()
-        mnames = [f['filename'] for f in mfiles]
+        mnames = [f['filename'] for f in mfiles] + ['knossos.bmp', 'mod.json']
 
         archives = set()
         progress.update(0, 'Checking %s...' % mod.title)
@@ -415,7 +413,7 @@ class InstallTask(progress.MultistepTask):
                 relpath = path[len(modpath):].lstrip('/\\')
                 for item in files:
                     itempath = util.pjoin(relpath, item)
-                    if itempath not in mnames:
+                    if not itempath.startswith('__k_plibs') and itempath not in mnames:
                         logging.info('File "%s" is left over.', itempath)
 
         amount = float(len(mfiles))
@@ -423,13 +421,11 @@ class InstallTask(progress.MultistepTask):
             if (mod.mid, info['package']) not in self._pkg_names:
                 continue
 
-            progress.start_task(i / amount, 1 / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
+            progress.update(i / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
 
             itempath = util.ipath(os.path.join(modpath, info['filename']))
-            if not os.path.isfile(itempath) or util.gen_hash(itempath, track_progress=True) != info['md5sum']:
+            if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
                 archives.add((mod.mid, info['package'], info['archive']))
-
-            progress.finish_task()
 
         self.post(archives)
 

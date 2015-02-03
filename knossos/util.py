@@ -26,7 +26,6 @@ import time
 import json
 import random
 import functools
-import io
 import glob
 import semantic_version
 import requests
@@ -101,7 +100,7 @@ USER_AGENTS = (
 )
 HTTP_SESSION = requests.Session()
 HTTP_SESSION.verify = True
-QUIET = False
+QUIET = True
 QUIET_EXC = False
 HASH_CACHE = dict()
 _HAS_CONVERT = None
@@ -378,8 +377,6 @@ def post(link, data, headers=None, random_ua=False):
 def download(link, dest, headers=None, random_ua=False):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
-    from . import progress
-
     if random_ua:
         if headers is None:
             headers = {}
@@ -525,7 +522,7 @@ def url_join(a, b):
     return pjoin(a, b)
 
 
-def gen_hash(path, algo='md5', track_progress=False):
+def gen_hash(path, algo='md5'):
     global HASH_CACHE
     
     path = os.path.abspath(path)
@@ -538,19 +535,12 @@ def gen_hash(path, algo='md5', track_progress=False):
     
     h = hashlib.new(algo)
     with open(path, 'rb') as stream:
-        if track_progress:
-            size = stream.seek(0, io.SEEK_END)
-            stream.seek(0)
-
         while True:
             chunk = stream.read(16 * h.block_size)
             if not chunk:
                 break
 
             h.update(chunk)
-
-            if track_progress:
-                progress.update(stream.tell() / size, 'Calcuating hash...')
 
     chksum = h.hexdigest()
     if algo == 'md5':
@@ -580,7 +570,7 @@ def is_archive(path):
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
     global _HAS_TAR
 
-    if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2')) and _HAS_TAR is not False:
+    if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2', '.tgz')) and _HAS_TAR is not False:
         if _HAS_TAR is None:
             _HAS_TAR = call(['tar', '--version'], stdout=subprocess.DEVNULL) == 0
 
@@ -608,7 +598,7 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
             else:
                 return call(cmd) == 0
 
-    if '.tar.' in archive and not _rec:
+    if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2', '.tgz')) and not _rec:
         # This is a file like whatever.tar.gz. We have to call 7z two times for this kind of file:
         # First to get whatever.tar and a second time to extract that tar archive.
         
