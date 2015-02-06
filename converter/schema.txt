@@ -1,6 +1,6 @@
 /* Repo configuration */
 // Created by ngld, m!m and Hellzed
-// Most of this is similar to Goober's text files (http://www.hard-light.net/wiki/index.php/FSO_Installer_Text_Files)
+// Inspired by Goober's text files (http://www.hard-light.net/wiki/index.php/FSO_Installer_Text_Files)
 
 {
     "mods": [

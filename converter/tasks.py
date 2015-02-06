@@ -74,21 +74,25 @@ class ChecksumTask(progress.Task):
         from . import download
 
         all_links = links[:]
+        retries = 5
 
         # Remove all indirect links.
         for i, link in reversed(list(enumerate(links))):
             if not download.is_direct(link):
                 del links[i]
 
-        for link in all_links:
-            res = download.download(link, path)
+        while retries > 0:
+            retries -= 1
+            
+            for link in all_links:
+                res = download.download(link, path)
 
-            if res is None:
-                with open(path, 'wb') as stream:
-                    res = util.download(link, stream, headers={'If-Modified': tstamp})
+                if res is None:
+                    with open(path, 'wb') as stream:
+                        res = util.download(link, stream, headers={'If-Modified': tstamp})
 
-            if res == 304 or res:
-                return res
+                if res == 304 or res:
+                    return res
 
         return False
 

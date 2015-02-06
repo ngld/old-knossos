@@ -221,6 +221,7 @@ class Task(QtCore.QObject):
 
         self._results = []
         self._work = work
+        self._work_count = len(work)
         self._result_lock = threading.Lock()
         self._work_lock = threading.Lock()
         self._done = threading.Event()
@@ -298,7 +299,7 @@ class Task(QtCore.QObject):
             wc_total = self._work_count
             pending = self._pending
         
-        count = float(wc_total + len(prog))
+        count = float(wc_total)
         if count == 0:
             count = 0.00001
             total = 1
@@ -530,7 +531,7 @@ def _init_curses(scr, cb, log):
     
     def show_status(prog, text):
         h, w = statusw.win.getmaxyx()
-        statusw.set_text('\n [' + '=' * int(prog * (w - 8)) + '>\n' + text)
+        statusw.set_text('\n [' + '=' * min(w, int(prog * (w - 8))) + '>\n' + text)
     
     set_callback(show_status)
     

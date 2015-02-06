@@ -138,8 +138,11 @@ def run_knossos():
             settings['s_version'] = 2
         
         if settings['s_version'] < 3:
-            del settings['mods']
-            del settings['installed_mods']
+            if 'mods' in settings:
+                del settings['mods']
+            if 'installed_mods' in settings:
+                del settings['installed_mods']
+            
             settings['s_version'] = 3
 
         if settings['s_version'] < 4:

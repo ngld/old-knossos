@@ -17,3 +17,4 @@ dist
 /tools/mac/buildenv
 /tools/mac/PyObjC
 /knossos.egg-info/
+*.sublime-*

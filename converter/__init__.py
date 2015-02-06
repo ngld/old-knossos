@@ -119,7 +119,10 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
 
         c_mods = {}
         for mod in cache['mods']:
-            c_mods[mod['id']] = mod
+            if mod['id'] not in c_mods:
+                c_mods[mod['id']] = {}
+
+            c_mods[mod['id']][mod['version']] = mod
 
         cache['mods'] = c_mods
 
@@ -128,20 +131,21 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
     tstamp = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime(cache['generated']))
 
     items = []
-    for mid, mod in mods.mods.items():
-        c_mod = cache['mods'].get(mid, {})
-        c_pkgs = [pkg['name'] for pkg in c_mod.get('packages', [])]
+    for mid, mvs in mods.mods.items():
+        for ver, mod in mvs.items():
+            c_mod = cache['mods'].get(mid, {}).get(str(ver), {})
+            c_pkgs = [pkg['name'] for pkg in c_mod.get('packages', [])]
 
-        for pkg in mod.packages:
-            my_tstamp = 0
+            for pkg in mod.packages:
+                my_tstamp = 0
 
-            # Only download the files if we have no checksums or they changed.
-            if pkg.name in c_pkgs:
-                my_tstamp = tstamp
+                # Only download the files if we have no checksums or they changed.
+                if pkg.name in c_pkgs:
+                    my_tstamp = tstamp
 
-            for name, file_ in pkg.files.items():
-                # id_, links, name, archive, tstamp
-                items.append(((mid, pkg.name, name), file_.urls, name, file_.is_archive, my_tstamp))
+                for name, file_ in pkg.files.items():
+                    # id_, links, name, archive, tstamp
+                    items.append(((mid, mod.version, pkg.name, name), file_.urls, name, file_.is_archive, my_tstamp))
     
     if len(items) < 1:
         logging.error('No files found!')
@@ -160,22 +164,28 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
     results = {}
     logos = {}
     for id_, csum, content, size in file_info:
-        mid, pkg, name = id_
+        mid, ver, pkg, name = id_
 
         if csum == 'FAILED':
             failed = True
             continue
 
         if name == 'logo.jpg':
-            logos[mid] = csum
+            if mid not in logos:
+                logos[mid] = {}
+
+            logos[mid][ver] = csum
         else:
             if mid not in results:
                 results[mid] = {}
 
-            if pkg not in results[mid]:
-                results[mid][pkg] = {}
+            if ver not in results[mid]:
+                results[mid][ver] = {}
 
-            results[mid][pkg][name] = {
+            if pkg not in results[mid][ver]:
+                results[mid][ver][pkg] = {}
+
+            results[mid][ver][pkg][name] = {
                 'md5sum': csum,
                 'contents': content,
                 'size': size
@@ -187,53 +197,54 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
         'mods': []
     }
 
-    for mid, mod in mods.mods.items():
-        mod = mod.copy()
-        c_pkgs = {}
-        if mid in cache['mods']:
-            for pkg in cache['mods'][mid]['packages']:
-                c_pkgs[pkg['name']] = pkg.copy()
+    for mid, mvs in mods.mods.items():
+        for ver, mod in mvs.items():
+            mod = mod.copy()
+            c_pkgs = {}
+            if mid in cache['mods'] and ver in cache['mods'][mid]:
+                for pkg in cache['mods'][mid][ver]['packages']:
+                    c_pkgs[pkg['name']] = pkg.copy()
 
-        if mid in logos and mod.logo is None:
-            fd, name = tempfile.mkstemp(dir=outpath, prefix='logo', suffix='.' + logos[mid].split('.')[-1])
-            os.close(fd)
+            if mid in logos and ver in logos[mid] and mod.logo is None:
+                fd, name = tempfile.mkstemp(dir=outpath, prefix='logo', suffix='.' + logos[mid][ver].split('.')[-1])
+                os.close(fd)
 
-            shutil.move(logos[mid], name)
-            mod.logo = os.path.basename(name)
+                shutil.move(logos[mid][ver], name)
+                mod.logo = os.path.basename(name)
 
-        for pkg in mod.packages:
-            c_files = {}
-            files = {}
+            for pkg in mod.packages:
+                c_files = {}
+                files = {}
 
-            if pkg.name in c_pkgs:
-                for item in c_pkgs[pkg.name]['files']:
-                    c_files[item['filename']] = item
+                if pkg.name in c_pkgs:
+                    for item in c_pkgs[pkg.name]['files']:
+                        c_files[item['filename']] = item
 
-            if mid in results and pkg.name in results[mid]:
-                files = results[mid][pkg.name]
-                for name, info in files.items():
-                    if info['md5sum'] == 'CACHE':
-                        if name not in c_files:
-                            logging.error('Tried to retrieve a checksum from the cache but it was\'t there! (This is a bug!)')
-                            failed = True
-                        else:
-                            info['md5sum'] = c_files[name]['md5sum']
-                            info['contents'] = c_files[name]['contents']
-                            info['size'] = c_files[name]['size']
-            else:
-                logging.error('Checksums for "%s" are missing!', mid)
-                failed = True
-
-            for name, info in pkg.files.items():
-                if name not in files:
-                    logging.error('Missing information for file "%s" of package "%s".', name, pkg.name)
+                if mid in results and ver in results[mid] and pkg.name in results[mid][ver]:
+                    files = results[mid][ver][pkg.name]
+                    for name, info in files.items():
+                        if info['md5sum'] == 'CACHE':
+                            if name not in c_files:
+                                logging.error('Tried to retrieve a checksum from the cache but it was\'t there! (This is a bug!)')
+                                failed = True
+                            else:
+                                info['md5sum'] = c_files[name]['md5sum']
+                                info['contents'] = c_files[name]['contents']
+                                info['size'] = c_files[name]['size']
                 else:
-                    info.md5sum = files[name]['md5sum']
-                    info.contents = files[name]['contents']
-                    info.filesize = files[name]['size']
+                    logging.error('Checksums for "%s" are missing!', mid)
+                    failed = True
 
-        mod.build_file_list()
-        new_cache['mods'].append(mod.get())
+                for name, info in pkg.files.items():
+                    if name not in files:
+                        logging.error('Missing information for file "%s" of package "%s".', name, pkg.name)
+                    else:
+                        info.md5sum = files[name]['md5sum']
+                        info.contents = files[name]['contents']
+                        info.filesize = files[name]['size']
+
+            mod.build_file_list()
+            new_cache['mods'].append(mod.get())
 
     with open(output, 'w') as stream:
         json.dump(new_cache, stream, separators=(',', ':'))
