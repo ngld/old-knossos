@@ -20,7 +20,7 @@ from .qt import QtCore
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.1.0-dev'
+VERSION = '0.1.1-dev'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
 DEBUG = os.environ.get('KN_DEBUG') == '1'
