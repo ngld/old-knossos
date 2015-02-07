@@ -80,7 +80,7 @@ generate_version() {
         return
     fi
 
-    local build_num="0"
+    local build_num="1"
 
     local last_version="$(curl -s "${UPDATE_SERVER}/${VARIANT}/version")"
     local my_version="$(grep VERSION ../../knossos/center.py | cut -d "'" -f 2 | head -1)"

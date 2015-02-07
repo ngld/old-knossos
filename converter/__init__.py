@@ -83,7 +83,11 @@ def run_task(task, prg_wrap=None):
         prg_wrap(core)
     else:
         out = StringIO()
-        progress.init_curses(core, out)
+        try:
+            progress.init_curses(core, out)
+        except:
+            core()
+        
         sys.stdout.write(out.getvalue())
 
 

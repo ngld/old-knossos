@@ -294,7 +294,7 @@ def init():
         else:
             os.chdir(os.path.dirname(sys.executable))
     else:
-        my_path = os.path.dirname(os.path.dirname(__file__))
+        my_path = os.path.dirname(__file__)
         if my_path != '':
             os.chdir(my_path)
 
@@ -303,7 +303,8 @@ def init():
     elif sys.platform == 'darwin' and os.path.isfile('7z'):
         util.SEVEN_PATH = os.path.abspath('7z')
 
-    if os.path.isfile('version'):
+    # The version file is only read in dev builds.
+    if center.VERSION.endswith('-dev') and os.path.isfile('version'):
         with open('version', 'r') as data:
             version = data.read().strip()
 

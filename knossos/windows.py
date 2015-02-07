@@ -438,6 +438,7 @@ class SettingsWindow(Window):
 
     def _edit_repo(self, repo_=None, idx=None):
         win = util.init_ui(Ui_AddRepo(), QDialog(self.win))
+        win.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
         
         win.okButton.clicked.connect(win.accept)
         win.cancelButton.clicked.connect(win.reject)
@@ -466,6 +467,8 @@ class SettingsWindow(Window):
             
             api.save_settings()
             self.update_repo_list()
+
+        wine.deleteLater()
 
     def add_repo(self):
         self._edit_repo()

@@ -85,6 +85,9 @@ def program_paths(program_name):
 	return paths
 
 def _get_hz_string_from_brand(processor_brand):
+	if '@' not in processor_brand:
+		return (1, '0.0')
+
 	scale = 1
 	if processor_brand.lower().endswith('mhz'):
 		scale = 6

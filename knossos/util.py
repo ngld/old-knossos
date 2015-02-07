@@ -717,7 +717,11 @@ def get_cpuinfo():
     if info is None:
         from .third_party import cpuinfo
 
-        info = cpuinfo.get_cpu_info()
+        try:
+            info = cpuinfo.get_cpu_info()
+        except:
+            logging.exception('Exception in the cpuinfo module!')
+            info = None
 
     return info
 
