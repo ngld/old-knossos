@@ -94,8 +94,17 @@ def _get_hz_string_from_brand(processor_brand):
 	if '@' in hz_brand:
 		hz_brand = hz_brand.split('@')[1]
 	else:
-		hz_brand = hz_brand.rsplit(None, 1)[1]
+		hz_brand = hz_brand.rsplit(None, 1)
+		if len(hz_brand) > 1:
+			hz_brand = hz_brand[1]
+
 	hz_brand = hz_brand.rstrip('mhz').rstrip('ghz').strip()
+
+	try:
+		hz_brand = float(hz_brand)
+	except ValueError:
+		hz_brand = 0
+	
 	hz_brand = to_hz_string(hz_brand)
 
 	return (scale, hz_brand)

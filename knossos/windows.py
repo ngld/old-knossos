@@ -468,7 +468,7 @@ class SettingsWindow(Window):
             api.save_settings()
             self.update_repo_list()
 
-        wine.deleteLater()
+        win.deleteLater()
 
     def add_repo(self):
         self._edit_repo()
