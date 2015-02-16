@@ -139,6 +139,10 @@ class Repo(object):
     def add_mod(self, mod):
         mid = mod.mid
 
+        if len(mod.packages) == 0:
+            logging.warning('Mod %s is empty, ignoring it!', mod)
+            return
+
         if mid in self.mods:
             inserted = False
 

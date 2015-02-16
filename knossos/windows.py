@@ -358,6 +358,8 @@ class SettingsWindow(Window):
         else:
             tab.debugLog.clicked.connect(self.show_knossos_log)
 
+        tab.clearHashes.clicked.connect(self.clear_hash_cache)
+
         if center.settings['update_channel'] == 'stable':
             tab.updateChannel.setCurrentIndex(0)
         else:
@@ -926,6 +928,11 @@ class SettingsWindow(Window):
     def show_knossos_log(self):
         LogViewer(launcher.log_path)
 
+    def clear_hash_cache(self):
+        util.HASH_CACHE = dict()
+        run_task(CheckTask())
+        QtGui.QMessageBox.information(None, 'Knossos', 'Done!')
+
 
 class GogExtractWindow(Window):
 
@@ -1241,7 +1248,9 @@ class ModInstallWindow(Window):
             mods.add(pkg.get_mod())
 
         # Make sure our current mod comes first.
-        mods.remove(self._mod)
+        if self._mod in mods:
+            mods.remove(self._mod)
+        
         mods = [self._mod] + list(mods)
         for mod in mods:
             item = QtGui.QTreeWidgetItem(self.win.treeWidget, [mod.title, ''])

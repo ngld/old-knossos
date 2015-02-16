@@ -157,15 +157,15 @@ else
 fi
 
 msg2 "Downloading..."
-
 arpath="$(mktemp "${TMPDIR:-/tmp}/XXXXXXXXX.tar.gz")"
-download "$arpath" "$server/knossos.tar.gz"
 
 # Make sure we clean up
 trap '[ -f "$arpath" ] && rm "$arpath"' EXIT
 
-msg2 "Unpacking..."
+download "$arpath" "$server/knossos.tar.gz"
 
+msg2 "Unpacking..."
 sudo tar -xzf "$arpath" -C "$knossos_path" --strip 1
+rm "$arpath"
 
 msg "Done!"

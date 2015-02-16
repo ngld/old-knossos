@@ -704,6 +704,7 @@ class UpdateTask(InstallTask):
         super(UpdateTask, self).finish()
 
         if not self.aborted and not self._error:
+            # TODO: Check if it's okay to uninstall the old version. Maybe there's still a mod that requires this one?
             # The new version has been succesfully installed, remove the old version.
             next_task = UninstallTask(self._old_mod.packages, check_after=False)
             next_task.done.connect(self._finish2)
