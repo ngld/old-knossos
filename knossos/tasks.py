@@ -660,6 +660,7 @@ class UninstallTask(progress.MultistepTask):
 
             libs = os.path.join(modpath, '__k_plibs')
             if os.path.isdir(libs):
+                # Delete any symlinks before running shutil.rmtree().
                 for link in os.listdir(libs):
                     item = os.path.join(libs, link)
                     if os.path.islink(item):
@@ -684,6 +685,7 @@ class UninstallTask(progress.MultistepTask):
 class UpdateTask(InstallTask):
     _old_mod = None
     _new_mod = None
+    _new_modpath = None
     __check_after = True
 
     def __init__(self, mod, check_after=True):
@@ -701,6 +703,7 @@ class UpdateTask(InstallTask):
         super(UpdateTask, self).__init__(pkgs, self._new_mod, check_after=False)
 
     def finish(self):
+        self._new_modpath = self._new_mod.folder
         super(UpdateTask, self).finish()
 
         if not self.aborted and not self._error:
@@ -713,11 +716,14 @@ class UpdateTask(InstallTask):
     def _finish2(self):
         fs2path = center.settings['fs2_path']
         modpath = os.path.join(fs2path, self._old_mod.folder)
-        temppath = os.path.join(fs2path, self._new_mod.folder)
+        temppath = os.path.join(fs2path, self._new_modpath)
 
         if '_kv_' not in modpath:
             # Move all files from the temporary directory to the new one.
             try:
+                if not os.path.isdir(modpath):
+                    os.makedirs(modpath)
+
                 for item in os.listdir(temppath):
                     shutil.move(os.path.join(temppath, item), os.path.join(modpath, item))
             except:
@@ -873,13 +879,13 @@ class GOGExtractTask(progress.Task):
     def finish(self):
         results = self.get_results()
         if len(results) < 1:
-            QtGui.QMessageBox.critical(center.main_win.win, 'Error', 'The installer failed! Please read the log for more details...')
+            QtGui.QMessageBox.critical(None, 'Error', 'The installer failed! Please read the log for more details...')
             return
         elif results[0] == -1:
-            QtGui.QMessageBox.critical(center.main_win.win, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
+            QtGui.QMessageBox.critical(None, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
             return
         else:
-            QtGui.QMessageBox.information(center.main_win.win, 'Done', 'FS2 has been successfully installed.')
+            QtGui.QMessageBox.information(None, 'Done', 'FS2 has been successfully installed.')
 
         fs2_path = results[0]
         center.settings['fs2_path'] = fs2_path
@@ -935,7 +941,7 @@ class WindowsUpdateTask(progress.Task):
 
     def work(self, item):
         # Download it.
-        update_base = center.settings['update_link']
+        update_base = center.UPDATE_LINK
 
         dir_name = tempfile.mkdtemp()
         updater = os.path.join(dir_name, 'knossos_updater.exe')
@@ -961,7 +967,7 @@ class WindowsUpdateTask(progress.Task):
         res = self.get_results()
 
         if len(res) < 1 or not res[0]:
-            QtGui.QMessageBox.critical(center.app.activeWindow(), 'Knossos', 'Failed to launch the update!')
+            QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to launch the update!')
 
 
 def run_task(task, cb=None):

@@ -47,7 +47,7 @@ class IPCComm(QtCore.QObject):
         if self._server is not None:
             raise Exception('IPCComm() is already listening!')
 
-        name = 'fs2mod-' + str(uuid.uuid4())
+        name = 'knossos-' + str(uuid.uuid4())
         self._server = QtNetwork.QLocalServer()
         if not self._server.listen(name):
             msg = self._server.errorString()

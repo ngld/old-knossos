@@ -29,10 +29,12 @@ from . import center, util, repo, integration
 from .qt import QtGui
 from .tasks import run_task, CheckUpdateTask, FetchTask, InstallTask, UninstallTask
 from .ui.select_list import Ui_Dialog as Ui_SelectList
-from .windows import QDialog, HellWindow, SettingsWindow
+from .windows import HellWindow, ModSettingsWindow, ModInstallWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
 from .runner import run_fs2, run_fs2_silent
+
+# TODO: Split this file up into smaller parts and move them into the respective modules (i.e. run_mod should be in runner).
 
 ipc_block = None
 
@@ -176,10 +178,6 @@ def get_executables():
 
 def fetch_list():
     return run_task(FetchTask())
-
-
-def show_fs2settings():
-    SettingsWindow(None)
 
 
 def get_cmdline(mod):
@@ -332,48 +330,7 @@ def get_mod(mid, version=None):
             return None
 
 
-def install_mods(mods):
-    pkgs = []
-    for mod in mods:
-        pkgs.extend(mod.resolve_deps())
-
-    install_pkgs(pkgs, ', '.join([mod.name for mod in mods]))
-
-
-def install_pkgs(pkgs, name=None, cb=None):
-    repo = center.mods
-
-    try:
-        pkgs = [repo.query(pkg) for pkg in pkgs]
-    except ModNotFound:
-        logging.exception('Failed to find one of the packages!')
-        QtGui.QMessageBox.critical(center.app.activateWindow(), 'Knossos', 'Failed to find one of the packages! I can\'t accept this install request.')
-        return
-
-    deps = center.mods.process_pkg_selection(pkgs)
-    titles = [pkg.name + ' (%s)' % pkg.get_mod().version for pkg in deps if not center.installed.is_installed(pkg)]
-
-    if name is None:
-        name = 'these packages'
-
-    msg = QtGui.QMessageBox()
-    msg.setIcon(QtGui.QMessageBox.Question)
-    msg.setText('Do you really want to install %s?' % name)
-    msg.setInformativeText('%s will be installed.' % (', '.join(titles)))
-    msg.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-    msg.setDefaultButton(QtGui.QMessageBox.Yes)
-    
-    if msg.exec_() == QtGui.QMessageBox.Yes:
-        task = InstallTask(deps)
-        if cb is not None:
-            task.done.connect(cb)
-
-        run_task(task)
-        return True
-    else:
-        return False
-
-
+# TODO: Create a proper window for this and move it to the windows module.
 def uninstall_pkgs(pkgs, name=None, cb=None):
     titles = [pkg.name for pkg in pkgs if center.installed.is_installed(pkg)]
 
@@ -454,9 +411,6 @@ def handle_ipc(msg):
     if msg[0] == 'focus':
         center.main_win.win.activateWindow()
         center.main_win.win.raise_()
-    elif msg[0] == 'mode':
-        if msg[1] in ('traditional', 'nebula'):
-            switch_ui_mode(msg[1])
     elif msg[0] == 'run':
         mod = get_mod(msg[1])
 
@@ -465,6 +419,10 @@ def handle_ipc(msg):
     elif msg[0] == 'install':
         mod = get_mod(msg[1])
         pkgs = []
+
+        if not mod:
+            # TODO: Maybe we should update the mod DB here?
+            return
 
         if len(msg) > 2:
             for pname in msg[2:]:
@@ -475,9 +433,9 @@ def handle_ipc(msg):
         center.main_win.win.activateWindow()
 
         if mod.mid not in center.installed.mods:
-            install_pkgs(mod.resolve_deps() + pkgs, mod.name)
+            ModInstallWindow(mod, pkgs)
         else:
-            QtGui.QMessageBox.information(center.main_win.win, 'Knossos', 'Mod "%s" is already installed!' % (mod.name))
+            QtGui.QMessageBox.information(None, 'Knossos', 'Mod "%s" is already installed!' % (mod.title))
     elif msg[0] == 'settings':
         center.main_win.win.activateWindow()
 
@@ -491,11 +449,11 @@ def handle_ipc(msg):
                     name = msg[1]
                 else:
                     name = mod.title
-                QtGui.QMessageBox.information(center.main_win.win, 'Knossos', 'Mod "%s" is not yet installed!' % (name))
+                QtGui.QMessageBox.information(None, 'Knossos', 'Mod "%s" is not yet installed!' % (name))
             else:
-                SettingsWindow(mod)
+                ModSettingsWindow(mod)
     else:
-        QtGui.QMessageBox.critical(center.main_win.win, 'Knossos', 'The action "%s" is unknown!' % (msg[0]))
+        QtGui.QMessageBox.critical(None, 'Knossos', 'The action "%s" is unknown!' % (msg[0]))
 
 
 def init_self():

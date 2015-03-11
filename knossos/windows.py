@@ -23,7 +23,7 @@ import functools
 from . import uhf
 uhf(__name__)
 
-from . import center, util, clibs, integration, api, web, repo, launcher
+from . import center, util, clibs, integration, api, web, repo, launcher, runner
 from .qt import QtCore, QtGui, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.gogextract import Ui_Dialog as Ui_Gogextract
@@ -905,11 +905,27 @@ class SettingsWindow(Window):
         if not os.path.isfile(os.path.join(center.settings['fs2_path'], fs2_bin)):
             return
 
+        old_bin = center.settings['fs2_bin']
         center.settings['fs2_bin'] = fs2_bin
-        api.get_fso_flags()
-        api.save_settings()
 
-        center.signals.fs2_bin_changed.emit()
+        if not api.get_fso_flags():
+            # We failed to run FSO but why?
+            rc = runner.run_fs2_silent(['-help'])
+            if rc == -128:
+                msg = 'The FSO binary "%s" is missing!' % fs2_bin
+            elif rc == -127:
+                # TODO: At this point we have run ldd twice already and the next call will run it again. Is there any way to avoid this?
+                _, missing = runner.fix_missing_libs(os.path.join(center.settings['fs2_path'], fs2_bin))
+                msg = 'The FSO binary "%s" is missing %s!' % (fs2_bin, util.human_list(missing))
+            else:
+                msg = 'The FSO binary quit with code %d!' % rc
+
+            center.settings['fs2_bin'] = old_bin
+            QtGui.QMessageBox.critical(None, 'Knossos', msg)
+            self.read_config()
+        else:
+            api.save_settings()
+            center.signals.fs2_bin_changed.emit()
 
     def save_update_settings(self, p=None):
         tab = self._tabs['Launcher settings']

@@ -105,6 +105,10 @@ if [ ! -d _w ]; then
     rm python.msi pywin32.exe upx.zip 7z-inst.exe SDL2.zip openal.zip nsis.exe nsProcess.7z
 fi
 
+if [ ! -e _w/dosdevices/z: ]; then
+    ln -s / _w/dosdevices/z:
+fi
+
 msg "Building..."
 generate_version > version
 ensure_pyinstaller
@@ -125,4 +129,9 @@ if [ "$gen_package" = "y" ]; then
 
     msg2 "Packing updater..."
     wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ /DKNOSSOS_VERSION="$(cat dist/version)" nsis/updater.nsi
+fi
+
+# This symlink can cause all kinds of trouble if a program tries to follow it.
+if [ -L _w/dosdevices/z: ]; then
+    unlink _w/dosdevices/z:
 fi

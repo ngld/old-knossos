@@ -40,11 +40,6 @@ try:
 except ImportError:
     Image = None
 
-try:
-    import tracemalloc
-except ImportError:
-    tracemalloc = None
-
 SEVEN_PATH = '7z'
 # Copied from http://sourceforge.net/p/sevenzipjbind/code/ci/master/tree/jbinding-java/src/net/sf/sevenzipjbinding/ArchiveFormat.java
 # to conform to the FSO Installer.
@@ -105,7 +100,7 @@ USER_AGENTS = (
 )
 HTTP_SESSION = requests.Session()
 HTTP_SESSION.verify = True
-QUIET = True
+QUIET = not center.DEBUG
 QUIET_EXC = False
 HASH_CACHE = dict()
 _HAS_CONVERT = None
@@ -541,9 +536,6 @@ def gen_hash(path, algo='md5'):
     
     logging.debug('Calculating checksum for %s...', path)
 
-    if tracemalloc:
-        tracemalloc.start()
-
     h = hashlib.new(algo)
     with open(path, 'rb') as stream:
         while True:
@@ -557,13 +549,6 @@ def gen_hash(path, algo='md5'):
     if algo == 'md5':
         HASH_CACHE[path] = (chksum, info.st_mtime)
     
-    if tracemalloc:
-        logging.debug('Finished %s.', path)
-        for stat in tracemalloc.take_snapshot().statistics('lineno'):
-            print('%5d %10s %s' % (stat.count, format_bytes(stat.size), stat.traceback[0]))
-        
-        tracemalloc.stop()
-
     return chksum
 
 
