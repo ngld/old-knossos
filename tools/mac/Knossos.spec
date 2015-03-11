@@ -54,6 +54,11 @@ if not p7z_path:
     logging.error('I can\'t find 7z! If you have Homebrew, just run "brew install p7zip".')
     sys.exit(1)
 
+with open(p7z_path, 'r') as stream:
+    if stream.read(2) == '#!':
+        p7z_path = stream.readlines()[1].split('"')[1]
+
+
 sdl2_path = ctypes.util.find_library('SDL2')
 sdl_path = ctypes.util.find_library('SDL')
 if not sdl2_path and not sdl_path:

@@ -181,7 +181,7 @@ class Repo(object):
             mod = mod.mid
 
         if not isinstance(mod, str) or not isinstance(version, semantic_version.Version):
-            raise ValueError
+            raise ValueError('%s is not a string or %s is not a valid version!' % (mod, version))
 
         self.pins[mod] = version
 
@@ -191,7 +191,8 @@ class Repo(object):
         elif isinstance(mod, Mod):
             mod = mod.mid
 
-        del self.pins[mod]
+        if mod in self.pins:
+            del self.pins[mod]
 
     def get_pin(self, mod):
         if isinstance(mod, Package):

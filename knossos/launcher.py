@@ -26,6 +26,18 @@ from six.moves.urllib import parse as urlparse
 
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
 
+# We have to be in the correct directory *before* we import clibs so we're going to do this as early as possible.
+if hasattr(sys, 'frozen'):
+    if hasattr(sys, '_MEIPASS'):
+        os.chdir(sys._MEIPASS)
+    else:
+        os.chdir(os.path.dirname(sys.executable))
+else:
+    my_path = os.path.dirname(__file__)
+    if my_path != '':
+        os.chdir(my_path)
+
+
 from . import center
 
 # Initialize the FileHandler early to capture all log messages.
@@ -287,16 +299,6 @@ def init():
     sys.excepthook = my_excepthook
 
     from . import integration
-
-    if hasattr(sys, 'frozen'):
-        if hasattr(sys, '_MEIPASS'):
-            os.chdir(sys._MEIPASS)
-        else:
-            os.chdir(os.path.dirname(sys.executable))
-    else:
-        my_path = os.path.dirname(__file__)
-        if my_path != '':
-            os.chdir(my_path)
 
     if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
         util.SEVEN_PATH = os.path.abspath('7z.exe')
