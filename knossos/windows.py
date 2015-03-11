@@ -19,6 +19,7 @@ import sys
 import logging
 import shlex
 import functools
+import semantic_version
 
 from . import uhf
 uhf(__name__)
@@ -1620,7 +1621,7 @@ class ModSettingsWindow(Window):
             if version is None:
                 center.installed.unpin(self._mod)
             else:
-                center.installed.pin(self._mod, version)
+                center.installed.pin(self._mod, semantic_version.Version(version))
 
             api.save_settings()
         else:

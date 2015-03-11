@@ -129,7 +129,7 @@ class WebBridge(QtCore.QObject):
         if spec is None:
             return mid in center.installed.mods
         else:
-            spec = semantic_version.Spec(spec)
+            spec = util.Spec(spec)
             mod = center.installed.mods.get(mid, None)
             if mod is None:
                 return False
@@ -147,7 +147,7 @@ class WebBridge(QtCore.QObject):
                     spec = '==' + spec
 
                 try:
-                    spec = semantic_version.Spec(spec)
+                    spec = util.Spec(spec)
                 except:
                     logging.exception('Invalid spec "%s" passed to query()!', spec)
                     return -2
@@ -192,7 +192,7 @@ class WebBridge(QtCore.QObject):
                     spec = '==' + spec
 
                 try:
-                    spec = semantic_version.Spec(spec)
+                    spec = util.Spec(spec)
                 except:
                     logging.exception('Invalid spec "%s" passed to a web API function!', spec)
                     return -2
@@ -349,10 +349,10 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
             if path.startswith('/logo'):
                 path = path.split('/')
                 try:
-                    mod = center.mods.query(path[2], semantic_version.Spec('==' + path[3]))
+                    mod = center.mods.query(path[2], util.Spec('==' + path[3]))
                 except:
                     try:
-                        mod = center.installed.query(path[2], semantic_version.Spec('==' + path[3]))
+                        mod = center.installed.query(path[2], util.Spec('==' + path[3]))
                     except:
                         mod = None
 

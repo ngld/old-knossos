@@ -531,7 +531,7 @@ def gen_hash(path, algo='md5'):
     if algo == 'md5' and path in HASH_CACHE:
         chksum, mtime = HASH_CACHE[path]
         if mtime == info.st_mtime:
-            logging.debug('Found checksum for %s in cache.', path)
+            # logging.debug('Found checksum for %s in cache.', path)
             return chksum
     
     logging.debug('Calculating checksum for %s...', path)
@@ -767,6 +767,19 @@ def connect(sig, cb, *args):
 
 class Spec(semantic_version.Spec):
     
+    @classmethod
+    def parse(self, specs_string):
+        spec_texts = specs_string.split(',')
+        res = []
+
+        for spec_text in spec_texts:
+            if '-' not in spec_text:
+                spec_text += '-'
+
+            res.append(semantic_version.SpecItem(spec_text))
+
+        return tuple(res)
+
     @staticmethod
     def from_version(version, op='=='):
         return Spec('==' + str(version))

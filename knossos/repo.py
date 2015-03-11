@@ -550,7 +550,7 @@ class Package(object):
                 # Make a spec out of this version
                 version = '==' + version
 
-            version = semantic_version.Spec(version)
+            version = util.Spec(version)
             mod = self._mod._repo.query(dep['id'], version)
             pkgs = dep.get('packages', [])
             found_pkgs = []
