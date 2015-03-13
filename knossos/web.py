@@ -20,7 +20,7 @@ import re
 import semantic_version
 
 from .qt import QtCore, QtNetwork, QtWebKit
-from . import center, api, repo, windows, tasks
+from . import center, api, repo, windows, tasks, util
 
 
 class WebBridge(QtCore.QObject):

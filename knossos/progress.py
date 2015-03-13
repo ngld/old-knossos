@@ -307,8 +307,9 @@ class Task(QtCore.QObject):
             total = (wc_total - wc_left - pending) / count
         
         for item in prog.values():
-            total += item[0] * (1.0 / count)
-        
+            if item[0] < 1:
+                total += item[0] * (1.0 / count)
+
         return total, prog, self.title
     
     def is_done(self):

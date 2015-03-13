@@ -21,6 +21,7 @@ import json
 import re
 import tempfile
 import shutil
+import hashlib
 import semantic_version
 import six
 from . import center, util
@@ -437,17 +438,17 @@ class Mod(object):
             return
 
         suffix = '.' + self.logo.split('.')[-1]
-        fd, path = tempfile.mkstemp(dir=dest, prefix='logo', suffix=suffix)
-        os.close(fd)
+        path = os.path.join(dest, 'logo_' + hashlib.md5(self.logo.encode('utf8')).hexdigest() + suffix)
+        
+        if not os.path.isfile(path):
+            if '://' in self.logo:
+                # That's a URL
+                with open(path, 'wb') as fobj:
+                    util.download(self.logo, fobj)
+            else:
+                shutil.copyfile(self.logo, path)
 
-        if '://' in self.logo:
-            # That's a URL
-            with open(path, 'wb') as fobj:
-                util.download(self.logo, fobj)
-        else:
-            shutil.copyfile(self.logo, path)
-
-        self.logo = os.path.abspath(path)
+            self.logo = os.path.abspath(path)
 
 
 class Package(object):

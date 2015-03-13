@@ -47,39 +47,45 @@ class FetchTask(progress.Task):
         self.done.connect(self.finish)
 
         if repo.CPU_INFO is None:
-            self.add_work(['init'])
+            self.add_work([('init',)])
         else:
-            self.add_work([(i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
+            self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
     
     def work(self, params):
-        if params == 'init':
+        if params[0] == 'init':
             progress.update(0, 'Checking CPU...')
 
             # We're doing this here because we don't want to block the UI.
             repo.CPU_INFO = util.get_cpuinfo()
 
-            self.add_work([(i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
+            self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
             return
+        elif params[0] == 'repo':
+            _, prio, link = params
+            
+            progress.update(0.1, 'Fetching "%s"...' % link)
 
-        prio, link = params
-        
-        progress.update(0.1, 'Fetching "%s"...' % link)
+            try:
+                raw_data = util.get(link, raw=True)
 
-        try:
-            raw_data = util.get(link, raw=True)
+                data = Repo()
+                data.is_link = True
+                data.base = os.path.dirname(raw_data.url)
+                data.parse(raw_data.text)
+            except:
+                logging.exception('Failed to decode "%s"!', link)
+                return
+            
+            wl = []
+            for mid, mvs in data.mods.items():
+                for mod in mvs:
+                    wl.append(('mod', mod))
 
-            data = Repo()
-            data.is_link = True
-            data.base = os.path.dirname(raw_data.url)
-            data.parse(raw_data.text)
-        except:
-            logging.exception('Failed to decode "%s"!', link)
-            return
-        
-        progress.update(0.5, 'Loading logos...')
-        data.save_logos(center.settings_path)
-        
-        self.post((prio, data))
+            self.add_work(wl)
+            self.post((prio, data))
+        else:
+            mod = params[1]
+            mod.save_logo(center.settings_path)
     
     def finish(self):
         if not self.aborted:
