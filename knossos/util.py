@@ -774,7 +774,7 @@ class Spec(semantic_version.Spec):
         res = []
 
         for spec_text in spec_texts:
-            if '-' not in spec_text and spec_text != '*':
+            if '-' not in spec_text and '+' not in spec_text and spec_text != '*':
                 spec_text = spec_text.split('.')
                 while len(spec_text) < 3:
                     spec_text.append('0')
