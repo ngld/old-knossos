@@ -52,9 +52,9 @@ def init_app():
     return app
 
 
-def run_task(task, prg_wrap=None):
+def run_task(task, prg_wrap=None, use_curses=False):
     def update_progress(pi):
-        total, items, title = task.get_progress()
+        total, items, title = pi
         text = []
         for item in items.values():
             text.append('%3d%% %s' % (item[0] * 100, item[1]))
@@ -83,15 +83,18 @@ def run_task(task, prg_wrap=None):
         prg_wrap(core)
     else:
         out = StringIO()
-        try:
-            progress.init_curses(core, out)
-        except:
+        if use_curses:
+            try:
+                progress.init_curses(core, out)
+            except:
+                core()
+
+            sys.stdout.write(out.getvalue())
+        else:
             core()
-        
-        sys.stdout.write(out.getvalue())
 
 
-def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None):
+def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None, curses=False, force_cache=False):
     logging.info('Parsing repo...')
 
     mods = RepoConf(repo)
@@ -111,6 +114,7 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
     }
     start_time = time.time()
     failed = False
+    results = {}
 
     if os.path.isfile(output):
         with open(output, 'r') as stream:
@@ -143,6 +147,25 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
             for pkg in mod.packages:
                 my_tstamp = 0
 
+                if force_cache and pkg.name in c_pkgs:
+                    if mid not in results:
+                        results[mid] = {}
+
+                    if ver not in results[mid]:
+                        results[mid][ver] = {}
+
+                    if pkg.name not in results[mid][ver]:
+                        results[mid][ver][pkg.name] = {}
+
+                    for name, file_ in pkg.files.items():
+                        results[mid][ver][pkg.name][name] = {
+                            'md5sum': 'CACHE',
+                            'contents': [],
+                            'size': 0
+                        }
+
+                    continue
+
                 # Only download the files if we have no checksums or they changed.
                 if pkg.name in c_pkgs:
                     my_tstamp = tstamp
@@ -152,20 +175,21 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
                     items.append(((mid, mod.version, pkg.name, name), file_.urls, name, file_.is_archive, my_tstamp))
     
     if len(items) < 1:
-        logging.error('No files found!')
-        failed = True
+        if not force_cache:
+            logging.error('No files found!')
+            failed = True
+
         file_info = []
     else:
         logging.info('Generating checksums...')
 
         init_app()
         task = ChecksumTask(items, dl_path, dl_mirror)
-        run_task(task, prg_wrap)
+        run_task(task, prg_wrap, curses)
         file_info = task.get_results()
 
     logging.info('Saving data...')
 
-    results = {}
     logos = {}
     for id_, csum, content, size in file_info:
         mid, ver, pkg, name = id_
@@ -201,12 +225,18 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
         'mods': []
     }
 
+    # Well, this looks horrible...
+    # This loop copies the Mod objects from mods, adds the data from results and places the objects in new_cache['mods'].
+    # It also merges in data from cache['mods'] if necessary (whenever the md5sum of a file/archive is set to CACHE).
     for mid, mvs in mods.mods.items():
         for ver, mod in mvs.items():
             mod = mod.copy()
             c_pkgs = {}
-            if mid in cache['mods'] and ver in cache['mods'][mid]:
-                for pkg in cache['mods'][mid][ver]['packages']:
+            sver = str(ver)
+
+            # Retrieve our packages from cache
+            if mid in cache['mods'] and sver in cache['mods'][mid]:
+                for pkg in cache['mods'][mid][sver]['packages']:
                     c_pkgs[pkg['name']] = pkg.copy()
 
             if mid in logos and ver in logos[mid] and mod.logo is None:
@@ -220,10 +250,22 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
                 c_files = {}
                 files = {}
 
+                # Retrieve our files from cache
                 if pkg.name in c_pkgs:
                     for item in c_pkgs[pkg.name]['files']:
                         c_files[item['filename']] = item
 
+                    for item in c_pkgs[pkg.name]['filelist']:
+                        if item['orig_name'] is None:
+                            continue
+
+                        ar = c_files[item['archive']]
+                        if 'contents' not in ar:
+                            ar['contents'] = {}
+
+                        ar['contents'][item['orig_name']] = item['md5sum']
+
+                # Look for files which should keep their old checksum (from cache).
                 if mid in results and ver in results[mid] and pkg.name in results[mid][ver]:
                     files = results[mid][ver][pkg.name]
                     for name, info in files.items():
@@ -234,11 +276,12 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
                             else:
                                 info['md5sum'] = c_files[name]['md5sum']
                                 info['contents'] = c_files[name]['contents']
-                                info['size'] = c_files[name]['size']
+                                info['size'] = c_files[name]['filesize']
                 else:
                     logging.error('Checksums for "%s" are missing!', mid)
                     failed = True
 
+                # Copy the information from rests
                 for name, info in pkg.files.items():
                     if name not in files:
                         logging.error('Missing information for file "%s" of package "%s".', name, pkg.name)
@@ -248,6 +291,45 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
                         info.filesize = files[name]['size']
 
             mod.build_file_list()
+
+            # Check files
+            done = False
+            for pkg in mod.packages:
+                for item in pkg.filelist:
+                    if item['filename'].endswith('mod.ini'):
+                        if item['filename'] == 'mod.ini':
+                            # All is well...
+                            done = True
+                            break
+                        else:
+                            prefix = item['filename'][:-7].strip('/')
+
+                            logging.warn('Found mod.ini in folder %s. I assume you forgot the move action; I\'ll just add it myself.', prefix)
+                            mod.actions.append({
+                                'type': 'move',
+                                'paths': [prefix + '/*'],
+                                'dest': '',
+                                'glob': True
+                            })
+                            mod.build_file_list()
+
+                            done = True
+                            break
+
+                if done:
+                    break
+
+            file_list = [
+                'Please make sure the following is correct:',
+                'If a user has FS installed in C:\\Freespace2, your mod will install the following files:',
+                ''
+            ]
+            prefix = 'C:\\Freespace2\\' + mod.folder
+            for pkg in mod.packages:
+                for item in pkg.filelist:
+                    file_list.append(prefix + '\\' + item['filename'].replace('/', '\\'))
+
+            logging.info('\n'.join(file_list))
             new_cache['mods'].append(mod.get())
 
     with open(output, 'w') as stream:
@@ -279,11 +361,10 @@ def main(args, prg_wrap=None):
     parser = argparse.ArgumentParser()
     subs = parser.add_subparsers(dest='action')
     
-    # import_parser = subs.add_parser('import', help='import installer text files')
-    # import_parser.add_argument('repofile', help='The imported files will be stored inside this file.')
-
     checksums_parser = subs.add_parser('checksums', help='Generate checksums for all referenced files.')
     checksums_parser.add_argument('--save-files', dest='dl_path', help='Save the downloaded files.', default=None)
+    checksums_parser.add_argument('--no-curses', dest='no_curses', action='store_true', default=False, help="Don't use the Curses UI.")
+    checksums_parser.add_argument('--force-cache', dest='force_cache', action='store_true', default=False, help="Skip files which have been downloaded before.")
     checksums_parser.add_argument('repofile', help='The configuration used to locate the files.')
     checksums_parser.add_argument('outfile', help='The path to the generated configuration.')
 
@@ -292,23 +373,8 @@ def main(args, prg_wrap=None):
 
     args = parser.parse_args(args)
     
-    # if args.action == 'import':
-    #     if not os.path.isfile(args.repofile):
-    #         logging.warning('The file "%s" wasn\'t found. I will be creating it from scratch.', args.repofile)
-    #         mods = RepoConf()
-    #     else:
-    #         mods = RepoConf(args.repofile)
-
-    #     logging.info('Fetching installer text files...')
-    #     mod_tree = EntryPoint.get_mods()
-
-    #     logging.info('Converting...')
-    #     mods.import_tree(mod_tree)
-
-    #     mods.write(args.repofile, True)
-    #     logging.info('Done')
     if args.action == 'checksums':
-        generate_checksums(args.repofile, args.outfile, dl_path=args.dl_path)
+        generate_checksums(args.repofile, args.outfile, dl_path=args.dl_path, curses=not args.no_curses, force_cache=args.force_cache)
     elif args.action == 'list':
         mods = RepoConf(args.repofile)
 

@@ -19,7 +19,7 @@ import logging
 import semantic_version
 
 from knossos.util import pjoin, merge_dicts
-from . import vfs, bool_parser
+from . import vfs
 
 
 class RepoConf(object):
@@ -387,10 +387,6 @@ class Package(object):
                 if env['value'] not in ('windows', 'linux', 'macos'):
                     logging.error('Unknown operating system "%s" for package "%s"!', env['value'], self.name)
                     self._valid = False
-            elif env['type'] == 'bool':
-                env['value'] = bool_parser.parse(env['value'])
-                if not env['value']:
-                    logging.error('Invalid boolean expression "%s" for package "%s"!', env['value'], self.name)
             else:
                 logging.error('Unknown environment condition "%s" for package "%s"!', env['type'], self.name)
                 self._valid = False

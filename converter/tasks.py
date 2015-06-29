@@ -55,7 +55,7 @@ class ChecksumTask(progress.Task):
                 self.post((id_, 'CACHE', None, 0))
             elif res:
                 logging.info('Inspecting "%s"...', name)
-                progress.update(1, 'Inspecting "%s"...' % name)
+                progress.update(0.999, 'Inspecting "%s"...' % name)
                 
                 csum, content = self._inspect_file(id_, archive, dest, path)
 
@@ -115,34 +115,8 @@ class ChecksumTask(progress.Task):
                         # Don't generate checksums for symlinks.
                         if not os.path.islink(fpath):
                             content[subpath + name] = util.gen_hash(fpath)
-
-                        if name == 'mod.ini':
-                            self._inspect_mod_ini(os.path.join(cur_path, name), id_[0])
             else:
                 logging.error('Failed to extract "%s"!', os.path.basename(path))
                 return 'FAILED', None
 
         return csum, content
-
-    def _inspect_mod_ini(self, path, mid):
-        # Let's look for the logo.
-        
-        base_path = os.path.dirname(path)
-        img = []
-        with open(path, 'r') as stream:
-            for line in stream:
-                line = line.strip()
-                if line.startswith('image'):
-                    line = line.split('=')[1].strip(' \t\n\r;')
-                    line = os.path.join(base_path, line)
-                    info = os.stat(line)
-
-                    img.append((line, info.st_size))
-
-        if len(img) > 0:
-            # Pick the biggest.
-            # TODO: Improve
-            img.sort(key=lambda i: i[1])
-            img = img[-1][0]
-
-            self.post(((mid, 'logo', 'logo.jpg'), util.convert_img(img, 'jpg'), {}, 0))
