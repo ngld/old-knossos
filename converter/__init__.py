@@ -65,7 +65,9 @@ def run_task(task, prg_wrap=None, use_curses=False):
     def finish():
         app.quit()
     
-    task.progress.connect(update_progress)
+    if prg_wrap is not None or use_curses:
+        task.progress.connect(update_progress)
+    
     task.done.connect(finish)
     
     def core():
@@ -95,7 +97,7 @@ def run_task(task, prg_wrap=None, use_curses=False):
             core()
 
 
-def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None, curses=False, force_cache=False):
+def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None, curses=False, force_cache=False, list_files=False):
     logging.info('Parsing repo...')
 
     mods = RepoConf(repo)
@@ -320,17 +322,19 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
                 if done:
                     break
 
-            file_list = [
-                'Please make sure the following is correct:',
-                'If a user has FS installed in C:\\Freespace2, your mod will install the following files:',
-                ''
-            ]
-            prefix = 'C:\\Freespace2\\' + mod.folder
-            for pkg in mod.packages:
-                for item in pkg.filelist:
-                    file_list.append(prefix + '\\' + item['filename'].replace('/', '\\'))
+            if list_files:
+                file_list = [
+                    'Please make sure the following is correct:',
+                    'If a user has FS installed in C:\\Freespace2, your mod will install the following files:',
+                    ''
+                ]
+                prefix = 'C:\\Freespace2\\' + mod.folder
+                for pkg in mod.packages:
+                    for item in pkg.filelist:
+                        file_list.append(prefix + '\\' + item['filename'].replace('/', '\\'))
 
-            logging.info('\n'.join(file_list))
+                logging.info('\n'.join(file_list))
+
             new_cache['mods'].append(mod.get())
 
     with open(output, 'w') as stream:
@@ -366,6 +370,7 @@ def main(args, prg_wrap=None):
     checksums_parser.add_argument('--save-files', dest='dl_path', help='Save the downloaded files.', default=None)
     checksums_parser.add_argument('--no-curses', dest='no_curses', action='store_true', default=False, help="Don't use the Curses UI.")
     checksums_parser.add_argument('--force-cache', dest='force_cache', action='store_true', default=False, help="Skip files which have been downloaded before.")
+    checksums_parser.add_argument('--list-files', dest='list_files', action='store_true', default=False, help="List the mod's files once the conversion is finished.")
     checksums_parser.add_argument('repofile', help='The configuration used to locate the files.')
     checksums_parser.add_argument('outfile', help='The path to the generated configuration.')
 
@@ -375,7 +380,7 @@ def main(args, prg_wrap=None):
     args = parser.parse_args(args)
     
     if args.action == 'checksums':
-        generate_checksums(args.repofile, args.outfile, dl_path=args.dl_path, curses=not args.no_curses, force_cache=args.force_cache)
+        generate_checksums(args.repofile, args.outfile, dl_path=args.dl_path, curses=not args.no_curses, force_cache=args.force_cache, list_files=args.list_files)
     elif args.action == 'list':
         mods = RepoConf(args.repofile)
 
