@@ -253,7 +253,7 @@ class Task(QtCore.QObject):
             with self._work_lock:
                 self._pending -= 1
 
-            self._progress[threading.get_ident()] = (1, 'Done')
+            self._progress[threading.get_ident()] = (0, 'Done')
             self._running -= 1
             
             if self._running == 0 and not self._has_work() and not self._done.is_set():
@@ -307,8 +307,7 @@ class Task(QtCore.QObject):
             total = (wc_total - wc_left - pending) / count
         
         for item in prog.values():
-            if item[0] < 1:
-                total += item[0] * (1.0 / count)
+            total += item[0] * (1.0 / count)
 
         return total, prog, self.title
     

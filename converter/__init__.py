@@ -57,7 +57,8 @@ def run_task(task, prg_wrap=None, use_curses=False):
         total, items, title = pi
         text = []
         for item in items.values():
-            text.append('%3d%% %s' % (item[0] * 100, item[1]))
+            if item[0] > 0:
+                text.append('%3d%% %s' % (item[0] * 100, item[1]))
         
         progress.update(total, '\n'.join(text))
     
