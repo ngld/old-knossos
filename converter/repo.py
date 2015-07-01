@@ -118,6 +118,7 @@ class Mod(object):
     _valid = True
     mid = ''
     title = ''
+    mtype = ''
     version = None
     folder = None
     logo = ''
@@ -128,7 +129,7 @@ class Mod(object):
     actions = None
     packages = None
 
-    _fields = ('id', 'title', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
+    _fields = ('id', 'title', 'type', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
     _req = ('id', 'title', 'version')
 
     def __init__(self, values=None, repo=None):
@@ -158,6 +159,7 @@ class Mod(object):
 
         self.mid = values['id']
         self.title = values['title']
+        self.mtype = values.get('type', 'mod')
         self.folder = values.get('folder', self.mid).strip('/')  # make sure we have a relative path
         self.cmdline = values.get('cmdline', '')
         self.logo = values.get('logo', None)
@@ -166,6 +168,10 @@ class Mod(object):
         self.submods = values.get('submods', [])
         self.packages = [Package(pkg, self) for pkg in values.get('packages', [])]
         self.actions = values.get('actions', [])
+
+        if self.mtype not in ('mod', 'tc', 'addon', 'engine'):
+            logging.error('"%s" is not a valid mod type!', self.mtype)
+            self._valid = False
 
         try:
             self.version = semantic_version.Version(values['version'], partial=True)
@@ -215,6 +221,7 @@ class Mod(object):
         return {
             'id': self.mid,
             'title': self.title,
+            'type': self.mtype,
             'version': str(self.version),
             'folder': self.folder,
             'cmdline': self.cmdline,
