@@ -55,14 +55,14 @@ if variant in ('PyQt4', 'auto'):
             sip.setapi(cl, 2)
 
         from PyQt4 import QtCore, QtGui, QtNetwork, QtWebKit
-        
+
         QtCore.Signal = QtCore.pyqtSignal
         QtCore.Slot = QtCore.pyqtSlot
         QtCore.QString = str
 
         # Success!
         variant = 'PySide'
-        
+
     except ImportError:
         logging.exception('I was unable to load Qt! Tried PyQt4.')
         sys.exit(1)
@@ -202,15 +202,13 @@ if variant == 'headless':
     QtNetwork = None
     QtWebKit = None
 
-logging.debug('Using Qt API %s.', variant)
-
 
 def read_file(path):
     fd = QtCore.QFile(path)
     fd.open(QtCore.QIODevice.ReadOnly)
     data = str(fd.readAll())
     fd.close()
-    
+
     return data
 
 

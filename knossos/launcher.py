@@ -134,7 +134,7 @@ def run_knossos():
     settings = center.settings
     if os.path.exists(spath):
         defaults = settings.copy()
-        
+
         try:
             with open(spath, 'rb') as stream:
                 if six.PY3:
@@ -143,29 +143,32 @@ def run_knossos():
                     settings.update(pickle.load(stream))
         except:
             logging.exception('Failed to load settings from "%s"!', spath)
-        
+
         # Migration
         if 's_version' not in settings or settings['s_version'] < 2:
             settings['repos'] = defaults['repos']
             settings['s_version'] = 2
-        
+
         if settings['s_version'] < 3:
             if 'mods' in settings:
                 del settings['mods']
             if 'installed_mods' in settings:
                 del settings['installed_mods']
-            
+
             settings['s_version'] = 3
 
         if settings['s_version'] < 4:
             settings['repos'] = defaults['repos']
             settings['s_version'] = 4
-        
+
         del defaults
     else:
         # Most recent settings version
         settings['s_version'] = 4
-    
+
+    if '#default' not in settings['cmdlines']:
+        settings['cmdlines']['#default'] = api.read_fso_cmdline()
+
     if settings['hash_cache'] is not None:
         util.HASH_CACHE = settings['hash_cache']
 
@@ -188,7 +191,7 @@ def run_knossos():
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()
-    
+
     mod_db = os.path.join(center.settings_path, 'mods.json')
     if os.path.isfile(mod_db):
         center.mods.load_json(mod_db)
@@ -211,7 +214,7 @@ def run_knossos():
 
     center.main_win.open()
     app.exec_()
-    
+
     api.save_settings()
     api.shutdown_ipc()
 
@@ -224,14 +227,14 @@ def scheme_handler(link):
         QtGui.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
         app.quit()
         return
-    
+
     link = urlparse.unquote(link.strip()).split('/')
-    
+
     if len(link) < 3:
         QtGui.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')
         app.quit()
         return
-    
+
     if not ipc.server_exists():
         # Launch the program.
         subprocess.Popen(get_cmd())
@@ -333,7 +336,7 @@ def main():
 
     # Default to replace errors when de/encoding.
     import codecs
-    
+
     codecs.register_error('strict', codecs.replace_errors)
     codecs.register_error('really_strict', codecs.strict_errors)
 
@@ -347,7 +350,7 @@ def main():
     if len(sys.argv) > 1:
         if sys.argv[1] == '--install-scheme':
             from . import api
-            
+
             api.install_scheme_handler('--silent' not in sys.argv)
             return
         elif sys.argv[1] == '--finish-update':
@@ -382,7 +385,7 @@ def main():
     elif ipc.server_exists():
         scheme_handler('fso://focus')
         return
-    
+
     del ipc
 
     try:

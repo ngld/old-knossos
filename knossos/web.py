@@ -73,7 +73,7 @@ class WebBridge(QtCore.QObject):
     #   Returns -1 if the mod wasn't found, -2 if the spec is invalid and 1 on success.
     # vercmp(a, b): int
     #   Compares two versions
-    
+
     updateModlist = QtCore.Signal('QVariantMap', str)
     modProgress = QtCore.Signal(str, float, str)
 
@@ -257,7 +257,6 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str, result=int)
     def updateMod(self, mid, spec=None):
         mod = self._get_mod(mid, spec)
-        print((mid, spec, mod))
 
         if mod in (-1, -2):
             return mod
@@ -271,7 +270,7 @@ class WebBridge(QtCore.QObject):
             cur_pkgs = list(mod.packages)
             for i, pkg in enumerate(cur_pkgs):
                 cur_pkgs[i] = center.mods.query(mod.mid, None, pkg.name)
-            
+
             tasks.run_task(tasks.InstallTask(cur_pkgs, cur_pkgs[0].get_mod()))
 
         center.main_win.update_mod_buttons('progress')
@@ -338,7 +337,7 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
         self.setCookieJar(old_manager.cookieJar())
         self.setProxy(old_manager.proxy())
         self.setProxyFactory(old_manager.proxyFactory())
-    
+
     def createRequest(self, operation, request, data):
         if request.url().scheme() == 'fsrs' and operation == self.GetOperation:
             # Rewrite fsrs:// links.
@@ -369,7 +368,7 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
                 url.setPath(os.path.join(center.settings_path, os.path.basename(url.path())))
 
             request.setUrl(url)
-        
+
         return super(NetworkAccessManager, self).createRequest(operation, request, data)
 
 
