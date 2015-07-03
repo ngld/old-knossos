@@ -257,6 +257,8 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str, result=int)
     def updateMod(self, mid, spec=None):
         mod = self._get_mod(mid, spec)
+        print((mid, spec, mod))
+
         if mod in (-1, -2):
             return mod
 
@@ -268,7 +270,7 @@ class WebBridge(QtCore.QObject):
             # Just install the new version
             cur_pkgs = list(mod.packages)
             for i, pkg in enumerate(cur_pkgs):
-                cur_pkgs[i] = center.mods.query(mod.mid, semantic_version.Version('*'), pkg.name)
+                cur_pkgs[i] = center.mods.query(mod.mid, None, pkg.name)
             
             tasks.run_task(tasks.InstallTask(cur_pkgs, cur_pkgs[0].get_mod()))
 
@@ -332,8 +334,6 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
     def __init__(self, old_manager):
         super(NetworkAccessManager, self).__init__()
 
-        # self.old_manager = old_manager
-
         self.setCache(old_manager.cache())
         self.setCookieJar(old_manager.cookieJar())
         self.setProxy(old_manager.proxy())
@@ -357,7 +357,14 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
                         mod = None
 
                 if mod is not None:
-                    url.setPath(mod.logo_path)
+                    logo_path = mod.logo_path
+                    if not logo_path:
+                        logo_path = mod.logo
+
+                    logging.debug('Rewriting fsrs://%s to %s.', url.path(), logo_path)
+                    url.setPath(logo_path)
+                else:
+                    logging.debug('Mod for path fsrs://%s could not be found!', url.path())
             else:
                 url.setPath(os.path.join(center.settings_path, os.path.basename(url.path())))
 

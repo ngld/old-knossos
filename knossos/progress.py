@@ -275,8 +275,11 @@ class Task(QtCore.QObject):
             self._work.extend(work)
             self._work_count = max(self._work_count, len(self._work))
         
-        if not self._attached and self._master is not None:
-            self._master.add_task(self)
+        if self._master is not None:
+            if not self._attached:
+                self._master.add_task(self)
+            else:
+                self._master.wake_workers()
     
     def abort(self):
         if not self.can_abort:

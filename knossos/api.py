@@ -458,7 +458,7 @@ def handle_ipc(msg):
 
 def init_self():
     setup_ipc()
-    center.main_win.check_fso()
+    center.main_win.check_fso(False)
 
     if center.settings['update_notify'] and not center.VERSION.endswith('-dev'):
         run_task(CheckUpdateTask())

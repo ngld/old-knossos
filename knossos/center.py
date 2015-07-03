@@ -33,6 +33,7 @@ pmaster = None
 mods = None
 installed = None
 fso_flags = None
+has_retail = None
 
 settings = {
     'fs2_bin': None,

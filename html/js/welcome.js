@@ -1,53 +1,53 @@
-function list_mods() {
+function list_mods(mods) {
     if(!fs2mod.isFs2PathSet()) return;
     $('#install-note').hide();
 
     var mod_list = $('#mod-list').empty();
     var update_link = $('<a href="#">Update mod list</a>');
     var table = $('<table class="table">');
-    var mods = fs2mod.getInstalledMods();
-    var updates = fs2mod.getUpdates();
+    
+    $.each(mods, function (key, mod) {
+        mod = mod[0];
 
-    if(mods.length > 0) {
-        $.each(mods, function (i, mod) {
-            var row = $('<tr>');
+        var row = $('<tr>');
 
-            var logo = $('<td>').appendTo(row);
-            var title = $('<td>').appendTo(row);
+        var logo = $('<td>').appendTo(row);
+        var title = $('<td>').appendTo(row);
 
-            if(mod.logo) {
-                logo.append($('<img class="mod-logo">').attr('src', 'fsrs:///logo/' + mod.id + '/' + mod.version));
-                logo.append('&nbsp;');
-            }
-            title.append($('<span>').text(mod.title + ' (' + mod.version + ')'));
+        if(mod.logo) {
+            logo.append($('<img class="mod-logo">').attr('src', 'fsrs:///logo/' + mod.id + '/' + mod.version));
+            logo.append('&nbsp;');
+        }
+        title.append($('<span>').text(mod.title + ' (' + mod.version + ')'));
 
-            var actions = $('<div class="mod-actions">');
-            actions.append($('<a href="#">Launch</a>').click(function (e) {
-                e.preventDefault();
-                fs2mod.runMod(mod.id, '==' + mod.version);
-            }));
-            actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
-                e.preventDefault();
-                fs2mod.showSettings(mod.id);
-            }));
+        var actions = $('<div class="mod-actions">');
+        actions.append($('<a href="#">Launch</a>').click(function (e) {
+            e.preventDefault();
+            fs2mod.runMod(mod.id, '==' + mod.version);
+        }));
+        actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
+            e.preventDefault();
+            fs2mod.showSettings(mod.id);
+        }));
 
-            if(updates[mod.id] && updates[mod.id][mod.version]) {
-                title.append('<br><strong>Update available! ' + updates[mod.id][mod.version] + ' has been released.</strong>');
-                actions.append(' | ').append($('<a href="#">Update</a>').click(function (e) {
-                    e.preventDefault();
-                    var my_pkgs = [];
-                    $.each(mod.packages, function (i, pkg) {
-                        my_pkgs.push(pkg.name);
-                    });
+        // if(updates[mod.id] && updates[mod.id][mod.version]) {
+        //     title.append('<br><strong>Update available! ' + updates[mod.id][mod.version] + ' has been released.</strong>');
+        //     actions.append(' | ').append($('<a href="#">Update</a>').click(function (e) {
+        //         e.preventDefault();
+        //         var my_pkgs = [];
+        //         $.each(mod.packages, function (i, pkg) {
+        //             my_pkgs.push(pkg.name);
+        //         });
 
-                    fs2mod.install(mod.id, null, my_pkgs);
-                }));
-            }
+        //         fs2mod.install(mod.id, null, my_pkgs);
+        //     }));
+        // }
 
-            title.append(actions)
-            table.append(row);
-        });
+        title.append(actions)
+        table.append(row);
+    });
 
+    if(table.find('tr').length > 0) {
         mod_list.html(update_link).append('<br><br>').append(table);
     } else {
         mod_list.html(update_link).append('<br><hr>No mods found!');
@@ -74,8 +74,18 @@ $(function () {
             e.preventDefault();
             fs2mod.runGogInstaller();
         });
+
+        $('#tc-install').click(function (e) {
+            e.preventDefault();
+            // Um... this is mean.
+            fs2mod.selectFs2path();
+        })
     } else {    
         //list_mods();
         location.href = 'modlist.html';
+        
+        // fs2mod.updateModlist.connect(function (mods, type) {
+        //     list_mods(mods);
+        // });
     }
 });

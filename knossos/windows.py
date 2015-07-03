@@ -185,17 +185,27 @@ class HellWindow(Window):
 
         super(HellWindow, self)._del()
 
-    def check_fso(self):
+    def check_fso(self, interactive=True):
         if center.settings['fs2_path'] is not None:
-            if center.mods is None or center.mods.empty():
+            has_retail = False
+            for item in os.listdir(center.settings['fs2_path']):
+                if item.lower() == 'root_fs2.vp':
+                    has_retail = True
+                    break
+            
+            if has_retail != center.has_retail or center.mods is None or center.mods.empty():
+                center.has_retail = has_retail
                 self.update_repo_list()
             else:
                 run_task(CheckTask())
-            
+
             self.win.pageControls.setEnabled(True)
             self.win.updateButton.setEnabled(True)
             self.win.searchEdit.setEnabled(True)
             self.win.tabButtons.setEnabled(True)
+
+            if interactive and self.win.webView.url().toString() == 'qrc:///html/welcome.html':
+                self.update_mod_buttons('available')
         else:
             # Make sure the user has a complete configuration
             if not SettingsWindow.has_config():
