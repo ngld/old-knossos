@@ -87,6 +87,11 @@ get() {
     fi
 }
 
+sudo_do() {
+    msg3 "sudo $*"
+    sudo "$@"
+}
+
 # prefer terminal safe colored and bold text when tput is supported
 if tput setaf 0 &>/dev/null; then
     ALL_OFF="$(tput sgr0)"
@@ -135,14 +140,14 @@ if [ "$knossos_path" = "#" ]; then
     if [ -d /usr/share/knossos ]; then
         knossos_path="/usr/share/knossos/knossos"
     else
-        error "Couldn't find an existing Knossos installation! I can only update an existing Knossos installations!"
+        error "Couldn't find an existing Knossos installation!"
         exit 1
     fi
 fi
 
 if [ ! -d "$knossos_path" ]; then
     if [ -z "$knossos_path" ]; then
-        error "Couldn't find an existing Knossos installation! I can only update an existing Knossos installations!"
+        error "Couldn't find an existing Knossos installation!"
         exit 1
     else
         error "I thought Knossos was in $knossos_path but I guess I'm wrong!"
@@ -161,11 +166,9 @@ arpath="$(mktemp "${TMPDIR:-/tmp}/XXXXXXXXX.tar.gz")"
 
 # Make sure we clean up
 trap '[ -f "$arpath" ] && rm "$arpath"' EXIT
-
 download "$arpath" "$server/knossos.tar.gz"
 
 msg2 "Unpacking..."
-sudo tar -xzf "$arpath" -C "$knossos_path" --strip 1
-rm "$arpath"
+sudo_do tar -xzf "$arpath" -C "$knossos_path" --strip 1
 
 msg "Done!"

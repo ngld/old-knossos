@@ -20,7 +20,7 @@ from .qt import QtCore
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.1.1-dev'
+VERSION = '0.1.2-dev'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
 DEBUG = os.environ.get('KN_DEBUG') == '1'
@@ -44,7 +44,7 @@ settings = {
     'max_downloads': 3,
     'repos': [('https://fsnebula.org/repo/test.json', 'Test repos')],
     'nebula_link': 'https://fsnebula.org/',
-    'update_channel': 'develop',
+    'update_channel': 'stable',
     'update_notify': True,
     'ui_mode': 'hell',
     'keyboard_layout': 'default',

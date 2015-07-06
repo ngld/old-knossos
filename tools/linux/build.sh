@@ -37,8 +37,15 @@ msg2 "Building package..."
 mkdir dist
 
 dist_path="$(pwd)/dist"
+py_version="$(sed -E 's#-dev(\.)?#.dev#' < version)"
+
 pushd ../..
-python setup.py install --optimize 2 --root "$dist_path" --install-lib .
+sed "s#version='XXX'#version='${py_version}'#" < setup.py > setup_lv.py
+
+[ -d build ] && rm -r build
+
+python setup_lv.py install --optimize 2 --root "$dist_path" --install-lib .
+rm setup_lv.py
 popd
 
 mv version dist/knossos

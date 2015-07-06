@@ -87,8 +87,6 @@ if [ ! -d _w ]; then
     msg2 "Installing dependencies from PyPi..."
     wine python -mpip install six semantic_version PySide comtypes requests
 
-    ensure_pyinstaller
-
     msg2 "Unpacking upx..."
     mkdir tmp
     unzip -qd tmp upx.zip
@@ -134,7 +132,7 @@ if [ "$run_cmd" = "y" ]; then
 else
     msg "Building..."
     generate_version > version
-    ensure_pyinstaller
+    ensure_pyinstaller python3
 
     pushd ../..
     make ui resources
