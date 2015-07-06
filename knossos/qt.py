@@ -61,7 +61,7 @@ if variant in ('PyQt4', 'auto'):
         QtCore.QString = str
 
         # Success!
-        variant = 'PySide'
+        variant = 'PyQt4'
 
     except ImportError:
         logging.exception('I was unable to load Qt! Tried PyQt4.')

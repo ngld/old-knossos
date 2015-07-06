@@ -62,6 +62,20 @@ download() {
     fi
 }
 
+download_ua() {
+    if [ -f "$1" ]; then
+        msg2 "Skipped $1 because it has already been downloaded."
+    elif has wget; then
+        wget -U Mozilla/5.0 -O "$1" "$2"
+    elif has curl; then
+        msg2 "Downloading $1..."
+        curl -# -o "$1" "$2"
+    else
+        error "I need curl or wget!"
+        exit 1
+    fi
+}
+
 check_variant() {
     if [ -z "$VARIANT" ]; then
         VARIANT="develop"
@@ -108,11 +122,20 @@ generate_version() {
 }
 
 ensure_pyinstaller() {
+    local branch
+
+    if [ -z "$1" ]; then
+        branch="develop"
+    else
+        branch="$1"
+    fi
+
     if [ ! -d ../common/pyinstaller ]; then
         msg2 "Downloading PyInstaller..."
-        git clone -b develop "https://github.com/pyinstaller/pyinstaller" ../common/pyinstaller
+        git clone -b "$branch" "https://github.com/pyinstaller/pyinstaller" ../common/pyinstaller
     else
         pushd ../common/pyinstaller
+        git checkout "$branch"
         git pull
         popd
     fi

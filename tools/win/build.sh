@@ -18,7 +18,6 @@ set -e
 cd "$(dirname "$0")"
 PLATFORM=windows
 . ../common/helpers.sh
-init_build_script "$@"
 
 if ! has wine || ! has tar || ! has 7z || ! has unzip || ! has git; then
     error "Sorry, but I need wine, tar, 7z, unzip and git to generate a windows build."
@@ -29,19 +28,40 @@ export WINEPREFIX="$PWD/_w"
 export WINEARCH="win32"
 export WINEDEBUG="fixme-all"
 
+run_cmd=n
+
+if [ "$1" = "run" ]; then
+    shift
+    run_cmd=y
+else
+    init_build_script "$@"
+fi
+
 if [ ! -d _w ]; then
     msg "Setting up toolchain..."
     msg2 "Downloading..."
-    
-    download python.msi "https://www.python.org/ftp/python/2.7.9/python-2.7.9.msi"
-    download pywin32.exe "http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win32-py2.7.exe/download"
+
+    # download python.msi "https://www.python.org/ftp/python/2.7.10/python-2.7.10.msi"
+    download python.msi "https://www.python.org/ftp/python/3.4.3/python-3.4.3.msi"
+    # download pywin32.exe "http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win32-py2.7.exe/download"
+    download pywin32.exe "http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win32-py3.4.exe/download"
     download upx.zip "http://upx.sourceforge.net/download/upx391w.zip"
-    download 7z-inst.exe "http://7-zip.org/a/7z938.exe"
+    download 7z-inst.exe "http://7-zip.org/a/7z1505.exe"
     download SDL2.zip "http://libsdl.org/release/SDL2-2.0.3-win32-x86.zip"
     download openal.zip "http://kcat.strangesoft.net/openal-soft-1.16.0-bin.zip"
     download nsis.exe "http://prdownloads.sourceforge.net/nsis/nsis-2.46-setup.exe?download"
     download nsProcess.7z "https://dev.tproxy.de/mirror/nsProcess_1_6.7z"
-    
+    # download PyQt4.exe "http://sourceforge.net/projects/pyqt/files/PyQt4/PyQt-4.11.4/PyQt4-4.11.4-gpl-Py3.4-Qt4.8.7-x32.exe"
+
+    msg2 "Installing VC 2010 runtime..."
+    if has winetricks; then
+        winetricks -q vcrun2010
+    else
+        download_ua vcredist.exe "http://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe"
+        wine vcredist.exe /quiet
+        rm vcredist.exe
+    fi
+
     msg2 "Installing Python..."
     wine msiexec /i python.msi /q INSTALLDIR="C:\\Python27"
 
@@ -57,34 +77,34 @@ if [ ! -d _w ]; then
             exit 1
         fi
     fi
-    
+
     msg2 "Installing pywin32..."
     wine pywin32.exe
 
     msg2 "Updating pip..."
     wine python -mpip install -U pip
-    
+
     msg2 "Installing dependencies from PyPi..."
     wine python -mpip install six semantic_version PySide comtypes requests
 
     ensure_pyinstaller
-    
+
     msg2 "Unpacking upx..."
     mkdir tmp
     unzip -qd tmp upx.zip
     mv tmp/upx*/upx.exe _w/drive_c/windows
     rm -r tmp
-    
+
     msg2 "Unpacking 7z..."
     mkdir tmp
     7z x -otmp 7z-inst.exe
     mv tmp/7z.{exe,dll} support
     rm -r tmp
-    
+
     msg2 "Unpacking SDL..."
     unzip -q SDL2.zip SDL2.dll
     mv SDL2.dll support
-    
+
     msg2 "Unpacking OpenAL..."
     mkdir tmp
     unzip -qd tmp openal.zip
@@ -92,7 +112,7 @@ if [ ! -d _w ]; then
     rm -r tmp
 
     msg2 "Installing NSIS..."
-    wine nsis.exe
+    wine nsis.exe /S
 
     msg2 "Unpacking NsProcess..."
     mkdir tmp
@@ -100,7 +120,7 @@ if [ ! -d _w ]; then
     mv tmp/Plugin/*.dll _w/drive_c/Program\ Files/NSIS/Plugins
     mv tmp/Include/*.nsh _w/drive_c/Program\ Files/NSIS/Include
     rm -r tmp
-    
+
     msg2 "Cleaning up..."
     rm python.msi pywin32.exe upx.zip 7z-inst.exe SDL2.zip openal.zip nsis.exe nsProcess.7z
 fi
@@ -109,26 +129,30 @@ if [ ! -e _w/dosdevices/z: ]; then
     ln -s / _w/dosdevices/z:
 fi
 
-msg "Building..."
-generate_version > version
-ensure_pyinstaller
+if [ "$run_cmd" = "y" ]; then
+    wine "$@"
+else
+    msg "Building..."
+    generate_version > version
+    ensure_pyinstaller
 
-pushd ../..
-make ui resources
-popd
+    pushd ../..
+    make ui resources
+    popd
 
-msg2 "Running PyInstaller..."
-[ -d dist ] && rm -rf dist
-wine python -OO ../common/pyinstaller/pyinstaller.py -y --distpath=.\\dist --workpath=.\\build Knossos.spec
+    msg2 "Running PyInstaller..."
+    [ -d dist ] && rm -rf dist
+    wine python -OO ../common/pyinstaller/pyinstaller.py -y --distpath=.\\dist --workpath=.\\build Knossos.spec
 
-mv version dist/
+    mv version dist/
 
-if [ "$gen_package" = "y" ]; then
-    msg2 "Packing installer..."
-    wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ /DKNOSSOS_VERSION="$(cat dist/version)" nsis/installer.nsi
+    if [ "$gen_package" = "y" ]; then
+        msg2 "Packing installer..."
+        wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ /DKNOSSOS_VERSION="$(cat dist/version)" nsis/installer.nsi
 
-    msg2 "Packing updater..."
-    wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ /DKNOSSOS_VERSION="$(cat dist/version)" nsis/updater.nsi
+        msg2 "Packing updater..."
+        wine C:\\Program\ Files\\NSIS\\makensis /NOCD /DKNOSSOS_ROOT=..\\..\\ /DKNOSSOS_VERSION="$(cat dist/version)" nsis/updater.nsi
+    fi
 fi
 
 # This symlink can cause all kinds of trouble if a program tries to follow it.

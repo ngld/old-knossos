@@ -187,22 +187,6 @@ class HellWindow(Window):
 
     def check_fso(self, interactive=True):
         if center.settings['fs2_path'] is not None:
-            has_retail = False
-            for item in os.listdir(center.settings['fs2_path']):
-                if item.lower() == 'root_fs2.vp':
-                    has_retail = True
-                    break
-
-            if has_retail != center.has_retail or center.mods is None or center.mods.empty():
-                center.has_retail = has_retail
-                if interactive:
-                    # TODO: Explain what interactive means here...
-                    self.update_repo_list()
-                else:
-                    run_task(CheckTask())
-            else:
-                run_task(CheckTask())
-
             self.win.pageControls.setEnabled(True)
             self.win.updateButton.setEnabled(True)
             self.win.searchEdit.setEnabled(True)

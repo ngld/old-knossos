@@ -68,7 +68,7 @@ if not center.DEBUG:
 if six.PY2:
     from . import py2_compat
 
-from .qt import QtCore, QtGui, read_file
+from .qt import QtCore, QtGui, read_file, variant as qt_variant
 from .ipc import IPCComm
 from . import util
 
@@ -192,6 +192,7 @@ def run_knossos():
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()
 
+    api.check_retail_files()
     mod_db = os.path.join(center.settings_path, 'mods.json')
     if os.path.isfile(mod_db):
         center.mods.load_json(mod_db)
@@ -319,7 +320,7 @@ def init():
                 else:
                     logging.error('Found invalid version file! The file contains %s but I\'m %s.', version, center.VERSION)
 
-    logging.info('Running Knossos %s.', center.VERSION)
+    logging.info('Running Knossos %s on %s.', center.VERSION, qt_variant)
     app = QtGui.QApplication([])
 
     logging.debug('Loading resources from %s.', get_file_path('resources.rcc'))

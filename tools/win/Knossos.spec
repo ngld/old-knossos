@@ -41,7 +41,7 @@ except:
     logging.exception('Failed to generate comtypes.gen.TaskbarLib!')
 
 
-rthooks = ['../common/PySide-rthook.py']
+rthooks = []  # ['../common/PySide-rthook.py']
 if debug:
     rthooks.append('../common/debug-rthook.py')
 
@@ -107,7 +107,7 @@ else:
               strip=None,
               upx=not debug,
               console=debug)
-    
+
     coll = COLLECT(exe,
                    a.binaries,
                    a.zipfiles,

@@ -22,4 +22,5 @@ if 'QT_PLUGIN_PATH' in os.environ:
     del os.environ['QT_PLUGIN_PATH']
 
 from PySide.QtCore import QCoreApplication
+print(['Q#', path])
 QCoreApplication.setLibraryPaths([os.path.abspath(path)])

@@ -27,7 +27,7 @@ uhf(__name__)
 
 from . import center, util, repo, integration
 from .qt import QtGui
-from .tasks import run_task, CheckUpdateTask, FetchTask, InstallTask, UninstallTask
+from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, InstallTask, UninstallTask
 from .ui.select_list import Ui_Dialog as Ui_SelectList
 from .windows import HellWindow, ModSettingsWindow, ModInstallWindow
 from .repo import ModNotFound
@@ -203,7 +203,11 @@ def get_fso_profile_path():
 
 def read_fso_cmdline():
     # Look for the cmdline path.
-    path = os.path.join(get_fso_profile_path(), 'data/cmdline_fso.cfg')
+    path = get_fso_profile_path()
+    if path is None:
+        return []
+
+    path = os.path.join(path, 'data/cmdline_fso.cfg')
 
     # Read the current cmdline.
     cmdline = []
@@ -313,6 +317,24 @@ def run_mod(mod):
     else:
         logging.info('Starting mod "%s" with cmdline "%s".', mod.title, cmdline)
         run_fs2()
+
+
+def check_retail_files():
+    has_retail = False
+    for item in os.listdir(center.settings['fs2_path']):
+        if item.lower() == 'root_fs2.vp':
+            has_retail = True
+            break
+
+    if has_retail:
+        logging.debug('The FS2 path (%s) contains retail files!', center.settings['fs2_path'])
+    else:
+        logging.debug('The FS2 path (%s) does not contain retail files!', center.settings['fs2_path'])
+
+    if has_retail != center.has_retail:
+        center.has_retail = has_retail
+        run_task(CheckTask())
+
 
 ##############
 # Public API #
@@ -465,9 +487,18 @@ def handle_ipc(msg):
         QtGui.QMessageBox.critical(None, 'Knossos', 'The action "%s" is unknown!' % (msg[0]))
 
 
+def _read_default_cmdline():
+    if '#default' not in center.settings['cmdlines']:
+        center.settings['cmdlines']['#default'] = read_fso_cmdline()
+
+
 def init_self():
     setup_ipc()
+    center.signals.fs2_path_changed.connect(_read_default_cmdline)
+    center.signals.fs2_path_changed.connect(check_retail_files)
+
     center.main_win.check_fso(False)
+    center.main_win.update_mod_list()
 
     if center.settings['update_notify'] and not center.VERSION.endswith('-dev'):
         run_task(CheckUpdateTask())

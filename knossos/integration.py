@@ -23,12 +23,13 @@ import six
 
 from . import center, clibs, qt, launcher
 
-if six.PY2:
-    ctypes.pythonapi.PyCObject_AsVoidPtr.argtypes = [ctypes.py_object]
-    ctypes.pythonapi.PyCObject_AsVoidPtr.restype = ctypes.c_void_p
-else:
-    ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object, ctypes.c_char_p]
-    ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
+if qt.variant == 'PySide':
+    if six.PY2:
+        ctypes.pythonapi.PyCObject_AsVoidPtr.argtypes = [ctypes.py_object]
+        ctypes.pythonapi.PyCObject_AsVoidPtr.restype = ctypes.c_void_p
+    else:
+        ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object, ctypes.c_char_p]
+        ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
 
 
 class Integration(object):
@@ -75,16 +76,16 @@ MimeType=x-scheme-handler/fso;
 
         if os.path.isfile(desktop_file) or os.path.isfile('/usr/share/applications/knossos.desktop'):
             return True
-        
+
         tpl_desktop = tpl_desktop.replace('{PATH}', my_path)
         tpl_desktop = tpl_desktop.replace('{ICON_PATH}', launcher.get_file_path('hlp.png'))
-        
+
         if not os.path.isdir(applications_path):
             os.makedirs(applications_path)
 
         with open(desktop_file, 'w') as output_file:
             output_file.write(tpl_desktop)
-        
+
         found = False
         if os.path.isfile(mime_types_file):
             with open(mime_types_file, 'r') as lines:
@@ -92,7 +93,7 @@ MimeType=x-scheme-handler/fso;
                     if tpl_mime_type in line:
                         found = True
                         break
-        
+
         if not found:
             with open(mime_types_file, 'a') as output_file:
                 output_file.write(tpl_mime_type)
@@ -138,12 +139,15 @@ class WindowsIntegration(Integration):
     def wid(self):
         win = center.main_win.win
         if win != self._win:
-            if six.PY2:
-                self._hwnd = ctypes.pythonapi.PyCObject_AsVoidPtr(win.winId())
+            if qt.variant == 'PySide':
+                if six.PY2:
+                    self._hwnd = ctypes.pythonapi.PyCObject_AsVoidPtr(win.winId())
+                else:
+                    self._hwnd = ctypes.pythonapi.PyCapsule_GetPointer(win.winId(), None)
             else:
-                self._hwnd = ctypes.pythonapi.PyCapsule_GetPointer(win.winId(), None)
+                self._hwnd = win.winId()
             self._win = win
-        
+
         return self._hwnd
 
     def show_progress(self, value):
@@ -161,7 +165,7 @@ class WindowsIntegration(Integration):
 
     def install_scheme_handler(self):
         my_cmd = launcher.get_cmd()
-        
+
         settings = qt.QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', qt.QtCore.QSettings.NativeFormat)
         settings.setFallbacksEnabled(False)
 
@@ -171,7 +175,7 @@ class WindowsIntegration(Integration):
 
         my_cmd.append('%1')
         my_path = ' '.join(['"' + p + '"' for p in my_cmd])
-        
+
         settings.setValue('shell/open/command/Default', my_path)
 
         # Check
@@ -192,7 +196,7 @@ def init():
     if sys.platform.startswith('win'):
         try:
             import comtypes.client as cc
-            
+
             tbl = cc.GetModule('taskbar.tlb')
             taskbar = cc.CreateObject('{56FDF344-FD6D-11d0-958A-006097C9A090}', interface=tbl.ITaskbarList3)
         except:

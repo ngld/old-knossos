@@ -14,7 +14,11 @@
 
 import sys
 import os.path
-from PyInstaller.hooks.hookutils import eval_statement, logger, misc, is_win
+
+try:
+    from PyInstaller.utils.hooks.hookutils import eval_statement, logger, misc, is_win
+except ImportError:
+    from PyInstaller.hooks.hookutils import eval_statement, logger, misc, is_win
 
 hiddenimports = []
 _qt_dir = None
@@ -25,13 +29,15 @@ def qt_plugin_binaries(plug_type):
 
     if _qt_dir is None:
         dirs = eval_statement(
+            'from __future__ import print_function;' +
             'from PySide.QtCore import QCoreApplication;' +
             'app = QCoreApplication([]);' +
-            'print map(unicode, app.libraryPaths())'
+            'print(app.libraryPaths())'
         )
 
         if not dirs:
             logger.error('Can\'t find PySide plugin directories.')
+            _qt_dir = False
             return
 
         for path in dirs:
@@ -46,18 +52,27 @@ def qt_plugin_binaries(plug_type):
             # Make sure PyInstaller finds all dlls.
             sys.path.append(os.path.dirname(_qt_dir))
 
-    dlls = misc.dlls_in_dir(os.path.join(_qt_dir, plug_type))
-    if is_win:
-        dlls = [p for p in dlls if not p.endswith('d4.dll')]
+    if _qt_dir:
+        dlls = misc.dlls_in_dir(os.path.join(_qt_dir, plug_type))
+        if is_win:
+            dlls = [p for p in dlls if not p.endswith('d4.dll')]
 
-    for path in dlls:
-        yield (os.path.join('plugins', plug_type, os.path.basename(path)), path, 'BINARY')
+        for path in dlls:
+            yield (os.path.join('plugins', plug_type, os.path.basename(path)), path, 'BINARY')
 
 
 def hook(mod):
-    mod.pyinstaller_binaries.extend(qt_plugin_binaries('accessible'))
-    mod.pyinstaller_binaries.extend(qt_plugin_binaries('iconengines'))
-    mod.pyinstaller_binaries.extend(qt_plugin_binaries('imageformats'))
-    mod.pyinstaller_binaries.extend(qt_plugin_binaries('inputmethods'))
-    mod.pyinstaller_binaries.extend(qt_plugin_binaries('graphicssystems'))
+    if hasattr(mod, 'add_binary'):
+        mod.add_binary(qt_plugin_binaries('accessible'))
+        mod.add_binary(qt_plugin_binaries('iconengines'))
+        mod.add_binary(qt_plugin_binaries('imageformats'))
+        mod.add_binary(qt_plugin_binaries('inputmethods'))
+        mod.add_binary(qt_plugin_binaries('graphicssystems'))
+    else:
+        mod.pyinstaller_binaries.extend(qt_plugin_binaries('accessible'))
+        mod.pyinstaller_binaries.extend(qt_plugin_binaries('iconengines'))
+        mod.pyinstaller_binaries.extend(qt_plugin_binaries('imageformats'))
+        mod.pyinstaller_binaries.extend(qt_plugin_binaries('inputmethods'))
+        mod.pyinstaller_binaries.extend(qt_plugin_binaries('graphicssystems'))
+
     return mod
