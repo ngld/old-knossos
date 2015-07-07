@@ -320,6 +320,9 @@ def run_mod(mod):
 
 
 def check_retail_files():
+    if center.settings['fs2_path'] is None:
+        return
+
     has_retail = False
     for item in os.listdir(center.settings['fs2_path']):
         if item.lower() == 'root_fs2.vp':

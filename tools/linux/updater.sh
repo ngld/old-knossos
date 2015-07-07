@@ -18,7 +18,7 @@ set -e
 
 variant="${KN_VARIANT:-develop}"
 server="https://dev.tproxy.de/knossos/$variant"
-archive="$server/linux.tar.gz"
+archive="$server/knossos.tar.gz"
 
 ## End Settings
 
