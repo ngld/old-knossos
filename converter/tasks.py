@@ -65,6 +65,7 @@ class ChecksumTask(progress.Task):
 
                     self.post((id_, csum, content, os.path.getsize(path)))
                 else:
+                    os.unlink(path)
                     self.post((id_, 'FAILED', None, 0))
             else:
                 # None of the links worked!
