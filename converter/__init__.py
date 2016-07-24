@@ -97,7 +97,7 @@ def run_task(task, prg_wrap=None, use_curses=False):
             core()
 
 
-def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None, curses=False, force_cache=False, list_files=False):
+def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None, curses=False, force_cache=False, list_files=False, remove_prefixes=[]):
     logging.info('Parsing repo...')
 
     mods = RepoConf(repo)
@@ -187,7 +187,7 @@ def generate_checksums(repo, output, prg_wrap=None, dl_path=None, dl_mirror=None
         logging.info('Generating checksums...')
 
         init_app()
-        task = ChecksumTask(items, dl_path, dl_mirror)
+        task = ChecksumTask(items, dl_path, dl_mirror, remove_prefixes)
         run_task(task, prg_wrap, curses)
         file_info = task.get_results()
 

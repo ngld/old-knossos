@@ -23,13 +23,15 @@ from knossos import progress, util
 class ChecksumTask(progress.Task):
     dl_path = None
     dl_mirror = None
+    rem_prefixes = None
     _mf_lock = None
 
-    def __init__(self, work, dl_path=None, dl_mirror=None):
+    def __init__(self, work, dl_path=None, dl_mirror=None, remove_prefixes=[]):
         super(ChecksumTask, self).__init__(work)
 
         self.dl_path = dl_path
         self.dl_mirror = dl_mirror
+        self.rem_prefixes = remove_prefixes
         self._mf_lock = Lock()
 
     def work(self, item):
@@ -49,6 +51,11 @@ class ChecksumTask(progress.Task):
                 idx += 1
 
             res = self._download(links, path, tstamp)
+
+            for i, link in reversed(list(enumerate(links))):
+                for pref in self.rem_prefixes:
+                    if link.startswith(pref):
+                        del links[i]
 
             if res == 304:
                 # Nothing changed.
@@ -86,11 +93,8 @@ class ChecksumTask(progress.Task):
             retries -= 1
             
             for link in all_links:
-                res = download.download(link, path)
-
-                if res is None:
-                    with open(path, 'wb') as stream:
-                        res = util.download(link, stream, headers={'If-Modified': tstamp})
+                with open(path, 'wb') as stream:
+                    res = util.download(link, stream, headers={'If-Modified': tstamp})
 
                 if res == 304 or res:
                     return res
