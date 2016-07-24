@@ -397,6 +397,9 @@ def download(link, dest, headers=None, random_ua=False):
 
         if result.status_code == 304:
             return 304
+        elif result.status_code == 206:
+            # sectorgame.com/fsfiles/ always returns code 206 which makes this necessary.
+            logging.warning('"%s" returned "206 Partial Content", the downloaded file might be incomplete.', link)
         elif result.status_code != 200:
             logging.error('Failed to load "%s"! (%d %s)', link, result.status_code, result.reason)
             return False
