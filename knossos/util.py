@@ -556,11 +556,24 @@ def gen_hash(path, algo='md5'):
 
 
 def test_7z():
+    global SEVEN_PATH
+
     try:
         return call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL) == 0
     except:
         logging.exception('Call to 7z failed!')
-        return False
+
+        if SEVEN_PATH != '7za':
+            return False
+
+        try:
+            if call(['7za', '-h'], stdout=subprocess.DEVNULL) == 0:
+                SEVEN_PATH = '7za'
+                return True
+            else:
+                return False
+        except:
+            return False
 
 
 def is_archive(path):

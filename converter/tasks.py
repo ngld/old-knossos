@@ -15,6 +15,7 @@
 import os
 import tempfile
 import logging
+import shutil
 from threading import Lock
 
 from knossos import progress, util
@@ -23,14 +24,16 @@ from knossos import progress, util
 class ChecksumTask(progress.Task):
     dl_path = None
     dl_mirror = None
+    dl_slug = None
     rem_prefixes = None
     _mf_lock = None
 
-    def __init__(self, work, dl_path=None, dl_mirror=None, remove_prefixes=[]):
+    def __init__(self, work, dl_path=None, dl_mirror=None, dl_slug=None, remove_prefixes=[]):
         super(ChecksumTask, self).__init__(work)
 
         self.dl_path = dl_path
         self.dl_mirror = dl_mirror
+        self.dl_slug = dl_slug
         self.rem_prefixes = remove_prefixes
         self._mf_lock = Lock()
 
@@ -41,7 +44,7 @@ class ChecksumTask(progress.Task):
             if self.dl_path is None:
                 base_path = dest
             else:
-                base_path = self.dl_path
+                base_path = os.path.join(self.dl_path, self.dl_slug)
 
             f_name = os.path.basename(name)
             path = os.path.join(base_path, f_name)
@@ -68,7 +71,7 @@ class ChecksumTask(progress.Task):
 
                 if csum != 'FAILED':
                     if self.dl_mirror is not None:
-                        links.append(util.pjoin(self.dl_mirror, os.path.basename(path)))
+                        links.append(util.pjoin(self.dl_mirror, self.dl_slug, os.path.basename(path)))
 
                     self.post((id_, csum, content, os.path.getsize(path)))
                 else:
@@ -93,8 +96,14 @@ class ChecksumTask(progress.Task):
             retries -= 1
             
             for link in all_links:
+                if self.dl_mirror is not None and link.startswith(self.dl_mirror):
+                    link_path = os.path.join(self.dl_path, link[len(self.dl_mirror):].lstrip('/'))
+                    if os.path.isfile(link_path):
+                        shutil.copyfile(link_path, path)
+                        return True
+
                 with open(path, 'wb') as stream:
-                    res = util.download(link, stream, headers={'If-Modified': tstamp})
+                    res = util.download(link, stream, headers={'If-Modified': str(tstamp)})
 
                 if res == 304 or res:
                     return res
