@@ -166,7 +166,7 @@ class WebBridge(QtCore.QObject):
     def requestModlist(self, async=False):
         if async:
             center.main_win.update_mod_list()
-            return None
+            return [None]
         else:
             return center.main_win.search_mods()
 

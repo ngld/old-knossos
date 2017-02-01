@@ -144,24 +144,34 @@ ensure_pyinstaller() {
 _cpr_add_files() {
     while read path; do
         echo "<file>$path</file>"
-    done >> "$QRC_PATH"
+    done
+}
+
+gen_qrc() {
+    echo '<!DOCTYPE RCC><RCC version="1.0">'
+    echo '<qresource>'
+
+    echo '<file alias="hlp.png">knossos/data/hlp.png</file>'
+    find ui -name '*.png' -or -name '*.jpg' -or -name '*.css' | _cpr_add_files
+    find html -type f | _cpr_add_files
+
+    echo '</qresource>'
+    echo '</RCC>'
 }
 
 compile_resources() {
     echo "Collecting resources..."
 
-    echo '<!DOCTYPE RCC><RCC version="1.0">' > "$QRC_PATH"
-    echo '<qresource>' >> "$QRC_PATH"
-
-    echo '<file alias="hlp.png">knossos/data/hlp.png</file>' >> "$QRC_PATH"
-    find ui -name '*.png' -or -name '*.jpg' -or -name '*.css' | _cpr_add_files
-    find html -type f | _cpr_add_files
-
-    echo '</qresource>' >> "$QRC_PATH"
-    echo '</RCC>' >> "$QRC_PATH"
+    gen_qrc > "$QRC_PATH"
 
     echo "Packing resources..."
-    rcc -binary "$QRC_PATH" -o "$RCC_PATH"
+    if has rcc-qt4; then
+        rcc_tool="rcc-qt4"
+    else
+        rcc_tool="rcc"
+    fi
+
+    "$rcc_tool" -binary "$QRC_PATH" -o "$RCC_PATH"
     rm "$QRC_PATH"
 }
 

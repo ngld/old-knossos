@@ -32,7 +32,7 @@ if variant != 'headless':
 
 if variant in ('PySide', 'auto'):
     try:
-        from PySide import QtCore, QtGui, QtNetwork, QtWebKit
+        from PySide import QtWebKit, QtCore, QtGui, QtNetwork
 
         # Success!
         variant = 'PySide'

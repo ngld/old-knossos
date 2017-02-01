@@ -563,7 +563,7 @@ def test_7z():
     except:
         logging.exception('Call to 7z failed!')
 
-        if SEVEN_PATH != '7za':
+        if SEVEN_PATH == '7za':
             return False
 
         try:
