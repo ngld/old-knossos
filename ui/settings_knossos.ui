@@ -73,24 +73,31 @@
      </property>
     </widget>
    </item>
-   <item row="6" column="1">
+   <item row="7" column="1">
     <widget class="QPushButton" name="debugLog">
      <property name="text">
       <string>Open Knossos' debug log</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="1">
+   <item row="6" column="1">
     <widget class="QPushButton" name="clearHashes">
      <property name="text">
       <string>Clear the checksum cache</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="0">
+   <item row="6" column="0">
     <widget class="QLabel" name="label_5">
      <property name="text">
       <string>Troubleshooting:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QCheckBox" name="reportErrors">
+     <property name="text">
+      <string>Automatically report errors</string>
      </property>
     </widget>
    </item>

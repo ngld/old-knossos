@@ -495,6 +495,12 @@ def _read_default_cmdline():
         center.settings['cmdlines']['#default'] = read_fso_cmdline()
 
 
+def enable_raven():
+    from raven import Client
+
+    center.raven = Client(center.SENTRY_DSN, release=center.VERSION)
+
+
 def init_self():
     setup_ipc()
     center.signals.fs2_path_changed.connect(_read_default_cmdline)

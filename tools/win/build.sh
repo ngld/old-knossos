@@ -85,7 +85,7 @@ if [ ! -d _w ]; then
     wine python -mpip install -U pip
 
     msg2 "Installing dependencies from PyPi..."
-    wine python -mpip install six semantic_version PySide comtypes requests
+    wine python -mpip install six semantic_version PySide comtypes requests raven
 
     msg2 "Unpacking upx..."
     mkdir tmp

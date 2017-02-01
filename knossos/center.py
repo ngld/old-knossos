@@ -24,6 +24,7 @@ VERSION = '0.1.2-dev'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
 DEBUG = os.environ.get('KN_DEBUG') == '1'
+SENTRY_DSN = 'https://77179552b41946488346a9a2d2669d74:f7b896367bd94f0ea960b8f0ee8b7a88@sentry.gruenprint.de/9'
 
 app = None
 main_win = None
@@ -34,6 +35,7 @@ mods = None
 installed = None
 fso_flags = None
 has_retail = None
+raven = None
 
 settings = {
     'fs2_bin': None,
@@ -42,13 +44,14 @@ settings = {
     'cmdlines': {},
     'hash_cache': None,
     'max_downloads': 3,
-    'repos': [('https://fsnebula.org/repo/test.json', 'Test repos')],
+    'repos': [('https://fsnebula.org/repo/master.json', 'FSNebula')],
     'nebula_link': 'https://fsnebula.org/',
     'update_channel': 'stable',
     'update_notify': True,
     'ui_mode': 'hell',
     'keyboard_layout': 'default',
-    'keyboard_setxkbmap': False
+    'keyboard_setxkbmap': False,
+    'use_raven': False
 }
 
 if '-dev' in VERSION:

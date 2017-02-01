@@ -666,9 +666,11 @@ class InstalledRepo(Repo):
             my_mod = self.query(mod)
         except ModNotFound:
             my_mod = InstalledMod.convert(mod)
+            my_pkg = my_mod.add_pkg(pkg)
             self.add_mod(my_mod)
-
-        return my_mod.add_pkg(pkg)
+            return my_pkg
+        else:
+            return my_mod.add_pkg(pkg)
 
     def del_pkg(self, pkg):
         mod = pkg.get_mod()

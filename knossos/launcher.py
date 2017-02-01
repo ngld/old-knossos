@@ -92,6 +92,8 @@ def my_excepthook(type, value, tb):
     # NOTE: We can't use logging.exception() here because it uses traceback.print_exception
     # which (for some reason) doesn't work here.
     logging.error('UNCAUGHT EXCEPTION!\n%s%s: %s', ''.join(traceback.format_tb(tb)), type.__name__, value)
+    if center.raven:
+        center.raven.captureException((type, value, tb))
 
 
 def get_cmd(args=[]):
@@ -181,6 +183,9 @@ def run_knossos():
         elif settings['fs2_bin'] is not None:
             if not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
                 settings['fs2_bin'] = None
+
+    if settings['use_raven']:
+        api.enable_raven()
 
     util.DL_POOL.set_capacity(settings['max_downloads'])
 

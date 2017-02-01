@@ -370,9 +370,15 @@ class SettingsWindow(Window):
         else:
             tab.updateNotify.setCheckState(QtCore.Qt.Unchecked)
 
+        if center.settings['use_raven']:
+            tab.reportErrors.setCheckState(QtCore.Qt.Checked)
+        else:
+            tab.reportErrors.setCheckState(QtCore.Qt.Unchecked)
+
         tab.maxDownloads.valueChanged.connect(self.update_max_downloads)
         tab.updateChannel.currentIndexChanged.connect(self.save_update_settings)
         tab.updateNotify.stateChanged.connect(self.save_update_settings)
+        tab.reportErrors.stateChanged.connect(self.save_report_settings)
 
         self._tabs['Retail install'] = tab = GogExtractWindow(False)
         tab.win.cancelButton.hide()
@@ -934,6 +940,17 @@ class SettingsWindow(Window):
         tab = self._tabs['Launcher settings']
         center.settings['update_channel'] = tab.updateChannel.currentText()
         center.settings['update_notify'] = tab.updateNotify.checkState() == QtCore.Qt.Checked
+        api.save_settings()
+
+    def save_report_settings(self, p=None):
+        tab = self._tabs['Launcher settings']
+        center.settings['use_raven'] = tab.reportErrors.checkState() == QtCore.Qt.Checked
+
+        if center.settings['use_raven']:
+            api.enable_raven()
+        else:
+            center.raven = None
+
         api.save_settings()
 
     def show_fso_log(self):
