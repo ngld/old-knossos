@@ -78,7 +78,7 @@ class WebBridge(QtCore.QObject):
     modProgress = QtCore.Signal(str, float, str)
 
     taskStarted = QtCore.Signal(float, str)
-    taskProgress = QtCore.Signal(float, float, 'QVariantList', str)
+    taskProgress = QtCore.Signal(float, float, str, str)
     taskFinished = QtCore.Signal(float)
 
     def __init__(self):
@@ -214,6 +214,7 @@ class WebBridge(QtCore.QObject):
             return mod
 
         windows.ModInfoWindow(mod)
+        return 0
 
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)
@@ -226,6 +227,7 @@ class WebBridge(QtCore.QObject):
         if pkgs is None:
             pkgs = []
         windows.ModInstallWindow(mod, pkgs)
+        return 0
 
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)
@@ -274,6 +276,7 @@ class WebBridge(QtCore.QObject):
             tasks.run_task(tasks.InstallTask(cur_pkgs, cur_pkgs[0].get_mod()))
 
         center.main_win.update_mod_buttons('progress')
+        return 0
 
     @QtCore.Slot(float)
     def abortTask(self, tid):
@@ -288,6 +291,7 @@ class WebBridge(QtCore.QObject):
             return mod
 
         api.run_mod(mod)
+        return 0
 
     @QtCore.Slot(result=int)
     @QtCore.Slot(str, result=int)

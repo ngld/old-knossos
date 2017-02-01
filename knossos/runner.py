@@ -49,7 +49,7 @@ def run_in_qt(func):
     cont = SignalContainer()
     
     def dispatcher(*args):
-        cont.signal.emit(args)
+        cont.signal.emit(list(args))
     
     def listener(params):
         func(*params)

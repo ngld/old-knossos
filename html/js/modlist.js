@@ -149,7 +149,7 @@
     function update_progress(id, percent, info, text) {
         tasks[id] = {
             progress: percent,
-            subs: info,
+            subs: JSON.parse(info),
             title: text
         };
 

@@ -19,6 +19,7 @@ import sys
 import logging
 import shlex
 import functools
+import json
 import semantic_version
 
 from . import uhf
@@ -76,7 +77,7 @@ class QMainWindow(QtGui.QMainWindow):
         return super(QMainWindow, self).changeEvent(event)
 
 
-class Window(QtCore.QObject):
+class Window(object):
     win = None
     closed = True
     _is_window = True
@@ -308,7 +309,7 @@ class HellWindow(Window):
 
     def _track_progress(self, task, pi):
         subs = [item for item in pi[1].values()]
-        self.browser_ctrl.get_bridge().taskProgress.emit(id(task), pi[0] * 100, subs, pi[2])
+        self.browser_ctrl.get_bridge().taskProgress.emit(id(task), pi[0] * 100, json.dumps(subs), pi[2])
 
         if len(self._tasks) == 1:
             integration.current.set_progress(pi[0])
@@ -343,7 +344,7 @@ class SettingsWindow(Window):
         self._create_win(Ui_Settings)
 
         self.win.treeWidget.expandAll()
-        self.win.treeWidget.clicked.connect(self.select_tab)
+        self.win.treeWidget.currentItemChanged.connect(self.select_tab)
         self.win.saveButton.clicked.connect(self.write_config)
 
         self._tabs['About Knossos'] = tab = util.init_ui(Ui_Settings_About(), QtGui.QWidget())
@@ -385,7 +386,7 @@ class SettingsWindow(Window):
         self._tabs['Mod versions'] = tab = util.init_ui(Ui_Settings_Versions(), QtGui.QWidget())
 
         self._tabs['Game settings'] = tab = util.init_ui(Ui_Settings_Fso(), QtGui.QWidget())
-        tab.browseButton.clicked.connect(api.select_fs2_path)
+        tab.browseButton.clicked.connect(self.select_fs2_path)
         tab.build.activated.connect(self.save_build)
         tab.openLog.clicked.connect(self.show_fso_log)
 
@@ -426,8 +427,8 @@ class SettingsWindow(Window):
         self.win.layout.addWidget(self.win.currentTab)
         self.win.currentTab.show()
 
-    def select_tab(self, item):
-        self.show_tab(item.data())
+    def select_tab(self, item, prev):
+        self.show_tab(item.text(0))
 
     def update_repo_list(self):
         tab = self._tabs['Mod sources']
@@ -898,6 +899,9 @@ class SettingsWindow(Window):
         config.sync()
         self._tabs['Default flags'].save()
         api.save_settings()
+
+    def select_fs2_path(self):
+        api.select_fs2_path()
 
     def save_build(self):
         fs2_bin = self._builds[self._tabs['Game settings'].build.currentIndex()][1]
@@ -1617,7 +1621,10 @@ class ModSettingsWindow(Window):
             if version is None:
                 center.installed.unpin(self._mod)
             else:
-                center.installed.pin(self._mod, semantic_version.Version(version))
+                if isinstance(version, str):
+                    version = semantic_version.Version(version)
+
+                center.installed.pin(self._mod, version)
 
             api.save_settings()
         else:
