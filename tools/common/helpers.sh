@@ -132,7 +132,7 @@ ensure_pyinstaller() {
 
     if [ ! -d ../common/pyinstaller ]; then
         msg2 "Downloading PyInstaller..."
-        git clone -b "$branch" "https://github.com/pyinstaller/pyinstaller" ../common/pyinstaller
+        git clone --depth=1 -b "$branch" "https://github.com/pyinstaller/pyinstaller" ../common/pyinstaller
     else
         pushd ../common/pyinstaller
         git checkout "$branch"

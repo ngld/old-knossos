@@ -41,39 +41,38 @@ if [ ! -d _w ]; then
     msg "Setting up toolchain..."
     msg2 "Downloading..."
 
-    # download python.msi "https://www.python.org/ftp/python/2.7.10/python-2.7.10.msi"
-    download python.msi "https://www.python.org/ftp/python/3.4.3/python-3.4.3.msi"
-    # download pywin32.exe "http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win32-py2.7.exe/download"
-    download pywin32.exe "http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win32-py3.4.exe/download"
+    download python.exe "https://www.python.org/ftp/python/3.6.0/python-3.6.0.exe"
+    download pywin32.exe "http://sourceforge.net/projects/pywin32/files/pywin32/Build%20220/pywin32-220.win32-py3.6.exe/download"
     download upx.zip "http://upx.sourceforge.net/download/upx391w.zip"
-    download 7z-inst.exe "http://7-zip.org/a/7z1505.exe"
-    download SDL2.zip "http://libsdl.org/release/SDL2-2.0.3-win32-x86.zip"
-    download openal.zip "http://kcat.strangesoft.net/openal-soft-1.16.0-bin.zip"
+    download 7z-inst.exe "http://7-zip.org/a/7z1604.exe"
+    download SDL2.zip "https://libsdl.org/release/SDL2-2.0.5-win32-x86.zip"
+    download openal.zip "http://kcat.strangesoft.net/openal-binaries/openal-soft-1.17.2-bin.zip"
     download nsis.exe "http://prdownloads.sourceforge.net/nsis/nsis-2.46-setup.exe?download"
     download nsProcess.7z "https://dev.tproxy.de/mirror/nsProcess_1_6.7z"
-    # download PyQt4.exe "http://sourceforge.net/projects/pyqt/files/PyQt4/PyQt-4.11.4/PyQt4-4.11.4-gpl-Py3.4-Qt4.8.7-x32.exe"
 
-    msg2 "Installing VC 2010 runtime..."
-    if has winetricks; then
-        winetricks -q vcrun2010
-    else
-        download_ua vcredist.exe "http://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe"
-        wine vcredist.exe /quiet
-        rm vcredist.exe
-    fi
+    winetricks win7
+
+    #msg2 "Installing VC 2010 runtime..."
+    #if has winetricks; then
+    #    winetricks -q vcrun2010
+    #else
+    #    download_ua vcredist.exe "http://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe"
+    #    wine vcredist.exe /quiet
+    #    rm vcredist.exe
+    #fi
 
     msg2 "Installing Python..."
-    wine msiexec /i python.msi /q INSTALLDIR="C:\\Python27"
+    wine python.exe /passive
 
     msg2 "Checking Python..."
     if ! wine python -c 'print("Works")'; then
-        if [ -d _w/drive_c/Python27 ]; then
+        if [ -d _w/drive_c/Python36 ]; then
             pushd _w/drive_c/windows
-            ln -s ../Python27/python.exe
+            ln -s ../Python36/python.exe
             popd
             msg2 "Fixed!"
         else
-            error "Python wasn't added to PATH and it was not installed in C:\Python27."
+            error "Python wasn't added to PATH and it was not installed in C:\Python36."
             exit 1
         fi
     fi
@@ -85,7 +84,7 @@ if [ ! -d _w ]; then
     wine python -mpip install -U pip
 
     msg2 "Installing dependencies from PyPi..."
-    wine python -mpip install six semantic_version PySide comtypes requests raven
+    wine python -mpip install six semantic_version PyQt5 comtypes requests raven
 
     msg2 "Unpacking upx..."
     mkdir tmp
@@ -120,7 +119,7 @@ if [ ! -d _w ]; then
     rm -r tmp
 
     msg2 "Cleaning up..."
-    rm python.msi pywin32.exe upx.zip 7z-inst.exe SDL2.zip openal.zip nsis.exe nsProcess.7z
+    rm python.exe pywin32.exe upx.zip 7z-inst.exe SDL2.zip openal.zip nsis.exe nsProcess.7z
 fi
 
 if [ ! -e _w/dosdevices/z: ]; then
@@ -132,7 +131,7 @@ if [ "$run_cmd" = "y" ]; then
 else
     msg "Building..."
     generate_version > version
-    ensure_pyinstaller python3
+    ensure_pyinstaller
 
     pushd ../..
     make ui resources

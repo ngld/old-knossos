@@ -68,7 +68,7 @@ if not center.DEBUG:
 if six.PY2:
     from . import py2_compat
 
-from .qt import QtCore, QtGui, read_file, variant as qt_variant
+from .qt import QtCore, QtGui, QtWidgets, read_file, variant as qt_variant
 from .ipc import IPCComm
 from . import util
 
@@ -81,7 +81,7 @@ def handle_error():
     global app, ipc
     # TODO: Try again?
 
-    QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to connect to main process!')
+    QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to connect to main process!')
     if ipc is not None:
         ipc.clean()
 
@@ -128,7 +128,7 @@ def run_knossos():
     from .windows import HellWindow
 
     if not util.test_7z():
-        QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
+        QtWidgets.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtWidgets.QMessageBox.Ok, QtWidgets.QMessageBox.Ok)
         return
 
     # Try to load our settings.
@@ -230,14 +230,14 @@ def scheme_handler(link):
 
     if not link.startswith(('fs2://', 'fso://')):
         # NOTE: fs2:// is deprecated, we don't tell anyone about it.
-        QtGui.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
         app.quit()
         return
 
     link = urlparse.unquote(link.strip()).split('/')
 
     if len(link) < 3:
-        QtGui.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')
         app.quit()
         return
 
@@ -250,7 +250,7 @@ def scheme_handler(link):
         while not ipc.server_exists():
             if time.time() - start > 20:
                 # That's too long!
-                QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to start server!')
+                QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to start server!')
                 app.quit()
                 return
 
@@ -326,7 +326,7 @@ def init():
                     logging.error('Found invalid version file! The file contains %s but I\'m %s.', version, center.VERSION)
 
     logging.info('Running Knossos %s on %s.', center.VERSION, qt_variant)
-    app = QtGui.QApplication([])
+    app = QtWidgets.QApplication([])
 
     logging.debug('Loading resources from %s.', get_file_path('resources.rcc'))
     QtCore.QResource.registerResource(get_file_path('resources.rcc'))
@@ -400,4 +400,4 @@ def main():
         logging.exception('Uncaught exeception! Quitting...')
 
         # Try to tell the user
-        QtGui.QMessageBox.critical(None, 'Knossos', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')

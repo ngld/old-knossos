@@ -19,12 +19,6 @@ onefile = False
 him = []
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 
-# Make sure all paths that end up in the compiled executable are relative.
-pd = config['PYZ_dependencies']
-for i, item in enumerate(pd):
-    if 'Z:' in item[1]:
-        pd[i] = (item[0], os.path.relpath(item[1]), item[2])
-
 # Build the TaskbarLib module.
 try:
     import comtypes.client as cc

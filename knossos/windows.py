@@ -26,7 +26,7 @@ from . import uhf
 uhf(__name__)
 
 from . import center, util, clibs, integration, api, web, repo, launcher, runner
-from .qt import QtCore, QtGui, load_styles
+from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.gogextract import Ui_Dialog as Ui_Gogextract
 from .ui.add_repo import Ui_Dialog as Ui_AddRepo
@@ -52,14 +52,14 @@ from .tasks import run_task, GOGExtractTask, InstallTask, UninstallTask, Windows
 _open_wins = []
 
 
-class QDialog(QtGui.QDialog):
+class QDialog(QtWidgets.QDialog):
 
     def __init__(self, *args):
         super(QDialog, self).__init__(*args)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
 
-class QMainWindow(QtGui.QMainWindow):
+class QMainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, *args):
         super(QMainWindow, self).__init__(*args)
@@ -94,7 +94,7 @@ class Window(object):
 
     def _create_win(self, ui_class, qt_widget=QDialog):
         if not self._is_window:
-            qt_widget = QtGui.QWidget
+            qt_widget = QtWidgets.QWidget
 
         self.win = util.init_ui(ui_class(), qt_widget())
 
@@ -218,13 +218,13 @@ class HellWindow(Window):
         # We only have an updater for windows.
         if sys.platform.startswith('win'):
             msg = 'There\'s an update available!\nDo you want to install Knossos %s now?' % str(version)
-            buttons = QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
-            result = QtGui.QMessageBox.question(center.app.activeWindow(), 'Knossos', msg, buttons)
-            if result == QtGui.QMessageBox.Yes:
+            buttons = QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+            result = QtWidgets.QMessageBox.question(center.app.activeWindow(), 'Knossos', msg, buttons)
+            if result == QtWidgets.QMessageBox.Yes:
                 run_task(WindowsUpdateTask())
         else:
             msg = 'There\'s an update available!\nYou should update to Knossos %s.' % str(version)
-            QtGui.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
+            QtWidgets.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
 
     def update_repo_list(self):
         api.fetch_list()
@@ -347,9 +347,9 @@ class SettingsWindow(Window):
         self.win.treeWidget.currentItemChanged.connect(self.select_tab)
         self.win.saveButton.clicked.connect(self.write_config)
 
-        self._tabs['About Knossos'] = tab = util.init_ui(Ui_Settings_About(), QtGui.QWidget())
+        self._tabs['About Knossos'] = tab = util.init_ui(Ui_Settings_About(), QtWidgets.QWidget())
 
-        self._tabs['Launcher settings'] = tab = util.init_ui(Ui_Settings_Knossos(), QtGui.QWidget())
+        self._tabs['Launcher settings'] = tab = util.init_ui(Ui_Settings_Knossos(), QtWidgets.QWidget())
         tab.versionLabel.setText(center.VERSION)
         tab.maxDownloads.setValue(center.settings['max_downloads'])
 
@@ -383,29 +383,29 @@ class SettingsWindow(Window):
         self._tabs['Retail install'] = tab = GogExtractWindow(False)
         tab.win.cancelButton.hide()
 
-        self._tabs['Mod sources'] = tab = util.init_ui(Ui_Settings_Sources(), QtGui.QWidget())
+        self._tabs['Mod sources'] = tab = util.init_ui(Ui_Settings_Sources(), QtWidgets.QWidget())
         tab.addSource.clicked.connect(self.add_repo)
         tab.editSource.clicked.connect(self.edit_repo)
         tab.removeSource.clicked.connect(self.remove_repo)
         tab.sourceList.itemDoubleClicked.connect(self.edit_repo)
 
-        self._tabs['Mod versions'] = tab = util.init_ui(Ui_Settings_Versions(), QtGui.QWidget())
+        self._tabs['Mod versions'] = tab = util.init_ui(Ui_Settings_Versions(), QtWidgets.QWidget())
 
-        self._tabs['Game settings'] = tab = util.init_ui(Ui_Settings_Fso(), QtGui.QWidget())
+        self._tabs['Game settings'] = tab = util.init_ui(Ui_Settings_Fso(), QtWidgets.QWidget())
         tab.browseButton.clicked.connect(self.select_fs2_path)
         tab.build.activated.connect(self.save_build)
         tab.openLog.clicked.connect(self.show_fso_log)
 
-        self._tabs['Video'] = tab = util.init_ui(Ui_Settings_Video(), QtGui.QWidget())
-        self._tabs['Audio'] = tab = util.init_ui(Ui_Settings_Audio(), QtGui.QWidget())
-        self._tabs['Input'] = tab = util.init_ui(Ui_Settings_Input(), QtGui.QWidget())
-        self._tabs['Network'] = tab = util.init_ui(Ui_Settings_Network(), QtGui.QWidget())
+        self._tabs['Video'] = tab = util.init_ui(Ui_Settings_Video(), QtWidgets.QWidget())
+        self._tabs['Audio'] = tab = util.init_ui(Ui_Settings_Audio(), QtWidgets.QWidget())
+        self._tabs['Input'] = tab = util.init_ui(Ui_Settings_Input(), QtWidgets.QWidget())
+        self._tabs['Network'] = tab = util.init_ui(Ui_Settings_Network(), QtWidgets.QWidget())
 
         self._tabs['Default flags'] = tab = FlagsWindow(window=False)
         if center.settings['fs2_path'] is None:
             tab.win.setEnabled(False)
 
-        self._tabs['Help'] = util.init_ui(Ui_Settings_Help(), QtGui.QWidget())
+        self._tabs['Help'] = util.init_ui(Ui_Settings_Help(), QtWidgets.QWidget())
 
         center.signals.fs2_path_changed.connect(self.read_config)
         center.signals.fs2_bin_changed.connect(tab.read_flags)
@@ -441,7 +441,7 @@ class SettingsWindow(Window):
         tab.sourceList.clear()
 
         for i, r in enumerate(center.settings['repos']):
-            item = QtGui.QListWidgetItem(r[1], tab.sourceList)
+            item = QtWidgets.QListWidgetItem(r[1], tab.sourceList)
             item.setData(QtCore.Qt.UserRole, i)
 
     def _edit_repo(self, repo_=None, idx=None):
@@ -455,7 +455,7 @@ class SettingsWindow(Window):
             win.source.setText(repo_[0])
             win.title.setText(repo_[1])
 
-        if win.exec_() == QtGui.QMessageBox.Accepted:
+        if win.exec_() == QtWidgets.QMessageBox.Accepted:
             source = win.source.text()
             title = win.title.text()
 
@@ -465,7 +465,7 @@ class SettingsWindow(Window):
                 for r_source, r_title in center.settings['repos']:
                     if r_source == source:
                         found = True
-                        QtGui.QMessageBox.critical(self.win, 'Error', 'This source is already in the list! (As "%s")' % (r_title))
+                        QtWidgets.QMessageBox.critical(self.win, 'Error', 'This source is already in the list! (As "%s")' % (r_title))
                         break
 
                 if not found:
@@ -493,10 +493,10 @@ class SettingsWindow(Window):
         item = tab.sourceList.currentItem()
         if item is not None:
             idx = item.data(QtCore.Qt.UserRole)
-            answer = QtGui.QMessageBox.question(self.win, 'Are you sure?', 'Do you really want to remove "%s"?' % (item.text()),
-                                                QtGui.QMessageBox.Yes | QtGui.QMessageBox.No, QtGui.QMessageBox.No)
+            answer = QtWidgets.QMessageBox.question(self.win, 'Are you sure?', 'Do you really want to remove "%s"?' % (item.text()),
+                                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
 
-            if answer == QtGui.QMessageBox.Yes:
+            if answer == QtWidgets.QMessageBox.Yes:
                 del center.settings['repos'][idx]
 
                 api.save_settings()
@@ -930,7 +930,7 @@ class SettingsWindow(Window):
                 msg = 'The FSO binary quit with code %d!' % rc
 
             center.settings['fs2_bin'] = old_bin
-            QtGui.QMessageBox.critical(None, 'Knossos', msg)
+            QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
             self.read_config()
         else:
             api.save_settings()
@@ -957,7 +957,7 @@ class SettingsWindow(Window):
         logpath = os.path.join(api.get_fso_profile_path(), 'data/fs2_open.log')
 
         if not os.path.isfile(logpath):
-            QtGui.QMessageBox.warning(None, 'Knossos', 'Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?')
+            QtWidgets.QMessageBox.warning(None, 'Knossos', 'Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?')
         else:
             LogViewer(logpath)
 
@@ -967,7 +967,7 @@ class SettingsWindow(Window):
     def clear_hash_cache(self):
         util.HASH_CACHE = dict()
         run_task(CheckTask())
-        QtGui.QMessageBox.information(None, 'Knossos', 'Done!')
+        QtWidgets.QMessageBox.information(None, 'Knossos', 'Done!')
 
 
 class GogExtractWindow(Window):
@@ -990,24 +990,24 @@ class GogExtractWindow(Window):
             self.open()
 
     def select_installer(self):
-        path = QtGui.QFileDialog.getOpenFileName(self.win, 'Please select the setup_freespace2_*.exe file.',
+        path = QtWidgets.QFileDialog.getOpenFileName(self.win, 'Please select the setup_freespace2_*.exe file.',
                                                  os.path.expanduser('~/Downloads'), 'Executable (*.exe)')
         if isinstance(path, tuple):
             path = path[0]
 
         if path is not None and path != '':
             if not os.path.isfile(path):
-                QtGui.QMessageBox.critical(self.win, 'Not a file', 'Please select a proper file!')
+                QtWidgets.QMessageBox.critical(self.win, 'Not a file', 'Please select a proper file!')
                 return
 
             self.win.gogPath.setText(os.path.abspath(path))
 
     def select_dest(self):
-        path = QtGui.QFileDialog.getExistingDirectory(self.win, 'Please select the destination directory.', os.path.expanduser('~/Documents'))
+        path = QtWidgets.QFileDialog.getExistingDirectory(self.win, 'Please select the destination directory.', os.path.expanduser('~/Documents'))
 
         if path is not None and path != '':
             if not os.path.isdir(path):
-                QtGui.QMessageBox.critical(self.win, 'Not a directory', 'Please select a proper directory!')
+                QtWidgets.QMessageBox.critical(self.win, 'Not a directory', 'Please select a proper directory!')
                 return
 
             self.win.destPath.setText(os.path.abspath(path))
@@ -1132,7 +1132,7 @@ class FlagsWindow(Window):
             if label == '':
                 label = flag['name']
 
-            item = QtGui.QListWidgetItem(label)
+            item = QtWidgets.QListWidgetItem(label)
             item.setData(QtCore.Qt.UserRole, flag['name'])
             if flag['name'] in self._selected:
                 item.setCheckState(QtCore.Qt.Checked)
@@ -1270,7 +1270,7 @@ class ModInstallWindow(Window):
         except repo.ModNotFound as exc:
             logging.exception('Well, I won\'t be installing that...')
             msg = 'I\'m sorry but you won\'t be able to install "%s" because "%s" is missing!' % (self._mod.title, exc.mid)
-            QtGui.QMessageBox.critical(None, 'Knossos', msg)
+            QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
 
             self.close()
             return
@@ -1287,7 +1287,7 @@ class ModInstallWindow(Window):
 
         mods = [self._mod] + list(mods)
         for mod in mods:
-            item = QtGui.QTreeWidgetItem(self.win.treeWidget, [mod.title, ''])
+            item = QtWidgets.QTreeWidgetItem(self.win.treeWidget, [mod.title, ''])
             item.setExpanded(True)
             item.setData(0, QtCore.Qt.UserRole, mod)
             c = 0
@@ -1302,7 +1302,7 @@ class ModInstallWindow(Window):
                 else:
                     fsize = '?'
 
-                sub = QtGui.QTreeWidgetItem(item, [pkg.name, fsize])
+                sub = QtWidgets.QTreeWidgetItem(item, [pkg.name, fsize])
                 is_installed = center.installed.is_installed(pkg)
 
                 if is_installed:
@@ -1330,7 +1330,7 @@ class ModInstallWindow(Window):
             else:
                 item.setCheckState(0, QtCore.Qt.Unchecked)
 
-        self.win.treeWidget.header().resizeSections(QtGui.QHeaderView.ResizeToContents)
+        self.win.treeWidget.header().resizeSections(QtWidgets.QHeaderView.ResizeToContents)
 
     def update_selection(self, item, col):
         obj = item.data(0, QtCore.Qt.UserRole)
@@ -1395,10 +1395,10 @@ class ModSettingsWindow(Window):
         self.load_styles(':/ui/themes/default/mod_settings.css')
 
         self.win.modTitle.setText(self._mod.title)
-        self.win.modLogo.setPixmap(QtGui.QPixmap(mod.logo_path))
+        self.win.modLogo.setPixmap(QtWidgets.QPixmap(mod.logo_path))
         self.win.modDesc.setPlainText(mod.description)
 
-        lay = QtGui.QVBoxLayout(self.win.flagsTab)
+        lay = QtWidgets.QVBoxLayout(self.win.flagsTab)
         self._flags = FlagsWindow(mod, False)
         lay.addWidget(self._flags.win)
 
@@ -1414,7 +1414,7 @@ class ModSettingsWindow(Window):
                 rmod = mod
 
             for pkg in rmod.packages:
-                p_check = QtGui.QCheckBox(pkg.name)
+                p_check = QtWidgets.QCheckBox(pkg.name)
                 installed = center.installed.is_installed(pkg)
 
                 if pkg.status == 'required' or installed:
@@ -1516,9 +1516,9 @@ class ModSettingsWindow(Window):
                 install = center.mods.process_pkg_selection(install)
             except repo.ModNotFound as exc:
                 if center.mods.has(self._mod):
-                    QtGui.QMessageBox.critical(None, 'Knossos', "I'm sorry but I can't install the selected packages because some the dependency \"%s\" is missing!" % exc.mid)
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', "I'm sorry but I can't install the selected packages because some the dependency \"%s\" is missing!" % exc.mid)
                 else:
-                    QtGui.QMessageBox.critical(None, 'Knossos', "I'm sorry but I can't install new packages for this mod since it's not available anymore!")
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', "I'm sorry but I can't install new packages for this mod since it's not available anymore!")
 
                 install = []
 
@@ -1556,14 +1556,14 @@ class ModSettingsWindow(Window):
         if len(install) > 0:
             msg += "I'm going to install " + util.human_list([p.name for p in install if not center.installed.is_installed(p)]) + ".\n"
 
-        box = QtGui.QMessageBox()
-        box.setIcon(QtGui.QMessageBox.Question)
+        box = QtWidgets.QMessageBox()
+        box.setIcon(QtWidgets.QMessageBox.Question)
         box.setText(msg)
         box.setInformativeText('Continue?')
-        box.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-        box.setDefaultButton(QtGui.QMessageBox.Yes)
+        box.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        box.setDefaultButton(QtWidgets.QMessageBox.Yes)
 
-        if box.exec_() == QtGui.QMessageBox.Yes:
+        if box.exec_() == QtWidgets.QMessageBox.Yes:
             run_task(UninstallTask(remove))
             run_task(InstallTask(install))
 
@@ -1573,7 +1573,7 @@ class ModSettingsWindow(Window):
             for dep in self._mod.resolve_deps():
                 mods.add(dep.get_mod())
         except repo.ModNotFound as exc:
-            QtGui.QMessageBox.critical(None, 'Knossos', 'This mod is missing the dependency "%s"!' % exc.mid)
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'This mod is missing the dependency "%s"!' % exc.mid)
             return
 
         mods.add(self._mod)
@@ -1590,16 +1590,16 @@ class ModSettingsWindow(Window):
 
                 item = layout.takeAt(0)
         else:
-            layout = QtGui.QGridLayout()
+            layout = QtWidgets.QGridLayout()
             self.win.versionsTab.setLayout(layout)
 
         mods = sorted(mods, key=lambda m: m.title)
         for i, mod in enumerate(mods):
             versions = list(center.installed.query_all(mod.mid))
-            label = QtGui.QLabel(mod.title + ': ')
+            label = QtWidgets.QLabel(mod.title + ': ')
             label.setWordWrap(True)
 
-            sel = QtGui.QComboBox()
+            sel = QtWidgets.QComboBox()
             sel.addItem('Latest (%s)' % versions[0].version, None)
 
             pin = center.installed.get_pin(mod)
@@ -1609,7 +1609,7 @@ class ModSettingsWindow(Window):
                 if pin == mv.version:
                     sel.setCurrentIndex(n + 1)
 
-            editBut = QtGui.QPushButton('Edit')
+            editBut = QtWidgets.QPushButton('Edit')
 
             layout.addWidget(label, i, 0)
             layout.addWidget(sel, i, 1)
@@ -1629,7 +1629,7 @@ class ModSettingsWindow(Window):
                 sel.setEnabled(False)
                 editBut.setEnabled(False)
 
-        layout.addItem(QtGui.QSpacerItem(0, 0, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
+        layout.addItem(QtWidgets.QSpacerItem(0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
 
     def update_versions(self, sel, mod, idx):
         version = sel.itemData(idx)
@@ -1715,13 +1715,13 @@ class ModSettingsWindow(Window):
                     os.unlink(item)
 
         self.win.unsetCursor()
-        QtGui.QMessageBox.information(None, 'Knossos', 'Done!')
+        QtWidgets.QMessageBox.information(None, 'Knossos', 'Done!')
 
     def repair_files(self):
         try:
             run_task(InstallTask(self._mod.packages))
         except repo.ModNotFound as exc:
-            QtGui.QMessageBox.critical(None, 'Knossos', "I can't repair this mod: %s" % str(exc))
+            QtWidgets.QMessageBox.critical(None, 'Knossos', "I can't repair this mod: %s" % str(exc))
 
 
 class ModVersionsWindow(Window):
@@ -1759,7 +1759,7 @@ class ModVersionsWindow(Window):
             if m.version in local_versions:
                 label += ' (l)'
 
-            item = QtGui.QListWidgetItem(label, self.win.versionList)
+            item = QtWidgets.QListWidgetItem(label, self.win.versionList)
             item.setData(QtCore.Qt.UserRole + 1, m)
 
             if m.version in local_versions:
@@ -1813,7 +1813,7 @@ class ModInfoWindow(Window):
         self._create_win(Ui_Mod_Settings, QDialog)
 
         self.win.modTitle.setText(mod.title)
-        self.win.modLogo.setPixmap(QtGui.QPixmap(mod.logo))
+        self.win.modLogo.setPixmap(QtWidgets.QPixmap(mod.logo))
         self.win.modDesc.setPlainText(mod.description)
 
         self.win.flagsTab.deleteLater()
@@ -1834,7 +1834,7 @@ class LogViewer(Window):
         self.win.pathLabel.setText(path)
 
         if not os.path.isfile(path):
-            QtGui.QMessageBox.critical(None, 'Knossos', 'Log file %s can\'t be shown because it\'s missing!' % path)
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Log file %s can\'t be shown because it\'s missing!' % path)
             return
 
         with open(path, 'r') as stream:
