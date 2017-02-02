@@ -223,6 +223,7 @@ class WebBridge(QtCore.QObject):
     def install(self, mid, spec=None, pkgs=None):
         mod = self._get_mod(mid, spec, center.mods)
         if mod in (-1, -2):
+            logging.debug('fs2mod.install(%s, %s) = %d', mid, spec, mod)
             return mod
 
         if pkgs is None:
@@ -236,7 +237,7 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return mod
 
-        if pkgs is None:
+        if len(pkgs) == 0:
             plist = mod.packages
         else:
             plist = []

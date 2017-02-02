@@ -499,6 +499,10 @@ def enable_raven():
     from raven import Client
     from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
     from raven.handlers.logging import SentryHandler
+    from raven.conf import defaults
+
+    if hasattr(sys, 'frozen'):
+        defaults.CA_BUNDLE = os.path.join(sys._MEIPASS, 'requests', 'cacert.pem')
 
     center.raven = Client(
         center.SENTRY_DSN,
@@ -509,7 +513,7 @@ def enable_raven():
     center.raven.tags_context({
         'os': sys.platform
     })
-    center.raven_handler = SentryHandler(center.raven, level=logging.WARN)
+    center.raven_handler = SentryHandler(center.raven, level=logging.ERROR)
     logging.getLogger().addHandler(center.raven_handler)
 
 

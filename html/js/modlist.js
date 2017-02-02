@@ -18,7 +18,7 @@ function render_row(mvs, type) {
         row.find('.install-btn').click(function (e) {
             e.preventDefault();
 
-            fs2mod.install(mod.id, mod.version);
+            fs2mod.install(mod.id, mod.version, []);
         });
 
         row.find('.info-btn').click(function (e) {
@@ -42,7 +42,7 @@ function render_row(mvs, type) {
         row.find('.del-btn').click(function (e) {
             e.preventDefault();
 
-            fs2mod.uninstall(mod.id, mod.version);
+            fs2mod.uninstall(mod.id, mod.version, []);
         });
     } else if(type == 'updates') {
         row.html($('#tpl-update-mod').html());
