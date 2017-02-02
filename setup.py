@@ -62,14 +62,12 @@ setup(
 
     keywords='fso freespace',
     packages=['knossos', 'knossos.ui', 'knossos.third_party'],
-    install_requires=['six', 'requests', 'semantic_version'],
+    install_requires=['six', 'requests', 'semantic_version', 'raven', 'PyQt5'],
 
     # List additional groups of dependencies here (e.g. development dependencies).
     # You can install these using the following syntax, for example:
     # $ pip install -e .[dev,test]
     extras_require={
-        'pyside': ['PySide'],
-        'pyqt4': ['PyQt4']
     },
 
     package_data={
