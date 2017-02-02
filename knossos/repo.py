@@ -405,6 +405,7 @@ class Mod(object):
             'folder': self.folder,
             'cmdline': self.cmdline,
             'logo': self.logo,
+            'logo_path': self.logo,
             'description': self.description,
             'notes': self.notes,
             'submods': self.submods,
@@ -791,6 +792,7 @@ class InstalledMod(Mod):
             'version': str(self.version),
             'description': self.description,
             'logo': self.logo,
+            'logo_path': self.logo_path,
             'cmdline': self.cmdline,
             'packages': [pkg.get() for pkg in self.packages]
         }
@@ -893,6 +895,8 @@ class IniMod(InstalledMod):
             self.title = folder + ' (ini)'
 
         self.mid = '##INI_COMPAT#' + folder
+        if self.logo:
+            self.logo_path = os.path.join(path, self.logo)
 
         pkg = InstalledPackage({
             'name': 'Content',

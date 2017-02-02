@@ -26,7 +26,7 @@ from . import uhf
 uhf(__name__)
 
 from . import center, util, clibs, integration, api, web, repo, launcher, runner
-from .qt import QtCore, QtWidgets, load_styles
+from .qt import QtCore, QtGui, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.gogextract import Ui_Dialog as Ui_Gogextract
 from .ui.add_repo import Ui_Dialog as Ui_AddRepo
@@ -154,7 +154,7 @@ class HellWindow(Window):
         self._tasks = {}
 
         self._create_win(Ui_Hell, QMainWindow)
-        self.browser_ctrl = web.BrowserCtrl(self.win.webView)
+        self.browser_ctrl = web.WebBridge(self.win.webView)
 
         self.win.backButton.clicked.connect(self.win.webView.back)
         self.win.searchEdit.textEdited.connect(self.search_mods)
@@ -257,7 +257,7 @@ class HellWindow(Window):
 
     def update_mod_list(self):
         result, filter_ = self.search_mods()
-        self.browser_ctrl.get_bridge().updateModlist.emit(result, filter_)
+        self.browser_ctrl.updateModlist.emit(result, filter_)
 
     def show_settings(self):
         SettingsWindow()
@@ -291,7 +291,7 @@ class HellWindow(Window):
 
     def watch_task(self, task):
         self._tasks[id(task)] = task
-        self.browser_ctrl.get_bridge().taskStarted.emit(id(task), task.title)
+        self.browser_ctrl.taskStarted.emit(id(task), task.title)
 
         task.done.connect(functools.partial(self._forget_task, task))
         task.progress.connect(functools.partial(self._track_progress, task))
@@ -309,7 +309,7 @@ class HellWindow(Window):
 
     def _track_progress(self, task, pi):
         subs = [item for item in pi[1].values()]
-        self.browser_ctrl.get_bridge().taskProgress.emit(id(task), pi[0] * 100, json.dumps(subs), pi[2])
+        self.browser_ctrl.taskProgress.emit(id(task), pi[0] * 100, json.dumps(subs), pi[2])
 
         if len(self._tasks) == 1:
             integration.current.set_progress(pi[0])
@@ -317,7 +317,7 @@ class HellWindow(Window):
 
     def _forget_task(self, task):
         logging.debug('Task "%s" (%d) finished.', task.title, id(task))
-        self.browser_ctrl.get_bridge().taskFinished.emit(id(task))
+        self.browser_ctrl.taskFinished.emit(id(task))
         del self._tasks[id(task)]
 
         if len(self._tasks) == 1:
@@ -1395,7 +1395,7 @@ class ModSettingsWindow(Window):
         self.load_styles(':/ui/themes/default/mod_settings.css')
 
         self.win.modTitle.setText(self._mod.title)
-        self.win.modLogo.setPixmap(QtWidgets.QPixmap(mod.logo_path))
+        self.win.modLogo.setPixmap(QtGui.QPixmap(mod.logo_path))
         self.win.modDesc.setPlainText(mod.description)
 
         lay = QtWidgets.QVBoxLayout(self.win.flagsTab)
@@ -1813,7 +1813,7 @@ class ModInfoWindow(Window):
         self._create_win(Ui_Mod_Settings, QDialog)
 
         self.win.modTitle.setText(mod.title)
-        self.win.modLogo.setPixmap(QtWidgets.QPixmap(mod.logo))
+        self.win.modLogo.setPixmap(QtGui.QPixmap(mod.logo))
         self.win.modDesc.setPlainText(mod.description)
 
         self.win.flagsTab.deleteLater()

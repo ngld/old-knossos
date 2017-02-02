@@ -1,91 +1,26 @@
-function list_mods(mods) {
-    if(!fs2mod.isFs2PathSet()) return;
-    $('#install-note').hide();
+new QWebChannel(qt.webChannelTransport, function (channel) {
+    window.fs2mod = channel.objects.fs2mod;
 
-    var mod_list = $('#mod-list').empty();
-    var update_link = $('<a href="#">Update mod list</a>');
-    var table = $('<table class="table">');
-    
-    $.each(mods, function (key, mod) {
-        mod = mod[0];
+    fs2mod.isFs2PathSet(function (res) {
+        if(!res) {
+            $('#install-note').removeClass('hide');
 
-        var row = $('<tr>');
+            $('#sel-fso').click(function (e) {
+                e.preventDefault();
+                fs2mod.selectFs2path();
+            });
+            $('#gog-install').click(function (e) {
+                e.preventDefault();
+                fs2mod.runGogInstaller();
+            });
 
-        var logo = $('<td>').appendTo(row);
-        var title = $('<td>').appendTo(row);
-
-        if(mod.logo) {
-            logo.append($('<img class="mod-logo">').attr('src', 'fsrs:///logo/' + mod.id + '/' + mod.version));
-            logo.append('&nbsp;');
+            $('#tc-install').click(function (e) {
+                e.preventDefault();
+                // Um... this is mean.
+                fs2mod.selectFs2path();
+            });
+        } else {    
+            location.href = 'modlist.html';
         }
-        title.append($('<span>').text(mod.title + ' (' + mod.version + ')'));
-
-        var actions = $('<div class="mod-actions">');
-        actions.append($('<a href="#">Launch</a>').click(function (e) {
-            e.preventDefault();
-            fs2mod.runMod(mod.id, '==' + mod.version);
-        }));
-        actions.append(' | ').append($('<a href="#">Settings</a>').click(function (e) {
-            e.preventDefault();
-            fs2mod.showSettings(mod.id);
-        }));
-
-        // if(updates[mod.id] && updates[mod.id][mod.version]) {
-        //     title.append('<br><strong>Update available! ' + updates[mod.id][mod.version] + ' has been released.</strong>');
-        //     actions.append(' | ').append($('<a href="#">Update</a>').click(function (e) {
-        //         e.preventDefault();
-        //         var my_pkgs = [];
-        //         $.each(mod.packages, function (i, pkg) {
-        //             my_pkgs.push(pkg.name);
-        //         });
-
-        //         fs2mod.install(mod.id, null, my_pkgs);
-        //     }));
-        // }
-
-        title.append(actions)
-        table.append(row);
     });
-
-    if(table.find('tr').length > 0) {
-        mod_list.html(update_link).append('<br><br>').append(table);
-    } else {
-        mod_list.html(update_link).append('<br><hr>No mods found!');
-    }
-
-    update_link.click(function (e) {
-        e.preventDefault();
-
-        fs2mod.fetchModlist();
-    });
-}
-
-$(function () {
-    //fs2mod.repoUpdated.connect(list_mods);
-
-    if(!fs2mod.isFs2PathSet()) {
-        $('#install-note').removeClass('hide');
-
-        $('#sel-fso').click(function (e) {
-            e.preventDefault();
-            fs2mod.selectFs2path();
-        });
-        $('#gog-install').click(function (e) {
-            e.preventDefault();
-            fs2mod.runGogInstaller();
-        });
-
-        $('#tc-install').click(function (e) {
-            e.preventDefault();
-            // Um... this is mean.
-            fs2mod.selectFs2path();
-        })
-    } else {    
-        //list_mods();
-        location.href = 'modlist.html';
-        
-        // fs2mod.updateModlist.connect(function (mods, type) {
-        //     list_mods(mods);
-        // });
-    }
 });

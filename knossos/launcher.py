@@ -92,8 +92,6 @@ def my_excepthook(type, value, tb):
     # NOTE: We can't use logging.exception() here because it uses traceback.print_exception
     # which (for some reason) doesn't work here.
     logging.error('UNCAUGHT EXCEPTION!\n%s%s: %s', ''.join(traceback.format_tb(tb)), type.__name__, value)
-    if center.raven:
-        center.raven.captureException((type, value, tb))
 
 
 def get_cmd(args=[]):

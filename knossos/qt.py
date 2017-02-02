@@ -30,31 +30,9 @@ if variant != 'headless':
     # Make sure we initialize Xlib before we load Qt.
     from . import clibs
 
-if False and variant in ('PySide', 'auto'):
-    try:
-        from PySide import QtWebKit, QtCore, QtGui, QtNetwork
-
-        # Success!
-        variant = 'PySide'
-    except ImportError:
-        logging.exception('I was unable to load Qt! Tried PySide.')
-
-        # If variant is 'auto', we fallback to PyQt4.
-        if variant != 'auto':
-            sys.exit(1)
-
 if variant in ('PyQt5', 'auto'):
     try:
-        #import sip
-        #api2_classes = [
-        #    'QData', 'QDateTime', 'QString', 'QTextStream',
-        #    'QTime', 'QUrl', 'QVariant',
-        #]
-
-        #for cl in api2_classes:
-        #    sip.setapi(cl, 2)
-
-        from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork, QtWebKit, QtWebKitWidgets
+        from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork, QtWebChannel, QtWebEngineWidgets
 
         QtCore.Signal = QtCore.pyqtSignal
         QtCore.Slot = QtCore.pyqtSlot
@@ -196,11 +174,13 @@ if variant == 'headless':
         QByteArray = None
 
     class QtGui(object):
-        QApplication = _App
         QDialog = _QObject
 
-    QtNetwork = None
-    QtWebKit = None
+    class QtWidgets(object):
+        QApplication = _App
+
+    QtWebChannel = None
+    QtWebEngineWidgets = None
 
 
 def read_file(path):
@@ -225,4 +205,5 @@ def load_styles(*names):
 
     return data
 
-__all__ = ['QtCore', 'QtGui', 'QtNetwork', 'QtWebKit', 'variant', 'read_file', 'load_styles']
+
+__all__ = ['QtCore', 'QtGui', 'QtWidgets', 'QtWebChannel', 'QtWebEngineWidgets', 'variant', 'read_file', 'load_styles']
