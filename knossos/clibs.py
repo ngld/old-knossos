@@ -80,7 +80,11 @@ def double_zero_string(val):
     
     return data
 
-libc = load_lib('c')
+
+if sys.platform == 'win32':
+    libc = ctypes.cdll.msvcrt
+else:
+    libc = load_lib('c')
 
 if sys.platform.startswith('linux'):
     # Make sure Xlib is thread-safe *before* we load Qt or SDL.

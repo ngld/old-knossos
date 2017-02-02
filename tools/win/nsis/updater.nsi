@@ -54,7 +54,9 @@ Section
     Delete "$INSTDIR\hlp.png"
     Delete "$INSTDIR\SDL.dll"
     Delete "$INSTDIR\version"
-    
+    Delete "$INSTDIR\*.dll"
+    Delete "$INSTDIR\*.pyd"
+
     SetOverwrite on
     File /r dist\Knossos\*
 

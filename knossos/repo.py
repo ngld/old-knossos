@@ -19,8 +19,8 @@ import os
 import logging
 import json
 import re
-import tempfile
 import shutil
+import hashlib
 import semantic_version
 import six
 from . import center, util
@@ -139,6 +139,10 @@ class Repo(object):
     def add_mod(self, mod):
         mid = mod.mid
 
+        if len(mod.packages) == 0:
+            logging.warning('Mod %s is empty, ignoring it!', mod)
+            return
+
         if mid in self.mods:
             inserted = False
 
@@ -148,7 +152,7 @@ class Repo(object):
                         mod_base = 'None'
                     else:
                         mod_base = mod._repo.base
-                    
+
                     logging.info('Mod "%s" (%s) from "%s" overwrites an existing mod version!', mid, mod.version, mod_base)
 
                     self.mods[mid][i] = mod
@@ -177,7 +181,7 @@ class Repo(object):
             mod = mod.mid
 
         if not isinstance(mod, str) or not isinstance(version, semantic_version.Version):
-            raise ValueError
+            raise ValueError('%s is not a string or %s is not a valid version!' % (mod, version))
 
         self.pins[mod] = version
 
@@ -187,7 +191,8 @@ class Repo(object):
         elif isinstance(mod, Mod):
             mod = mod.mid
 
-        del self.pins[mod]
+        if mod in self.pins:
+            del self.pins[mod]
 
     def get_pin(self, mod):
         if isinstance(mod, Package):
@@ -330,6 +335,7 @@ class Mod(object):
     _repo = None
     mid = ''
     title = ''
+    mtype = 'mod'
     version = None
     folder = None
     cmdline = ''
@@ -341,7 +347,7 @@ class Mod(object):
     actions = None
     packages = None
 
-    __fields__ = ('mid', 'title', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
+    __fields__ = ('mid', 'title', 'type', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
 
     def __init__(self, values=None, repo=None):
         self.actions = []
@@ -359,6 +365,7 @@ class Mod(object):
     def set(self, values):
         self.mid = values['id']
         self.title = values['title']
+        self.mtype = values.get('type', 'mod')  # Backwards compatibility
         self.version = semantic_version.Version(values['version'], partial=True)
         self.folder = values.get('folder', self.mid).strip('/')  # make sure we have a relative path
         self.cmdline = values.get('cmdline', '')
@@ -369,12 +376,13 @@ class Mod(object):
         self.actions = values.get('actions', [])
 
         self.packages = []
-        for pkg in values.get('packages', []):
-            pkg = Package(pkg, self)
-            if pkg.check_env():
-                self.packages.append(pkg)
+        if self.mtype != 'mod' or center.has_retail:
+            for pkg in values.get('packages', []):
+                pkg = Package(pkg, self)
+                if pkg.check_env():
+                    self.packages.append(pkg)
 
-        if self._repo is not None and self._repo.base is not None:
+        if self._repo is not None and self._repo.base is not None and self.logo is not None:
             if '://' in self._repo.base:
                 self.logo = util.url_join(self._repo.base, self.logo)
             else:
@@ -392,10 +400,12 @@ class Mod(object):
         return {
             'id': self.mid,
             'title': self.title,
+            'type': self.mtype,
             'version': str(self.version),
             'folder': self.folder,
             'cmdline': self.cmdline,
             'logo': self.logo,
+            'logo_path': self.logo,
             'description': self.description,
             'notes': self.notes,
             'submods': self.submods,
@@ -432,15 +442,15 @@ class Mod(object):
             return
 
         suffix = '.' + self.logo.split('.')[-1]
-        fd, path = tempfile.mkstemp(dir=dest, prefix='logo', suffix=suffix)
-        os.close(fd)
+        path = os.path.join(dest, 'logo_' + hashlib.md5(self.logo.encode('utf8')).hexdigest() + suffix)
 
-        if '://' in self.logo:
-            # That's a URL
-            with open(path, 'wb') as fobj:
-                util.download(self.logo, fobj)
-        else:
-            shutil.copyfile(self.logo, path)
+        if not os.path.isfile(path):
+            if '://' in self.logo:
+                # That's a URL
+                with open(path, 'wb') as fobj:
+                    util.download(self.logo, fobj)
+            else:
+                shutil.copyfile(self.logo, path)
 
         self.logo = os.path.abspath(path)
 
@@ -545,7 +555,7 @@ class Package(object):
                 # Make a spec out of this version
                 version = '==' + version
 
-            version = semantic_version.Spec(version)
+            version = util.Spec(version)
             mod = self._mod._repo.query(dep['id'], version)
             pkgs = dep.get('packages', [])
             found_pkgs = []
@@ -598,7 +608,7 @@ class Package(object):
                 if bvars is None:
                     bvars = {}
                     bvars[CPU_INFO['arch']] = True  # this is either X86_32 or X86_64
-                    
+
                     if sys.platform in ('win32', 'cygwin'):
                         bvars['windows'] = True
                     elif sys.platform.startswith('linux'):
@@ -657,9 +667,11 @@ class InstalledRepo(Repo):
             my_mod = self.query(mod)
         except ModNotFound:
             my_mod = InstalledMod.convert(mod)
+            my_pkg = my_mod.add_pkg(pkg)
             self.add_mod(my_mod)
-
-        return my_mod.add_pkg(pkg)
+            return my_pkg
+        else:
+            return my_mod.add_pkg(pkg)
 
     def del_pkg(self, pkg):
         mod = pkg.get_mod()
@@ -766,7 +778,7 @@ class InstalledMod(Mod):
         pkgs = values.get('packages', [])
         values = values.copy()
         values['packages'] = []
-        
+
         super(InstalledMod, self).set(values)
 
         self.check_notes = values.get('check_notes', '')
@@ -780,6 +792,7 @@ class InstalledMod(Mod):
             'version': str(self.version),
             'description': self.description,
             'logo': self.logo,
+            'logo_path': self.logo_path,
             'cmdline': self.cmdline,
             'packages': [pkg.get() for pkg in self.packages]
         }
@@ -812,11 +825,11 @@ class InstalledMod(Mod):
 
         if self.logo is not None and not self.logo.startswith('knossos.'):
             logo = os.path.join(modpath, 'knossos.' + self.logo.split('.')[-1])
-    
+
             if os.path.abspath(logo) != os.path.abspath(self.logo):
                 # Copy the logo right next to the json file.
                 shutil.copy(self.logo, logo)
-            
+
             info['logo'] = os.path.basename(logo)
 
         with open(path, 'w') as stream:
@@ -838,7 +851,7 @@ class InstalledMod(Mod):
         for item in mods:
             if item.strip() != '':
                 m.append(os.path.basename(util.ipath(os.path.join(center.settings['fs2_path'], item))))
-        
+
         return m
 
 
@@ -882,6 +895,8 @@ class IniMod(InstalledMod):
             self.title = folder + ' (ini)'
 
         self.mid = '##INI_COMPAT#' + folder
+        if self.logo:
+            self.logo_path = os.path.join(path, self.logo)
 
         pkg = InstalledPackage({
             'name': 'Content',

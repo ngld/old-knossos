@@ -7,7 +7,8 @@
         <link rel="stylesheet" type="text/css" href="css/font-awesome.min.css">
         <link rel="stylesheet" type="text/css" href="css/style.css">
         <script type="text/javascript" src="js/jquery.min.js"></script>
-        <script type="text/javascript" src="js/bootstrap.min.js"></script>
+        <!-- <script type="text/javascript" src="js/bootstrap.min.js"></script> -->
+        <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
         <script type="text/javascript" src="js/modlist.js"></script>
     </head>
     <body>
@@ -17,34 +18,45 @@
 
         <div id="mods"></div>
 
-        <div class="mod hide" id="tpl-avail-mod">
-            <span class="title">Mod title</span>
-            <div class="actions">
-                <button class="btn btn-success install-btn">
-                    Install
-                    <i class="fa fa-cloud-download"></i>
-                </button>
-                <button class="btn btn-info info-btn">
-                    <i class="fa fa-info-circle"></i>
-                </button>
+        <div class="mod hide row" id="tpl-avail-mod">
+            <div class="col-xs-6">
+                <img class="mod-logo img-responsive">
+            </div>
+            
+            <div class="col-xs-6">
+                <span class="title">Mod title</span>
+                <div class="actions">
+                    <button class="btn btn-success install-btn">
+                        Install
+                        <i class="fa fa-cloud-download"></i>
+                    </button>
+                    <button class="btn btn-info info-btn">
+                        <i class="fa fa-info-circle"></i>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="mod hide" id="tpl-installed-mod">
-            <span class="title">Mod title</span>
-            <div class="actions">
-                <button class="btn btn-success run-btn">
-                    Play
-                    <i class="fa fa-play"></i>
-                </button>
-                <button class="btn btn-default settings-btn">
-                    <i class="fa fa-cog"></i>
-                </button>
-                <button class="btn btn-danger del-btn">
-                    <i class="fa fa-times"></i>
-                </button>
+        <div class="mod hide row" id="tpl-installed-mod">
+            <div class="col-xs-6">
+                <img class="mod-logo img-responsive">
             </div>
-            <br>
+
+            <div class="col-xs-6">
+                <span class="title">Mod title</span>
+                <div class="actions">
+                    <button class="btn btn-success run-btn">
+                        Play
+                        <i class="fa fa-play"></i>
+                    </button>
+                    <button class="btn btn-default settings-btn">
+                        <i class="fa fa-cog"></i>
+                    </button>
+                    <button class="btn btn-danger del-btn">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div class="mod hide" id="tpl-dl-mod">
@@ -63,13 +75,19 @@
             </div>
         </div>
 
-        <div class="mod hide" id="tpl-update-mod">
-            <span class="title">Mod title</span>
-            <div class="actions">
-                <button class="btn btn-success update-btn">
-                    Update
-                    <i class="fa fa-cloud-download"></i>
-                </button>
+        <div class="mod hide row" id="tpl-update-mod">
+            <div class="col-xs-6">
+                <img class="mod-logo img-responsive">
+            </div>
+            
+            <div class="col-xs-6">
+                <span class="title">Mod title</span>
+                <div class="actions">
+                    <button class="btn btn-success update-btn">
+                        Update
+                        <i class="fa fa-cloud-download"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </body>

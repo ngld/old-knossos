@@ -221,6 +221,7 @@ class Task(QtCore.QObject):
 
         self._results = []
         self._work = work
+        self._work_count = len(work)
         self._result_lock = threading.Lock()
         self._work_lock = threading.Lock()
         self._done = threading.Event()
@@ -252,7 +253,7 @@ class Task(QtCore.QObject):
             with self._work_lock:
                 self._pending -= 1
 
-            self._progress[threading.get_ident()] = (1, 'Done')
+            self._progress[threading.get_ident()] = (0, 'Done')
             self._running -= 1
             
             if self._running == 0 and not self._has_work() and not self._done.is_set():
@@ -274,8 +275,11 @@ class Task(QtCore.QObject):
             self._work.extend(work)
             self._work_count = max(self._work_count, len(self._work))
         
-        if not self._attached and self._master is not None:
-            self._master.add_task(self)
+        if self._master is not None:
+            if not self._attached:
+                self._master.add_task(self)
+            else:
+                self._master.wake_workers()
     
     def abort(self):
         if not self.can_abort:
@@ -298,7 +302,7 @@ class Task(QtCore.QObject):
             wc_total = self._work_count
             pending = self._pending
         
-        count = float(wc_total + len(prog))
+        count = float(wc_total)
         if count == 0:
             count = 0.00001
             total = 1
@@ -307,7 +311,7 @@ class Task(QtCore.QObject):
         
         for item in prog.values():
             total += item[0] * (1.0 / count)
-        
+
         return total, prog, self.title
     
     def is_done(self):
@@ -530,7 +534,7 @@ def _init_curses(scr, cb, log):
     
     def show_status(prog, text):
         h, w = statusw.win.getmaxyx()
-        statusw.set_text('\n [' + '=' * int(prog * (w - 8)) + '>\n' + text)
+        statusw.set_text('\n [' + '=' * min(w, int(prog * (w - 8))) + '>\n' + text)
     
     set_callback(show_status)
     

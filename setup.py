@@ -28,7 +28,7 @@ setup(
 
     # This version should comply with PEP440 (http://legacy.python.org/dev/peps/pep-0440/).
     # The first three numbers should be the same as VERSION in knossos/center.py.
-    version='0.1.1',
+    version='0.2.0',
 
     description='A simple mod manager for FreeSpace 2 Open',
     long_description=long_description,
@@ -61,7 +61,7 @@ setup(
 
     keywords='fso freespace',
     packages=['knossos', 'knossos.ui', 'knossos.third_party'],
-    install_requires=['six', 'requests', 'semantic_version'],
+    install_requires=['six', 'requests', 'semantic_version', 'raven'],
 
     # List additional groups of dependencies here (e.g. development dependencies).
     # You can install these using the following syntax, for example:

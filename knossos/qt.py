@@ -22,7 +22,7 @@ default_variant = 'auto'
 QtCore = None
 
 variant = os.environ.get('QT_API', default_variant)
-if variant not in ('PySide', 'PyQt4', 'headless', default_variant):
+if variant not in ('PyQt5', 'headless', default_variant):
     logging.warning('Unknown QT_API "%s"! Using default...', variant)
     variant = default_variant
 
@@ -30,39 +30,17 @@ if variant != 'headless':
     # Make sure we initialize Xlib before we load Qt.
     from . import clibs
 
-if variant in ('PySide', 'auto'):
+if variant in ('PyQt5', 'auto'):
     try:
-        from PySide import QtCore, QtGui, QtNetwork, QtWebKit
+        from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork, QtWebChannel, QtWebEngineWidgets
 
-        # Success!
-        variant = 'PySide'
-    except ImportError:
-        logging.exception('I was unable to load Qt! Tried PySide.')
-
-        # If variant is 'auto', we fallback to PyQt4.
-        if variant != 'auto':
-            sys.exit(1)
-
-if variant in ('PyQt4', 'auto'):
-    try:
-        import sip
-        api2_classes = [
-            'QData', 'QDateTime', 'QString', 'QTextStream',
-            'QTime', 'QUrl', 'QVariant',
-        ]
-
-        for cl in api2_classes:
-            sip.setapi(cl, 2)
-
-        from PyQt4 import QtCore, QtGui, QtNetwork, QtWebKit
-        
         QtCore.Signal = QtCore.pyqtSignal
         QtCore.Slot = QtCore.pyqtSlot
         QtCore.QString = str
 
         # Success!
-        variant = 'PySide'
-        
+        variant = 'PyQt5'
+
     except ImportError:
         logging.exception('I was unable to load Qt! Tried PyQt4.')
         sys.exit(1)
@@ -196,13 +174,13 @@ if variant == 'headless':
         QByteArray = None
 
     class QtGui(object):
-        QApplication = _App
         QDialog = _QObject
 
-    QtNetwork = None
-    QtWebKit = None
+    class QtWidgets(object):
+        QApplication = _App
 
-logging.debug('Using Qt API %s.', variant)
+    QtWebChannel = None
+    QtWebEngineWidgets = None
 
 
 def read_file(path):
@@ -210,7 +188,7 @@ def read_file(path):
     fd.open(QtCore.QIODevice.ReadOnly)
     data = str(fd.readAll())
     fd.close()
-    
+
     return data
 
 
@@ -227,4 +205,5 @@ def load_styles(*names):
 
     return data
 
-__all__ = ['QtCore', 'QtGui', 'QtNetwork', 'QtWebKit', 'variant', 'read_file', 'load_styles']
+
+__all__ = ['QtCore', 'QtGui', 'QtWidgets', 'QtWebChannel', 'QtWebEngineWidgets', 'variant', 'read_file', 'load_styles']

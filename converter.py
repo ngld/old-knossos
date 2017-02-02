@@ -18,7 +18,7 @@ import sys
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
-logging.getLogger().addHandler(logging.FileHandler('converter.log'))
+# logging.getLogger().addHandler(logging.FileHandler('converter.log'))
 
 import converter
 

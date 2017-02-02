@@ -14,7 +14,7 @@
 
 !include MUI2.nsh
 
-Name Knossos
+Name "Knossos ${KNOSSOS_VERSION}"
 InstallDir "$PROGRAMFILES\Knossos"
 InstallDirRegKey HKLM "Software\Knossos" "Install Dir"
 RequestExecutionLevel admin  # We need admin for the "fso:// Support" section

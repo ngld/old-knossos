@@ -29,7 +29,7 @@ import semantic_version
 
 from . import center, util, progress, repo, api
 from .repo import Repo
-from .qt import QtGui
+from .qt import QtWidgets
 
 
 class FetchTask(progress.Task):
@@ -43,66 +43,72 @@ class FetchTask(progress.Task):
             if os.path.isfile(path):
                 logging.info('Removing old logo "%s"...', path)
                 os.unlink(path)
-        
+
         self.done.connect(self.finish)
 
         if repo.CPU_INFO is None:
-            self.add_work(['init'])
+            self.add_work([('init',)])
         else:
-            self.add_work([(i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
-    
+            self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
+
     def work(self, params):
-        if params == 'init':
+        if params[0] == 'init':
             progress.update(0, 'Checking CPU...')
 
             # We're doing this here because we don't want to block the UI.
             repo.CPU_INFO = util.get_cpuinfo()
 
-            self.add_work([(i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
+            self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
             return
+        elif params[0] == 'repo':
+            _, prio, link = params
 
-        prio, link = params
-        
-        progress.update(0.1, 'Fetching "%s"...' % link)
+            progress.update(0.1, 'Fetching "%s"...' % link)
 
-        try:
-            raw_data = util.get(link, raw=True)
+            try:
+                raw_data = util.get(link, raw=True)
 
-            data = Repo()
-            data.is_link = True
-            data.base = os.path.dirname(raw_data.url)
-            data.parse(raw_data.text)
-        except:
-            logging.exception('Failed to decode "%s"!', link)
-            return
-        
-        progress.update(0.5, 'Loading logos...')
-        data.save_logos(center.settings_path)
-        
-        self.post((prio, data))
-    
+                data = Repo()
+                data.is_link = True
+                data.base = os.path.dirname(raw_data.url)
+                data.parse(raw_data.text)
+            except:
+                logging.exception('Failed to decode "%s"!', link)
+                return
+
+            wl = []
+            for mid, mvs in data.mods.items():
+                for mod in mvs:
+                    wl.append(('mod', mod))
+
+            self.add_work(wl)
+            self.post((prio, data))
+        else:
+            mod = params[1]
+            mod.save_logo(center.settings_path)
+
     def finish(self):
         if not self.aborted:
             modlist = center.mods = Repo()
             res = self.get_results()
             res.sort(key=lambda x: x[0])
-            
+
             for part in res:
                 modlist.merge(part[1])
 
             modlist.save_json(os.path.join(center.settings_path, 'mods.json'))
             api.save_settings()
-        
+
         run_task(CheckTask())
 
 
 class CheckTask(progress.MultistepTask):
     can_abort = False
     _steps = 2
-    
+
     def __init__(self):
         super(CheckTask, self).__init__(threads=3)
-        
+
         self.done.connect(self.finish)
         self.title = 'Checking installed mods...'
 
@@ -155,16 +161,16 @@ class CheckTask(progress.MultistepTask):
         success = 0
         missing = 0
         checked = 0
-        
+
         archives = set()
         msgs = []
-        
+
         for info in pkg_files:
             mypath = util.ipath(os.path.join(modpath, info['filename']))
             fix = False
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
-                
+
                 if util.gen_hash(mypath) == info['md5sum']:
                     success += 1
                 else:
@@ -174,12 +180,12 @@ class CheckTask(progress.MultistepTask):
                 msgs.append('File "%s" is missing.' % (info['filename']))
                 missing += 1
                 fix = True
-            
+
             if fix:
                 archives.add(info['archive'])
-            
+
             checked += 1
-        
+
         self.post((pkg, archives, success, missing, checked, msgs))
 
     def finish(self):
@@ -187,7 +193,7 @@ class CheckTask(progress.MultistepTask):
 
         for pkg, archives, s, m, c, msg in results:
             mod = pkg.get_mod()
-            
+
             if s == 0:
                 if m > 0:
                     # Not Installed
@@ -197,7 +203,7 @@ class CheckTask(progress.MultistepTask):
                     mod.save()
                 elif c > 0:
                     logging.warning('Package %s of mod %s (%s) is completely corrupted!!' % (pkg.name, mod.mid, mod.title))
-            
+
             if pkg is not None:
                 pkg.check_notes = m
                 pkg.files_ok = s
@@ -211,10 +217,10 @@ class CheckFilesTask(progress.MultistepTask):
     _mod = None
     _check_results = None
     _steps = 2
-    
+
     def __init__(self, mod):
         super(CheckFilesTask, self).__init__(threads=3)
-        
+
         self.title = 'Checking "%s"...' % mod.title
 
         if center.settings['fs2_path'] is None:
@@ -226,7 +232,7 @@ class CheckFilesTask(progress.MultistepTask):
     def init1(self):
         modpath = os.path.join(center.settings['fs2_path'], self._mod.folder)
         pkgs = []
-        
+
         for pkg in self._mod.packages:
             pkgs.append((modpath, pkg))
 
@@ -238,18 +244,18 @@ class CheckFilesTask(progress.MultistepTask):
         count = float(len(pkg_files))
         success = 0
         checked = 0
-        
+
         summary = {
             'ok': [],
             'corrupt': [],
             'missing': []
         }
-        
+
         for info in pkg_files:
             mypath = util.ipath(os.path.join(modpath, info['filename']))
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
-                
+
                 if util.gen_hash(mypath) == info['md5sum']:
                     success += 1
                     summary['ok'].append(info['filename'])
@@ -257,9 +263,9 @@ class CheckFilesTask(progress.MultistepTask):
                     summary['corrupt'].append(info['filename'])
             else:
                 summary['missing'].append(info['filename'])
-            
+
             checked += 1
-        
+
         self.post((pkg, success, checked, summary))
 
     def init2(self):
@@ -352,7 +358,7 @@ class InstallTask(progress.MultistepTask):
                 'An error occured during the installation of a mod. It might be partially installed.\n' +
                 'If you need more help, ask ngld or read the debug log!'
             )
-            QtGui.QMessageBox.critical(None, 'Knossos', msg)
+            QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
         else:
             mods = set()
 
@@ -394,7 +400,7 @@ class InstallTask(progress.MultistepTask):
 
         archives = set()
         progress.update(0, 'Checking %s...' % mod.title)
-        
+
         kpath = os.path.join(modpath, 'mod.json')
         if os.path.isfile(kpath):
             try:
@@ -432,7 +438,7 @@ class InstallTask(progress.MultistepTask):
     def init2(self):
         archives = set()
         downloads = []
-        
+
         for a in self.get_results():
             archives |= a
 
@@ -511,7 +517,7 @@ class InstallTask(progress.MultistepTask):
                     # "The archive can't be opened because it is still in use by another process."
                     # I have no idea why. It works fine on Linux and Mac OS.
                     # TODO: Is there a better solution?
-                    
+
                     progress.update(0.98, 'Waiting...')
                     self._7z_lock.acquire()
 
@@ -526,7 +532,7 @@ class InstallTask(progress.MultistepTask):
                         if not os.path.isfile(src_path):
                             logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)!',
                                             item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
-                            
+
                             done = False
                             break
 
@@ -652,7 +658,7 @@ class UninstallTask(progress.MultistepTask):
             shutil.rmtree(modpath)
         elif len(mod.packages) == 0:
             # Remove our files
-            
+
             my_files = (os.path.join(modpath, 'mod.json'), mod.logo_path)
             for path in my_files:
                 if os.path.isfile(path):
@@ -660,6 +666,7 @@ class UninstallTask(progress.MultistepTask):
 
             libs = os.path.join(modpath, '__k_plibs')
             if os.path.isdir(libs):
+                # Delete any symlinks before running shutil.rmtree().
                 for link in os.listdir(libs):
                     item = os.path.join(libs, link)
                     if os.path.islink(item):
@@ -684,13 +691,14 @@ class UninstallTask(progress.MultistepTask):
 class UpdateTask(InstallTask):
     _old_mod = None
     _new_mod = None
+    _new_modpath = None
     __check_after = True
 
     def __init__(self, mod, check_after=True):
         self._old_mod = mod
         self._new_mod = center.mods.query(mod.mid)
         self.__check_after = check_after
-        
+
         old_pkgs = [pkg.name for pkg in mod.packages]
         pkgs = []
 
@@ -701,9 +709,11 @@ class UpdateTask(InstallTask):
         super(UpdateTask, self).__init__(pkgs, self._new_mod, check_after=False)
 
     def finish(self):
+        self._new_modpath = self._new_mod.folder
         super(UpdateTask, self).finish()
 
         if not self.aborted and not self._error:
+            # TODO: Check if it's okay to uninstall the old version. Maybe there's still a mod that requires this one?
             # The new version has been succesfully installed, remove the old version.
             next_task = UninstallTask(self._old_mod.packages, check_after=False)
             next_task.done.connect(self._finish2)
@@ -712,16 +722,19 @@ class UpdateTask(InstallTask):
     def _finish2(self):
         fs2path = center.settings['fs2_path']
         modpath = os.path.join(fs2path, self._old_mod.folder)
-        temppath = os.path.join(fs2path, self._new_mod.folder)
+        temppath = os.path.join(fs2path, self._new_modpath)
 
         if '_kv_' not in modpath:
             # Move all files from the temporary directory to the new one.
             try:
+                if not os.path.isdir(modpath):
+                    os.makedirs(modpath)
+
                 for item in os.listdir(temppath):
                     shutil.move(os.path.join(temppath, item), os.path.join(modpath, item))
             except:
                 logging.exception('Failed to move a file!')
-                QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to replace the old mod files with the updated files!')
+                QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to replace the old mod files with the updated files!')
 
                 if self.__check_after:
                     run_task(CheckTask())
@@ -739,51 +752,51 @@ class UpdateTask(InstallTask):
 
 class GOGExtractTask(progress.Task):
     can_abort = False
-    
+
     def __init__(self, gog_path, dest_path):
         super(GOGExtractTask, self).__init__()
-        
+
         self.done.connect(self.finish)
         self.add_work([(gog_path, dest_path)])
         self.title = 'Installing FS2 from GOG...'
-    
+
     def work(self, paths):
         gog_path, dest_path = paths
-        
+
         progress.update(0.03, 'Looking for InnoExtract...')
         data = util.get(center.INNOEXTRACT_LINK)
-        
+
         try:
             data = json.loads(data)
         except:
             logging.exception('Failed to read JSON data!')
             return
-        
+
         link = None
         path = None
         for plat, info in data.items():
             if sys.platform.startswith(plat):
                 link, path = info
                 break
-        
+
         if link is None:
             logging.error('Couldn\'t find an innoextract download for "%s"!', sys.platform)
             return
-        
+
         inno = os.path.join(dest_path, os.path.basename(path))
         with tempfile.TemporaryDirectory() as tempdir:
             archive = os.path.join(tempdir, os.path.basename(link))
-            
+
             progress.start_task(0.03, 0.10, 'Downloading InnoExtract...')
             with open(os.path.join(dest_path, archive), 'wb') as dl:
                 util.download(link, dl)
-            
+
             progress.finish_task()
             progress.update(0.13, 'Extracting InnoExtract...')
-            
+
             util.extract_archive(archive, tempdir)
             shutil.move(os.path.join(tempdir, path), inno)
-        
+
         # Make it executable
         mode = os.stat(inno).st_mode
         os.chmod(inno, mode | stat.S_IXUSR)
@@ -792,21 +805,21 @@ class GOGExtractTask(progress.Task):
         try:
             cmd = [inno, '-L', '-s', '-p', '-e', gog_path]
             logging.info('Running %s...', ' '.join(cmd))
-            
+
             opts = dict()
             if sys.platform.startswith('win'):
                 si = subprocess.STARTUPINFO()
                 si.dwFlags = subprocess.STARTF_USESHOWWINDOW
                 si.wShowWindow = subprocess.SW_HIDE
-                
+
                 opts['startupinfo'] = si
                 opts['stdin'] = subprocess.PIPE
-            
+
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=dest_path, **opts)
-            
+
             if sys.platform.startswith('win'):
                 p.stdin.close()
-            
+
             buf = ''
             while p.poll() is None:
                 while '\r' not in buf:
@@ -818,12 +831,12 @@ class GOGExtractTask(progress.Task):
                 buf = buf.split('\r')
                 line = buf.pop(0)
                 buf = '\r'.join(buf)
-                
+
                 if 'MiB/s' in line:
                     try:
                         if ']' in line:
                             line = line.split(']')[1]
-                        
+
                         line = line.strip().split('MiB/s')[0] + 'MiB/s'
                         percent = float(line.split('%')[0]) / 100
 
@@ -834,61 +847,61 @@ class GOGExtractTask(progress.Task):
                     if line.strip() == 'not a supported Inno Setup installer':
                         self.post(-1)
                         return
-                    
+
                     logging.info('InnoExtract: %s', line)
         except:
             logging.exception('InnoExtract failed!')
             return
-        
+
         progress.finish_task()
-        
+
         progress.update(0.95, 'Moving files...')
         self._makedirs(os.path.join(dest_path, 'data/players'))
         self._makedirs(os.path.join(dest_path, 'data/movies'))
-        
+
         for item in glob.glob(os.path.join(dest_path, 'app', '*.vp')):
             shutil.move(item, os.path.join(dest_path, os.path.basename(item)))
-        
+
         for item in glob.glob(os.path.join(dest_path, 'app/data/players', '*.hcf')):
             shutil.move(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
-        
+
         for item in glob.glob(os.path.join(dest_path, 'app/data2', '*.mve')):
             shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
-        
+
         for item in glob.glob(os.path.join(dest_path, 'app/data3', '*.mve')):
             shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
-        
+
         progress.update(0.99, 'Cleanup...')
         os.unlink(inno)
         shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
         shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
-        
+
         self.post(dest_path)
-    
+
     def _makedirs(self, path):
         if not os.path.isdir(path):
             os.makedirs(path)
-    
+
     def finish(self):
         results = self.get_results()
         if len(results) < 1:
-            QtGui.QMessageBox.critical(center.main_win.win, 'Error', 'The installer failed! Please read the log for more details...')
+            QtWidgets.QMessageBox.critical(None, 'Error', 'The installer failed! Please read the log for more details...')
             return
         elif results[0] == -1:
-            QtGui.QMessageBox.critical(center.main_win.win, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
+            QtWidgets.QMessageBox.critical(None, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')
             return
         else:
-            QtGui.QMessageBox.information(center.main_win.win, 'Done', 'FS2 has been successfully installed.')
+            QtWidgets.QMessageBox.information(None, 'Done', 'FS2 has been successfully installed.')
 
         fs2_path = results[0]
         center.settings['fs2_path'] = fs2_path
         center.settings['fs2_bin'] = None
-        
+
         for item in glob.glob(os.path.join(fs2_path, 'fs2_*.exe')):
             if os.path.isfile(item):
                 center.settings['fs2_bin'] = os.path.basename(item)
                 break
-        
+
         api.save_settings()
         center.main_win.check_fso()
 
@@ -911,7 +924,7 @@ class CheckUpdateTask(progress.Task):
         if version is None:
             logging.error('Update check failed!')
             return
-        
+
         try:
             version = semantic_version.Version(version)
         except:
@@ -934,11 +947,11 @@ class WindowsUpdateTask(progress.Task):
 
     def work(self, item):
         # Download it.
-        update_base = center.settings['update_link']
+        update_base = util.pjoin(center.UPDATE_LINK, center.settings['update_channel'])
 
         dir_name = tempfile.mkdtemp()
         updater = os.path.join(dir_name, 'knossos_updater.exe')
-        
+
         progress.start_task(0, 0.98, 'Downloading update...')
         with open(updater, 'wb') as stream:
             util.download(update_base + '/updater.exe', stream)
@@ -960,16 +973,16 @@ class WindowsUpdateTask(progress.Task):
         res = self.get_results()
 
         if len(res) < 1 or not res[0]:
-            QtGui.QMessageBox.critical(center.app.activeWindow(), 'Knossos', 'Failed to launch the update!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to launch the update!')
 
 
 def run_task(task, cb=None):
     def wrapper():
         cb(task.get_results())
-    
+
     if cb is not None:
         task.done.connect(wrapper)
-    
+
     center.pmaster.add_task(task)
     center.signals.task_launched.emit(task)
     return task

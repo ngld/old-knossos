@@ -18,6 +18,9 @@
 if [ "$1" = "compile_resources" ]; then
     compile_resources
     exit "$?"
+elif [ "$1" = "gen_qrc" ]; then
+    gen_qrc
+    exit "$?"
 elif [ -z "$1" ]; then
     echo "Usage: helpers.sh <action>"
     exit 2

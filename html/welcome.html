@@ -18,7 +18,7 @@
             }
         </style>
         <script type="text/javascript" src="js/jquery.min.js"></script>
-        <script type="text/javascript" src="js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
         <script type="text/javascript" src="js/welcome.js"></script>
     </head>
     <body>
@@ -28,8 +28,19 @@
 
                 <p>It looks like you started Knossos for the first time.</p>
                 <p>
-                    You can either <a class="btn btn-default" id="sel-fso">tell me where your FS2 installation is</a><br>
-                    or I could <a class="btn btn-default" id="gog-install">install FS2 using the GOG installer</a>.
+                    You can tell me where your FS2 installation is, I could install FS2 using the GOG installer
+                    or maybe you want to install a Total Conversion?
+                </p>
+                <hr>
+
+                <p>
+                    <a class="btn btn-primary" id="sel-fso">Select FS2 directory</a>
+                </p>
+                <p>
+                    <a class="btn btn-primary" id="gog-install">Install FS2 using the GOG installer</a>
+                </p>
+                <p>
+                    <a class="btn btn-primary" id="tc-install">Install a TC</a>
                 </p>
             </div>
             <div id="mod-list">

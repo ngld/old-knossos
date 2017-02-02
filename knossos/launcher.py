@@ -26,6 +26,18 @@ from six.moves.urllib import parse as urlparse
 
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
 
+# We have to be in the correct directory *before* we import clibs so we're going to do this as early as possible.
+if hasattr(sys, 'frozen'):
+    if hasattr(sys, '_MEIPASS'):
+        os.chdir(sys._MEIPASS)
+    else:
+        os.chdir(os.path.dirname(sys.executable))
+else:
+    my_path = os.path.dirname(__file__)
+    if my_path != '':
+        os.chdir(my_path)
+
+
 from . import center
 
 # Initialize the FileHandler early to capture all log messages.
@@ -56,7 +68,7 @@ if not center.DEBUG:
 if six.PY2:
     from . import py2_compat
 
-from .qt import QtCore, QtGui, read_file
+from .qt import QtCore, QtGui, QtWidgets, read_file, variant as qt_variant
 from .ipc import IPCComm
 from . import util
 
@@ -69,7 +81,7 @@ def handle_error():
     global app, ipc
     # TODO: Try again?
 
-    QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to connect to main process!')
+    QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to connect to main process!')
     if ipc is not None:
         ipc.clean()
 
@@ -105,24 +117,15 @@ def get_file_path(name):
         return resource_filename(__package__, name)
 
 
-def run_knossos():
-    global app
-
+def load_settings():
     import pickle
+    from . import api
 
-    from . import repo, progress, api
-    from .windows import HellWindow
-
-    if not util.test_7z():
-        QtGui.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtGui.QMessageBox.Ok, QtGui.QMessageBox.Ok)
-        return
-
-    # Try to load our settings.
     spath = os.path.join(center.settings_path, 'settings.pick')
     settings = center.settings
     if os.path.exists(spath):
         defaults = settings.copy()
-        
+
         try:
             with open(spath, 'rb') as stream:
                 if six.PY3:
@@ -131,26 +134,32 @@ def run_knossos():
                     settings.update(pickle.load(stream))
         except:
             logging.exception('Failed to load settings from "%s"!', spath)
-        
+
         # Migration
         if 's_version' not in settings or settings['s_version'] < 2:
             settings['repos'] = defaults['repos']
             settings['s_version'] = 2
-        
+
         if settings['s_version'] < 3:
-            del settings['mods']
-            del settings['installed_mods']
+            if 'mods' in settings:
+                del settings['mods']
+            if 'installed_mods' in settings:
+                del settings['installed_mods']
+
             settings['s_version'] = 3
 
         if settings['s_version'] < 4:
             settings['repos'] = defaults['repos']
             settings['s_version'] = 4
-        
+
         del defaults
     else:
         # Most recent settings version
         settings['s_version'] = 4
-    
+
+    if '#default' not in settings['cmdlines']:
+        settings['cmdlines']['#default'] = api.read_fso_cmdline()
+
     if settings['hash_cache'] is not None:
         util.HASH_CACHE = settings['hash_cache']
 
@@ -164,6 +173,25 @@ def run_knossos():
             if not os.path.isfile(os.path.join(settings['fs2_path'], settings['fs2_bin'])):
                 settings['fs2_bin'] = None
 
+    if settings['use_raven']:
+        api.enable_raven()
+
+    return settings
+
+
+def run_knossos():
+    global app
+
+    from . import repo, progress, api
+    from .windows import HellWindow
+
+    if not util.test_7z():
+        QtWidgets.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtWidgets.QMessageBox.Ok, QtWidgets.QMessageBox.Ok)
+        return
+
+    # Try to load our settings.
+    settings = load_settings()
+
     util.DL_POOL.set_capacity(settings['max_downloads'])
 
     center.app = app
@@ -173,7 +201,8 @@ def run_knossos():
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()
-    
+
+    api.check_retail_files()
     mod_db = os.path.join(center.settings_path, 'mods.json')
     if os.path.isfile(mod_db):
         center.mods.load_json(mod_db)
@@ -196,7 +225,7 @@ def run_knossos():
 
     center.main_win.open()
     app.exec_()
-    
+
     api.save_settings()
     api.shutdown_ipc()
 
@@ -206,17 +235,17 @@ def scheme_handler(link):
 
     if not link.startswith(('fs2://', 'fso://')):
         # NOTE: fs2:// is deprecated, we don't tell anyone about it.
-        QtGui.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
         app.quit()
         return
-    
+
     link = urlparse.unquote(link.strip()).split('/')
-    
+
     if len(link) < 3:
-        QtGui.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')
         app.quit()
         return
-    
+
     if not ipc.server_exists():
         # Launch the program.
         subprocess.Popen(get_cmd())
@@ -226,7 +255,7 @@ def scheme_handler(link):
         while not ipc.server_exists():
             if time.time() - start > 20:
                 # That's too long!
-                QtGui.QMessageBox.critical(None, 'Knossos', 'Failed to start server!')
+                QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to start server!')
                 app.quit()
                 return
 
@@ -285,22 +314,13 @@ def init():
 
     from . import integration
 
-    if hasattr(sys, 'frozen'):
-        if hasattr(sys, '_MEIPASS'):
-            os.chdir(sys._MEIPASS)
-        else:
-            os.chdir(os.path.dirname(sys.executable))
-    else:
-        my_path = os.path.dirname(os.path.dirname(__file__))
-        if my_path != '':
-            os.chdir(my_path)
-
     if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
         util.SEVEN_PATH = os.path.abspath('7z.exe')
     elif sys.platform == 'darwin' and os.path.isfile('7z'):
         util.SEVEN_PATH = os.path.abspath('7z')
 
-    if os.path.isfile('version'):
+    # The version file is only read in dev builds.
+    if center.VERSION.endswith('-dev') and os.path.isfile('version'):
         with open('version', 'r') as data:
             version = data.read().strip()
 
@@ -310,8 +330,8 @@ def init():
                 else:
                     logging.error('Found invalid version file! The file contains %s but I\'m %s.', version, center.VERSION)
 
-    logging.info('Running Knossos %s.', center.VERSION)
-    app = QtGui.QApplication([])
+    logging.info('Running Knossos %s on %s.', center.VERSION, qt_variant)
+    app = QtWidgets.QApplication([])
 
     logging.debug('Loading resources from %s.', get_file_path('resources.rcc'))
     QtCore.QResource.registerResource(get_file_path('resources.rcc'))
@@ -327,7 +347,7 @@ def main():
 
     # Default to replace errors when de/encoding.
     import codecs
-    
+
     codecs.register_error('strict', codecs.replace_errors)
     codecs.register_error('really_strict', codecs.strict_errors)
 
@@ -341,7 +361,7 @@ def main():
     if len(sys.argv) > 1:
         if sys.argv[1] == '--install-scheme':
             from . import api
-            
+
             api.install_scheme_handler('--silent' not in sys.argv)
             return
         elif sys.argv[1] == '--finish-update':
@@ -376,7 +396,7 @@ def main():
     elif ipc.server_exists():
         scheme_handler('fso://focus')
         return
-    
+
     del ipc
 
     try:
@@ -384,5 +404,8 @@ def main():
     except:
         logging.exception('Uncaught exeception! Quitting...')
 
+        # Load raven if it's enabled in the settings
+        load_settings()
+
         # Try to tell the user
-        QtGui.QMessageBox.critical(None, 'Knossos', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
