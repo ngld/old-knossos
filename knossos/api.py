@@ -497,8 +497,26 @@ def _read_default_cmdline():
 
 def enable_raven():
     from raven import Client
+    from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
+    from raven.handlers.logging import SentryHandler
 
-    center.raven = Client(center.SENTRY_DSN, release=center.VERSION)
+    center.raven = Client(
+        center.SENTRY_DSN,
+        release=center.VERSION,
+        environment='debug' if center.DEBUG else 'production',
+        transport=ThreadedRequestsHTTPTransport
+    )
+    center.raven.tags_context({
+        'os': sys.platform
+    })
+    center.raven_handler = SentryHandler(center.raven, level=logging.WARN)
+    logging.getLogger().addHandler(center.raven_handler)
+
+
+def disable_raven():
+    logging.getLogger().removeHandler(center.raven_handler)
+    center.raven = None
+    center.raven_handler = None
 
 
 def init_self():

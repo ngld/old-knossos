@@ -36,6 +36,7 @@ installed = None
 fso_flags = None
 has_retail = None
 raven = None
+raven_handler = None
 
 settings = {
     'fs2_bin': None,
@@ -51,7 +52,7 @@ settings = {
     'ui_mode': 'hell',
     'keyboard_layout': 'default',
     'keyboard_setxkbmap': False,
-    'use_raven': False
+    'use_raven': True
 }
 
 if '-dev' in VERSION:
@@ -72,5 +73,6 @@ class _SignalContainer(QtCore.QObject):
     repo_updated = QtCore.Signal()
     update_avail = QtCore.Signal('QVariant')
     task_launched = QtCore.Signal(QtCore.QObject)
+
 
 signals = _SignalContainer()

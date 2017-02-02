@@ -119,19 +119,10 @@ def get_file_path(name):
         return resource_filename(__package__, name)
 
 
-def run_knossos():
-    global app
-
+def load_settings():
     import pickle
+    from . import api
 
-    from . import repo, progress, api
-    from .windows import HellWindow
-
-    if not util.test_7z():
-        QtWidgets.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtWidgets.QMessageBox.Ok, QtWidgets.QMessageBox.Ok)
-        return
-
-    # Try to load our settings.
     spath = os.path.join(center.settings_path, 'settings.pick')
     settings = center.settings
     if os.path.exists(spath):
@@ -186,6 +177,22 @@ def run_knossos():
 
     if settings['use_raven']:
         api.enable_raven()
+
+    return settings
+
+
+def run_knossos():
+    global app
+
+    from . import repo, progress, api
+    from .windows import HellWindow
+
+    if not util.test_7z():
+        QtWidgets.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtWidgets.QMessageBox.Ok, QtWidgets.QMessageBox.Ok)
+        return
+
+    # Try to load our settings.
+    settings = load_settings()
 
     util.DL_POOL.set_capacity(settings['max_downloads'])
 
@@ -398,6 +405,9 @@ def main():
         run_knossos()
     except:
         logging.exception('Uncaught exeception! Quitting...')
+
+        # Load raven if it's enabled in the settings
+        load_settings()
 
         # Try to tell the user
         QtWidgets.QMessageBox.critical(None, 'Knossos', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
