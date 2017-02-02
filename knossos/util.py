@@ -100,7 +100,7 @@ USER_AGENTS = (
 )
 HTTP_SESSION = requests.Session()
 HTTP_SESSION.verify = True
-QUIET = True
+QUIET = not center.DEBUG
 QUIET_EXC = False
 HASH_CACHE = dict()
 _HAS_CONVERT = None
@@ -397,6 +397,9 @@ def download(link, dest, headers=None, random_ua=False):
 
         if result.status_code == 304:
             return 304
+        elif result.status_code == 206:
+            # sectorgame.com/fsfiles/ always returns code 206 which makes this necessary.
+            logging.warning('"%s" returned "206 Partial Content", the downloaded file might be incomplete.', link)
         elif result.status_code != 200:
             logging.error('Failed to load "%s"! (%d %s)', link, result.status_code, result.reason)
             return False
@@ -531,8 +534,11 @@ def gen_hash(path, algo='md5'):
     if algo == 'md5' and path in HASH_CACHE:
         chksum, mtime = HASH_CACHE[path]
         if mtime == info.st_mtime:
+            # logging.debug('Found checksum for %s in cache.', path)
             return chksum
     
+    logging.debug('Calculating checksum for %s...', path)
+
     h = hashlib.new(algo)
     with open(path, 'rb') as stream:
         while True:
@@ -550,11 +556,24 @@ def gen_hash(path, algo='md5'):
 
 
 def test_7z():
+    global SEVEN_PATH
+
     try:
         return call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL) == 0
     except:
         logging.exception('Call to 7z failed!')
-        return False
+
+        if SEVEN_PATH == '7za':
+            return False
+
+        try:
+            if call(['7za', '-h'], stdout=subprocess.DEVNULL) == 0:
+                SEVEN_PATH = '7za'
+                return True
+            else:
+                return False
+        except:
+            return False
 
 
 def is_archive(path):
@@ -570,7 +589,7 @@ def is_archive(path):
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
     global _HAS_TAR
 
-    if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2', '.tgz')) and _HAS_TAR is not False:
+    if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2', '.tgz')):
         if _HAS_TAR is None:
             _HAS_TAR = call(['tar', '--version'], stdout=subprocess.DEVNULL) == 0
 
@@ -598,24 +617,25 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
             else:
                 return call(cmd) == 0
 
-    if archive.endswith(('.tar.gz', '.tar.xz', '.tar.bz2', '.tgz')) and not _rec:
-        # This is a file like whatever.tar.gz. We have to call 7z two times for this kind of file:
-        # First to get whatever.tar and a second time to extract that tar archive.
-        
-        if not extract_archive(archive, os.path.dirname(archive), True, None, True):
-            return False
-        
-        unc_archive = archive.split('.')
-        # Remove the .gz or .bz2 or whatever ending...
-        unc_archive.pop()
-        
-        # ... and put it together again.
-        unc_archive = '.'.join(unc_archive)
-        res = extract_archive(unc_archive, outpath, overwrite, files, True)
-        
-        # Cleanup
-        os.unlink(unc_archive)
-        return res
+        if not _rec:
+            # This is a file like whatever.tar.gz. We have to call 7z two times for this kind of file:
+            # First to get whatever.tar and a second time to extract that tar archive.
+            
+            if not extract_archive(archive, os.path.dirname(archive), True, None, True):
+                return False
+            
+            unc_archive = archive.split('.')
+            # Remove the .gz or .bz2 or whatever ending...
+            if unc_archive.pop() == 'tgz':
+                unc_archive.append('tar')
+            
+            # ... and put it together again.
+            unc_archive = '.'.join(unc_archive)
+            res = extract_archive(unc_archive, outpath, overwrite, files, True)
+            
+            # Cleanup
+            os.unlink(unc_archive)
+            return res
 
     if archive.endswith('.dmg') and not _rec:
         # We have to call 7z twice for this file type. The first time, 7z only extracts the section contained in the file.
@@ -717,7 +737,11 @@ def get_cpuinfo():
     if info is None:
         from .third_party import cpuinfo
 
-        info = cpuinfo.get_cpu_info()
+        try:
+            info = cpuinfo.get_cpu_info()
+        except:
+            logging.exception('Exception in the cpuinfo module!')
+            info = None
 
     return info
 
@@ -760,6 +784,23 @@ def connect(sig, cb, *args):
 
 class Spec(semantic_version.Spec):
     
+    @classmethod
+    def parse(self, specs_string):
+        spec_texts = specs_string.split(',')
+        res = []
+
+        for spec_text in spec_texts:
+            if '-' not in spec_text and '+' not in spec_text and spec_text != '*':
+                spec_text = spec_text.split('.')
+                while len(spec_text) < 3:
+                    spec_text.append('0')
+
+                spec_text = '.'.join(spec_text) + '-'
+
+            res.append(semantic_version.SpecItem(spec_text))
+
+        return tuple(res)
+
     @staticmethod
     def from_version(version, op='=='):
         return Spec('==' + str(version))
@@ -785,3 +826,7 @@ if sys.hexversion >= 0x020709F0:
         
         pssl.extract_from_urllib3()
         del pssl
+
+if sys.platform.startswith('win'):
+    _HAS_CONVERT = False
+    _HAS_TAR = False

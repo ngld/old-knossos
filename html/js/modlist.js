@@ -3,7 +3,7 @@
     var progress_visible = false;
 
     function render_row(mvs, type) {
-        var row = $('<div class="mod">');
+        var row = $('<div class="mod row">');
         var mod;
 
         if($.isArray(mvs)) {
@@ -55,6 +55,15 @@
             });
         }
 
+        var logo = row.find('.mod-logo');
+        if(logo.length > 0) {
+            if(mod.logo) {
+                logo.attr('src', 'fsrs:///logo/' + escape(mod.id) + '/' + mod.version);
+            } else {
+                logo.hide();
+            }
+        }
+
         row.find('.title').text(mod.title);
         return row;
     }
@@ -83,6 +92,7 @@
 
         names.forEach(function (item) {
             var mod = mods[item[0]];
+            console.log(mod);
             mod_list.append(render_row(mod, type));
         });
     }
@@ -139,7 +149,7 @@
     function update_progress(id, percent, info, text) {
         tasks[id] = {
             progress: percent,
-            subs: info,
+            subs: JSON.parse(info),
             title: text
         };
 

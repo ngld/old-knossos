@@ -22,7 +22,7 @@ default_variant = 'auto'
 QtCore = None
 
 variant = os.environ.get('QT_API', default_variant)
-if variant not in ('PySide', 'PyQt4', 'headless', default_variant):
+if variant not in ('PyQt5', 'headless', default_variant):
     logging.warning('Unknown QT_API "%s"! Using default...', variant)
     variant = default_variant
 
@@ -30,9 +30,9 @@ if variant != 'headless':
     # Make sure we initialize Xlib before we load Qt.
     from . import clibs
 
-if variant in ('PySide', 'auto'):
+if False and variant in ('PySide', 'auto'):
     try:
-        from PySide import QtCore, QtGui, QtNetwork, QtWebKit
+        from PySide import QtWebKit, QtCore, QtGui, QtNetwork
 
         # Success!
         variant = 'PySide'
@@ -43,26 +43,26 @@ if variant in ('PySide', 'auto'):
         if variant != 'auto':
             sys.exit(1)
 
-if variant in ('PyQt4', 'auto'):
+if variant in ('PyQt5', 'auto'):
     try:
-        import sip
-        api2_classes = [
-            'QData', 'QDateTime', 'QString', 'QTextStream',
-            'QTime', 'QUrl', 'QVariant',
-        ]
+        #import sip
+        #api2_classes = [
+        #    'QData', 'QDateTime', 'QString', 'QTextStream',
+        #    'QTime', 'QUrl', 'QVariant',
+        #]
 
-        for cl in api2_classes:
-            sip.setapi(cl, 2)
+        #for cl in api2_classes:
+        #    sip.setapi(cl, 2)
 
-        from PyQt4 import QtCore, QtGui, QtNetwork, QtWebKit
-        
+        from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork, QtWebKit, QtWebKitWidgets
+
         QtCore.Signal = QtCore.pyqtSignal
         QtCore.Slot = QtCore.pyqtSlot
         QtCore.QString = str
 
         # Success!
-        variant = 'PySide'
-        
+        variant = 'PyQt5'
+
     except ImportError:
         logging.exception('I was unable to load Qt! Tried PyQt4.')
         sys.exit(1)
@@ -202,15 +202,13 @@ if variant == 'headless':
     QtNetwork = None
     QtWebKit = None
 
-logging.debug('Using Qt API %s.', variant)
-
 
 def read_file(path):
     fd = QtCore.QFile(path)
     fd.open(QtCore.QIODevice.ReadOnly)
     data = str(fd.readAll())
     fd.close()
-    
+
     return data
 
 

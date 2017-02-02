@@ -19,12 +19,6 @@ onefile = False
 him = []
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 
-# Make sure all paths that end up in the compiled executable are relative.
-pd = config['PYZ_dependencies']
-for i, item in enumerate(pd):
-    if 'Z:' in item[1]:
-        pd[i] = (item[0], os.path.relpath(item[1]), item[2])
-
 # Build the TaskbarLib module.
 try:
     import comtypes.client as cc
@@ -41,7 +35,7 @@ except:
     logging.exception('Failed to generate comtypes.gen.TaskbarLib!')
 
 
-rthooks = ['../common/PySide-rthook.py']
+rthooks = []  # ['../common/PySide-rthook.py']
 if debug:
     rthooks.append('../common/debug-rthook.py')
 
@@ -107,7 +101,7 @@ else:
               strip=None,
               upx=not debug,
               console=debug)
-    
+
     coll = COLLECT(exe,
                    a.binaries,
                    a.zipfiles,

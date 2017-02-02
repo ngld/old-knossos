@@ -62,6 +62,20 @@ download() {
     fi
 }
 
+download_ua() {
+    if [ -f "$1" ]; then
+        msg2 "Skipped $1 because it has already been downloaded."
+    elif has wget; then
+        wget -U Mozilla/5.0 -O "$1" "$2"
+    elif has curl; then
+        msg2 "Downloading $1..."
+        curl -# -o "$1" "$2"
+    else
+        error "I need curl or wget!"
+        exit 1
+    fi
+}
+
 check_variant() {
     if [ -z "$VARIANT" ]; then
         VARIANT="develop"
@@ -80,7 +94,7 @@ generate_version() {
         return
     fi
 
-    local build_num="0"
+    local build_num="1"
 
     local last_version="$(curl -s "${UPDATE_SERVER}/${VARIANT}/version")"
     local my_version="$(grep VERSION ../../knossos/center.py | cut -d "'" -f 2 | head -1)"
@@ -108,11 +122,20 @@ generate_version() {
 }
 
 ensure_pyinstaller() {
+    local branch
+
+    if [ -z "$1" ]; then
+        branch="develop"
+    else
+        branch="$1"
+    fi
+
     if [ ! -d ../common/pyinstaller ]; then
         msg2 "Downloading PyInstaller..."
-        git clone -b develop "https://github.com/pyinstaller/pyinstaller" ../common/pyinstaller
+        git clone --depth=1 -b "$branch" "https://github.com/pyinstaller/pyinstaller" ../common/pyinstaller
     else
         pushd ../common/pyinstaller
+        git checkout "$branch"
         git pull
         popd
     fi
@@ -121,24 +144,34 @@ ensure_pyinstaller() {
 _cpr_add_files() {
     while read path; do
         echo "<file>$path</file>"
-    done >> "$QRC_PATH"
+    done
+}
+
+gen_qrc() {
+    echo '<!DOCTYPE RCC><RCC version="1.0">'
+    echo '<qresource>'
+
+    echo '<file alias="hlp.png">knossos/data/hlp.png</file>'
+    find ui -name '*.png' -or -name '*.jpg' -or -name '*.css' | _cpr_add_files
+    find html -type f | _cpr_add_files
+
+    echo '</qresource>'
+    echo '</RCC>'
 }
 
 compile_resources() {
     echo "Collecting resources..."
 
-    echo '<!DOCTYPE RCC><RCC version="1.0">' > "$QRC_PATH"
-    echo '<qresource>' >> "$QRC_PATH"
-
-    echo '<file alias="hlp.png">knossos/data/hlp.png</file>' >> "$QRC_PATH"
-    find ui -name '*.png' -or -name '*.jpg' -or -name '*.css' | _cpr_add_files
-    find html -type f | _cpr_add_files
-
-    echo '</qresource>' >> "$QRC_PATH"
-    echo '</RCC>' >> "$QRC_PATH"
+    gen_qrc > "$QRC_PATH"
 
     echo "Packing resources..."
-    rcc -binary "$QRC_PATH" -o "$RCC_PATH"
+    if has rcc-qt4; then
+        rcc_tool="rcc-qt4"
+    else
+        rcc_tool="rcc"
+    fi
+
+    "$rcc_tool" -binary "$QRC_PATH" -o "$RCC_PATH"
     rm "$QRC_PATH"
 }
 

@@ -20,7 +20,7 @@ import re
 import semantic_version
 
 from .qt import QtCore, QtNetwork, QtWebKit
-from . import center, api, repo, windows, tasks
+from . import center, api, repo, windows, tasks, util
 
 
 class WebBridge(QtCore.QObject):
@@ -73,12 +73,12 @@ class WebBridge(QtCore.QObject):
     #   Returns -1 if the mod wasn't found, -2 if the spec is invalid and 1 on success.
     # vercmp(a, b): int
     #   Compares two versions
-    
+
     updateModlist = QtCore.Signal('QVariantMap', str)
     modProgress = QtCore.Signal(str, float, str)
 
     taskStarted = QtCore.Signal(float, str)
-    taskProgress = QtCore.Signal(float, float, 'QVariantList', str)
+    taskProgress = QtCore.Signal(float, float, str, str)
     taskFinished = QtCore.Signal(float)
 
     def __init__(self):
@@ -129,7 +129,7 @@ class WebBridge(QtCore.QObject):
         if spec is None:
             return mid in center.installed.mods
         else:
-            spec = semantic_version.Spec(spec)
+            spec = util.Spec(spec)
             mod = center.installed.mods.get(mid, None)
             if mod is None:
                 return False
@@ -147,7 +147,7 @@ class WebBridge(QtCore.QObject):
                     spec = '==' + spec
 
                 try:
-                    spec = semantic_version.Spec(spec)
+                    spec = util.Spec(spec)
                 except:
                     logging.exception('Invalid spec "%s" passed to query()!', spec)
                     return -2
@@ -166,7 +166,7 @@ class WebBridge(QtCore.QObject):
     def requestModlist(self, async=False):
         if async:
             center.main_win.update_mod_list()
-            return None
+            return [None]
         else:
             return center.main_win.search_mods()
 
@@ -192,7 +192,7 @@ class WebBridge(QtCore.QObject):
                     spec = '==' + spec
 
                 try:
-                    spec = semantic_version.Spec(spec)
+                    spec = util.Spec(spec)
                 except:
                     logging.exception('Invalid spec "%s" passed to a web API function!', spec)
                     return -2
@@ -214,6 +214,7 @@ class WebBridge(QtCore.QObject):
             return mod
 
         windows.ModInfoWindow(mod)
+        return 0
 
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)
@@ -226,6 +227,7 @@ class WebBridge(QtCore.QObject):
         if pkgs is None:
             pkgs = []
         windows.ModInstallWindow(mod, pkgs)
+        return 0
 
     @QtCore.Slot(str, result=int)
     @QtCore.Slot(str, str, result=int)
@@ -257,6 +259,7 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str, result=int)
     def updateMod(self, mid, spec=None):
         mod = self._get_mod(mid, spec)
+
         if mod in (-1, -2):
             return mod
 
@@ -268,11 +271,12 @@ class WebBridge(QtCore.QObject):
             # Just install the new version
             cur_pkgs = list(mod.packages)
             for i, pkg in enumerate(cur_pkgs):
-                cur_pkgs[i] = center.mods.query(mod.mid, semantic_version.Version('*'), pkg.name)
-            
+                cur_pkgs[i] = center.mods.query(mod.mid, None, pkg.name)
+
             tasks.run_task(tasks.InstallTask(cur_pkgs, cur_pkgs[0].get_mod()))
 
         center.main_win.update_mod_buttons('progress')
+        return 0
 
     @QtCore.Slot(float)
     def abortTask(self, tid):
@@ -287,6 +291,7 @@ class WebBridge(QtCore.QObject):
             return mod
 
         api.run_mod(mod)
+        return 0
 
     @QtCore.Slot(result=int)
     @QtCore.Slot(str, result=int)
@@ -332,13 +337,11 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
     def __init__(self, old_manager):
         super(NetworkAccessManager, self).__init__()
 
-        # self.old_manager = old_manager
-
         self.setCache(old_manager.cache())
         self.setCookieJar(old_manager.cookieJar())
         self.setProxy(old_manager.proxy())
         self.setProxyFactory(old_manager.proxyFactory())
-    
+
     def createRequest(self, operation, request, data):
         if request.url().scheme() == 'fsrs' and operation == self.GetOperation:
             # Rewrite fsrs:// links.
@@ -349,20 +352,27 @@ class NetworkAccessManager(QtNetwork.QNetworkAccessManager):
             if path.startswith('/logo'):
                 path = path.split('/')
                 try:
-                    mod = center.mods.query(path[2], semantic_version.Spec('==' + path[3]))
+                    mod = center.mods.query(path[2], util.Spec('==' + path[3]))
                 except:
                     try:
-                        mod = center.installed.query(path[2], semantic_version.Spec('==' + path[3]))
+                        mod = center.installed.query(path[2], util.Spec('==' + path[3]))
                     except:
                         mod = None
 
                 if mod is not None:
-                    url.setPath(mod.logo_path)
+                    logo_path = mod.logo_path
+                    if not logo_path:
+                        logo_path = mod.logo
+
+                    logging.debug('Rewriting fsrs://%s to %s.', url.path(), logo_path)
+                    url.setPath(logo_path)
+                else:
+                    logging.debug('Mod for path fsrs://%s could not be found!', url.path())
             else:
                 url.setPath(os.path.join(center.settings_path, os.path.basename(url.path())))
 
             request.setUrl(url)
-        
+
         return super(NetworkAccessManager, self).createRequest(operation, request, data)
 
 

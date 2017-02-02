@@ -123,13 +123,12 @@ fi
 
 export DYLD_FRAMEWORK_PATH="$QTDIR"
 
-python -OO ../common/pyinstaller/pyinstaller.py -y --distpath=./dist --workpath=./build  Knossos.spec
+python -OO ../common/pyinstaller/pyinstaller.py -y --distpath=./dist --workpath=./build Knossos.spec
 
 # Fix the symlinks in dist/Knossos.app/Contents/MacOS
 for item in ./dist/Knossos.app/Contents/MacOS/*; do
     if [ -L "$item" ]; then
-        dest="$(readlink "$item")"
-        dest="$(echo "$dest" | sed 's#dist/Knossos.app/Contents#../#')"
+        dest="$(readlink "$item" | sed 's#dist/Knossos.app/Contents#../#')"
 
         unlink "$item"
         ln -s "$dest" "$item"

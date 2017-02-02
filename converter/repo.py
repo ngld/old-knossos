@@ -18,8 +18,8 @@ import re
 import logging
 import semantic_version
 
-from knossos.util import pjoin, is_archive, merge_dicts
-from . import vfs, bool_parser
+from knossos.util import pjoin, merge_dicts
+from . import vfs
 
 
 class RepoConf(object):
@@ -60,7 +60,10 @@ class RepoConf(object):
         for mod in mods:
             mod = Mod(mod)
             if mod.validate():
-                self.mods[mod.mid] = mod
+                if mod.mid not in self.mods:
+                    self.mods[mod.mid] = {}
+
+                self.mods[mod.mid][mod.version] = mod
             else:
                 self._valid = False
 
@@ -68,9 +71,10 @@ class RepoConf(object):
         if not self._valid:
             return False
 
-        for mod in self.mods.values():
-            if not mod.validate():
-                return False
+        for mvs in self.mods.values():
+            for mod in mvs.values():
+                if not mod.validate():
+                    return False
 
         return True
 
@@ -84,8 +88,12 @@ class RepoConf(object):
         content = {
             'includes': self.includes,
             'remote_includes': self.remote_includes,
-            'mods': [mod.get() for mod in self.mods]
+            'mods': []
         }
+
+        for mvs in self.mods.values():
+            for mod in mvs.values():
+                content['mods'].append(mod.get())
 
         if pretty:
             content['mods'].sort(key=lambda i: i['id'])
@@ -104,115 +112,13 @@ class RepoConf(object):
 
             merge_dicts(self.mods, conf.mods)
 
-    def import_tree(self, mod_tree):
-        mod_tree = self._flatten_tree(mod_tree)
-
-        for path, mod in mod_tree.items():
-            # First we need its ID.
-            # For now, I'll simply use the path with a prefix.
-            
-            id_ = 'FSOI#' + path
-            if id_ in self.mods:
-                # Let's update it but try to honour local modifications.
-                submods = ['FSOI#' + '.'.join(smod.path) for smod in mod.submods]
-                dependencies = ['FSOI#' + path for path in mod.dependencies]
-                delete = [pjoin(mod.folder, path) for path in mod.delete]
-
-                entry = self.mods[id_]
-                for smod in submods:
-                    if smod not in entry['submods']:
-                        entry['submods'].append(smod)
-                
-                e_deps = entry['packages'][0]['dependencies']
-                for path in dependencies:
-                    if path not in e_deps:
-                        e_deps.append(path)
-                
-                del_files = []
-                for act in entry['actions']:
-                    if act['type'] == 'delete':
-                        del_files.extend(act['files'])
-
-                missing_del_files = set(delete) - set(del_files)
-                added = False
-                for act in entry['actions']:
-                    if act['type'] == 'delete':
-                        act['files'].extend(missing_del_files)
-                        added = True
-                
-                if not added:
-                    entry['actions'].append({'type': 'delete', 'files': missing_del_files})
-            else:
-                # NOTE: I'm deliberatly dropping support for COPY and RENAME here.
-
-                entry = self.mods[id_] = {
-                    'id': id_,
-                    'title': mod.name,
-                    'version': mod.version,
-                    'description': mod.desc,
-                    'logo': None,
-                    'notes': mod.note,
-                    'submods': ['FSOI#' + '.'.join(smod.path) for smod in mod.submods],
-                    'packages': [
-                        {
-                            'name': 'Core files',
-                            'notes': '',
-                            'status': 'required',
-                            'dependencies': [{'id': 'FSOI#' + path, 'version': '*', 'packages': []} for path in mod.dependencies],
-                            'environment': [],
-                            'files': []
-                        }
-                    ],
-                    'actions': [{
-                        'type': 'delete',
-                        'files': [pjoin(mod.folder, path) for path in mod.delete]
-                    }]
-                }
-
-            trail = 'FSOI#'
-            e_deps = entry['packages'][0]['dependencies']
-            for item in mod.path:
-                trail += item
-                if trail not in e_deps:
-                    e_deps.append({'id': trail, 'version': '*', 'packages': []})
-
-                trail += '.'
-
-            # Always keep the files in sync.
-            flist = self.mods[id_]['packages'][0]['files'] = []
-
-            for urls, filenames in mod.urls:
-                files = {}
-                flist.append((urls, files))
-
-                for name in filenames:
-                    files[name] = {
-                        'is_archive': is_archive(name),
-                        'dest': mod.folder
-                    }
-
-    def _flatten_tree(self, mod_tree, path=None):
-        if path is None:
-            path = []
-
-        result = {}
-        for mod in mod_tree:
-            path.append(mod.name)
-
-            mod.path = path
-            result['.'.join(mod.path)] = mod
-            result.update(self._flatten_tree(mod.submods, path))
-
-            path.pop()
-
-        return result
-
 
 class Mod(object):
     _repo = None
     _valid = True
     mid = ''
     title = ''
+    mtype = ''
     version = None
     folder = None
     logo = ''
@@ -223,7 +129,7 @@ class Mod(object):
     actions = None
     packages = None
 
-    _fields = ('id', 'title', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
+    _fields = ('id', 'title', 'type', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
     _req = ('id', 'title', 'version')
 
     def __init__(self, values=None, repo=None):
@@ -253,6 +159,7 @@ class Mod(object):
 
         self.mid = values['id']
         self.title = values['title']
+        self.mtype = values.get('type', 'mod')
         self.folder = values.get('folder', self.mid).strip('/')  # make sure we have a relative path
         self.cmdline = values.get('cmdline', '')
         self.logo = values.get('logo', None)
@@ -261,6 +168,10 @@ class Mod(object):
         self.submods = values.get('submods', [])
         self.packages = [Package(pkg, self) for pkg in values.get('packages', [])]
         self.actions = values.get('actions', [])
+
+        if self.mtype not in ('mod', 'tc', 'addon', 'engine'):
+            logging.error('"%s" is not a valid mod type!', self.mtype)
+            self._valid = False
 
         try:
             self.version = semantic_version.Version(values['version'], partial=True)
@@ -310,6 +221,7 @@ class Mod(object):
         return {
             'id': self.mid,
             'title': self.title,
+            'type': self.mtype,
             'version': str(self.version),
             'folder': self.folder,
             'cmdline': self.cmdline,
@@ -482,10 +394,6 @@ class Package(object):
                 if env['value'] not in ('windows', 'linux', 'macos'):
                     logging.error('Unknown operating system "%s" for package "%s"!', env['value'], self.name)
                     self._valid = False
-            elif env['type'] == 'bool':
-                env['value'] = bool_parser.parse(env['value'])
-                if not env['value']:
-                    logging.error('Invalid boolean expression "%s" for package "%s"!', env['value'], self.name)
             else:
                 logging.error('Unknown environment condition "%s" for package "%s"!', env['type'], self.name)
                 self._valid = False

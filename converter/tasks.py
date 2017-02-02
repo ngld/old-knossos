@@ -15,6 +15,7 @@
 import os
 import tempfile
 import logging
+import shutil
 from threading import Lock
 
 from knossos import progress, util
@@ -23,13 +24,17 @@ from knossos import progress, util
 class ChecksumTask(progress.Task):
     dl_path = None
     dl_mirror = None
+    dl_slug = None
+    rem_prefixes = None
     _mf_lock = None
 
-    def __init__(self, work, dl_path=None, dl_mirror=None):
+    def __init__(self, work, dl_path=None, dl_mirror=None, dl_slug=None, remove_prefixes=[]):
         super(ChecksumTask, self).__init__(work)
 
         self.dl_path = dl_path
         self.dl_mirror = dl_mirror
+        self.dl_slug = dl_slug
+        self.rem_prefixes = remove_prefixes
         self._mf_lock = Lock()
 
     def work(self, item):
@@ -39,7 +44,7 @@ class ChecksumTask(progress.Task):
             if self.dl_path is None:
                 base_path = dest
             else:
-                base_path = self.dl_path
+                base_path = os.path.join(self.dl_path, self.dl_slug)
 
             f_name = os.path.basename(name)
             path = os.path.join(base_path, f_name)
@@ -50,21 +55,27 @@ class ChecksumTask(progress.Task):
 
             res = self._download(links, path, tstamp)
 
+            for i, link in reversed(list(enumerate(links))):
+                for pref in self.rem_prefixes:
+                    if link.startswith(pref):
+                        del links[i]
+
             if res == 304:
                 # Nothing changed.
                 self.post((id_, 'CACHE', None, 0))
             elif res:
                 logging.info('Inspecting "%s"...', name)
-                progress.update(1, 'Inspecting "%s"...' % name)
+                progress.update(0.999, 'Inspecting "%s"...' % name)
                 
                 csum, content = self._inspect_file(id_, archive, dest, path)
 
                 if csum != 'FAILED':
                     if self.dl_mirror is not None:
-                        links.append(util.pjoin(self.dl_mirror, os.path.basename(path)))
+                        links.append(util.pjoin(self.dl_mirror, self.dl_slug, os.path.basename(path)))
 
                     self.post((id_, csum, content, os.path.getsize(path)))
                 else:
+                    os.unlink(path)
                     self.post((id_, 'FAILED', None, 0))
             else:
                 # None of the links worked!
@@ -74,21 +85,28 @@ class ChecksumTask(progress.Task):
         from . import download
 
         all_links = links[:]
+        retries = 5
 
         # Remove all indirect links.
         for i, link in reversed(list(enumerate(links))):
             if not download.is_direct(link):
                 del links[i]
 
-        for link in all_links:
-            res = download.download(link, path)
+        while retries > 0:
+            retries -= 1
+            
+            for link in all_links:
+                if self.dl_mirror is not None and link.startswith(self.dl_mirror):
+                    link_path = os.path.join(self.dl_path, link[len(self.dl_mirror):].lstrip('/'))
+                    if os.path.isfile(link_path):
+                        shutil.copyfile(link_path, path)
+                        return True
 
-            if res is None:
                 with open(path, 'wb') as stream:
-                    res = util.download(link, stream, headers={'If-Modified': tstamp})
+                    res = util.download(link, stream, headers={'If-Modified': str(tstamp)})
 
-            if res == 304 or res:
-                return res
+                if res == 304 or res:
+                    return res
 
         return False
 
@@ -111,34 +129,8 @@ class ChecksumTask(progress.Task):
                         # Don't generate checksums for symlinks.
                         if not os.path.islink(fpath):
                             content[subpath + name] = util.gen_hash(fpath)
-
-                        if name == 'mod.ini':
-                            self._inspect_mod_ini(os.path.join(cur_path, name), id_[0])
             else:
                 logging.error('Failed to extract "%s"!', os.path.basename(path))
                 return 'FAILED', None
 
         return csum, content
-
-    def _inspect_mod_ini(self, path, mid):
-        # Let's look for the logo.
-        
-        base_path = os.path.dirname(path)
-        img = []
-        with open(path, 'r') as stream:
-            for line in stream:
-                line = line.strip()
-                if line.startswith('image'):
-                    line = line.split('=')[1].strip(' \t\n\r;')
-                    line = os.path.join(base_path, line)
-                    info = os.stat(line)
-
-                    img.append((line, info.st_size))
-
-        if len(img) > 0:
-            # Pick the biggest.
-            # TODO: Improve
-            img.sort(key=lambda i: i[1])
-            img = img[-1][0]
-
-            self.post(((mid, 'logo', 'logo.jpg'), util.convert_img(img, 'jpg'), {}, 0))
