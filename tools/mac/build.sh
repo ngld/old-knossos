@@ -95,13 +95,11 @@ if [ ! -d pyenv ]; then
     source pyenv/bin/activate
 
     msg2 "Installing Python packages..."
-    pip install six semantic_version PySide requests dmgbuild
+    pip install six semantic_version raven PyQt5 requests dmgbuild
 else
     source pyenv/bin/activate
 fi
 
-# Make sure python finds libpyside-*.dylib and libshiboken-*.dylib.
-export DYLD_LIBRARY_PATH="$(python -c 'import os.path, PySide; print(os.path.dirname(PySide.__file__))')"
 ensure_pyinstaller
 
 msg "Building..."
