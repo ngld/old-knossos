@@ -58,9 +58,12 @@ settings = {
 if '-dev' in VERSION:
     settings['update_channel'] = 'develop'
 
-settings_path = os.path.expanduser('~/.knossos')
 if sys.platform.startswith('win'):
     settings_path = os.path.expandvars('$APPDATA/knossos')
+elif 'XDG_CONFIG_HOME' in os.environ:
+    settings_path = os.path.expandvars('$XDG_CONFIG_HOME/knossos')
+else:
+    settings_path = os.path.expanduser('~/.knossos')
 
 
 class _SignalContainer(QtCore.QObject):

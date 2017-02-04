@@ -21,7 +21,7 @@ SED_I = sed -i
 PYTHON ?= python
 PY3 := $(realpath $(shell which python3))
 ifneq ($(PY3),)
-	# Default to python3 by default
+	# Default to python3
 	PYTHON = $(PY3)
 endif
 
@@ -33,10 +33,10 @@ endif
 .PHONY: run debug dist clean resources ui
 
 run: resources ui
-	$(PYTHON) -m knossos
+	$(PYTHON) knossos/__main__.py
 
 debug: resources ui
-	KN_DEBUG=1 $(PYTHON) -m knossos
+	KN_DEBUG=1 $(PYTHON) knossos/__main__.py
 
 dist: resources ui
 	$(PYTHON) setup.py sdist bdist_wheel
