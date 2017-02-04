@@ -21,6 +21,9 @@ import semantic_version
 from .qt import QtCore, QtWebChannel
 from . import center, api, repo, windows, tasks, util
 
+if not QtWebChannel:
+    from .qt import QtWebKit
+
 
 class WebBridge(QtCore.QObject):
 
@@ -80,16 +83,18 @@ class WebBridge(QtCore.QObject):
     taskProgress = QtCore.Signal(float, float, str, str)
     taskFinished = QtCore.Signal(float)
 
-    def __init__(self, webView):
+    def __init__(self, webView=None):
         super(WebBridge, self).__init__()
 
-        page = webView.page()
-        channel = QtWebChannel.QWebChannel(page)
+        if QtWebChannel:
+            self.bridge = self
+            page = webView.page()
+            channel = QtWebChannel.QWebChannel(page)
 
-        page.setWebChannel(channel)
-        channel.registerObject('fs2mod', self)
+            page.setWebChannel(channel)
+            channel.registerObject('fs2mod', self)
 
-        webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
+            webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
 
     @QtCore.Slot(result=str)
     def getVersion(self):
@@ -325,3 +330,31 @@ class WebBridge(QtCore.QObject):
             return 0
 
         return a.__cmp__(b)
+
+
+if QtWebChannel:
+    BrowserCtrl = WebBridge
+else:
+    class BrowserCtrl(object):
+        _view = None
+        _nam = None
+        bridge = None
+
+        def __init__(self, webView):
+            self._view = webView
+            self.bridge = WebBridge(None)
+
+            settings = webView.settings()
+            settings.setAttribute(QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
+            
+            frame = webView.page().mainFrame()
+            frame.javaScriptWindowObjectCleared.connect(self.insert_bridge)
+
+            webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
+
+        def insert_bridge(self):
+            frame = self._view.page().mainFrame()
+
+            del self.bridge
+            self.bridge = WebBridge()
+            frame.addToJavaScriptWindowObject('fs2mod', self.bridge)

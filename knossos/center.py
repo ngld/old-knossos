@@ -52,7 +52,8 @@ settings = {
     'ui_mode': 'hell',
     'keyboard_layout': 'default',
     'keyboard_setxkbmap': False,
-    'use_raven': True
+    'use_raven': True,
+    'mod_settings': {}
 }
 
 if '-dev' in VERSION:

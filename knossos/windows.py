@@ -154,7 +154,7 @@ class HellWindow(Window):
         self._tasks = {}
 
         self._create_win(Ui_Hell, QMainWindow)
-        self.browser_ctrl = web.WebBridge(self.win.webView)
+        self.browser_ctrl = web.BrowserCtrl(self.win.webView)
 
         self.win.backButton.clicked.connect(self.win.webView.back)
         self.win.searchEdit.textEdited.connect(self.search_mods)
@@ -257,7 +257,7 @@ class HellWindow(Window):
 
     def update_mod_list(self):
         result, filter_ = self.search_mods()
-        self.browser_ctrl.updateModlist.emit(result, filter_)
+        self.browser_ctrl.bridge.updateModlist.emit(result, filter_)
 
     def show_settings(self):
         SettingsWindow()
@@ -291,7 +291,7 @@ class HellWindow(Window):
 
     def watch_task(self, task):
         self._tasks[id(task)] = task
-        self.browser_ctrl.taskStarted.emit(id(task), task.title)
+        self.browser_ctrl.bridge.taskStarted.emit(id(task), task.title)
 
         task.done.connect(functools.partial(self._forget_task, task))
         task.progress.connect(functools.partial(self._track_progress, task))
@@ -309,7 +309,7 @@ class HellWindow(Window):
 
     def _track_progress(self, task, pi):
         subs = [item for item in pi[1].values()]
-        self.browser_ctrl.taskProgress.emit(id(task), pi[0] * 100, json.dumps(subs), pi[2])
+        self.browser_ctrl.bridge.taskProgress.emit(id(task), pi[0] * 100, json.dumps(subs), pi[2])
 
         if len(self._tasks) == 1:
             integration.current.set_progress(pi[0])
@@ -317,7 +317,7 @@ class HellWindow(Window):
 
     def _forget_task(self, task):
         logging.debug('Task "%s" (%d) finished.', task.title, id(task))
-        self.browser_ctrl.taskFinished.emit(id(task))
+        self.browser_ctrl.bridge.taskFinished.emit(id(task))
         del self._tasks[id(task)]
 
         if len(self._tasks) == 1:
@@ -1448,8 +1448,16 @@ class ModSettingsWindow(Window):
                 self.win.pkgsLayout.addWidget(p_check)
                 self._pkg_checks.append([p_check, installed, pkg])
 
+            settings = center.settings['mod_settings'].get(self._mod.mid)
+            if settings:
+                if settings.get('parse_mod_ini', False):
+                    self.win.parseModIni.setCheckState(QtCore.Qt.Checked)
+                else:
+                    self.win.parseModIni.setCheckState(QtCore.Qt.Unchecked)
+
             self.win.applyPkgChanges.clicked.connect(self.apply_pkg_selection)
 
+            self.win.parseModIni.stateChanged.connect(self.apply_mod_ini_setting)
             self.win.checkFiles.clicked.connect(self.check_files)
             self.win.delLoose.clicked.connect(self.delete_loose_files)
             self.win.replaceFiles.clicked.connect(self.repair_files)
@@ -1664,6 +1672,15 @@ class ModSettingsWindow(Window):
 
     def open_ver_edit(self, mod):
         ModVersionsWindow(mod)
+
+    def apply_mod_ini_setting(self, state):
+        settings = center.settings['mod_settings']
+        if self._mod.mid not in settings:
+            settings[self._mod.mid] = {}
+
+        settings = settings[self._mod.mid]
+        settings['parse_mod_ini'] = state == QtCore.Qt.Checked
+        api.save_settings()
 
     def check_files(self):
         self.win.setCursor(QtCore.Qt.BusyCursor)

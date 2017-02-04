@@ -744,6 +744,7 @@ class InstalledRepo(Repo):
 
 class InstalledMod(Mod):
     check_notes = ''
+    _path = None
 
     @staticmethod
     def load(path):
@@ -752,6 +753,7 @@ class InstalledMod(Mod):
                 data = json.load(stream)
 
             mod = InstalledMod(data)
+            mod._path = path
         elif path.endswith('.ini'):
             mod = IniMod()
             mod.load(path)
@@ -838,6 +840,11 @@ class InstalledMod(Mod):
     def get_mod_flag(self):
         mods = [self.folder]
 
+        if center.settings['mod_settings'].get(self.mid, {}).get('parse_mod_ini', False):
+            ini = IniMod()
+            ini.load(os.path.join(os.path.dirname(self._path), 'mod.ini'))
+            return ini.get_mod_flag()
+
         try:
             for dep in self.resolve_deps():
                 folder = dep.get_mod().folder
@@ -860,7 +867,7 @@ class IniMod(InstalledMod):
     _sc_list = None
 
     def __init__(self, values=None):
-        super(IniMod, self).__init__(values=None)
+        super(IniMod, self).__init__(values)
 
         self._pr_list = []
         self._sc_list = []
@@ -890,11 +897,11 @@ class IniMod(InstalledMod):
                     if value != '':
                         self._sc_list = value.split(',')
 
-        folder = os.path.basename(os.path.dirname(path))
+        self.folder = os.path.basename(os.path.dirname(path))
         if self.title == '':
-            self.title = folder + ' (ini)'
+            self.title = self.folder + ' (ini)'
 
-        self.mid = '##INI_COMPAT#' + folder
+        self.mid = '##INI_COMPAT#' + self.folder
         if self.logo:
             self.logo_path = os.path.join(path, self.logo)
 
