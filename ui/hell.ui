@@ -242,7 +242,7 @@
   <customwidget>
    <class>QWebEngineView</class>
    <extends>QWidget</extends>
-   <header location="global">QtWebEngineWidgets/QWebEngineView</header>
+   <header location="global">QtWebEngineWidgets</header>
   </customwidget>
  </customwidgets>
  <resources/>
