@@ -25,7 +25,7 @@ import semantic_version
 from . import uhf
 uhf(__name__)
 
-from . import center, util, clibs, integration, api, web, repo, launcher, runner
+from . import center, util, integration, api, web, repo, launcher, runner
 from .qt import QtCore, QtGui, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.gogextract import Ui_Dialog as Ui_Gogextract
@@ -553,6 +553,19 @@ class SettingsWindow(Window):
 
         return config.contains('VideocardFs2open')
 
+    def get_deviceinfo(self):
+        try:
+            info = json.loads(util.check_output(launcher.get_cmd(['--deviceinfo'])).strip())
+        except:
+            logging.exception('Failed to retrieve device info!')
+
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                'There was an error trying to retrieve your device info (screen resolution, joysticks and audio devices). ' +
+                'Please try again or report this error on the HLP thread.')
+            return None
+
+        return info
+
     def read_config(self):
         fs2_path = center.settings['fs2_path']
         fs2_bin = center.settings['fs2_bin']
@@ -577,6 +590,8 @@ class SettingsWindow(Window):
                 # Found only one binary, select it by default.
                 tab.build.setEnabled(False)
                 self.save_build()
+
+        dev_info = self.get_deviceinfo()
 
         # ---Read fs2_open.ini or the registry---
         if sys.platform.startswith('win'):
@@ -637,11 +652,11 @@ class SettingsWindow(Window):
         vid_res = self._tabs['Video'].resolution
         vid_res.clear()
 
-        raw_modes = clibs.get_modes()
         modes = []
-        for mode in raw_modes:
-            if mode not in modes and not (mode[0] < 800 or mode[1] < 600):
-                modes.append(mode)
+        if dev_info:
+            for mode in dev_info['modes']:
+                if mode not in modes and not (mode[0] < 800 or mode[1] < 600):
+                    modes.append(mode)
 
         for i, (width, height) in enumerate(modes):
             vid_res.addItem('{0} x {1} ({2})'.format(width, height, self.get_ratio(width, height)))
@@ -694,8 +709,8 @@ class SettingsWindow(Window):
         vid_af.setCurrentIndex(index)
 
         # ---Sound settings---
-        if clibs.can_detect_audio():
-            snd_devs, snd_default, snd_captures, snd_default_capture = clibs.list_audio_devs()
+        if dev_info and dev_info['audio_devs']:
+            snd_devs, snd_default, snd_captures, snd_default_capture = dev_info['audio_devs']
             snd_playback = self._tabs['Audio'].playbackDevice
             snd_capture = self._tabs['Audio'].captureDevice
             snd_playback.clear()
@@ -742,7 +757,7 @@ class SettingsWindow(Window):
                 self._tabs['Audio'].enableEFX.setChecked(False)
 
         # ---Joystick settings---
-        joysticks = clibs.list_joysticks()
+        joysticks = dev_info['joysticks'] if dev_info else []
         ctrl_joystick = self._tabs['Input'].controller
 
         ctrl_joystick.clear()
