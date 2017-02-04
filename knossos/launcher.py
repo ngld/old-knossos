@@ -77,21 +77,12 @@ app = None
 ipc = None
 
 
-def handle_error():
-    global app, ipc
-    # TODO: Try again?
-
-    QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to connect to main process!')
-    if ipc is not None:
-        ipc.clean()
-
-    app.quit()
-
-
 def my_excepthook(type, value, tb):
-    # NOTE: We can't use logging.exception() here because it uses traceback.print_exception
-    # which (for some reason) doesn't work here.
-    logging.error('UNCAUGHT EXCEPTION!\n%s%s: %s', ''.join(traceback.format_tb(tb)), type.__name__, value)
+    try:
+        # NOTE: This can fail (for some reason) in traceback.print_exception.
+        logging.error('UNCAUGHT EXCEPTION!', exc_info=(type, value, tb))
+    except:
+        logging.error('UNCAUGHT EXCEPTION!\n%s%s: %s' % (''.join(traceback.format_tb(tb)), type.__name__, value))
 
 
 def get_cmd(args=[]):
@@ -182,8 +173,13 @@ def load_settings():
 def run_knossos():
     global app
 
-    from . import repo, progress, api
+    from . import repo, progress, api, integration
     from .windows import HellWindow
+
+    if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
+        util.SEVEN_PATH = os.path.abspath('7z.exe')
+    elif sys.platform == 'darwin' and os.path.isfile('7z'):
+        util.SEVEN_PATH = os.path.abspath('7z')
 
     if not util.test_7z():
         QtWidgets.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtWidgets.QMessageBox.Ok, QtWidgets.QMessageBox.Ok)
@@ -191,34 +187,20 @@ def run_knossos():
 
     # Try to load our settings.
     settings = load_settings()
-
     util.DL_POOL.set_capacity(settings['max_downloads'])
 
     center.app = app
-
     center.installed = repo.InstalledRepo()
     center.installed.pins = settings['pins']
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()
 
+    integration.init()
     api.check_retail_files()
     mod_db = os.path.join(center.settings_path, 'mods.json')
     if os.path.isfile(mod_db):
         center.mods.load_json(mod_db)
-
-    QtGui.QFontDatabase.addApplicationFont(':/html/fonts/FontAwesome.otf')
-
-    if sys.platform == 'darwin':
-        # QFontDatabase.addApplicationFont apparently doesn't work on Mac OS.
-        # We work around this issue by copying the font to ~/Library/Fonts and deleting it once we exit.
-        # FIXME: Solve the actual problem and remove this workaround.
-        font_path = os.path.expandvars('$HOME/Library/Fonts/__tmp_Knossos_FontAwesome.otf')
-        with open(font_path, 'wb') as stream:
-            stream.write(read_file(':/html/fonts/FontAwesome.otf'))
-
-        import atexit
-        atexit.register(lambda: os.unlink(font_path))
 
     center.main_win = HellWindow()
     QtCore.QTimer.singleShot(1, api.init_self)
@@ -230,6 +212,16 @@ def run_knossos():
     api.shutdown_ipc()
 
 
+def handle_ipc_error():
+    global app, ipc
+    
+    logging.error('Failed to connect to main process!')
+
+    if ipc is not None:
+        ipc.clean()
+        ipc = None
+
+
 def scheme_handler(link):
     global app, ipc
 
@@ -237,14 +229,14 @@ def scheme_handler(link):
         # NOTE: fs2:// is deprecated, we don't tell anyone about it.
         QtWidgets.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
         app.quit()
-        return
+        return True
 
     link = urlparse.unquote(link.strip()).split('/')
 
     if len(link) < 3:
         QtWidgets.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')
         app.quit()
-        return
+        return True
 
     if not ipc.server_exists():
         # Launch the program.
@@ -257,67 +249,36 @@ def scheme_handler(link):
                 # That's too long!
                 QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to start server!')
                 app.quit()
-                return
+                return True
 
             time.sleep(0.3)
 
     try:
-        ipc.open_connection(handle_error)
+        ipc.open_connection(handle_ipc_error)
     except:
         logging.exception('Failed to connect to myself!')
-        handle_error()
-        return
+        handle_ipc_error()
+        return False
+
+    if not ipc:
+        return False
 
     ipc.send_message(json.dumps(link[2:]))
     ipc.close(True)
     app.quit()
-    return
+    return True
 
 
-def get_cpu_info():
-    from .third_party import cpuinfo
+def main():
+    global ipc, app
 
-    info = None
+    # Default to replacing errors when de/encoding.
+    import codecs
 
-    try:
-        # Try querying the CPU cpuid register
-        if not info and '--safe' not in sys.argv:
-            info = cpuinfo.get_cpu_info_from_cpuid()
+    codecs.register_error('strict', codecs.replace_errors)
+    codecs.register_error('really_strict', codecs.strict_errors)
 
-        # Try the Windows registry
-        if not info:
-            info = cpuinfo.get_cpu_info_from_registry()
-
-        # Try /proc/cpuinfo
-        if not info:
-            info = cpuinfo.get_cpu_info_from_proc_cpuinfo()
-
-        # Try sysctl
-        if not info:
-            info = cpuinfo.get_cpu_info_from_sysctl()
-
-        # Try solaris
-        if not info:
-            info = cpuinfo.get_cpu_info_from_solaris()
-
-        # Try dmesg
-        if not info:
-            info = cpuinfo.get_cpu_info_from_dmesg()
-    except:
-        logging.exception('Failed to retrieve CPU info.')
-
-    print(json.dumps(info))
-
-
-def init():
     sys.excepthook = my_excepthook
-
-    from . import integration
-
-    if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
-        util.SEVEN_PATH = os.path.abspath('7z.exe')
-    elif sys.platform == 'darwin' and os.path.isfile('7z'):
-        util.SEVEN_PATH = os.path.abspath('7z')
 
     # The version file is only read in dev builds.
     if center.VERSION.endswith('-dev') and os.path.isfile('version'):
@@ -333,35 +294,18 @@ def init():
     logging.info('Running Knossos %s on %s.', center.VERSION, qt_variant)
     app = QtWidgets.QApplication([])
 
-    logging.debug('Loading resources from %s.', get_file_path('resources.rcc'))
-    QtCore.QResource.registerResource(get_file_path('resources.rcc'))
+    res_path = get_file_path('resources.rcc')
+    logging.debug('Loading resources from %s.', res_path)
+    QtCore.QResource.registerResource(res_path)
 
     app.setWindowIcon(QtGui.QIcon(':/hlp.png'))
-    integration.init()
-
-    return app
-
-
-def main():
-    global ipc, app
-
-    # Default to replace errors when de/encoding.
-    import codecs
-
-    codecs.register_error('strict', codecs.replace_errors)
-    codecs.register_error('really_strict', codecs.strict_errors)
-
-    if len(sys.argv) > 1 and sys.argv[1] == '--cpuinfo':
-        get_cpu_info()
-        return
-
-    app = init()
     ipc = IPCComm(center.settings_path)
 
     if len(sys.argv) > 1:
         if sys.argv[1] == '--install-scheme':
-            from . import api
+            from . import integration, api
 
+            integration.init()
             api.install_scheme_handler('--silent' not in sys.argv)
             return
         elif sys.argv[1] == '--finish-update':
@@ -391,10 +335,19 @@ def main():
                     except:
                         logging.exception('Failed to remove the updater\'s temporary directory.')
         else:
-            scheme_handler(sys.argv[1])
+            tries = 3
+            while tries > 0:
+                if scheme_handler(sys.argv[1]):
+                    break
+
+                tries -= 1
+                ipc = IPCComm(center.settings_path)
+
+            if tries == 0:
+                sys.exit(1)
+
             return
-    elif ipc.server_exists():
-        scheme_handler('fso://focus')
+    elif ipc.server_exists() and scheme_handler('fso://focus'):
         return
 
     del ipc

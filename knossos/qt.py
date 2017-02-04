@@ -42,7 +42,7 @@ if variant in ('PyQt5', 'auto'):
         variant = 'PyQt5'
 
     except ImportError:
-        logging.exception('I was unable to load Qt! Tried PyQt4.')
+        logging.exception('I was unable to load Qt! Tried PyQt5.')
         sys.exit(1)
 
 if variant == 'headless':
@@ -179,6 +179,7 @@ if variant == 'headless':
     class QtWidgets(object):
         QApplication = _App
 
+    QtNetwork = None
     QtWebChannel = None
     QtWebEngineWidgets = None
 
@@ -206,4 +207,4 @@ def load_styles(*names):
     return data
 
 
-__all__ = ['QtCore', 'QtGui', 'QtWidgets', 'QtWebChannel', 'QtWebEngineWidgets', 'variant', 'read_file', 'load_styles']
+__all__ = ['QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtWebChannel', 'QtWebEngineWidgets', 'variant', 'read_file', 'load_styles']

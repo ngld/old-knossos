@@ -21,7 +21,7 @@ import ctypes
 import shlex
 import six
 
-from . import center, clibs, qt, launcher
+from . import center, qt, launcher
 
 if qt.variant == 'PySide':
     if six.PY2:
@@ -187,6 +187,7 @@ class WindowsIntegration(Integration):
 
         return settings.value('shell/open/command/Default') == my_path
 
+
 current = None
 
 
@@ -206,15 +207,6 @@ def init():
             current = WindowsIntegration(taskbar)
             return
     elif sys.platform.startswith('linux'):
-        # TODO: Do we really have to initialize GTK?
-
-        clibs.init_gtk()
-        theme = clibs.get_gtk_theme()
-        if theme == 'Ambiance':
-            center.main_win.win.setStyleSheet(qt.load_styles(':/ui/themes/Ambiance/style.css'))
-            center.main_win.win.setContentsMargins(-9, -9, -9, -9)
-            center.main_win.win.verticalLayout.setSpacing(0)
-
         try:
             from gi.repository import Unity
         except ImportError:

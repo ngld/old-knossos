@@ -58,4 +58,4 @@ knossos/data/resources.rcc: $(RCC_FILES)
 
 knossos/ui/%.py: ui/%.ui
 	$(PYTHON) -mPyQt5.uic.pyuic -o $@ $<
-	@$(SED_I) -e 's#from PyQt5 import#from ..qt import#' -e '/^import resources.*/ d' $@
+	@$(SED_I) -e 's#from PyQt5 import#from ..qt import#' -e '/^import resources.*/d' -e '/setContentsMargins(0, 0, 0, 0)/d' $@
