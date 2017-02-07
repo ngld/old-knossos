@@ -115,6 +115,9 @@ class Window(object):
     def _del(self):
         global _open_wins
 
+        if self.closed:
+            return
+
         self.closed = True
 
         if self in _open_wins:
@@ -290,6 +293,7 @@ class HellWindow(Window):
             self.update_mod_list()
 
     def watch_task(self, task):
+        logging.debug('Task "%s" (%d, %s) started.', task.title, id(task), task.__class__)
         self._tasks[id(task)] = task
         self.browser_ctrl.bridge.taskStarted.emit(id(task), task.title)
 
