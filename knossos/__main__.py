@@ -63,6 +63,9 @@ elif len(sys.argv) > 1 and sys.argv[1] == '--deviceinfo':
     import json
     from knossos import clibs
 
+    clibs.init_sdl()
+    clibs.init_openal()
+
     if clibs.can_detect_audio():
         audio_devs = clibs.list_audio_devs()
     else:

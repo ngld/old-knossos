@@ -983,6 +983,6 @@ def run_task(task, cb=None):
     if cb is not None:
         task.done.connect(wrapper)
 
-    center.pmaster.add_task(task)
     center.signals.task_launched.emit(task)
+    center.pmaster.add_task(task)
     return task
