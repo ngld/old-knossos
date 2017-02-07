@@ -496,7 +496,12 @@ def _read_default_cmdline():
 
 
 def enable_raven():
-    from raven import Client
+    try:
+        from raven import Client
+    except ImportError:
+        logging.exception('Failed to import raven!')
+        return False
+
     from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
     from raven.handlers.logging import SentryHandler
     from raven.conf import defaults
@@ -516,9 +521,13 @@ def enable_raven():
     center.raven_handler = SentryHandler(center.raven, level=logging.ERROR)
     logging.getLogger().addHandler(center.raven_handler)
 
+    return True
+
 
 def disable_raven():
-    logging.getLogger().removeHandler(center.raven_handler)
+    if center.raven_handler:
+        logging.getLogger().removeHandler(center.raven_handler)
+
     center.raven = None
     center.raven_handler = None
 
