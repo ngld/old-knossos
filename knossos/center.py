@@ -20,7 +20,7 @@ from .qt import QtCore
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.2.0'
+VERSION = '0.3.0'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
 DEBUG = os.environ.get('KN_DEBUG') == '1'
@@ -52,15 +52,19 @@ settings = {
     'ui_mode': 'hell',
     'keyboard_layout': 'default',
     'keyboard_setxkbmap': False,
-    'use_raven': True
+    'use_raven': True,
+    'mod_settings': {}
 }
 
 if '-dev' in VERSION:
     settings['update_channel'] = 'develop'
 
-settings_path = os.path.expanduser('~/.knossos')
 if sys.platform.startswith('win'):
     settings_path = os.path.expandvars('$APPDATA/knossos')
+elif 'XDG_CONFIG_HOME' in os.environ:
+    settings_path = os.path.expandvars('$XDG_CONFIG_HOME/knossos')
+else:
+    settings_path = os.path.expanduser('~/.knossos')
 
 
 class _SignalContainer(QtCore.QObject):

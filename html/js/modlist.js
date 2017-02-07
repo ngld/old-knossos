@@ -59,7 +59,7 @@ function render_row(mvs, type) {
         if(mod.logo) {
             logo.attr('src', 'file://' + mod.logo_path);
         } else {
-            logo.hide();
+            logo.replaceWith('<div class="no-logo">');
         }
     }
 
@@ -178,13 +178,20 @@ function show_progress() {
     });
 }
 
-new QWebChannel(qt.webChannelTransport, function (channel) {
-    window.fs2mod = channel.objects.fs2mod;
-    
+function init() {
     fs2mod.updateModlist.connect(update_mods);
     fs2mod.taskStarted.connect(add_task);
     fs2mod.taskProgress.connect(update_progress);
     fs2mod.taskFinished.connect(remove_task);
 
     fs2mod.requestModlist(true);
-});
+}
+
+if(window.qt) {
+    new QWebChannel(qt.webChannelTransport, function (channel) {
+        window.fs2mod = channel.objects.fs2mod;
+        init();
+    });
+} else {
+    $(init);
+}

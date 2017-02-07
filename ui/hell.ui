@@ -19,16 +19,16 @@
      <widget class="QFrame" name="toolbar">
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <property name="leftMargin">
-        <number>0</number>
+        <number>1</number>
        </property>
        <property name="topMargin">
-        <number>0</number>
+        <number>1</number>
        </property>
        <property name="rightMargin">
-        <number>0</number>
+        <number>1</number>
        </property>
        <property name="bottomMargin">
-        <number>0</number>
+        <number>1</number>
        </property>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout">
@@ -36,16 +36,16 @@
           <widget class="QWidget" name="pageControls" native="true">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
             <property name="leftMargin">
-             <number>0</number>
+             <number>1</number>
             </property>
             <property name="topMargin">
-             <number>0</number>
+             <number>1</number>
             </property>
             <property name="rightMargin">
-             <number>0</number>
+             <number>1</number>
             </property>
             <property name="bottomMargin">
-             <number>0</number>
+             <number>1</number>
             </property>
             <item>
              <widget class="QPushButton" name="backButton">
@@ -61,16 +61,16 @@
           <widget class="QWidget" name="listControls" native="true">
            <layout class="QHBoxLayout" name="horizontalLayout_3">
             <property name="leftMargin">
-             <number>0</number>
+             <number>1</number>
             </property>
             <property name="topMargin">
-             <number>0</number>
+             <number>1</number>
             </property>
             <property name="rightMargin">
-             <number>0</number>
+             <number>1</number>
             </property>
             <property name="bottomMargin">
-             <number>0</number>
+             <number>1</number>
             </property>
             <item>
              <widget class="QLineEdit" name="searchEdit">
@@ -117,6 +117,21 @@
     <item>
      <widget class="QWidget" name="tabButtons" native="true">
       <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <property name="spacing">
+        <number>1</number>
+       </property>
+       <property name="leftMargin">
+        <number>1</number>
+       </property>
+       <property name="topMargin">
+        <number>1</number>
+       </property>
+       <property name="rightMargin">
+        <number>1</number>
+       </property>
+       <property name="bottomMargin">
+        <number>1</number>
+       </property>
        <item>
         <widget class="QToolButton" name="installedButton">
          <property name="text">
@@ -182,7 +197,7 @@
       </property>
       <property name="url" stdset="0">
        <url>
-        <string>about:blank</string>
+        <string/>
        </url>
       </property>
      </widget>
@@ -218,7 +233,7 @@
      <x>0</x>
      <y>0</y>
      <width>499</width>
-     <height>20</height>
+     <height>25</height>
     </rect>
    </property>
   </widget>
@@ -227,7 +242,7 @@
   <customwidget>
    <class>QWebEngineView</class>
    <extends>QWidget</extends>
-   <header location="global">QtWebEngineWidgets/QWebEngineView</header>
+   <header location="global">QtWebEngineWidgets</header>
   </customwidget>
  </customwidgets>
  <resources/>

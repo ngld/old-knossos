@@ -8,6 +8,15 @@
     position: relative;
 }
 
+.mod .no-logo {
+    display: inline-block;
+    max-width: 255px;
+    padding-bottom: 47.80%; /* 122px / 255px */
+    width: 100%;
+
+    background: rgb(100, 100, 100);
+}
+
 .mod .title {
     font-size: 1.1em;
 }

@@ -32,7 +32,17 @@ if variant != 'headless':
 
 if variant in ('PyQt5', 'auto'):
     try:
-        from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork, QtWebChannel, QtWebEngineWidgets
+        from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork
+
+        try:
+            from PyQt5 import QtWebChannel, QtWebEngineWidgets
+        except ImportError:
+            from PyQt5 import QtWebKit, QtWebKitWidgets
+
+            QtWebChannel = None
+
+            class QtWebEngineWidgets(object):
+                QWebEngineView = QtWebKitWidgets.QWebView
 
         QtCore.Signal = QtCore.pyqtSignal
         QtCore.Slot = QtCore.pyqtSlot
@@ -42,7 +52,7 @@ if variant in ('PyQt5', 'auto'):
         variant = 'PyQt5'
 
     except ImportError:
-        logging.exception('I was unable to load Qt! Tried PyQt4.')
+        logging.exception('I was unable to load Qt! Tried PyQt5.')
         sys.exit(1)
 
 if variant == 'headless':
@@ -179,6 +189,7 @@ if variant == 'headless':
     class QtWidgets(object):
         QApplication = _App
 
+    QtNetwork = None
     QtWebChannel = None
     QtWebEngineWidgets = None
 
@@ -206,4 +217,4 @@ def load_styles(*names):
     return data
 
 
-__all__ = ['QtCore', 'QtGui', 'QtWidgets', 'QtWebChannel', 'QtWebEngineWidgets', 'variant', 'read_file', 'load_styles']
+__all__ = ['QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtWebChannel', 'QtWebEngineWidgets', 'QtWebKit', 'variant', 'read_file', 'load_styles']

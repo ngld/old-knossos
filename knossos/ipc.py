@@ -85,7 +85,7 @@ class IPCComm(QtCore.QObject):
         if self._socket.state() != QtNetwork.QLocalSocket.ConnectedState:
             self._queue.append(msg)
         else:
-            self._socket.write(msg + '\n')
+            self._socket.write((msg + '\n').encode('utf8'))
 
     def close(self, wait=False):
         if self._server is not None:
@@ -126,7 +126,7 @@ class IPCComm(QtCore.QObject):
 
     def _connected(self):
         for msg in self._queue:
-            self._socket.write(msg + '\n')
+            self._socket.write((msg + '\n').encode('utf8'))
 
         self._queue = []
 

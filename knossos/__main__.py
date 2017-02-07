@@ -59,6 +59,20 @@ if len(sys.argv) > 1 and sys.argv[1] == '--cpuinfo':
         logging.exception('Failed to retrieve CPU info.')
 
     print(json.dumps(info))
+elif len(sys.argv) > 1 and sys.argv[1] == '--deviceinfo':
+    import json
+    from knossos import clibs
+
+    if clibs.can_detect_audio():
+        audio_devs = clibs.list_audio_devs()
+    else:
+        audio_devs = None
+
+    print(json.dumps({
+        'modes': clibs.get_modes(),
+        'audio_devs': audio_devs,
+        'joysticks': clibs.list_joysticks()
+    }))
 else:
     from knossos import launcher
     launcher.main()
