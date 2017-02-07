@@ -1398,7 +1398,6 @@ class ModSettingsWindow(Window):
     _mod = None
     _pkg_checks = None
     _mod_versions = None
-    _mvs_cbs = None
     _flags = None
 
     def __init__(self, mod, window=True):
@@ -1600,7 +1599,6 @@ class ModSettingsWindow(Window):
             return
 
         mods.add(self._mod)
-        self._mvs_cbs = []
 
         layout = self.win.versionsTab.layout()
         if layout:
@@ -1641,9 +1639,6 @@ class ModSettingsWindow(Window):
             if mod == self._mod:
                 cb_sel = functools.partial(self.update_versions, sel, mod)
                 cb_edit = functools.partial(self.open_ver_edit, mod)
-                # NOTE: We have to keep a reference around for PySide.
-                # PyQt4 handles these correctly...
-                self._mvs_cbs.append((cb_sel, cb_edit))
 
                 sel.currentIndexChanged.connect(cb_sel)
                 editBut.clicked.connect(cb_edit)
