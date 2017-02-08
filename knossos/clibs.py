@@ -88,7 +88,7 @@ else:
 
 
 def init_sdl():
-    global sdl, SDL2, get_modes, list_joysticks
+    global sdl, SDL2, get_modes, list_joysticks, get_config_path
 
     # Load SDL
     try:
@@ -140,6 +140,10 @@ def init_sdl():
         
         sdl.SDL_JoystickNameForIndex.argtypes = [ctypes.c_int]
         sdl.SDL_JoystickNameForIndex.restype = ctypes.c_char_p
+
+        # SDL_filesystem.h
+        sdl.SDL_GetPrefPath.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+        sdl.SDL_GetPrefPath.restype = ctypes.c_char_p
     else:
         SDL_INIT_VIDEO = 0x00000020
         SDL_INIT_JOYSTICK = 0x00000200
@@ -196,6 +200,10 @@ def init_sdl():
             
             sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
             return joys
+
+        def get_config_path():
+            # See https://github.com/scp-fs2open/fs2open.github.com/blob/master/code/osapi/osapi.cpp
+            return sdl.SDL_GetPrefPath(b'HardLightProductions', b'FreeSpaceOpen').decode('utf8')
     else:
         def get_modes():
             try:
@@ -236,6 +244,9 @@ def init_sdl():
             except:
                 logging.exception('Failed to ask SDL for joysticks!')
                 return []
+
+        def get_config_path():
+            return None
 
 
 # OpenAL constants

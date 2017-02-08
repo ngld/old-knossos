@@ -362,6 +362,10 @@ def main(args, prg_wrap=None):
     
     progress.reset()
     progress.set_callback(show_progress)
+
+    if not util.test_7z():
+        print('ERROR: 7z not found!')
+        sys.exit(1)
     
     parser = argparse.ArgumentParser()
     subs = parser.add_subparsers(dest='action')

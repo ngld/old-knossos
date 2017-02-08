@@ -76,6 +76,11 @@ elif len(sys.argv) > 1 and sys.argv[1] == '--deviceinfo':
         'audio_devs': audio_devs,
         'joysticks': clibs.list_joysticks()
     }))
+elif len(sys.argv) > 1 and sys.argv[1] == '--fso-config-path':
+    from knossos import clibs
+
+    clibs.init_sdl()
+    print(clibs.get_config_path())
 else:
     from knossos import launcher
     launcher.main()
