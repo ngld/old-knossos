@@ -39,12 +39,6 @@ def which(cmd):
 
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 
-# Make sure all paths that end up in the compiled executable are relative.
-pd = config['PYZ_dependencies']
-for i, item in enumerate(pd):
-    if '/Users/' in item[1]:
-        pd[i] = (item[0], os.path.relpath(item[1]), item[2])
-
 # Fix a bug in PyInstaller's current hook-sysconfig.py
 sys.prefix = os.path.realpath(sys.prefix)
 
@@ -65,29 +59,37 @@ if not sdl2_path and not sdl_path:
     logging.error('I can\'t find SDL! If you have Homebrew, just run "brew install sdl2".')
     sys.exit(1)
 
-# Use the PySide hooks from the windows build. They work for Mac OS, too.
-rthooks = ['../common/PySide-rthook.py']
+rthooks = []
 if debug:
     rthooks.append('../common/debug-rthook.py')
+
+with open('../../knossos/center.py') as stream:
+    match = re.search(r"VERSION = '([^']+)'", stream.read())
+
+if not match:
+    print('ERROR: Could not determine version!')
+    sys.exit(1)
+
+version = match.group(1)
+if '-dev' in version:
+    if not os.path.exists('../../.git'):
+        print('\nWARNING: No .git directory found while building a devbuild!\n')
+    else:
+        with open('../../.git/HEAD') as stream:
+            ref = stream.read().strip().split(':')
+            assert ref[0] == 'ref'
+
+        with open('../../.git/' + ref[1].strip()) as stream:
+            version += '+' + stream.read()[:7]
+
+with open('version', 'w') as stream:
+    stream.write(version)
 
 a = Analysis(['../../knossos/__main__.py'],
              pathex=['../..'],
              hiddenimports=[],
              hookspath=['../common'],
              runtime_hooks=rthooks)
-
-# Exclude everything we don't need.
-idx = []
-for i, item in enumerate(a.binaries):
-    if item[0].startswith('PySide.') and item[0] not in ('PySide.QtCore', 'PySide.QtGui', 'PySide.QtNetwork', 'PySide.QtWebKit'):
-        idx.append(i)
-    elif item[0].startswith('Qt') and item[0] not in ('QtCore', 'QtGui', 'QtNetwork', 'QtWebKit'):
-        idx.append(i)
-    elif item[0].startswith('plugins') and not item[0].endswith(('libqjpeg.dylib', 'libqgif.dylib')):
-        idx.append(i)
-
-for i in reversed(idx):
-    del a.binaries[i]
 
 idx = []
 for i, item in enumerate(a.pure):

@@ -25,7 +25,7 @@ import pickle
 from . import uhf
 uhf(__name__)
 
-from . import center, util, repo, integration
+from . import center, util, repo, launcher, integration
 from .qt import QtWidgets
 from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, InstallTask, UninstallTask
 from .ui.select_list import Ui_Dialog as Ui_SelectList
@@ -192,13 +192,32 @@ def get_cmdline(mod):
         return center.settings['cmdlines'].get('#default', [])[:]
 
 
+_profile_path = None
 def get_fso_profile_path():
-    if sys.platform.startswith('linux'):
-        return os.path.expanduser('~/.fs2_open')
-    elif sys.platform == 'darwin':
-        return os.path.expanduser('~/Library/FS2_Open')
-    else:
-        return center.settings['fs2_path']
+    global _profile_path
+
+    if _profile_path is None:
+        try:
+            path = util.check_output(launcher.get_cmd(['--fso-config-path'])).strip()
+        except:
+            logging.exception('Failed to retrieve FSO profile path from SDL!')
+            path = 'None'
+
+        if sys.platform.startswith('linux'):
+            leg_path = os.path.expanduser('~/.fs2_open')
+        elif sys.platform == 'darwin':
+            leg_path = os.path.expanduser('~/Library/FS2_Open')
+        else:
+            leg_path = center.settings['fs2_path']
+
+        if path in ('', 'None') or (not os.path.exists(path) and os.path.exists(leg_path)):
+            _profile_path = leg_path
+        else:
+            _profile_path = path
+
+        logging.info('Using profile path "%s".', _profile_path)
+
+    return _profile_path
 
 
 def read_fso_cmdline():
@@ -496,7 +515,12 @@ def _read_default_cmdline():
 
 
 def enable_raven():
-    from raven import Client
+    try:
+        from raven import Client
+    except ImportError:
+        logging.exception('Failed to import raven!')
+        return False
+
     from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
     from raven.handlers.logging import SentryHandler
     from raven.conf import defaults
@@ -516,9 +540,13 @@ def enable_raven():
     center.raven_handler = SentryHandler(center.raven, level=logging.ERROR)
     logging.getLogger().addHandler(center.raven_handler)
 
+    return True
+
 
 def disable_raven():
-    logging.getLogger().removeHandler(center.raven_handler)
+    if center.raven_handler:
+        logging.getLogger().removeHandler(center.raven_handler)
+
     center.raven = None
     center.raven_handler = None
 
