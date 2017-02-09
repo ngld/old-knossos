@@ -36,7 +36,6 @@ LIB_RE = re.compile(r'lib([a-zA-Z0-9\.\-\_\+]+)\.so(?:\..*)?')
 LDCONF_RE = re.compile(r'\s*(' + FILE_PATH_RE + r') \([^\)]+\) => (' + FILE_PATH_RE + r')')
 _LIB_CACHE = None
 
-
 fs2_watcher = None
 
 
@@ -47,33 +46,33 @@ class SignalContainer(QtCore.QObject):
 # This wrapper makes sure that the wrapped function is always run in the QT main thread.
 def run_in_qt(func):
     cont = SignalContainer()
-    
+
     def dispatcher(*args):
         cont.signal.emit(list(args))
-    
+
     def listener(params):
         func(*params)
-    
+
     cont.signal.connect(listener)
-    
+
     return dispatcher
 
 
 class Fs2Watcher(threading.Thread):
     _params = None
     _key_layout = None
-    
+
     def __init__(self, params=None):
         super(Fs2Watcher, self).__init__()
-        
+
         if params is None:
             self._params = []
         else:
             self._params = params
-        
+
         self.daemon = True
         self.start()
-    
+
     def run(self):
         global fs2_watcher
 
@@ -82,7 +81,7 @@ class Fs2Watcher(threading.Thread):
         if center.settings['keyboard_layout'] != 'default':
             self._params.append('-keyboard_layout')
             self._params.append(center.settings['keyboard_layout'])
-        
+
         fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
         if not os.path.isfile(fs2_bin):
             self.fs2_missing_msg(fs2_bin)
@@ -104,12 +103,12 @@ class Fs2Watcher(threading.Thread):
 
         if center.settings['keyboard_setxkbmap']:
             self.set_us_layout()
-        
+
         logging.debug('Launching FS2: %s', [fs2_bin] + self._params)
 
         if sys.platform.startswith('win'):
             bin_path = center.settings['fs2_bin']
-            
+
             if os.path.basename(bin_path) != bin_path:
                 # On Windows, the FSO engine changes the CWD to the directory the EXE file is in.
                 # Since the fs2_bin is in a subdirectory we'll have to copy it!
@@ -149,12 +148,12 @@ class Fs2Watcher(threading.Thread):
             center.signals.fs2_failed.emit(rc)
             self.failed_msg(reason)
             return
-        
+
         center.signals.fs2_launched.emit()
         p.wait()
         self.cleanup(fs2_bin, old_path)
         center.signals.fs2_quit.emit()
-    
+
     @run_in_qt
     def failed_msg(self, reason):
         msg = 'Starting FS2 Open (%s) failed! (%s)' % (os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)  # NEEDTR
@@ -273,7 +272,7 @@ def fix_missing_libs(fpath):
 
 def run_fs2(params=None):
     global fs2_watcher
-    
+
     if fs2_watcher is None or not fs2_watcher.is_alive():
         fs2_watcher = Fs2Watcher(params)
         return True
