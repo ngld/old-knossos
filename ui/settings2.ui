@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Dialog</class>
- <widget class="QDialog" name="Dialog">
+ <class>SettingsDialog</class>
+ <widget class="QDialog" name="SettingsDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -62,68 +62,68 @@
        </column>
        <item>
         <property name="text">
-         <string notr="true">About Knossos</string>
+         <string>About Knossos</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string notr="true">Launcher settings</string>
+         <string>Launcher settings</string>
         </property>
         <property name="flags">
          <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
         </property>
         <item>
          <property name="text">
-          <string notr="true">Retail install</string>
+          <string>Retail install</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Mod sources</string>
+          <string>Mod sources</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Mod versions</string>
+          <string>Mod versions</string>
          </property>
         </item>
        </item>
        <item>
         <property name="text">
-         <string notr="true">Game settings</string>
+         <string>Game settings</string>
         </property>
         <property name="flags">
          <set>ItemIsSelectable|ItemIsUserCheckable|ItemIsEnabled</set>
         </property>
         <item>
          <property name="text">
-          <string notr="true">Video</string>
+          <string>Video</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Audio</string>
+          <string>Audio</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Input</string>
+          <string>Input</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Network</string>
+          <string>Network</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Default flags</string>
+          <string>Default flags</string>
          </property>
         </item>
        </item>
        <item>
         <property name="text">
-         <string notr="true">Help</string>
+         <string>Help</string>
         </property>
        </item>
       </widget>

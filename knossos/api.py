@@ -28,7 +28,7 @@ uhf(__name__)
 from . import center, util, repo, launcher, integration
 from .qt import QtWidgets
 from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, InstallTask, UninstallTask
-from .ui.select_list import Ui_Dialog as Ui_SelectList
+from .ui.select_list import Ui_SelectListDialog
 from .windows import HellWindow, ModSettingsWindow, ModInstallWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
@@ -78,7 +78,7 @@ def select_fs2_path(interact=True):
         elif len(bins) > 1:
             # Let the user choose.
 
-            select_win = util.init_ui(Ui_SelectList(), QtWidgets.QDialog(center.main_win.win))
+            select_win = util.init_ui(Ui_SelectListDialog(), QtWidgets.QDialog(center.main_win.win))
             has_default = False
             bins.sort()
 
