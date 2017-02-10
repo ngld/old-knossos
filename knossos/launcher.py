@@ -1,4 +1,4 @@
-## Copyright 2015 Knossos authors, see NOTICE file
+## Copyright 2017 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -214,7 +214,7 @@ def run_knossos():
 
 def handle_ipc_error():
     global app, ipc
-    
+
     logging.error('Failed to connect to main process!')
 
     if ipc is not None:
