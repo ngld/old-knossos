@@ -157,20 +157,20 @@ class Fs2Watcher(threading.Thread):
     
     @run_in_qt
     def failed_msg(self, reason):
-        msg = 'Starting FS2 Open (%s) failed! (%s)' % (os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)
+        msg = 'Starting FS2 Open (%s) failed! (%s)' % (os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)  # NEEDTR
         QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Failed', msg)
 
     @run_in_qt
     def fs2_missing_msg(self, fs2_bin):
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I can\'t find FSO! (The file "%s" is missing!)' % fs2_bin)
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I can\'t find FSO! (The file "%s" is missing!)' % fs2_bin)  # NEEDTR
 
     @run_in_qt
     def complain_missing(self, missing):
         if len(missing) > 1:
-            msg = "I can't start FSO because the libraries %s are missing!"
+            msg = "I can't start FSO because the libraries %s are missing!"  # NEEDTR
         else:
-            msg = "I can't start FSO because the library %s is missing!"
-        
+            msg = "I can't start FSO because the library %s is missing!"  # NEEDTR
+
         QtWidgets.QMessageBox.critical(None, 'Knossos', msg % util.human_list(missing))
 
     def set_us_layout(self):

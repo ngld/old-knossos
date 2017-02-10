@@ -53,7 +53,8 @@ settings = {
     'keyboard_layout': 'default',
     'keyboard_setxkbmap': False,
     'use_raven': True,
-    'mod_settings': {}
+    'mod_settings': {},
+    'last_played': None
 }
 
 if '-dev' in VERSION:

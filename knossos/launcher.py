@@ -181,8 +181,12 @@ def run_knossos():
     elif sys.platform == 'darwin' and os.path.isfile('7z'):
         util.SEVEN_PATH = os.path.abspath('7z')
 
+    translate = QtCore.QCoreApplication.translate
+
     if not util.test_7z():
-        QtWidgets.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtWidgets.QMessageBox.Ok, QtWidgets.QMessageBox.Ok)
+        QtWidgets.QMessageBox.critical(None, 'Error', translate(
+            'launcher', 'I can\'t find "7z"! Please install it and run this program again.'),
+            QtWidgets.QMessageBox.Ok, QtWidgets.QMessageBox.Ok)
         return
 
     # Try to load our settings.
@@ -227,14 +231,14 @@ def scheme_handler(link):
 
     if not link.startswith(('fs2://', 'fso://')):
         # NOTE: fs2:// is deprecated, we don't tell anyone about it.
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))  # NEEDTR
         app.quit()
         return True
 
     link = urlparse.unquote(link.strip()).split('/')
 
     if len(link) < 3:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')  # NEEDTR
         app.quit()
         return True
 
@@ -247,7 +251,7 @@ def scheme_handler(link):
         while not ipc.server_exists():
             if time.time() - start > 20:
                 # That's too long!
-                QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to start server!')
+                QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to start server!')  # NEEDTR
                 app.quit()
                 return True
 
@@ -256,7 +260,7 @@ def scheme_handler(link):
     try:
         ipc.open_connection(handle_ipc_error)
     except:
-        logging.exception('Failed to connect to myself!')
+        logging.exception('Failed to connect to myself!')  # NEEDTR
         handle_ipc_error()
         return False
 
@@ -297,6 +301,12 @@ def main():
     res_path = get_file_path('resources.rcc')
     logging.debug('Loading resources from %s.', res_path)
     QtCore.QResource.registerResource(res_path)
+
+    trans = QtCore.QTranslator()
+    if trans.load(QtCore.QLocale(), 'knossos', '_', get_file_path('')):
+        app.installTranslator(trans)
+    else:
+        del trans
 
     app.setWindowIcon(QtGui.QIcon(':/hlp.png'))
     ipc = IPCComm(center.settings_path)
@@ -361,4 +371,4 @@ def main():
         load_settings()
 
         # Try to tell the user
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')  # NEEDTR

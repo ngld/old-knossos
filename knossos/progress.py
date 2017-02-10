@@ -40,6 +40,7 @@ def reset():
     _progress.tasks = []
     _progress.callback = None
 
+
 # Initialize with empty values.
 reset()
 

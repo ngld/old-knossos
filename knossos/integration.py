@@ -23,14 +23,6 @@ import six
 
 from . import center, qt, launcher
 
-if qt.variant == 'PySide':
-    if six.PY2:
-        ctypes.pythonapi.PyCObject_AsVoidPtr.argtypes = [ctypes.py_object]
-        ctypes.pythonapi.PyCObject_AsVoidPtr.restype = ctypes.c_void_p
-    else:
-        ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object, ctypes.c_char_p]
-        ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
-
 
 class Integration(object):
 
@@ -139,13 +131,7 @@ class WindowsIntegration(Integration):
     def wid(self):
         win = center.main_win.win
         if win != self._win:
-            if qt.variant == 'PySide':
-                if six.PY2:
-                    self._hwnd = ctypes.pythonapi.PyCObject_AsVoidPtr(win.winId())
-                else:
-                    self._hwnd = ctypes.pythonapi.PyCapsule_GetPointer(win.winId(), None)
-            else:
-                self._hwnd = win.winId()
+            self._hwnd = win.winId()
             self._win = win
 
         return self._hwnd

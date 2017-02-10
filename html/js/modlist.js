@@ -1,5 +1,6 @@
 var tasks = {};
 var progress_visible = false;
+var last_mod = null;
 
 function render_row(mvs, type) {
     var row = $('<div class="mod row">');
@@ -69,6 +70,8 @@ function render_row(mvs, type) {
 
 function update_mods(mods, type) {
     $('#loading').hide();
+    $('#mods').show();
+    $('.info-page').hide();
 
     if(type == 'progress') {
         progress_visible = true;
@@ -94,6 +97,30 @@ function update_mods(mods, type) {
         console.log(mod);
         mod_list.append(render_row(mod, type));
     });
+}
+
+function display_last(mod) {
+    $('#loading, .info-page').hide();
+    $('#mods').hide();
+
+    var cont = $('#last-played');
+    if(!mod) {
+        $('#no-last-played').show();
+        return;
+    } else {
+        cont.show();
+    }
+
+    cont.find('.title').text(mod.title);
+
+    if(mod.logo_path) {
+        cont.find('.mod-logo').attr('src', 'file://' + mod.logo_path).show();
+    } else {
+        cont.find('.mod-logo').hide();
+    }
+
+    cont.find('.desc').text(mod.description);
+    cont.show();
 }
 
 function _render_task(id, info) {
@@ -171,20 +198,89 @@ function remove_task(id) {
 
 function show_progress() {
     progress_visible = true;
-    var modlist = $('#mods').empty();
+    $('.info-page').hide();
+    var modlist = $('#mods').empty().show();
 
     $.each(tasks, function (id, obj) {
         modlist.append(_render_task(id, obj));
     });
 }
 
+function process_tr(func) {
+    var keys = [];
+    var trans = {};
+
+    function fakeTr(c, k) {
+        return trans[k];
+    }
+
+    // Find all neccessary translation keys.
+    func.toString().replace(/qsTr\('[^']+', '((?:[^'\\]|\\.)+)'\)/g, function (m, part) {
+        keys.push(part);
+    });
+
+    // Call fs2mod.tr() for each key
+    var next = 0;
+    function fetch() {
+        if(next >= keys.length) {
+            // We're done and can finally call the original function
+            func(patched);
+        } else {
+            var k = keys[next++];
+            fs2mod.tr('modlist', k, function (res) {
+                trans[k] = res;
+                fetch();
+            });
+        }
+    }
+
+    fetch();
+}
+
+function show_welcome() {
+    $('.info-page, #mods').hide();
+
+    process_tr(function (qsTr) {
+        $('#welcome').html(qsTr('modlist', '<h1>Welcome!</h1>' +
+            '<p>It looks like you started Knossos for the first time.</p>' +
+            '<p>' +
+                'You can tell me where your FS2 installation is, I could install FS2 using the GOG installer' +
+                'or maybe you want to install a Total Conversion?' +
+            '</p>') +
+            '<hr>' +
+
+            '<p>' +
+                '<a class="btn btn-primary" id="sel-fso">' + qsTr('modlist', 'Select FS2 directory') + '</a>' +
+            '</p>' +
+            '<p>' +
+                '<a class="btn btn-primary" id="gog-install">' + qsTr('modlist', 'Install FS2 using the GOG installer') + '</a>' +
+            '</p>' +
+            '<p>' +
+                '<a class="btn btn-primary" id="tc-install">' + qsTr('modlist', 'Install a TC') + '</a>' +
+            '</p>'
+        ).show();
+    });
+}
+
 function init() {
+    $('.hide').removeClass('hide').hide();
+
+    process_tr(function (qsTr) {
+        $('#loading').text(qsTr('modlist', 'Loading'));
+        $('#no-last-played span').text(qsTr('modlist', "You haven't played any mod, yet."));
+        $('.run-btn span').text(qsTr('modlist', 'Play'));
+        $('.install-btn span').text(qsTr('modlist', 'Install'));
+        $('.update-btn span').text(qsTr('modlist', 'Update'));
+    });
+
+    fs2mod.showWelcome.connect(show_welcome);
+    fs2mod.showLastPlayed.connect(display_last);
     fs2mod.updateModlist.connect(update_mods);
     fs2mod.taskStarted.connect(add_task);
     fs2mod.taskProgress.connect(update_progress);
     fs2mod.taskFinished.connect(remove_task);
 
-    fs2mod.requestModlist(true);
+    fs2mod.finishInit();
 }
 
 if(window.qt) {

@@ -164,7 +164,7 @@ class HellWindow(Window):
         self.win.updateButton.clicked.connect(api.fetch_list)
         self.win.settingsButton.clicked.connect(self.show_settings)
 
-        for button in ('installed', 'available', 'updates', 'progress'):
+        for button in ('lastPlayed', 'installed', 'available', 'updates', 'progress'):
             bt = getattr(self.win, button + 'Button')
             hdl = functools.partial(self.update_mod_buttons, button)
 
@@ -189,6 +189,9 @@ class HellWindow(Window):
 
         super(HellWindow, self)._del()
 
+    def finish_init(self):
+        self.check_fso()
+
     def check_fso(self, interactive=True):
         if center.settings['fs2_path'] is not None:
             self.win.pageControls.setEnabled(True)
@@ -196,8 +199,7 @@ class HellWindow(Window):
             self.win.searchEdit.setEnabled(True)
             self.win.tabButtons.setEnabled(True)
 
-            if interactive and self.win.webView.url().toString() == 'qrc:///html/welcome.html':
-                self.update_mod_buttons('available')
+            self.update_mod_buttons('lastPlayed')
         else:
             # Make sure the user has a complete configuration
             if not SettingsWindow.has_config():
@@ -205,11 +207,12 @@ class HellWindow(Window):
                 tmp.write_config()
                 tmp.close()
 
-            self.win.webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
             self.win.pageControls.setEnabled(False)
             self.win.updateButton.setEnabled(False)
             self.win.searchEdit.setEnabled(False)
             self.win.tabButtons.setEnabled(False)
+
+            self.browser_ctrl.bridge.showWelcome.emit()
 
     def check_new_repo(self):
         updates = len(center.installed.get_updates())
@@ -246,7 +249,7 @@ class HellWindow(Window):
             mods = {}
             for mid in center.installed.get_updates():
                 mods[mid] = center.installed.mods[mid]
-        elif self._mod_filter == 'progress':
+        else:
             mods = {}
 
         # Now filter the mods.
@@ -260,7 +263,9 @@ class HellWindow(Window):
 
     def update_mod_list(self):
         result, filter_ = self.search_mods()
-        self.browser_ctrl.bridge.updateModlist.emit(result, filter_)
+
+        if filter_ in ('installed', 'available', 'updates', 'progress'):
+            self.browser_ctrl.bridge.updateModlist.emit(result, filter_)
 
     def show_settings(self):
         SettingsWindow()
@@ -282,13 +287,22 @@ class HellWindow(Window):
             self.win.pageControls.show()
 
     def update_mod_buttons(self, clicked=None):
-        for button in ('installed', 'available', 'updates', 'progress'):
+        for button in ('lastPlayed', 'installed', 'available', 'updates', 'progress'):
             getattr(self.win, button + 'Button').setChecked(button == clicked)
 
         self._mod_filter = clicked
         page = self.win.webView.url().toString()
         if page != 'qrc:///html/modlist.html':
             self.win.webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
+        elif clicked == 'lastPlayed':
+            mod = center.settings['last_played']
+            if mod:
+                mod = center.installed.query(mod)
+
+                if mod:
+                    mod = mod.get()
+
+            self.browser_ctrl.bridge.showLastPlayed.emit(mod)
         else:
             self.update_mod_list()
 
@@ -345,7 +359,22 @@ class SettingsWindow(Window):
 
     def __init__(self):
         self._tabs = {}
-        self._create_win(Ui_Settings)
+        self._create_win(Ui_SettingsDialog)
+
+        self._label_lookup = {
+            'About Knossos': 'about',  # NEEDTR
+            'Launcher settings': 'kn_settings',  # NEEDTR
+            'Retail install': 'retail_install',  # NEEDTR
+            'Mod sources': 'mod_sources',  # NEEDTR
+            'Mod versions': 'mod_versions',  # NEEDTR
+            'Game settings': 'fso_settings',  # NEEDTR
+            'Video': 'fso_video',  # NEEDTR
+            'Audio': 'fso_audio',  # NEEDTR
+            'Input': 'fso_input',  # NEEDTR
+            'Network': 'fso_network',  # NEEDTR
+            'Default flags': 'fso_flags',  # NEEDTR
+            'Help': 'help'  # NEEDTR
+        }
 
         self.win.treeWidget.expandAll()
         self.win.treeWidget.currentItemChanged.connect(self.select_tab)

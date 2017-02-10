@@ -143,7 +143,7 @@ ensure_pyinstaller() {
 
 _cpr_add_files() {
     while read path; do
-        echo "<file>$path</file>"
+        echo "<file>../$path</file>"
     done
 }
 
@@ -151,7 +151,7 @@ gen_qrc() {
     echo '<!DOCTYPE RCC><RCC version="1.0">'
     echo '<qresource>'
 
-    echo '<file alias="hlp.png">knossos/data/hlp.png</file>'
+    echo '<file alias="hlp.png">../knossos/data/hlp.png</file>'
     find ui -name '*.png' -or -name '*.jpg' -or -name '*.css' | _cpr_add_files
     find html -type f | _cpr_add_files
 
@@ -165,8 +165,8 @@ compile_resources() {
     gen_qrc > "$QRC_PATH"
 
     echo "Packing resources..."
-    if has rcc-qt4; then
-        rcc_tool="rcc-qt4"
+    if has rcc-qt5; then
+        rcc_tool="rcc-qt5"
     else
         rcc_tool="rcc"
     fi

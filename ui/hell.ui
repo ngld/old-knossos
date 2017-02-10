@@ -133,53 +133,66 @@
         <number>1</number>
        </property>
        <item>
-        <widget class="QToolButton" name="installedButton">
+        <widget class="QPushButton" name="lastPlayedButton">
+         <property name="text">
+          <string>Last Played</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="flat">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="installedButton">
          <property name="text">
           <string>Installed</string>
          </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
-         <property name="autoRaise">
+         <property name="flat">
           <bool>true</bool>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QToolButton" name="availableButton">
+        <widget class="QPushButton" name="availableButton">
          <property name="text">
           <string>Available</string>
          </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
-         <property name="autoRaise">
+         <property name="flat">
           <bool>true</bool>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QToolButton" name="updatesButton">
+        <widget class="QPushButton" name="updatesButton">
          <property name="text">
           <string>Updates</string>
          </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
-         <property name="autoRaise">
+         <property name="flat">
           <bool>true</bool>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QToolButton" name="progressButton">
+        <widget class="QPushButton" name="progressButton">
          <property name="text">
           <string>Progress</string>
          </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
-         <property name="autoRaise">
+         <property name="flat">
           <bool>true</bool>
          </property>
         </widget>

@@ -18,3 +18,5 @@ dist
 /tools/mac/PyObjC
 /knossos.egg-info/
 *.sublime-*
+/ui/res.qrc
+/locale/_*.ts

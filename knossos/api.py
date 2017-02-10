@@ -260,7 +260,7 @@ def run_mod(mod):
 
     def check_install():
         if not os.path.isdir(modpath) or mod.mid not in center.installed.mods:
-            QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Error', 'Failed to install "%s"! Check the log for more information.' % (mod.title))
+            QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Error', 'Failed to install "%s"! Check the log for more information.' % (mod.title))  # NEEDTR
         else:
             run_mod(mod)
 
@@ -268,7 +268,7 @@ def run_mod(mod):
         select_fs2_path()
 
         if center.settings['fs2_bin'] is None:
-            QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
+            QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')  # NEEDTR
             return
 
     try:
@@ -297,7 +297,7 @@ def run_mod(mod):
     try:
         mods = mod.get_mod_flag()
     except repo.ModNotFound as exc:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Sorry, I can\'t start this mod because its dependency "%s" is missing!' % exc.mid)
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Sorry, I can\'t start this mod because its dependency "%s" is missing!' % exc.mid)  # NEEDTR
         return
 
     if mods is None:
@@ -335,6 +335,9 @@ def run_mod(mod):
         QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Error', 'Failed to edit "%s"! I can\'t change the current mod!' % path)
     else:
         logging.info('Starting mod "%s" with cmdline "%s".', mod.title, cmdline)
+
+        center.settings['last_played'] = mod.mid
+        save_settings()
         run_fs2()
 
 
@@ -373,13 +376,13 @@ def is_fso_installed():
 
 def get_mod(mid, version=None):
     if center.mods is None:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Hmm... I never got a mod list. Get a coder!')
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Hmm... I never got a mod list. Get a coder!')  # NEEDTR
         return None
     else:
         try:
             return center.mods.query(mid, version)
         except ModNotFound:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Mod "%s" could not be found!' % mid)
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Mod "%s" could not be found!' % mid)  # NEEDTR
             return None
 
 
@@ -388,12 +391,12 @@ def uninstall_pkgs(pkgs, name=None, cb=None):
     titles = [pkg.name for pkg in pkgs if center.installed.is_installed(pkg)]
 
     if name is None:
-        name = 'these packages'
+        name = 'these packages'  # NEEDTR
 
     msg = QtWidgets.QMessageBox()
     msg.setIcon(QtWidgets.QMessageBox.Question)
-    msg.setText('Do you really want to uninstall %s?' % name)
-    msg.setInformativeText('%s will be removed.' % (', '.join(titles)))
+    msg.setText('Do you really want to uninstall %s?' % name)  # NEEDTR
+    msg.setInformativeText('%s will be removed.' % (', '.join(titles)))  # NEEDTR
     msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
     msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
 
@@ -430,12 +433,12 @@ def install_scheme_handler(interactive=True):
     try:
         if integration.current.install_scheme_handler():
             if interactive:
-                QtWidgets.QMessageBox.information(None, 'Knossos', 'Done!')
+                QtWidgets.QMessageBox.information(None, 'Knossos', 'Done!')  # NEEDTR
             return
     except:
         logging.exception('Failed to install the scheme handler!')
 
-    QtWidgets.QMessageBox.critical(None, 'Knossos', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')
+    QtWidgets.QMessageBox.critical(None, 'Knossos', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')  # NEEDTR
 
 
 def setup_ipc():
@@ -488,7 +491,7 @@ def handle_ipc(msg):
         if mod.mid not in center.installed.mods:
             ModInstallWindow(mod, pkgs)
         else:
-            QtWidgets.QMessageBox.information(None, 'Knossos', 'Mod "%s" is already installed!' % (mod.title))
+            QtWidgets.QMessageBox.information(None, 'Knossos', 'Mod "%s" is already installed!' % (mod.title))  # NEEDTR
     elif msg[0] == 'settings':
         center.main_win.win.activateWindow()
 
@@ -502,11 +505,11 @@ def handle_ipc(msg):
                     name = msg[1]
                 else:
                     name = mod.title
-                QtWidgets.QMessageBox.information(None, 'Knossos', 'Mod "%s" is not yet installed!' % (name))
+                QtWidgets.QMessageBox.information(None, 'Knossos', 'Mod "%s" is not yet installed!' % (name))  # NEEDTR
             else:
                 ModSettingsWindow(mod)
     else:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'The action "%s" is unknown!' % (msg[0]))
+        QtWidgets.QMessageBox.critical(None, 'Knossos', 'The action "%s" is unknown!' % (msg[0]))  # NEEDTR
 
 
 def _read_default_cmdline():
