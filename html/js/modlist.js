@@ -224,7 +224,7 @@ function process_tr(func) {
     function fetch() {
         if(next >= keys.length) {
             // We're done and can finally call the original function
-            func(patched);
+            func(fakeTr);
         } else {
             var k = keys[next++];
             fs2mod.tr('modlist', k, function (res) {

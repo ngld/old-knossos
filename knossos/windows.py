@@ -577,15 +577,14 @@ class SettingsWindow(Window):
         if not sys.platform.startswith('win') or os.path.isfile(config_file):
             config = QtCore.QSettings(config_file, QtCore.QSettings.IniFormat)
             config.beginGroup('Default')
+            return config, False
         else:
             config = QtCore.QSettings(r'HKEY_LOCAL_MACHINE\Software\Volition\Freespace2', QtCore.QSettings.NativeFormat)
-            config.legacy = True
-
-        return config
+            return config, True
 
     @classmethod
     def has_config(cls):
-        return cls._get_config().contains('VideocardFs2open')
+        return cls._get_config()[0].contains('VideocardFs2open')
 
     def get_deviceinfo(self):
         try:
@@ -629,7 +628,8 @@ class SettingsWindow(Window):
 
         # ---Read fs2_open.ini or the registry---
         # Be careful with any change, the keys are all case sensitive.
-        self.config = config = self._get_config()
+        self.config, self.config_legacy = self._get_config()
+        config = self.config
 
         # video settings
         if config.contains('VideocardFs2open'):
@@ -853,7 +853,7 @@ class SettingsWindow(Window):
     def write_config(self):
         config = self.config
 
-        if getattr(config, 'legacy'):
+        if self.config_legacy:
             section = ''
         else:
             config.beginGroup('Default')
