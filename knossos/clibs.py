@@ -18,8 +18,12 @@ import sys
 import logging
 import ctypes.util
 
+from . import center
+
 
 ENCODING = 'utf8'
+sdl = None
+alc = None
 
 
 class SDL_Rect(ctypes.Structure):
@@ -56,18 +60,22 @@ def load_lib(*names):
             libname = ctypes.util.find_library(name)
             if libname is not None:
                 name = libname
+
         try:
             return ctypes.cdll.LoadLibrary(name)
         except OSError as e:
             if exc is None:
                 exc = e
 
-    raise Exception(names[0] + ' could not be found!')
+    if exc:
+        exc = str(exc)
+    else:
+        exc = 'Unknown'
+
+    raise Exception(names[0] + ' could not be found! (%s)' % exc)
 
 
 def double_zero_string(val):
-    global alc, libc
-
     off = 0
     data = []
     while val and val[off]:
@@ -81,23 +89,25 @@ def double_zero_string(val):
     return data
 
 
-if sys.platform == 'win32':
-    libc = ctypes.cdll.msvcrt
-else:
-    libc = load_lib('c')
-
-
 def init_sdl():
     global sdl, SDL2, get_modes, list_joysticks, get_config_path
 
-    # Load SDL
-    try:
-        sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
-        SDL2 = True
-    except:
-        # Try SDL 1.2
-        sdl = load_lib('libSDL-1.2.so.0', 'SDL', 'SDL.dll', 'libSDL.dylib')
-        SDL2 = False
+    if center.settings['sdl2_path']:
+        try:
+            sdl = load_lib(center.settings['sdl2_path'])
+            SDL2 = True
+        except:
+            logging.exception('Failed to load user-supplied SDL2!')
+
+    if not sdl:
+        # Load SDL
+        try:
+            sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
+            SDL2 = True
+        except:
+            # Try SDL 1.2
+            sdl = load_lib('libSDL-1.2.so.0', 'SDL', 'SDL.dll', 'libSDL.dylib')
+            SDL2 = False
 
     # SDL constants
     if SDL2:
@@ -260,9 +270,24 @@ def init_openal():
     global alc
 
     # Load OpenAL
-    alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL')
-    alc.alcIsExtensionPresent.restype = ctypes.c_bool
-    alc.alcGetString.restype = ctypes.POINTER(ctypes.c_char)
+    if center.settings['openal_path']:
+        try:
+            alc = load_lib(center.settings['openal_path'])
+        except:
+            logging.exception('Failed to load user-supplied OpenAL!')
+
+    if not alc:
+        try:
+            alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL')
+        except:
+            logging.exception('Failed to load OpenAL!')
+
+    if alc:
+        alc.alcIsExtensionPresent.restype = ctypes.c_bool
+        alc.alcGetString.restype = ctypes.POINTER(ctypes.c_char)
+        return True
+    else:
+        return False
 
 
 gtk = None
@@ -353,3 +378,9 @@ def get_gtk_theme():
         return g_object_get_string(settings, 'gtk-theme-name')
     else:
         return None
+
+
+if sys.platform == 'win32':
+    libc = ctypes.cdll.msvcrt
+else:
+    libc = load_lib('c')

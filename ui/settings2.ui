@@ -84,7 +84,7 @@
         </item>
         <item>
          <property name="text">
-          <string>Mod versions</string>
+          <string>Library paths</string>
          </property>
         </item>
        </item>

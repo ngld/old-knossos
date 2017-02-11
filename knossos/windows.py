@@ -33,7 +33,7 @@ from .ui.add_repo import Ui_AddRepoDialog
 from .ui.settings2 import Ui_SettingsDialog
 from .ui.settings_about import Ui_AboutForm
 from .ui.settings_sources import Ui_ModSourcesForm
-from .ui.settings_versions import Ui_VersionSettingsForm
+from .ui.settings_libs import Ui_LibPathForm
 from .ui.settings_knossos import Ui_KnossosSettingsForm
 from .ui.settings_fso import Ui_FsoSettingsForm
 from .ui.settings_video import Ui_VideoSettingsForm
@@ -353,7 +353,7 @@ class SettingsWindow(Window):
             'Launcher settings': 'kn_settings',  # NEEDTR
             'Retail install': 'retail_install',  # NEEDTR
             'Mod sources': 'mod_sources',  # NEEDTR
-            'Mod versions': 'mod_versions',  # NEEDTR
+            'Library paths': 'lib_paths',  # NEEDTR
             'Game settings': 'fso_settings',  # NEEDTR
             'Video': 'fso_video',  # NEEDTR
             'Audio': 'fso_audio',  # NEEDTR
@@ -409,7 +409,20 @@ class SettingsWindow(Window):
         tab.removeSource.clicked.connect(self.remove_repo)
         tab.sourceList.itemDoubleClicked.connect(self.edit_repo)
 
-        self._tabs['mod_versions'] = tab = util.init_ui(Ui_VersionSettingsForm(), QtWidgets.QWidget())
+        self._tabs['lib_paths'] = tab = util.init_ui(Ui_LibPathForm(), QtWidgets.QWidget())
+        if center.settings['sdl2_path']:
+            tab.sdlPath.setText(center.settings['sdl2_path'])
+        else:
+            tab.sdlPath.setText('auto')
+
+        if center.settings['openal_path']:
+            tab.openAlPath.setText(center.settings['openal_path'])
+        else:
+            tab.openAlPath.setText('auto')
+
+        tab.sdlBtn.clicked.connect(functools.partial(self.select_path, tab.sdlPath))
+        tab.openAlBtn.clicked.connect(functools.partial(self.select_path, tab.openAlPath))
+        tab.testBtn.clicked.connect(self.test_libs)
 
         self._tabs['fso_settings'] = tab = util.init_ui(Ui_FsoSettingsForm(), QtWidgets.QWidget())
         tab.browseButton.clicked.connect(self.select_fs2_path)
@@ -587,6 +600,38 @@ class SettingsWindow(Window):
             return None
 
         return info
+
+    def test_libs(self):
+        tab = self._tabs['lib_paths']
+        sdl_path = tab.sdlPath.text()
+        oal_path = tab.openAlPath.text()
+
+        try:
+            info = json.loads(util.check_output(launcher.get_cmd(['--lib-paths', sdl_path, oal_path])).strip())
+        except:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'An unkown error (a crash?) occurred while trying to ' +
+                'load the libraries!')  # NEEDTR
+        else:
+            if info['sdl2'] and info['openal']:
+                msg = 'Success! Both libraries were loaded successfully.'  # NEEDTR
+            else:
+                msg = 'Error! One or both libraries failed to load.'  # NEEDTR
+
+            msg += '\n\nSDL2: %s\nOpenAL: %s' % (
+                info['sdl2'] if info['sdl2'] else 'Not found',  # NEEDTR
+                info['openal'] if info['openal'] else 'Not found'  # NEEDTR
+            )
+            QtWidgets.QMessageBox.information(None, 'Knossos', msg)
+
+    def select_path(self, edit):
+        path = QtWidgets.QFileDialog.getOpenFileName(self.win, None, None)[0]
+
+        if path is not None and path != '':
+            if not os.path.isfile(path):
+                QtWidgets.QMessageBox.critical(self.win, 'Not a file', 'Please select a proper file')  # NEEDTR
+                return
+
+            edit.setText(os.path.abspath(path))
 
     def read_config(self):
         fs2_path = center.settings['fs2_path']
@@ -935,6 +980,20 @@ class SettingsWindow(Window):
         # Save the new configuration.
         config.sync()
         self._tabs['fso_flags'].save()
+
+        tab = self._tabs['lib_paths']
+        sdl_path = tab.sdlPath.text()
+        if sdl_path == 'auto':
+            center.settings['sdl2_path'] = None
+        else:
+            center.settings['sdl2_path'] = sdl_path
+
+        openal_path = tab.openAlPath.text()
+        if openal_path == 'auto':
+            center.settings['openal_path'] = None
+        else:
+            center.settings['openal_path'] = openal_path
+
         api.save_settings()
 
     def select_fs2_path(self):

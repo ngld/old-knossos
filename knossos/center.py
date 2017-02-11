@@ -54,7 +54,9 @@ settings = {
     'keyboard_setxkbmap': False,
     'use_raven': True,
     'mod_settings': {},
-    'last_played': None
+    'last_played': None,
+    'sdl2_path': None,
+    'openal_path': None
 }
 
 if '-dev' in VERSION:
