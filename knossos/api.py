@@ -405,7 +405,7 @@ def uninstall_pkgs(pkgs, name=None, cb=None):
     msg.setText(translate('api', 'Do you really want to uninstall %s?') % name)
     msg.setInformativeText(translate('api', '%s will be removed.') % (', '.join(titles)))
     msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-    msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
+    msg.setDefaultButton(QtWidgets.QMessageBox.No)
 
     if msg.exec_() == QtWidgets.QMessageBox.Yes:
         task = UninstallTask(pkgs)
