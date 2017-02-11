@@ -4,11 +4,6 @@
 <context>
     <name>AboutForm</name>
     <message>
-        <location filename="../ui/settings_about.ui" line="14"/>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../ui/settings_about.ui" line="69"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
@@ -16,18 +11,19 @@ p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:&apos;Sans&apos;; font-size:10pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;Idea and prototype by Hellzed.&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;Rewrite in Python by ngld.&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;For feedback and updates go to:&lt;br /&gt;&lt;/span&gt;&lt;a href=&quot;http://www.hard-light.net/forums/index.php?topic=86364&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt; text-decoration: underline; color:#0000ff;&quot;&gt;http://www.hard-light.net/forums/index.php?topic=86364&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;The code is available at:&lt;br /&gt;&lt;/span&gt;&lt;a href=&quot;https://github.com/ngld/Knossos&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/ngld/Knossos&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;&lt;br /&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;For feedback and updates go to:&lt;br /&gt;&lt;/span&gt;&lt;a href=&quot;http://www.hard-light.net/forums/index.php?topic=93144.0&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;http://www.hard-light.net/forums/index.php?topic=93144.0&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;The code is available at:&lt;br /&gt;&lt;/span&gt;&lt;a href=&quot;https://github.com/ngld/knossos&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/ngld/knossos&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;&lt;br /&gt;&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;Dependencies:&lt;/span&gt;&lt;/p&gt;
 &lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://python.org&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Python&lt;/span&gt;&lt;/a&gt; (2 or 3)&lt;/li&gt;
-&lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://qt-project.org/wiki/Category:LanguageBindings::PySide&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;PySide&lt;/span&gt;&lt;/a&gt; or &lt;a href=&quot;http://riverbankcomputing.co.uk/software/pyqt/intro&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;PyQt4&lt;/span&gt;&lt;/a&gt; (UI)&lt;/li&gt;
+&lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://riverbankcomputing.co.uk/software/pyqt/intro&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;PyQt5&lt;/span&gt;&lt;/a&gt; (UI)&lt;/li&gt;
 &lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://www.7-zip.org/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;7-Zip&lt;/span&gt;&lt;/a&gt; (extracts the downloaded archives)&lt;/li&gt;
 &lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;https://github.com/workhorsy/py-cpuinfo&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;py-cpuinfo&lt;/span&gt;&lt;/a&gt; (detects CPU flags)&lt;/li&gt;
 &lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;https://pypi.python.org/pypi/semantic_version&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;semantic_version&lt;/span&gt;&lt;/a&gt; (compares version numbers)&lt;/li&gt;
 &lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;https://pypi.python.org/pypi/six&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;six&lt;/span&gt;&lt;/a&gt; (helps supporting Python 2 and 3 with a single codebase)&lt;/li&gt;
 &lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;https://pypi.python.org/pypi/requests&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;requests&lt;/span&gt;&lt;/a&gt; (simplifies HTTP request handling)&lt;/li&gt;
-&lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://libsdl.org&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SDL&lt;/span&gt;&lt;/a&gt; (detects your graphic cards and joysticks)&lt;/li&gt;
+&lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;https://github.com/getsentry/raven-python&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;raven&lt;/span&gt;&lt;/a&gt; (optional, neccessary to automatically report errors)&lt;/li&gt;
+&lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://libsdl.org&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SDL2&lt;/span&gt;&lt;/a&gt; (detects your graphic cards and joysticks)&lt;/li&gt;
 &lt;li style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://kcat.strangesoft.net/openal.html&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;OpenAL Soft&lt;/span&gt;&lt;/a&gt; (detects your sound cards)&lt;/li&gt;&lt;/ul&gt;
 &lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;&lt;br /&gt;&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt;This tool also uses &lt;/span&gt;&lt;a href=&quot;http://constexpr.org/innoextract/&quot;&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt; text-decoration: underline; color:#0000ff;&quot;&gt;InnoExtract&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-family:&apos;Sans Serif&apos;; font-size:9pt;&quot;&gt; to unpack the GOG installer.&lt;/span&gt;&lt;/p&gt;
@@ -66,11 +62,6 @@ p, li { white-space: pre-wrap; }
 <context>
     <name>AudioSettingsForm</name>
     <message>
-        <location filename="../ui/settings_audio.ui" line="14"/>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../ui/settings_audio.ui" line="20"/>
         <source>Playback device: </source>
         <translation type="unfinished"></translation>
@@ -93,149 +84,6 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../ui/settings_audio.ui" line="54"/>
         <source> Hz</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>Dialog</name>
-    <message>
-        <location filename="../ui/settings.ui" line="14"/>
-        <source>Settings</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="27"/>
-        <source>FreeSpace 2 Open build</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="48"/>
-        <source>Browse</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="71"/>
-        <source>Video</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="85"/>
-        <source>Resolution :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="95"/>
-        <source>Color depth :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="112"/>
-        <source>Texture filter :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="122"/>
-        <source>Antialiasing :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="132"/>
-        <source>Anisotropic filtering :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="160"/>
-        <source>Audio</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="172"/>
-        <source>Playback device :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="182"/>
-        <source>Capture device :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="199"/>
-        <source>Enable EFX</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="219"/>
-        <source>Sample rate :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="245"/>
-        <source>Keyboard</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="254"/>
-        <source>Layout: </source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="261"/>
-        <source>Use &quot;setxbmap&quot;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="287"/>
-        <source>Controller</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="311"/>
-        <source>Network</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="325"/>
-        <source>Connection type :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="335"/>
-        <source>Connection speed :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="352"/>
-        <source>Force local port :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="362"/>
-        <source>Force IP address :</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="390"/>
-        <source>Advanced settings</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="397"/>
-        <source>Command line flags for Mod name</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="413"/>
-        <source>Launch</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="423"/>
-        <source>Save</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings.ui" line="430"/>
-        <source>Close</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -289,11 +137,6 @@ p, li { white-space: pre-wrap; }
 </context>
 <context>
     <name>FsoSettingsForm</name>
-    <message>
-        <location filename="../ui/settings_fso.ui" line="14"/>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <location filename="../ui/settings_fso.ui" line="20"/>
         <source>FS2 Path: </source>
@@ -362,23 +205,13 @@ p, li { white-space: pre-wrap; }
 <context>
     <name>HelpForm</name>
     <message>
-        <location filename="../ui/settings_help.ui" line="14"/>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../ui/settings_help.ui" line="20"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you need help, you can either check &lt;a href=&quot;http://www.hard-light.net/forums/index.php?topic=86364.msg1768735#msg1768735&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;this release post&lt;/span&gt;&lt;/a&gt; or &lt;a href=&quot;https://github.com/ngld/knossos/issues&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;check the reported issues&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you need help, you can either check &lt;a href=&quot;http://www.hard-light.net/forums/index.php?topic=93144.0&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;this release post&lt;/span&gt;&lt;/a&gt; or &lt;a href=&quot;https://github.com/ngld/knossos/issues&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;check the reported issues&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>InputSettingsForm</name>
-    <message>
-        <location filename="../ui/settings_input.ui" line="14"/>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <location filename="../ui/settings_input.ui" line="20"/>
         <source>Layout: </source>
@@ -430,11 +263,6 @@ p, li { white-space: pre-wrap; }
 </context>
 <context>
     <name>KnossosSettingsForm</name>
-    <message>
-        <location filename="../ui/settings_knossos.ui" line="14"/>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <location filename="../ui/settings_knossos.ui" line="23"/>
         <source>Version:</source>
@@ -492,6 +320,42 @@ p, li { white-space: pre-wrap; }
     </message>
 </context>
 <context>
+    <name>LibPathForm</name>
+    <message>
+        <location filename="../ui/settings_libs.ui" line="20"/>
+        <source>SDL2:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings_libs.ui" line="27"/>
+        <location filename="../ui/settings_libs.ui" line="67"/>
+        <source>Browse</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings_libs.ui" line="47"/>
+        <source>Test</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings_libs.ui" line="60"/>
+        <source>OpenAL:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings_libs.ui" line="74"/>
+        <source>Here you can specifiy the paths to your SDL2 and OpenAL libraries. Normally you won&apos;t have to change this.
+If a text field contains &quot;auto&quot;, it means that Knossos will try to find the libraries automatically.
+</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings_libs.ui" line="86"/>
+        <source>If you change a path, please click on &quot;Test&quot; to verify that Knossos can use the libraries you specified before saving.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>LogDialog</name>
     <message>
         <location filename="../ui/log_viewer.ui" line="14"/>
@@ -507,110 +371,56 @@ p, li { white-space: pre-wrap; }
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/hell__test.ui" line="14"/>
         <location filename="../ui/hell.ui" line="14"/>
         <source>Knossos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/hell__test.ui" line="66"/>
         <location filename="../ui/hell.ui" line="53"/>
         <source>Back</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/hell__test.ui" line="91"/>
         <location filename="../ui/hell.ui" line="78"/>
         <source>Search</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/hell__test.ui" line="114"/>
         <location filename="../ui/hell.ui" line="101"/>
         <source>Update List</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/hell__test.ui" line="121"/>
         <location filename="../ui/hell.ui" line="108"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/hell__test.ui" line="151"/>
         <location filename="../ui/hell.ui" line="138"/>
         <source>Last Played</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/hell__test.ui" line="164"/>
         <location filename="../ui/hell.ui" line="151"/>
         <source>Installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/hell__test.ui" line="177"/>
         <location filename="../ui/hell.ui" line="164"/>
         <source>Available</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/hell__test.ui" line="190"/>
         <location filename="../ui/hell.ui" line="177"/>
         <source>Updates</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/hell__test.ui" line="203"/>
         <location filename="../ui/hell.ui" line="190"/>
         <source>Progress</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/hell__test.ui" line="254"/>
-        <location filename="../ui/hell__test.ui" line="343"/>
-        <location filename="../ui/hell__test.ui" line="418"/>
-        <location filename="../ui/hell__test.ui" line="493"/>
-        <location filename="../ui/hell__test.ui" line="568"/>
-        <location filename="../ui/hell__test.ui" line="643"/>
-        <location filename="../ui/hell__test.ui" line="718"/>
-        <source>Media VPs 2014</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/hell__test.ui" line="292"/>
-        <location filename="../ui/hell__test.ui" line="381"/>
-        <location filename="../ui/hell__test.ui" line="456"/>
-        <location filename="../ui/hell__test.ui" line="531"/>
-        <location filename="../ui/hell__test.ui" line="606"/>
-        <location filename="../ui/hell__test.ui" line="681"/>
-        <location filename="../ui/hell__test.ui" line="756"/>
-        <source>Play</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/hell__test.ui" line="299"/>
-        <location filename="../ui/hell__test.ui" line="388"/>
-        <location filename="../ui/hell__test.ui" line="463"/>
-        <location filename="../ui/hell__test.ui" line="538"/>
-        <location filename="../ui/hell__test.ui" line="613"/>
-        <location filename="../ui/hell__test.ui" line="688"/>
-        <location filename="../ui/hell__test.ui" line="763"/>
-        <source>FRED</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/hell__test.ui" line="306"/>
-        <source>S</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/hell__test.ui" line="313"/>
-        <source>X</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/hell__test.ui" line="780"/>
         <location filename="../ui/hell.ui" line="224"/>
         <source>TextLabel</source>
         <translation type="unfinished"></translation>
@@ -688,11 +498,6 @@ p, li { white-space: pre-wrap; }
 <context>
     <name>ModSourcesForm</name>
     <message>
-        <location filename="../ui/settings_sources.ui" line="14"/>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../ui/settings_sources.ui" line="32"/>
         <source>Add</source>
         <translation type="unfinished"></translation>
@@ -733,11 +538,6 @@ p, li { white-space: pre-wrap; }
 </context>
 <context>
     <name>NetworkSettingsForm</name>
-    <message>
-        <location filename="../ui/settings_network.ui" line="14"/>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <location filename="../ui/settings_network.ui" line="20"/>
         <source>Connection type: </source>
@@ -821,7 +621,7 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../ui/settings2.ui" line="87"/>
-        <source>Mod versions</source>
+        <source>Library paths</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -863,11 +663,6 @@ p, li { white-space: pre-wrap; }
 <context>
     <name>VersionSettingsForm</name>
     <message>
-        <location filename="../ui/settings_versions.ui" line="14"/>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../ui/settings_versions.ui" line="20"/>
         <source>Nothing to see here... move along.</source>
         <translation type="unfinished"></translation>
@@ -875,11 +670,6 @@ p, li { white-space: pre-wrap; }
 </context>
 <context>
     <name>VideoSettingsForm</name>
-    <message>
-        <location filename="../ui/settings_video.ui" line="14"/>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <location filename="../ui/settings_video.ui" line="20"/>
         <source>Resolution: </source>
@@ -910,56 +700,144 @@ p, li { white-space: pre-wrap; }
     <name>modlist</name>
     <message>
         <location filename="../html/js/modlist.js" line="244"/>
-        <source>modlist</source>
-        <comment>&lt;h1&gt;Welcome!&lt;/h1&gt;&lt;p&gt;It looks like you started Knossos for the first time.&lt;/p&gt;&lt;p&gt;You can tell me where your FS2 installation is, I could install FS2 using the GOG installeror maybe you want to install a Total Conversion?&lt;/p&gt;</comment>
+        <source>&lt;h1&gt;Welcome!&lt;/h1&gt;&lt;p&gt;It looks like you started Knossos for the first time.&lt;/p&gt;&lt;p&gt;You can tell me where your FS2 installation is, I could install FS2 using the GOG installer or maybe you want to install a Total Conversion?&lt;/p&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../html/js/modlist.js" line="253"/>
-        <source>modlist</source>
-        <comment>Select FS2 directory</comment>
+        <source>Select FS2 directory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../html/js/modlist.js" line="256"/>
-        <source>modlist</source>
-        <comment>Install FS2 using the GOG installer</comment>
+        <source>Install FS2 using the GOG installer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../html/js/modlist.js" line="259"/>
-        <source>modlist</source>
-        <comment>Install a TC</comment>
+        <source>Install a TC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../html/js/modlist.js" line="269"/>
-        <source>modlist</source>
-        <comment>Loading</comment>
+        <location filename="../html/js/modlist.js" line="261"/>
+        <source>&lt;p&gt;This launcher is still in development. Please visit &lt;a href=&quot;http://www.hard-light.net/forums/index.php?topic=93144.0&quot; target=&quot;_blank&quot;&gt;this HLP thread&lt;/a&gt; and let me know what you think, what didn&apos;t work and what you would like to change.&lt;/p&gt;&lt;p&gt;-- ngld&lt;/p&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../html/js/modlist.js" line="270"/>
-        <source>modlist</source>
-        <comment>You haven&apos;t played any mod, yet.</comment>
+        <location filename="../html/js/modlist.js" line="276"/>
+        <source>Loading</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../html/js/modlist.js" line="271"/>
-        <source>modlist</source>
-        <comment>Play</comment>
+        <location filename="../html/js/modlist.js" line="277"/>
+        <source>You haven&apos;t played any mod, yet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../html/js/modlist.js" line="272"/>
-        <source>modlist</source>
-        <comment>Install</comment>
+        <location filename="../html/js/modlist.js" line="278"/>
+        <source>Play</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../html/js/modlist.js" line="273"/>
-        <source>modlist</source>
-        <comment>Update</comment>
+        <location filename="../html/js/modlist.js" line="279"/>
+        <source>Install</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../html/js/modlist.js" line="280"/>
+        <source>Update</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>api</name>
+    <message>
+        <location filename="../knossos/api.py" line="68"/>
+        <source>Please select your FS2 directory.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="266"/>
+        <source>Failed to install &quot;%s&quot;! Check the log for more information.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="275"/>
+        <source>I couldn&apos;t find a FS2 executable. Can&apos;t run FS2!!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="290"/>
+        <source>You don&apos;t have %s, yet. Shall I install it?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="305"/>
+        <source>Sorry, I can&apos;t start this mod because its dependency &quot;%s&quot; is missing!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="341"/>
+        <source>Error</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="341"/>
+        <source>Failed to edit &quot;%s&quot;! I can&apos;t change the current mod!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="386"/>
+        <source>Hmm... I never got a mod list. Get a coder!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="392"/>
+        <source>Mod &quot;%s&quot; could not be found!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="401"/>
+        <source>these packages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="405"/>
+        <source>Do you really want to uninstall %s?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="406"/>
+        <source>%s will be removed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="443"/>
+        <source>Done!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="448"/>
+        <source>I probably failed to install the scheme handler.
+Run me as administrator and try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>api.handle_ipc</name>
+    <message>
+        <location filename="../knossos/api.py" line="502"/>
+        <source>Mod &quot;%s&quot; is already installed!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="517"/>
+        <source>Mod &quot;%s&quot; is not yet installed!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="522"/>
+        <source>The action &quot;%s&quot; is unknown!</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

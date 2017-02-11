@@ -58,9 +58,9 @@ ui: $(patsubst ui/%.ui,knossos/ui/%.py,$(UI_FILES))
 ui/res.qrc: $(RCC_FILES)
 	@./tools/common/run_helper.sh gen_qrc > ui/res.qrc
 
-locale/knossos.ts: $(wildcard html/js/*.js) $(wildcard knossos/*.py) $(UI_FILES)
+locale/knossos.ts: html/js/modlist.js $(wildcard knossos/*.py) $(UI_FILES)
 	pylupdate5 $(wildcard knossos/*.py) -ts locale/_py.ts
-	lupdate $(wildcard html/js/*.js) $(UI_FILES) -ts locale/_ui.ts
+	lupdate html/js/modlist.js $(UI_FILES) -ts locale/_ui.ts
 	lconvert -i locale/_ui.ts locale/_py.ts -o locale/knossos.ts
 
 locale/knossos_%.ts: locale/knossos.ts

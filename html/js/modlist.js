@@ -215,7 +215,7 @@ function process_tr(func) {
     }
 
     // Find all neccessary translation keys.
-    func.toString().replace(/qsTr\('[^']+', ([^)]+)\)/g, function (m, part) {
+    func.toString().replace(/qsTr\(([^)]+)\)/g, function (m, part) {
         keys.push(eval(part));
     });
 
@@ -241,24 +241,24 @@ function show_welcome() {
     $('.info-page, #mods, #loading').hide();
 
     process_tr(function (qsTr) {
-        $('#welcome').html(qsTr('modlist', '<h1>Welcome!</h1>' +
+        $('#welcome').html(qsTr('<h1>Welcome!</h1>' +
             '<p>It looks like you started Knossos for the first time.</p>' +
             '<p>' +
-                'You can tell me where your FS2 installation is, I could install FS2 using the GOG installer' +
+                'You can tell me where your FS2 installation is, I could install FS2 using the GOG installer ' +
                 'or maybe you want to install a Total Conversion?' +
             '</p>') +
             '<hr>' +
 
             '<p>' +
-                '<a class="btn btn-primary" id="sel-fso">' + qsTr('modlist', 'Select FS2 directory') + '</a>' +
+                '<a class="btn btn-primary" id="sel-fso">' + qsTr('Select FS2 directory') + '</a>' +
             '</p>' +
             '<p>' +
-                '<a class="btn btn-primary" id="gog-install">' + qsTr('modlist', 'Install FS2 using the GOG installer') + '</a>' +
+                '<a class="btn btn-primary" id="gog-install">' + qsTr('Install FS2 using the GOG installer') + '</a>' +
             '</p>' +
             '<p>' +
-                '<a class="btn btn-primary" id="tc-install">' + qsTr('modlist', 'Install a TC') + '</a>' +
+                '<a class="btn btn-primary" id="tc-install">' + qsTr('Install a TC') + '</a>' +
             '</p>' +
-            qsTr('modlist', '<p>' +
+            qsTr('<p>' +
                     'This launcher is still in development. Please visit ' +
                     '<a href="http://www.hard-light.net/forums/index.php?topic=93144.0" target="_blank">this HLP thread</a> ' +
                     'and let me know what you think, what didn\'t work and what you would like to change.' +
@@ -273,11 +273,11 @@ function init() {
     $('.hide').removeClass('hide').hide();
 
     process_tr(function (qsTr) {
-        $('#loading').text(qsTr('modlist', 'Loading'));
-        $('#no-last-played span').text(qsTr('modlist', "You haven't played any mod, yet."));
-        $('.run-btn span').text(qsTr('modlist', 'Play'));
-        $('.install-btn span').text(qsTr('modlist', 'Install'));
-        $('.update-btn span').text(qsTr('modlist', 'Update'));
+        $('#loading').text(qsTr('Loading'));
+        $('#no-last-played span').text(qsTr("You haven't played any mod, yet."));
+        $('.run-btn span').text(qsTr('Play'));
+        $('.install-btn span').text(qsTr('Install'));
+        $('.update-btn span').text(qsTr('Update'));
     });
 
     fs2mod.showWelcome.connect(show_welcome);
