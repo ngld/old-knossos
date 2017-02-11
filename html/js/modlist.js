@@ -257,7 +257,14 @@ function show_welcome() {
             '</p>' +
             '<p>' +
                 '<a class="btn btn-primary" id="tc-install">' + qsTr('modlist', 'Install a TC') + '</a>' +
-            '</p>'
+            '</p>' +
+            qsTr('modlist', '<p>' +
+                    'This launcher is still in development. Please visit ' +
+                    '<a href="http://www.hard-light.net/forums/index.php?topic=93144.0" target="_blank">this HLP thread</a> ' +
+                    'and let me know what you think, what didn\'t work and what you would like to change.' +
+                '</p>' +
+                '<p>-- ngld</p>'
+            )
         ).show();
     });
 }

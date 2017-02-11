@@ -66,7 +66,7 @@ locale/knossos.ts: $(wildcard html/js/*.js) $(wildcard knossos/*.py) $(UI_FILES)
 locale/knossos_%.ts: locale/knossos.ts
 	lupdate -no-obsolete locale/knossos.ts -ts $@
 
-knossos/data/%.qm: locale/knossos_%.ts
+knossos/data/knossos_%.qm: locale/knossos_%.ts
 	lrelease -compress -removeidentical -markuntranslated '%' $< -qm $@
 
 knossos/data/resources.rcc: ui/res.qrc
@@ -74,4 +74,4 @@ knossos/data/resources.rcc: ui/res.qrc
 
 knossos/ui/%.py: ui/%.ui
 	$(PYTHON) -mPyQt5.uic.pyuic -o $@ $<
-	@$(SED_I) -e 's#from PyQt5 import#from ..qt import#' -e '/^import resources.*/d' -e '/setContentsMargins(0, 0, 0, 0)/d' $@
+	@$(SED_I) -e 's#from PyQt5 import#from ..qt import#' -e '/^import res.*/d' -e '/setContentsMargins(0, 0, 0, 0)/d' $@
