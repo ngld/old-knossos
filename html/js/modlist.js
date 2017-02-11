@@ -215,8 +215,8 @@ function process_tr(func) {
     }
 
     // Find all neccessary translation keys.
-    func.toString().replace(/qsTr\('[^']+', '((?:[^'\\]|\\.)+)'\)/g, function (m, part) {
-        keys.push(part);
+    func.toString().replace(/qsTr\('[^']+', ([^)]+)\)/g, function (m, part) {
+        keys.push(eval(part));
     });
 
     // Call fs2mod.tr() for each key
@@ -238,7 +238,7 @@ function process_tr(func) {
 }
 
 function show_welcome() {
-    $('.info-page, #mods').hide();
+    $('.info-page, #mods, #loading').hide();
 
     process_tr(function (qsTr) {
         $('#welcome').html(qsTr('modlist', '<h1>Welcome!</h1>' +

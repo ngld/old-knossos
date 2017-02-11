@@ -100,7 +100,7 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot()
     def finishInit(self):
-        center.main_win.update_mod_buttons('lastPlayed')
+        center.main_win.finish_init()
 
     @QtCore.Slot(str, str, result=str)
     def tr(self, context, msg):

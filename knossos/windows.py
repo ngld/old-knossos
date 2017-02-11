@@ -276,23 +276,12 @@ class HellWindow(Window):
     def check_loaded(self, success):
         self.win.unsetCursor()
 
-        page = self.win.webView.url().toString()
-        if page == 'qrc:///html/modlist.html':
-            self.win.listControls.show()
-            self.win.pageControls.hide()
-        else:
-            self.win.listControls.hide()
-            self.win.pageControls.show()
-
     def update_mod_buttons(self, clicked=None):
         for button in ('lastPlayed', 'installed', 'available', 'updates', 'progress'):
             getattr(self.win, button + 'Button').setChecked(button == clicked)
 
         self._mod_filter = clicked
-        page = self.win.webView.url().toString()
-        if page != 'qrc:///html/modlist.html':
-            self.win.webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
-        elif clicked == 'lastPlayed':
+        if clicked == 'lastPlayed':
             mod = center.settings['last_played']
             if mod:
                 mod = center.installed.query(mod)
