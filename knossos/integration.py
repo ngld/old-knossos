@@ -17,9 +17,7 @@ from __future__ import absolute_import, print_function
 import sys
 import os
 import logging
-import ctypes
 import shlex
-import six
 
 from . import center, qt, launcher
 
@@ -97,20 +95,40 @@ class UnityIntegration(LinuxIntegration):
     launcher = None
 
     def __init__(self, Unity):
-        self.launcher = Unity.LauncherEntry.get_for_desktop_id('knossos.desktop')
+        try:
+            self.launcher = Unity.LauncherEntry.get_for_desktop_id('knossos.desktop')
+        except:
+            self.launcher = None
+            logging.exception('Failed to initialize LauncherEntry for Unity.')
 
     def show_progress(self, value):
-        self.launcher.set_property('progress_visible', True)
-        self.set_progress(value)
+        if self.launcher:
+            try:
+                self.launcher.set_property('progress_visible', True)
+                self.set_progress(value)
+            except:
+                logging.exception('Setting progress_visible for Unity failed!')
 
     def set_progress(self, value):
-        self.launcher.set_property('progress', value)
+        if self.launcher:
+            try:
+                self.launcher.set_property('progress', value)
+            except:
+                logging.exception('Setting progress for Unity failed!')
 
     def hide_progress(self):
-        self.launcher.set_property('progress_visible', False)
+        if self.launcher:
+            try:
+                self.launcher.set_property('progress_visible', False)
+            except:
+                logging.exception('Setting progress_visible for Unity failed!')
 
     def annoy_user(self, activate=True):
-        self.launcher.set_property('urgent', activate)
+        if self.launcher:
+            try:
+                self.launcher.set_property('urgent', activate)
+            except:
+                logging.exception('Setting urgent for Unity failed!')
 
 
 class WindowsIntegration(Integration):
@@ -194,6 +212,12 @@ def init():
             return
     elif sys.platform.startswith('linux'):
         try:
+            import gi
+            try:
+                gi.require_version('Unity', '6.0')
+            except:
+                logging.exception('Failed to specify Unity version.')
+
             from gi.repository import Unity
         except ImportError:
             # Can't find Unity.
