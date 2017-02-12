@@ -214,7 +214,8 @@ def init():
         try:
             import gi
             try:
-                gi.require_version('Unity', '6.0')
+                if hasattr(gi, 'require_version'):
+                    gi.require_version('Unity', '6.0')
             except:
                 logging.exception('Failed to specify Unity version.')
 

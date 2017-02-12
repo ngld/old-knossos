@@ -372,6 +372,7 @@ class InstallTask(progress.MultistepTask):
 
             # Generate mod.json files.
             for mod in mods:
+                util.get(center.NEB_API + '/track/install/' + mod.mid)
                 mod.save()
 
         # Revert all changes made to the mod object.

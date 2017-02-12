@@ -210,7 +210,7 @@ function process_tr(func) {
     var keys = [];
     var trans = {};
 
-    function fakeTr(c, k) {
+    function fakeTr(k) {
         return trans[k];
     }
 

@@ -160,7 +160,7 @@ class HellWindow(Window):
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
 
         self.win.backButton.clicked.connect(self.win.webView.back)
-        self.win.searchEdit.textChanged.connect(self.search_mods)
+        self.win.searchEdit.textEdited.connect(self.update_mod_list)
         self.win.updateButton.clicked.connect(api.fetch_list)
         self.win.settingsButton.clicked.connect(self.show_settings)
 
