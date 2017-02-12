@@ -822,6 +822,13 @@ class InstalledMod(Mod):
 
     def save(self):
         modpath = os.path.join(center.settings['fs2_path'], self.folder)
+        im_path = util.ipath(modpath)
+
+        # Correct the casing of our folder if neccessary.
+        if im_path != modpath:
+            modpath = im_path
+            self.folder = modpath[len(center.settings['fs2_path']):].lstrip('/\\')
+
         path = os.path.join(modpath, 'mod.json')
         info = self.get()
 

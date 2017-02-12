@@ -467,24 +467,20 @@ def ipath(path):
     if os.path.exists(path):
         return path
 
-    parent = os.path.dirname(path)
-    if not os.path.exists(parent):
-        parent = ipath(parent)
+    parent, item = os.path.split(path)
+    parent = ipath(parent)
 
-        if not os.path.exists(parent):
-            # Well, nothing we can do here...
-            return path
+    if not os.path.exists(parent):
+        # Well, nothing we can do here...
+        return path
 
     siblings = os.listdir(parent)
-    l_siblings = [s.lower() for s in siblings]
-
-    oitem = item = os.path.basename(path)
-    if item.lower() in l_siblings:
-        item = siblings[l_siblings.index(item.lower())]
-        path = os.path.join(parent, item)
-
-    if item != oitem:
-        logging.debug('Picking "%s" for "%s".', item, oitem)
+    litem = item.lower()
+    for s in siblings:
+        if s.lower() == litem:
+            logging.debug('Picking "%s" for "%s".', s, item)
+            path = os.path.join(parent, s)
+            break
 
     return path
 
