@@ -35,6 +35,11 @@ function render_row(mvs, type) {
 
             fs2mod.runMod(mod.id, mod.version);
         });
+        row.find('.fred-btn').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.runFredMod(mod.id, mod.version);
+        });
         row.find('.settings-btn').click(function (e) {
             e.preventDefault();
 
@@ -111,6 +116,7 @@ function display_last(mod) {
         cont.show();
     }
 
+    cont.find('.run-btn').data('modid', mod.id);
     cont.find('.title').text(mod.title);
 
     if(mod.logo_path) {
@@ -119,7 +125,10 @@ function display_last(mod) {
         cont.find('.mod-logo').hide();
     }
 
-    cont.find('.desc').text(mod.description);
+    var desc = cont.find('.desc').text(mod.description);
+    // Fix linebreaks
+    desc.html(desc.html().replace(/\n/g, '<br>'));
+
     cont.show();
 }
 
@@ -271,6 +280,12 @@ function show_welcome() {
 
 function init() {
     $('.hide').removeClass('hide').hide();
+
+    $('#last-played .run-btn').click(function (e) {
+        e.preventDefault();
+
+        fs2mod.runMod($(this).data('modid'), '');
+    });
 
     process_tr(function (qsTr) {
         $('#loading').text(qsTr('Loading'));

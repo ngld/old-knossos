@@ -37,6 +37,7 @@ LDCONF_RE = re.compile(r'\s*(' + FILE_PATH_RE + r') \([^\)]+\) => (' + FILE_PATH
 _LIB_CACHE = None
 
 fs2_watcher = None
+fred_watcher = None
 
 
 class SignalContainer(QtCore.QObject):
@@ -60,9 +61,10 @@ def run_in_qt(func):
 
 class Fs2Watcher(threading.Thread):
     _params = None
+    _fred = False
     _key_layout = None
 
-    def __init__(self, params=None):
+    def __init__(self, params=None, fred=False):
         super(Fs2Watcher, self).__init__()
 
         if params is None:
@@ -70,6 +72,7 @@ class Fs2Watcher(threading.Thread):
         else:
             self._params = params
 
+        self._fred = fred
         self.daemon = True
         self.start()
 
@@ -82,7 +85,11 @@ class Fs2Watcher(threading.Thread):
             self._params.append('-keyboard_layout')
             self._params.append(center.settings['keyboard_layout'])
 
-        fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
+        if self._fred:
+            fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fred_bin'])
+        else:
+            fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
+
         if not os.path.isfile(fs2_bin):
             self.fs2_missing_msg(fs2_bin)
             return
@@ -107,7 +114,10 @@ class Fs2Watcher(threading.Thread):
         logging.debug('Launching FS2: %s', [fs2_bin] + self._params)
 
         if sys.platform.startswith('win'):
-            bin_path = center.settings['fs2_bin']
+            if self._fred:
+                bin_path = center.settings['fred_bin']
+            else:
+                bin_path = center.settings['fs2_bin']
 
             if os.path.basename(bin_path) != bin_path:
                 # On Windows, the FSO engine changes the CWD to the directory the EXE file is in.
@@ -275,6 +285,27 @@ def run_fs2(params=None):
 
     if fs2_watcher is None or not fs2_watcher.is_alive():
         fs2_watcher = Fs2Watcher(params)
+        return True
+    else:
+        return False
+
+
+def run_fred(params=None):
+    global fred_watcher
+
+    if not center.settings['fred_bin']:
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            'No FRED executable selected. Please go to Settings > Game settings and select one.')  # NEEDTR
+        return
+
+    fred_path = os.path.join(center.settings['fs2_path'], center.settings['fred_bin'])
+    if not os.path.isfile(fred_path):
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            'The selected FRED executable was not found! Please go to Settings > Game settings and select one.')  # NEEDTR
+        return
+
+    if fred_watcher is None or not fred_watcher.is_alive():
+        fred_watcher = Fs2Watcher(params, fred=True)
         return True
     else:
         return False

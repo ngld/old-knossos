@@ -307,6 +307,15 @@ class WebBridge(QtCore.QObject):
         return 0
 
     @QtCore.Slot(str, str, result=int)
+    def runFredMod(self, mid, spec=None):
+        mod = self._get_mod(mid, spec)
+        if mod in (-1, -2):
+            return mod
+
+        api.run_mod(mod, fred=True)
+        return 0
+
+    @QtCore.Slot(str, str, result=int)
     def showSettings(self, mid=None, spec=None):
         if mid is None:
             windows.SettingsWindow()

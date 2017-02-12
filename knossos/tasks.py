@@ -191,6 +191,9 @@ class CheckTask(progress.MultistepTask):
     def finish(self):
         results = self.get_results()
 
+        # Make sure that the calculated checksums are saved.
+        api.save_settings()
+
         for pkg, archives, s, m, c, msg in results:
             mod = pkg.get_mod()
 

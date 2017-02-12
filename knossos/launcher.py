@@ -44,23 +44,20 @@ from . import center
 if not os.path.isdir(center.settings_path):
     os.makedirs(center.settings_path)
 
-log_path = None
-if sys.platform.startswith('win'):
-    # Windows won't display a console. Let's write our log messages to a file.
-    # We truncate the log file on every start to avoid filling the user's disk with useless data.
-    log_path = os.path.join(center.settings_path, 'log.txt')
+# We truncate the log file on every start to avoid filling the user's disk with useless data.
+log_path = os.path.join(center.settings_path, 'log.txt')
 
-    try:
-        if os.path.isfile(log_path):
-            os.unlink(log_path)
-    except:
-        # This will only be visible if the user is running a console version.
-        logging.exception('The log is in use by someone!')
-    else:
-        handler = logging.FileHandler(log_path, 'w')
-        handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
-        handler.setLevel(logging.DEBUG)
-        logging.getLogger().addHandler(handler)
+try:
+    if os.path.isfile(log_path):
+        os.unlink(log_path)
+except:
+    # This will only be visible if the user is running a console version.
+    logging.exception('The log is in use by someone!')
+else:
+    handler = logging.FileHandler(log_path, 'w')
+    handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
+    handler.setLevel(logging.DEBUG)
+    logging.getLogger().addHandler(handler)
 
 if not center.DEBUG:
     logging.getLogger().setLevel(logging.INFO)
@@ -68,7 +65,7 @@ if not center.DEBUG:
 if six.PY2:
     from . import py2_compat
 
-from .qt import QtCore, QtGui, QtWidgets, read_file, variant as qt_variant
+from .qt import QtCore, QtGui, QtWidgets, variant as qt_variant
 from .ipc import IPCComm
 from . import util
 

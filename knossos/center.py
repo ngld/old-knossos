@@ -41,6 +41,7 @@ raven_handler = None
 
 settings = {
     'fs2_bin': None,
+    'fred_bin': None,
     'fs2_path': None,
     'pins': {},
     'cmdlines': {},

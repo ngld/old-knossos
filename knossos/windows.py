@@ -187,7 +187,11 @@ class HellWindow(Window):
         center.signals.repo_updated.disconnect(self.check_new_repo)
         center.signals.task_launched.disconnect(self.watch_task)
 
-        super(HellWindow, self)._del()
+        # Trying to free this object usually leads to memory corruption
+        # See http://pyqt.sourceforge.net/Docs/PyQt5/gotchas.html#crashes-on-exit
+        # Since this is the main window and should only be closed whenever the application exits, skipping this
+        # won't lead to memory leaks.
+        # super(HellWindow, self)._del()
 
     def finish_init(self):
         self.check_fso()
@@ -427,6 +431,7 @@ class SettingsWindow(Window):
         self._tabs['fso_settings'] = tab = util.init_ui(Ui_FsoSettingsForm(), QtWidgets.QWidget())
         tab.browseButton.clicked.connect(self.select_fs2_path)
         tab.build.activated.connect(self.save_build)
+        tab.fredBuild.activated.connect(self.save_fred_build)
         tab.openLog.clicked.connect(self.show_fso_log)
 
         self._tabs['fso_video'] = tab = util.init_ui(Ui_VideoSettingsForm(), QtWidgets.QWidget())
@@ -636,27 +641,55 @@ class SettingsWindow(Window):
     def read_config(self):
         fs2_path = center.settings['fs2_path']
         fs2_bin = center.settings['fs2_bin']
+        fred_bin = center.settings['fred_bin']
 
         tab = self._tabs['fso_settings']
         tab.fs2PathLabel.setText(fs2_path)
         tab.build.clear()
 
         if fs2_path is not None:
-            self._builds = bins = api.get_executables()
+            bins = api.get_executables()
+            self._builds = []
+            self._fred_builds = []
 
             idx = 0
+            fred_idx = 0
             for name, path in bins:
-                tab.build.addItem(name)
+                if 'fred2' in name:
+                    self._fred_builds.append((name, path))
+                    tab.fredBuild.addItem(name)
 
-                if path == fs2_bin:
-                    tab.build.setCurrentIndex(idx)
+                    if path == fred_bin:
+                        tab.fredBuild.setCurrentIndex(fred_idx)
 
-                idx += 1
+                    fred_idx += 1
+                else:
+                    self._builds.append((name, path))
+                    tab.build.addItem(name)
 
-            if len(bins) == 1:
-                # Found only one binary, select it by default.
+                    if path == fs2_bin:
+                        tab.build.setCurrentIndex(idx)
+
+                    idx += 1
+
+            del idx, fred_idx
+
+            if len(self._builds) < 2:
                 tab.build.setEnabled(False)
-                self.save_build()
+
+                if len(self._builds) == 1:
+                    # Found only one binary, select it by default.
+                    self.save_build()
+                else:
+                    tab.build.addItem('No executable found!')  # NEEDTR
+
+            if len(self._fred_builds) < 2:
+                tab.fredBuild.setEnabled(False)
+
+                if len(self._fred_builds) == 1:
+                    self.save_fred_build()
+                else:
+                    tab.fredBuild.addItem('No executable found!')  # NEEDTR
 
         dev_info = self.get_deviceinfo()
 
@@ -1025,6 +1058,14 @@ class SettingsWindow(Window):
         else:
             api.save_settings()
             center.signals.fs2_bin_changed.emit()
+
+    def save_fred_build(self):
+        fred_bin = self._fred_builds[self._tabs['fso_settings'].fredBuild.currentIndex()][1]
+        if not os.path.isfile(os.path.join(center.settings['fs2_path'], fred_bin)):
+            return
+
+        center.settings['fred_bin'] = fred_bin
+        api.save_settings()
 
     def save_update_settings(self, p=None):
         tab = self._tabs['kn_settings']

@@ -32,7 +32,7 @@ from .ui.select_list import Ui_SelectListDialog
 from .windows import HellWindow, ModSettingsWindow, ModInstallWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
-from .runner import run_fs2, run_fs2_silent
+from .runner import run_fs2, run_fred, run_fs2_silent
 
 # TODO: Split this file up into smaller parts and move them into the respective modules
 # (i.e. run_mod should be in runner).
@@ -252,7 +252,7 @@ def read_fso_cmdline():
     return cmdline
 
 
-def run_mod(mod):
+def run_mod(mod, fred=False):
     global installed
 
     if mod is None:
@@ -345,7 +345,11 @@ def run_mod(mod):
 
         center.settings['last_played'] = mod.mid
         save_settings()
-        run_fs2()
+
+        if fred:
+            run_fred()
+        else:
+            run_fs2()
 
 
 def check_retail_files():
