@@ -224,7 +224,7 @@ function process_tr(func) {
     }
 
     // Find all neccessary translation keys.
-    func.toString().replace(/qsTr\(([^)]+)\)/g, function (m, part) {
+    func.toString().replace(/qsTr\(((?:"[^"]+"|'[^']+'|\s|,)+)\)/g, function (m, part) {
         keys.push(eval(part));
     });
 
@@ -289,7 +289,7 @@ function init() {
 
     process_tr(function (qsTr) {
         $('#loading').text(qsTr('Loading'));
-        $('#no-last-played span').text(qsTr("You haven't played any mod, yet."));
+        $('#no-last-played span').text(qsTr("You haven't played any mod, yet. (Or you uninstalled your last played mod.)"));
         $('.run-btn span').text(qsTr('Play'));
         $('.install-btn span').text(qsTr('Install'));
         $('.update-btn span').text(qsTr('Update'));

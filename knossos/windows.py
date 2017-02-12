@@ -288,10 +288,10 @@ class HellWindow(Window):
         if clicked == 'lastPlayed':
             mod = center.settings['last_played']
             if mod:
-                mod = center.installed.query(mod)
-
-                if mod:
-                    mod = mod.get()
+                try:
+                    mod = center.installed.query(mod).get()
+                except repo.ModNotFound:
+                    mod = None
 
             self.browser_ctrl.bridge.showLastPlayed.emit(mod)
         else:
