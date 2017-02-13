@@ -17,25 +17,29 @@ import sys
 import os
 import logging
 import ctypes.util
+import re
+import shutil
 
 
 def which(cmd):
     path = os.environ.get('PATH', os.defpath)
     if not path:
         return None
+
     path = path.split(os.pathsep)
-    
+
     seen = set()
     for dir in path:
         normdir = os.path.normcase(dir)
-        if not normdir in seen:
+        if normdir not in seen:
             seen.add(normdir)
             name = os.path.join(dir, cmd)
-            if (os.path.exists(name) and os.access(name, os.F_OK | os.X_OK)
-                    and not os.path.isdir(name)):
+            if (os.path.exists(name) and os.access(name, os.F_OK | os.X_OK) and
+                    not os.path.isdir(name)):
                 return name
 
     return None
+
 
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 
@@ -54,15 +58,22 @@ with open(p7z_path, 'r') as stream:
 
 
 sdl2_path = ctypes.util.find_library('SDL2')
-sdl_path = ctypes.util.find_library('SDL')
-if not sdl2_path and not sdl_path:
-    logging.error('I can\'t find SDL! If you have Homebrew, just run "brew install sdl2".')
+if not sdl2_path:
+    logging.error('I can\'t find SDL! Please go to https://libsdl.org/download-2.0.php, download the .dmg file and ' +
+        'install it according to the contained README.')
     sys.exit(1)
 
+if not os.path.dirname(sdl2_path).endswith('.framework'):
+    logging.error('Found SDL2 in %s but I need a framework! Please go to https://libsdl.org/download-2.0.php, ' +
+        'download the .dmg file and install it according to the contained README.' % sdl2_path)
+    sys.exit(1)
+
+# Persist the debug setting
 rthooks = []
 if debug:
     rthooks.append('../common/debug-rthook.py')
 
+# Read the version number
 with open('../../knossos/center.py') as stream:
     match = re.search(r"VERSION = '([^']+)'", stream.read())
 
@@ -72,6 +83,7 @@ if not match:
 
 version = match.group(1)
 if '-dev' in version:
+    # Append the current commit to the version number
     if not os.path.exists('../../.git'):
         print('\nWARNING: No .git directory found while building a devbuild!\n')
     else:
@@ -85,6 +97,7 @@ if '-dev' in version:
 with open('version', 'w') as stream:
     stream.write(version)
 
+# Generate a list of dependencies
 a = Analysis(['../../knossos/__main__.py'],
              pathex=['../..'],
              hiddenimports=[],
@@ -99,6 +112,7 @@ for i, item in enumerate(a.pure):
 for i in reversed(idx):
     del a.pure[i]
 
+# Build an archive of all pure python files
 pyz = PYZ(a.pure)
 
 a.datas += [('7z', p7z_path, 'DATA'),
@@ -106,11 +120,7 @@ a.datas += [('7z', p7z_path, 'DATA'),
             ('data/hlp.ico', '../../knossos/data/hlp.ico', 'DATA'),
             ('data/resources.rcc', '../../knossos/data/resources.rcc', 'DATA')]
 
-if sdl2_path:
-    a.datas += [('libSDL2.dylib', sdl2_path, 'BINARY')]
-else:
-    a.datas += [('libSDL.dylib', sdl_path, 'BINARY')]
-
+# Build the binary
 exe = EXE(pyz,
           a.scripts,
           exclude_binaries=True,
@@ -120,15 +130,15 @@ exe = EXE(pyz,
           upx=False,
           console=debug)
 
-coll = COLLECT(exe,
-               a.binaries,
-               a.zipfiles,
-               a.datas,
-               strip=None,
-               upx=False,
-               name='Knossos')
+# Build the .app folder
+app = BUNDLE(exe,
+             a.binaries,
+             a.zipfiles,
+             a.datas,
+             name='Knossos.app',
+             icon='../../knossos/data/hlp.icns',
+             info_plist={
+                'CFBundleShortVersionString': version
+             })
 
-if not debug:
-    app = BUNDLE(coll,
-                 name='Knossos.app',
-                 icon='../../knossos/data/hlp.icns')
+shutil.copytree(os.path.dirname(sdl2_path), os.path.join(DISTPATH, 'Knossos.app/Contents/Frameworks/SDL2.framework'))
