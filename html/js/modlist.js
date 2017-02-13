@@ -269,6 +269,12 @@ function init() {
         fs2mod.enterTcMode();
     });
 
+    $('a[target="_blank"]').click(function (e) {
+        e.preventDefault();
+
+        fs2mod.openExternal($(this).attr('href'));
+    });
+
     load_translations(function () {
         $('div[data-tr], span[data-tr]').each(function () {
             var $this = $(this);

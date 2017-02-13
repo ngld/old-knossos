@@ -37,7 +37,8 @@ class Integration(object):
         pass
 
     def annoy_user(self, activate=True):
-        pass
+        if center.main_win and activate:
+            center.app.alert(center.main_win, 3000)
 
     def install_scheme_handler(self):
         pass
@@ -124,6 +125,8 @@ class UnityIntegration(LinuxIntegration):
                 logging.exception('Setting progress_visible for Unity failed!')
 
     def annoy_user(self, activate=True):
+        super(UnityIntegration, self).annoy_user(activate)
+
         if self.launcher:
             try:
                 self.launcher.set_property('urgent', activate)
@@ -163,9 +166,6 @@ class WindowsIntegration(Integration):
 
     def hide_progress(self):
         self.taskbar.SetProgressState(self.wid(), self.TBPF_NOPROGRESS)
-
-    def annoy_user(self, activate=True):
-        pass
 
     def install_scheme_handler(self):
         my_cmd = launcher.get_cmd()

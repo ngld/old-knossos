@@ -18,7 +18,7 @@ import logging
 import re
 import semantic_version
 
-from .qt import QtCore, QtWebChannel
+from .qt import QtCore, QtGui, QtWebChannel
 from . import center, api, repo, windows, tasks, util
 
 if not QtWebChannel:
@@ -354,6 +354,10 @@ class WebBridge(QtCore.QObject):
             return 0
 
         return a.__cmp__(b)
+
+    @QtCore.Slot(str)
+    def openExternal(self, link):
+        QtGui.QDesktopServices.openUrl(link)
 
 
 if QtWebChannel:
