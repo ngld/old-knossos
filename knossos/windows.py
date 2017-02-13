@@ -178,6 +178,7 @@ class HellWindow(Window):
         center.signals.repo_updated.connect(self.check_new_repo)
         center.signals.task_launched.connect(self.watch_task)
 
+        self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
         self.win.pageControls.hide()
         self.win.progressInfo.hide()
         self.open()

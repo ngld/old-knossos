@@ -96,8 +96,15 @@ elif len(sys.argv) > 1 and sys.argv[1] == '--lib-paths':
         else:
             center.settings['openal_path'] = sys.argv[3]
 
-    clibs.init_sdl()
-    clibs.init_openal()
+    try:
+        clibs.init_sdl()
+    except:
+        clibs.sdl = None
+
+    try:
+        clibs.init_openal()
+    except:
+        clibs.acl = None
 
     if center.settings['sdl2_path'] and clibs.sdl:
         if clibs.sdl._name != center.settings['sdl2_path']:

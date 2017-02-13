@@ -546,10 +546,10 @@ def enable_raven():
 
     from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
     from raven.handlers.logging import SentryHandler
-    from raven.conf import defaults
 
     if hasattr(sys, 'frozen'):
-        defaults.CA_BUNDLE = os.path.join(sys._MEIPASS, 'requests', 'cacert.pem')
+        from six.moves.urllib.parse import quote as urlquote
+        center.SENTRY_DSN += '?ca_certs=' + urlquote(os.path.join(sys._MEIPASS, 'requests', 'cacert.pem'))
 
     center.raven = Client(
         center.SENTRY_DSN,
