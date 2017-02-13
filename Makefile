@@ -32,10 +32,10 @@ endif
 
 .PHONY: run debug dist clean update-trans resources ui
 
-run: resources ui
+run: locale/knossos.ts resources ui
 	$(PYTHON) knossos/__main__.py
 
-debug: resources ui
+debug: locale/knossos.ts resources ui
 	KN_DEBUG=1 $(PYTHON) knossos/__main__.py
 
 dist: resources ui $(patsubst locale/knossos_%.ts,knossos/data/%.qm,$(wildcard locale/*.ts))
@@ -58,9 +58,10 @@ ui: $(patsubst ui/%.ui,knossos/ui/%.py,$(UI_FILES))
 ui/res.qrc: $(RCC_FILES)
 	@./tools/common/run_helper.sh gen_qrc > ui/res.qrc
 
-locale/knossos.ts: html/js/modlist.js $(wildcard knossos/*.py) $(UI_FILES)
+locale/knossos.ts: html/js/modlist.js html/modlist.html $(wildcard knossos/*.py) $(UI_FILES)
 	pylupdate5 $(wildcard knossos/*.py) -ts locale/_py.ts
-	lupdate html/js/modlist.js $(UI_FILES) -ts locale/_ui.ts
+	$(PYTHON) ./tools/common/js_lupdate.py -o html/js/modlist_ts.js html/modlist.html html/js/modlist.js
+	lupdate html/js/modlist_ts.js $(UI_FILES) -ts locale/_ui.ts
 	lconvert -i locale/_ui.ts locale/_py.ts -o locale/knossos.ts
 
 locale/knossos_%.ts: locale/knossos.ts

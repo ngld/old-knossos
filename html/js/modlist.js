@@ -1,6 +1,7 @@
 var tasks = {};
 var progress_visible = false;
 var last_mod = null;
+var tr_table = {};
 
 function render_row(mvs, type) {
     var row = $('<div class="mod row">');
@@ -215,31 +216,21 @@ function show_progress() {
     });
 }
 
-function process_tr(func) {
-    var keys = [];
-    var trans = {};
-
-    function fakeTr(k) {
-        return trans[k];
-    }
-
-    // Find all neccessary translation keys.
-    func.toString().replace(/qsTr\(((?:"[^"]+"|'[^']+'|\s|,)+)\)/g, function (m, part) {
-        keys.push(eval(part));
-    });
+function load_translations(cb) {
+    tr_table = {};
+    var keys = get_translation_source();
 
     // Call fs2mod.tr() for each key
     var next = 0;
     function fetch() {
-        if(next >= keys.length) {
-            // We're done and can finally call the original function
-            func(fakeTr);
-        } else {
+        if(next < keys.length) {
             var k = keys[next++];
-            fs2mod.tr('modlist', k, function (res) {
-                trans[k] = res;
+            fs2mod.tr('modlist_ts', k, function (res) {
+                tr_table[k] = res;
                 fetch();
             });
+        } else {
+            cb();
         }
     }
 
@@ -248,34 +239,7 @@ function process_tr(func) {
 
 function show_welcome() {
     $('.info-page, #mods, #loading').hide();
-
-    process_tr(function (qsTr) {
-        $('#welcome').html(qsTr('<h1>Welcome!</h1>' +
-            '<p>It looks like you started Knossos for the first time.</p>' +
-            '<p>' +
-                'You can tell me where your FS2 installation is, I could install FS2 using the GOG installer ' +
-                'or maybe you want to install a Total Conversion?' +
-            '</p>') +
-            '<hr>' +
-
-            '<p>' +
-                '<a class="btn btn-primary" id="sel-fso">' + qsTr('Select FS2 directory') + '</a>' +
-            '</p>' +
-            '<p>' +
-                '<a class="btn btn-primary" id="gog-install">' + qsTr('Install FS2 using the GOG installer') + '</a>' +
-            '</p>' +
-            '<p>' +
-                '<a class="btn btn-primary" id="tc-install">' + qsTr('Install a TC') + '</a>' +
-            '</p>' +
-            qsTr('<p>' +
-                    'This launcher is still in development. Please visit ' +
-                    '<a href="http://www.hard-light.net/forums/index.php?topic=93144.0" target="_blank">this HLP thread</a> ' +
-                    'and let me know what you think, what didn\'t work and what you would like to change.' +
-                '</p>' +
-                '<p>-- ngld</p>'
-            )
-        ).show();
-    });
+    $('#welcome').show();
 }
 
 function init() {
@@ -287,12 +251,29 @@ function init() {
         fs2mod.runMod($(this).data('modid'), '');
     });
 
-    process_tr(function (qsTr) {
-        $('#loading').text(qsTr('Loading'));
-        $('#no-last-played span').text(qsTr("You haven't played any mod, yet. (Or you uninstalled your last played mod.)"));
-        $('.run-btn span').text(qsTr('Play'));
-        $('.install-btn span').text(qsTr('Install'));
-        $('.update-btn span').text(qsTr('Update'));
+    $('#sel-fso').click(function (e) {
+        e.preventDefault();
+
+        fs2mod.selFs2path();
+    });
+
+    $('#gog-install').click(function (e) {
+        e.preventDefault();
+
+        fs2mod.runGogInstaller();
+    });
+
+    $('#tc-install').click(function (e) {
+        e.preventDefault();
+
+        fs2mod.enterTcMode();
+    });
+
+    load_translations(function () {
+        $('div[data-tr], span[data-tr]').each(function () {
+            var $this = $(this);
+            $this.html(tr_table[$this.html()]);
+        });
     });
 
     fs2mod.showWelcome.connect(show_welcome);

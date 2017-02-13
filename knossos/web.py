@@ -126,6 +126,11 @@ class WebBridge(QtCore.QObject):
     def runGogInstaller(self):
         windows.GogExtractWindow()
 
+    @QtCore.Slot()
+    def enterTcMode(self):
+        api.select_fs2_path(tc_mode=True)
+        tasks.run_task(tasks.FetchTask())
+
     @QtCore.Slot(result='QVariantList')
     def getMods(self):
         return list(center.mods.get())

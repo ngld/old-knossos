@@ -20,3 +20,4 @@ dist
 *.sublime-*
 /ui/res.qrc
 /locale/_*.ts
+/html/js/modlist_ts.js

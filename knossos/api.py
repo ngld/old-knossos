@@ -58,15 +58,20 @@ def save_settings():
         pickle.dump(center.settings, stream, 2)
 
 
-def select_fs2_path(interact=True):
+def select_fs2_path(interact=True, tc_mode=False):
     if interact:
         if center.settings['fs2_path'] is None:
             path = os.path.expanduser('~')
         else:
             path = center.settings['fs2_path']
 
+        if tc_mode:
+            title = translate('api', 'Please select the installation directory.')
+        else:
+            title = translate('api', 'Please select your FS2 directory.')
+
         fs2_path = QtWidgets.QFileDialog.getExistingDirectory(
-            center.main_win.win, translate('api', 'Please select your FS2 directory.'), path)
+            center.main_win.win, title, path)
     else:
         fs2_path = center.settings['fs2_path']
 
