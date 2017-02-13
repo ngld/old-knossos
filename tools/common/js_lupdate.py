@@ -50,7 +50,11 @@ def main(args):
             data = stream.read()
 
         for m in pat.finditer(data):
-            msgs.append(m.group())
+            if m.group(1):
+                msgs.append(m.group(1))
+
+            if m.group(2):
+                msgs.append(m.group(2))
 
     with open(output, 'w') as stream:
         stream.write('function msg_list() {\n')

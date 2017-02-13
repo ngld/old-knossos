@@ -225,7 +225,7 @@ class HellWindow(Window):
 
     def check_new_repo(self):
         updates = len(center.installed.get_updates())
-        self.win.updatesButton.setText('Updates (%d)' % updates)
+        self.win.updatesButton.setText(self.tr('Updates (%d)') % updates)
 
         self.update_mod_list()
 
@@ -383,7 +383,7 @@ class SettingsWindow(Window):
         tab.versionLabel.setText(center.VERSION)
 
         for key, lang in center.LANGUAGES.items():
-            tab.langSelect.addItem(lang, key)
+            tab.langSelect.addItem(lang, QtCore.QVariant(key))
 
         tab.maxDownloads.setValue(center.settings['max_downloads'])
 
@@ -1085,7 +1085,7 @@ class SettingsWindow(Window):
 
     def save_language(self, p=None):
         tab = self._tabs['kn_settings']
-        center.settings['language'] = tab.langSelect.currentData()
+        center.settings['language'] = str(tab.langSelect.currentData())
         api.save_settings()
 
         QtWidgets.QMessageBox.information(None, 'Knossos', 'Please restart Knossos to complete the language change.')

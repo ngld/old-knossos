@@ -187,13 +187,11 @@ def run_knossos():
             QtWidgets.QMessageBox.Ok, QtWidgets.QMessageBox.Ok)
         return
 
-    # Try to load our settings.
-    settings = load_settings()
-    util.DL_POOL.set_capacity(settings['max_downloads'])
+    util.DL_POOL.set_capacity(center.settings['max_downloads'])
 
     center.app = app
     center.installed = repo.InstalledRepo()
-    center.installed.pins = settings['pins']
+    center.installed.pins = center.settings['pins']
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()
@@ -301,6 +299,9 @@ def main():
     logging.debug('Loading resources from %s.', res_path)
     QtCore.QResource.registerResource(res_path)
 
+    logging.debug('Loading settings...')
+    load_settings()
+    
     trans = QtCore.QTranslator()
     if center.settings['language']:
         lang = center.settings['language']
@@ -370,9 +371,6 @@ def main():
         run_knossos()
     except:
         logging.exception('Uncaught exeception! Quitting...')
-
-        # Load raven if it's enabled in the settings
-        load_settings()
 
         # Try to tell the user
         QtWidgets.QMessageBox.critical(None, 'Knossos',

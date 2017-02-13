@@ -84,6 +84,11 @@ You should update to Knossos %s.</source>
         <source>Working...</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="../knossos/windows.py" line="229"/>
+        <source>Updates (%d)</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>InstallTask</name>
@@ -552,22 +557,22 @@ Run me as administrator and try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../knossos/launcher.py" line="232"/>
+        <location filename="../knossos/launcher.py" line="230"/>
         <source>I don&apos;t know how to handle &quot;%s&quot;! I only know fso:// .</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../knossos/launcher.py" line="240"/>
+        <location filename="../knossos/launcher.py" line="238"/>
         <source>Not enough arguments!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../knossos/launcher.py" line="253"/>
+        <location filename="../knossos/launcher.py" line="251"/>
         <source>Failed to start server!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../knossos/launcher.py" line="378"/>
+        <location filename="../knossos/launcher.py" line="376"/>
         <source>I encountered a fatal error.
 I&apos;m sorry but I&apos;m going to crash now...</source>
         <translation type="unfinished"></translation>
@@ -1255,7 +1260,7 @@ If a text field contains &quot;auto&quot;, it means that Knossos will try to fin
     <name>modlist_ts</name>
     <message>
         <location filename="../html/js/modlist_ts.js" line="2"/>
-        <source>&lt;div data-tr id=&quot;welcome&quot; class=&quot;hide info-page&quot;&gt;
+        <source>
             &lt;h1&gt;Welcome!&lt;/h1&gt;
 
             &lt;p&gt;It looks like you started Knossos for the first time.&lt;/p&gt;
@@ -1281,28 +1286,28 @@ If a text field contains &quot;auto&quot;, it means that Knossos will try to fin
                 and let me know what you think, what didn&apos;t work and what you would like to change.
             &lt;/p&gt;
             &lt;p&gt;-- ngld&lt;/p&gt;
-        &lt;/div&gt;</source>
+        </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../html/js/modlist_ts.js" line="3"/>
         <location filename="../html/js/modlist_ts.js" line="6"/>
-        <source>&lt;span data-tr&gt;Play&lt;/span&gt;</source>
+        <source>Play</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../html/js/modlist_ts.js" line="4"/>
-        <source>&lt;span data-tr&gt;You haven&apos;t played any mod, yet. (Or you uninstalled your last played mod.)&lt;/span&gt;</source>
+        <source>You haven&apos;t played any mod, yet. (Or you uninstalled your last played mod.)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../html/js/modlist_ts.js" line="5"/>
-        <source>&lt;span data-tr&gt;Install&lt;/span&gt;</source>
+        <source>Install</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../html/js/modlist_ts.js" line="7"/>
-        <source>&lt;span data-tr&gt;Update&lt;/span&gt;</source>
+        <source>Update</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

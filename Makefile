@@ -38,7 +38,7 @@ run: locale/knossos.ts resources ui
 debug: locale/knossos.ts resources ui
 	KN_DEBUG=1 $(PYTHON) knossos/__main__.py
 
-dist: resources ui $(patsubst locale/knossos_%.ts,knossos/data/%.qm,$(wildcard locale/*.ts))
+dist: resources ui $(patsubst locale/knossos_%.ts,knossos/data/knossos_%.qm,$(wildcard locale/*.ts))
 	$(PYTHON) setup.py sdist bdist_wheel
 
 clean:
