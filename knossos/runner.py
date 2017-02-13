@@ -335,3 +335,17 @@ def run_fs2_silent(params):
         return util.call([fs2_bin] + params, cwd=fs2_path, env=env)
     except OSError:
         return -129
+
+
+def stringify_cmdline(line):
+    result = []
+    for part in line:
+        if '"' in part:
+            raise Exception("It's impossible to pass double quotes to FSO!")
+
+        if ' ' in part:
+            part = '"%s"' % part
+
+        result.append(part)
+
+    return ' '.join(result)

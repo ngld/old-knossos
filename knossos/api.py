@@ -32,7 +32,7 @@ from .ui.select_list import Ui_SelectListDialog
 from .windows import HellWindow, ModSettingsWindow, ModInstallWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
-from .runner import run_fs2, run_fred, run_fs2_silent
+from .runner import run_fs2, run_fred, run_fs2_silent, stringify_cmdline
 
 # TODO: Split this file up into smaller parts and move them into the respective modules
 # (i.e. run_mod should be in runner).
@@ -334,7 +334,7 @@ def run_mod(mod, fred=False):
 
     try:
         with open(path, 'w') as stream:
-            stream.write(' '.join([shlex.quote(p) for p in cmdline]))
+            stream.write(stringify_cmdline(cmdline))
     except:
         logging.exception('Failed to modify "%s". Not starting FS2!!', path)
 
