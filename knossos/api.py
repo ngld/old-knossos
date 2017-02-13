@@ -427,17 +427,6 @@ def uninstall_pkgs(pkgs, name=None, cb=None):
         return False
 
 
-def switch_ui_mode(nmode):
-    old_win = center.main_win
-    if nmode == 'hell':
-        center.main_win = HellWindow()
-    else:
-        logging.error('Unknown UI mode "%s"! (Maybe you tried to use a legacy UI...)' % nmode)
-
-    center.main_win.open()
-    old_win.close()
-
-
 #########
 # Tools #
 #########

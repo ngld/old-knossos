@@ -50,6 +50,7 @@ from .tasks import run_task, GOGExtractTask, InstallTask, UninstallTask, Windows
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
+translate = QtCore.QCoreApplication.translate
 
 
 class QDialog(QtWidgets.QDialog):
@@ -145,6 +146,9 @@ class Window(object):
 
         self.win.setStyleSheet(self._styles)
 
+    def tr(self, *args):
+        return translate(self.__class__.__name__, *args)
+
 
 class HellWindow(Window):
     _tasks = None
@@ -228,13 +232,13 @@ class HellWindow(Window):
     def ask_update(self, version):
         # We only have an updater for windows.
         if sys.platform.startswith('win'):
-            msg = 'There\'s an update available!\nDo you want to install Knossos %s now?' % str(version)  # NEEDTR
+            msg = self.tr('There\'s an update available!\nDo you want to install Knossos %s now?') % str(version)
             buttons = QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
             result = QtWidgets.QMessageBox.question(center.app.activeWindow(), 'Knossos', msg, buttons)
             if result == QtWidgets.QMessageBox.Yes:
                 run_task(WindowsUpdateTask())
         else:
-            msg = 'There\'s an update available!\nYou should update to Knossos %s.' % str(version)  # NEEDTR
+            msg = self.tr('There\'s an update available!\nYou should update to Knossos %s.') % str(version)
             QtWidgets.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
 
     def update_repo_list(self):
@@ -315,7 +319,7 @@ class HellWindow(Window):
         else:
             # TODO: Stop being lazy and calculate the aggregate progress.
             self.win.progressBar.hide()
-            self.win.progressLabel.setText('Working...')  # NEEDTR
+            self.win.progressLabel.setText(self.tr('Working...'))
 
     def _track_progress(self, task, pi):
         subs = [item for item in pi[1].values()]
@@ -353,19 +357,20 @@ class SettingsWindow(Window):
         self._tabs = {}
         self._create_win(Ui_SettingsDialog)
 
+        # We're using the dialog's name as the context here because we want the translations to match.
         self._label_lookup = {
-            'About Knossos': 'about',  # NEEDTR
-            'Launcher settings': 'kn_settings',  # NEEDTR
-            'Retail install': 'retail_install',  # NEEDTR
-            'Mod sources': 'mod_sources',  # NEEDTR
-            'Library paths': 'lib_paths',  # NEEDTR
-            'Game settings': 'fso_settings',  # NEEDTR
-            'Video': 'fso_video',  # NEEDTR
-            'Audio': 'fso_audio',  # NEEDTR
-            'Input': 'fso_input',  # NEEDTR
-            'Network': 'fso_network',  # NEEDTR
-            'Default flags': 'fso_flags',  # NEEDTR
-            'Help': 'help'  # NEEDTR
+            translate('SettingsDialog', 'About Knossos'): 'about',
+            translate('SettingsDialog', 'Launcher settings'): 'kn_settings',
+            translate('SettingsDialog', 'Retail install'): 'retail_install',
+            translate('SettingsDialog', 'Mod sources'): 'mod_sources',
+            translate('SettingsDialog', 'Library paths'): 'lib_paths',
+            translate('SettingsDialog', 'Game settings'): 'fso_settings',
+            translate('SettingsDialog', 'Video'): 'fso_video',
+            translate('SettingsDialog', 'Audio'): 'fso_audio',
+            translate('SettingsDialog', 'Input'): 'fso_input',
+            translate('SettingsDialog', 'Network'): 'fso_network',
+            translate('SettingsDialog', 'Default flags'): 'fso_flags',
+            translate('SettingsDialog', 'Help'): 'help'
         }
 
         self.win.treeWidget.expandAll()
@@ -376,6 +381,10 @@ class SettingsWindow(Window):
 
         self._tabs['kn_settings'] = tab = util.init_ui(Ui_KnossosSettingsForm(), QtWidgets.QWidget())
         tab.versionLabel.setText(center.VERSION)
+
+        for key, lang in center.LANGUAGES.items():
+            tab.langSelect.addItem(lang, key)
+
         tab.maxDownloads.setValue(center.settings['max_downloads'])
 
         if launcher.log_path is None:
@@ -400,6 +409,7 @@ class SettingsWindow(Window):
         else:
             tab.reportErrors.setCheckState(QtCore.Qt.Unchecked)
 
+        tab.langSelect.currentIndexChanged.connect(self.save_language)
         tab.maxDownloads.valueChanged.connect(self.update_max_downloads)
         tab.updateChannel.currentIndexChanged.connect(self.save_update_settings)
         tab.updateNotify.stateChanged.connect(self.save_update_settings)
@@ -504,7 +514,8 @@ class SettingsWindow(Window):
                 for r_source, r_title in center.settings['repos']:
                     if r_source == source:
                         found = True
-                        QtWidgets.QMessageBox.critical(self.win, 'Error', 'This source is already in the list! (As "%s")' % (r_title))  # NEEDTR
+                        QtWidgets.QMessageBox.critical(self.win, self.tr('Error'),
+                            self.tr('This source is already in the list! (As "%s")') % (r_title))
                         break
 
                 if not found:
@@ -532,8 +543,9 @@ class SettingsWindow(Window):
         item = tab.sourceList.currentItem()
         if item is not None:
             idx = item.data(QtCore.Qt.UserRole)
-            answer = QtWidgets.QMessageBox.question(self.win, 'Are you sure?', 'Do you really want to remove "%s"?' % (item.text()),  # NEEDTR
-                                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+            answer = QtWidgets.QMessageBox.question(self.win, self.tr('Are you sure?'),
+                self.tr('Do you really want to remove "%s"?') % (item.text()),
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
 
             if answer == QtWidgets.QMessageBox.Yes:
                 del center.settings['repos'][idx]
@@ -600,9 +612,9 @@ class SettingsWindow(Window):
         except:
             logging.exception('Failed to retrieve device info!')
 
-            QtWidgets.QMessageBox.critical(None, 'Knossos',
-                'There was an error trying to retrieve your device info (screen resolution, joysticks and audio devices). ' +
-                'Please try again or report this error on the HLP thread.')  # NEEDTR
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr(
+                'There was an error trying to retrieve your device info (screen resolution, joysticks and audio' +
+                ' devices). Please try again or report this error on the HLP thread.'))
             return None
 
         return info
@@ -615,17 +627,17 @@ class SettingsWindow(Window):
         try:
             info = json.loads(util.check_output(launcher.get_cmd(['--lib-paths', sdl_path, oal_path])).strip())
         except:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'An unkown error (a crash?) occurred while trying to ' +
-                'load the libraries!')  # NEEDTR
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr('An unkown error (a crash?) occurred while trying to load the libraries!'))
         else:
             if info['sdl2'] and info['openal']:
-                msg = 'Success! Both libraries were loaded successfully.'  # NEEDTR
+                msg = self.tr('Success! Both libraries were loaded successfully.')
             else:
-                msg = 'Error! One or both libraries failed to load.'  # NEEDTR
+                msg = self.tr('Error! One or both libraries failed to load.')
 
             msg += '\n\nSDL2: %s\nOpenAL: %s' % (
-                info['sdl2'] if info['sdl2'] else 'Not found',  # NEEDTR
-                info['openal'] if info['openal'] else 'Not found'  # NEEDTR
+                info['sdl2'] if info['sdl2'] else self.tr('Not found'),
+                info['openal'] if info['openal'] else self.tr('Not found')
             )
             QtWidgets.QMessageBox.information(None, 'Knossos', msg)
 
@@ -634,7 +646,8 @@ class SettingsWindow(Window):
 
         if path is not None and path != '':
             if not os.path.isfile(path):
-                QtWidgets.QMessageBox.critical(self.win, 'Not a file', 'Please select a proper file')  # NEEDTR
+                QtWidgets.QMessageBox.critical(self.win, self.tr('Not a file'),
+                    self.tr('Please select a proper file'))
                 return
 
             edit.setText(os.path.abspath(path))
@@ -682,7 +695,7 @@ class SettingsWindow(Window):
                     # Found only one binary, select it by default.
                     self.save_build()
                 else:
-                    tab.build.addItem('No executable found!')  # NEEDTR
+                    tab.build.addItem(self.tr('No executable found!'))
 
             if len(self._fred_builds) < 2:
                 tab.fredBuild.setEnabled(False)
@@ -690,7 +703,7 @@ class SettingsWindow(Window):
                 if len(self._fred_builds) == 1:
                     self.save_fred_build()
                 else:
-                    tab.fredBuild.addItem('No executable found!')  # NEEDTR
+                    tab.fredBuild.addItem(self.tr('No executable found!'))
 
         dev_info = self.get_deviceinfo()
 
@@ -771,7 +784,7 @@ class SettingsWindow(Window):
         # Texture filter
         vid_texfilter = self._tabs['fso_video'].textureFilter
         vid_texfilter.clear()
-        vid_texfilter.addItems(['Bilinear', 'Trilinear'])  # NEEDTR
+        vid_texfilter.addItems([self.tr('Bilinear'), self.tr('Trilinear')])
 
         try:
             index = int(texfilter)
@@ -786,7 +799,7 @@ class SettingsWindow(Window):
         # Antialiasing
         vid_aa = self._tabs['fso_video'].antialiasing
         vid_aa.clear()
-        vid_aa.addItems(['Off', '2x', '4x', '8x', '16x'])  # NEEDTR
+        vid_aa.addItems([self.tr('Off'), '2x', '4x', '8x', '16x'])
 
         index = vid_aa.findText('{0}x'.format(aa))
         if index == -1:
@@ -796,7 +809,7 @@ class SettingsWindow(Window):
         # Anisotropic filtering
         vid_af = self._tabs['fso_video'].anisotropic
         vid_af.clear()
-        vid_af.addItems(['Off', '1x', '2x', '4x', '8x', '16x'])  # NEEDTR
+        vid_af.addItems([self.tr('Off'), '1x', '2x', '4x', '8x', '16x'])
 
         index = vid_af.findText('{0}x'.format(af))
         if index == -1:
@@ -856,7 +869,7 @@ class SettingsWindow(Window):
         ctrl_joystick = self._tabs['fso_input'].controller
 
         ctrl_joystick.clear()
-        ctrl_joystick.addItem('No Joystick')  # NEEDTR
+        ctrl_joystick.addItem(self.tr('No Joystick'))
         for joystick in joysticks:
             ctrl_joystick.addItem(joystick)
 
@@ -907,7 +920,8 @@ class SettingsWindow(Window):
         net_type.setCurrentIndex(index)
 
         net_speed.clear()
-        net_speed.addItems(['None', '28k modem', '56k modem', 'ISDN', 'DSL', 'Cable/LAN'])  # NEEDTR
+        net_speed.addItems([self.tr('None'), self.tr('28k modem'), self.tr('56k modem'),
+            self.tr('ISDN'), self.tr('DSL'), self.tr('Cable/LAN')])
         net_speeds_read = {'none': 0, 'Slow': 1, '56K': 2, 'ISDN': 3, 'Cable': 4, 'Fast': 5}
         if net_speed in net_speeds_read:
             index = net_speeds_read[net_speed]
@@ -948,7 +962,7 @@ class SettingsWindow(Window):
 
         # sound
         new_playback_device = self._tabs['fso_audio'].playbackDevice.currentText()
-        # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device ? Why ?
+        # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device.
         # ^ So I do it the way openal is supposed to work, but I'm not sure FS2 really behaves that way
         config.setValue('Sound/PlaybackDevice', new_playback_device)
         config.setValue(section + 'SoundDeviceOAL', new_playback_device)
@@ -967,7 +981,7 @@ class SettingsWindow(Window):
         config.setValue('Sound/SampleRate', new_sample_rate)
 
         # joystick
-        if self._tabs['fso_input'].controller.currentText() == 'No Joystick':  # NEEDTR
+        if self._tabs['fso_input'].controller.currentText() == self.tr('No Joystick'):
             new_joystick_id = 99999
         else:
             new_joystick_id = self._tabs['fso_input'].controller.currentIndex() - 1
@@ -1045,13 +1059,14 @@ class SettingsWindow(Window):
             # We failed to run FSO but why?
             rc = runner.run_fs2_silent(['-help'])
             if rc == -128:
-                msg = 'The FSO binary "%s" is missing!' % fs2_bin  # NEEDTR
+                msg = self.tr('The FSO binary "%s" is missing!') % fs2_bin
             elif rc == -127:
-                # TODO: At this point we have run ldd twice already and the next call will run it again. Is there any way to avoid this?
+                # TODO: At this point we have run ldd twice already and the next call will run it again.
+                # Is there any way to avoid this?
                 _, missing = runner.fix_missing_libs(os.path.join(center.settings['fs2_path'], fs2_bin))
-                msg = 'The FSO binary "%s" is missing %s!' % (fs2_bin, util.human_list(missing))  # NEEDTR
+                msg = self.tr('The FSO binary "%s" is missing %s!') % (fs2_bin, util.human_list(missing))
             else:
-                msg = 'The FSO binary quit with code %d!' % rc  # NEEDTR
+                msg = self.tr('The FSO binary quit with code %d!') % rc
 
             center.settings['fs2_bin'] = old_bin
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
@@ -1067,6 +1082,13 @@ class SettingsWindow(Window):
 
         center.settings['fred_bin'] = fred_bin
         api.save_settings()
+
+    def save_language(self, p=None):
+        tab = self._tabs['kn_settings']
+        center.settings['language'] = tab.langSelect.currentData()
+        api.save_settings()
+
+        QtWidgets.QMessageBox.information(None, 'Knossos', 'Please restart Knossos to complete the language change.')
 
     def save_update_settings(self, p=None):
         tab = self._tabs['kn_settings']
@@ -1089,7 +1111,8 @@ class SettingsWindow(Window):
         logpath = os.path.join(api.get_fso_profile_path(), 'data/fs2_open.log')
 
         if not os.path.isfile(logpath):
-            QtWidgets.QMessageBox.warning(None, 'Knossos', 'Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?')  # NEEDTR
+            QtWidgets.QMessageBox.warning(None, 'Knossos',
+                self.tr('Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?'))
         else:
             LogViewer(logpath)
 
@@ -1099,7 +1122,7 @@ class SettingsWindow(Window):
     def clear_hash_cache(self):
         util.HASH_CACHE = dict()
         run_task(CheckTask())
-        QtWidgets.QMessageBox.information(None, 'Knossos', 'Done!')  # NEEDTR
+        QtWidgets.QMessageBox.information(None, 'Knossos', self.tr('Done!'))
 
 
 class GogExtractWindow(Window):
@@ -1122,24 +1145,28 @@ class GogExtractWindow(Window):
             self.open()
 
     def select_installer(self):
-        path = QtWidgets.QFileDialog.getOpenFileName(self.win, 'Please select the setup_freespace2_*.exe file.',  # NEEDTR
-                                                 os.path.expanduser('~/Downloads'), 'Executable (*.exe)')
+        path = QtWidgets.QFileDialog.getOpenFileName(self.win,
+            self.tr('Please select the setup_freespace2_*.exe file.'),
+            os.path.expanduser('~/Downloads'), self.tr('Executable (*.exe)'))
+
         if isinstance(path, tuple):
             path = path[0]
 
         if path is not None and path != '':
             if not os.path.isfile(path):
-                QtWidgets.QMessageBox.critical(self.win, 'Not a file', 'Please select a proper file!')  # NEEDTR
+                QtWidgets.QMessageBox.critical(self.win, self.tr('Not a file'), self.tr('Please select a proper file!'))
                 return
 
             self.win.gogPath.setText(os.path.abspath(path))
 
     def select_dest(self):
-        path = QtWidgets.QFileDialog.getExistingDirectory(self.win, 'Please select the destination directory.', os.path.expanduser('~/Documents'))  # NEEDTR
+        path = QtWidgets.QFileDialog.getExistingDirectory(self.win, self.tr('Please select the destination directory.'),
+            os.path.expanduser('~/Documents'))
 
         if path is not None and path != '':
             if not os.path.isdir(path):
-                QtWidgets.QMessageBox.critical(self.win, 'Not a directory', 'Please select a proper directory!')  # NEEDTR
+                QtWidgets.QMessageBox.critical(self.win, self.tr('Not a directory'),
+                    self.tr('Please select a proper directory!'))
                 return
 
             self.win.destPath.setText(os.path.abspath(path))
@@ -1212,7 +1239,7 @@ class FlagsWindow(Window):
 
         if flags is None:
             self.win.setEnabled(False)
-            self.win.cmdLine.setPlainText('Until you select a working FS2 build, I won\'t be able to help you.')  # NEEDTR
+            self.win.cmdLine.setPlainText(self.tr('Until you select a working FS2 build, I won\'t be able to help you.'))
             return
 
         self.win.setEnabled(True)
@@ -1401,7 +1428,8 @@ class ModInstallWindow(Window):
             all_pkgs = center.mods.process_pkg_selection(pkgs)
         except repo.ModNotFound as exc:
             logging.exception('Well, I won\'t be installing that...')
-            msg = 'I\'m sorry but you won\'t be able to install "%s" because "%s" is missing!' % (self._mod.title, exc.mid)  # NEEDTR
+            msg = self.tr('I\'m sorry but you won\'t be able to install "%s" because "%s" is missing!') % (
+                self._mod.title, exc.mid)
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
 
             self.close()
@@ -1438,7 +1466,7 @@ class ModInstallWindow(Window):
                 is_installed = center.installed.is_installed(pkg)
 
                 if is_installed:
-                    sub.setText(1, 'Installed')  # NEEDTR
+                    sub.setText(1, self.tr('Installed'))
 
                 if pkg.status == 'required' or pkg in needed_pkgs or is_installed:
                     sub.setCheckState(0, QtCore.Qt.Checked)
@@ -1556,7 +1584,7 @@ class ModSettingsWindow(Window):
 
                         if not installed:
                             p_check.setProperty('error', True)
-                            p_check.setText(pkg.name + ' (missing)')  # NEEDTR
+                            p_check.setText(pkg.name + self.tr(' (missing)'))
                 else:
                     p_check.setCheckState(QtCore.Qt.Unchecked)
 
@@ -1626,7 +1654,7 @@ class ModSettingsWindow(Window):
                     item[0].setText(item[2].name)
                 elif not is_inst and item[2].status == 'required' and not item[0].property('error'):
                     item[0].setProperty('error', True)
-                    item[0].setText(item[2].name + ' (missing)')  # NEEDTR
+                    item[0].setText(item[2].name + self.tr(' (missing)'))
 
                 item[1] = is_inst
 
@@ -1655,9 +1683,12 @@ class ModSettingsWindow(Window):
                 install = center.mods.process_pkg_selection(install)
             except repo.ModNotFound as exc:
                 if center.mods.has(self._mod):
-                    QtWidgets.QMessageBox.critical(None, 'Knossos', "I'm sorry but I can't install the selected packages because the dependency \"%s\" is missing!" % exc.mid)  # NEEDTR
+                    QtWidgets.QMessageBox.critical(None, 'Knossos',
+                        self.tr("I'm sorry but I can't install the selected packages because the dependency " +
+                            '"%s" is missing!') % exc.mid)
                 else:
-                    QtWidgets.QMessageBox.critical(None, 'Knossos', "I'm sorry but I can't install new packages for this mod since it's not available anymore!")  # NEEDTR
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("I'm sorry but I can't install new " +
+                        "packages for this mod since it's not available anymore!"))
 
                 install = []
 
@@ -1690,15 +1721,16 @@ class ModSettingsWindow(Window):
 
         msg = ''
         if len(remove) > 0:
-            msg += "I'm going to remove " + util.human_list([p.name for p in remove]) + ".\n"  # NEEDTR
+            msg += self.tr("I'm going to remove %s.\n") % util.human_list([p.name for p in remove])
 
         if len(install) > 0:
-            msg += "I'm going to install " + util.human_list([p.name for p in install if not center.installed.is_installed(p)]) + ".\n"  # NEEDTR
+            msg += self.tr("I'm going to install %s.\n") % util.human_list(
+                [p.name for p in install if not center.installed.is_installed(p)])
 
         box = QtWidgets.QMessageBox()
         box.setIcon(QtWidgets.QMessageBox.Question)
         box.setText(msg)
-        box.setInformativeText('Continue?')  # NEEDTR
+        box.setInformativeText(self.tr('Continue?'))
         box.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         box.setDefaultButton(QtWidgets.QMessageBox.Yes)
 
@@ -1712,7 +1744,8 @@ class ModSettingsWindow(Window):
             for dep in self._mod.resolve_deps():
                 mods.add(dep.get_mod())
         except repo.ModNotFound as exc:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'This mod is missing the dependency "%s"!' % exc.mid)  # NEEDTR
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr('This mod is missing the dependency "%s"!') % exc.mid)
             return
 
         mods.add(self._mod)
@@ -1738,7 +1771,7 @@ class ModSettingsWindow(Window):
             label.setWordWrap(True)
 
             sel = QtWidgets.QComboBox()
-            sel.addItem('Latest (%s)' % versions[0].version, None)  # NEEDTR
+            sel.addItem(self.tr('Latest (%s)') % versions[0].version, None)
 
             pin = center.installed.get_pin(mod)
             for n, mv in enumerate(versions):
@@ -1747,7 +1780,7 @@ class ModSettingsWindow(Window):
                 if pin == mv.version:
                     sel.setCurrentIndex(n + 1)
 
-            editBut = QtWidgets.QPushButton('Edit')  # NEEDTR
+            editBut = QtWidgets.QPushButton(self.tr('Edit'))
 
             layout.addWidget(label, i, 0)
             layout.addWidget(sel, i, 1)
@@ -1807,10 +1840,10 @@ class ModSettingsWindow(Window):
         for pkg, s, c, info in task.get_results():
             if pkg is None:
                 if len(info['loose']) > 0:
-                    report += '<h2>Loose files (%d)</h2>' % (len(info['loose']))  # NEEDTR
+                    report += '<h2>%s</h2>' % (self.tr('Loose files (%d)') % (len(info['loose'])))
                     report += '<ul><li>' + '</li><li>'.join(sorted(info['loose'])) + '</li></ul>'
             else:
-                report += '<h2>%s (%d/%d files OK)</h2>' % (pkg.name, s, c)  # NEEDTR
+                report += self.tr('<h2>%s (%d/%d files OK)</h2>') % (pkg.name, s, c)
                 ok_count = len(info['ok'])
                 corr_count = len(info['corrupt'])
                 miss_count = len(info['missing'])
@@ -1819,19 +1852,19 @@ class ModSettingsWindow(Window):
 
                 if ok_count > 0:
                     if corr_count > 0 or miss_count > 0:
-                        report += '<ul><li>OK<ul>'  # NEEDTR
+                        report += '<ul><li>%s<ul>' % self.tr('OK')
                         report += '<li>' + '</li><li>'.join(sorted(info['ok'])) + '</li>'
                         report += '</ul></li>'
                     else:
                         report += '<li>' + '</li><li>'.join(sorted(info['ok'])) + '</li>'
 
                 if corr_count > 0:
-                    report += '<li>Corrupted<ul>'  # NEEDTR
+                    report += '<li>%s<ul>' % self.tr('Corrupted')
                     report += '<li>' + '</li><li>'.join(sorted(info['corrupt'])) + '</li>'
                     report += '</ul></li>'
 
                 if miss_count > 0:
-                    report += '<li>Missing<ul>'  # NEEDTR
+                    report += '<li>%s<ul>' % self.tr('Missing')
                     report += '<li>' + '</li><li>'.join(sorted(info['missing'])) + '</li>'
                     report += '</ul></li>'
 
@@ -1859,13 +1892,13 @@ class ModSettingsWindow(Window):
                     os.unlink(item)
 
         self.win.unsetCursor()
-        QtWidgets.QMessageBox.information(None, 'Knossos', 'Done!')  # NEEDTR
+        QtWidgets.QMessageBox.information(None, 'Knossos', self.tr('Done!'))
 
     def repair_files(self):
         try:
             run_task(InstallTask(self._mod.packages))
         except repo.ModNotFound as exc:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', "I can't repair this mod: %s" % str(exc))  # NEEDTR
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("I can't repair this mod: %s") % str(exc))
 
 
 class ModVersionsWindow(Window):
@@ -1896,18 +1929,19 @@ class ModVersionsWindow(Window):
 
         for m in mods:
             if len(m.packages) == 0:
-                logging.warning('Version "%s" for mod "%s" (%s) is empty! (It has no packages!!)', m.version, m.title, m.mid)
+                logging.warning('Version "%s" for mod "%s" (%s) is empty! (It has no packages!!)',
+                    m.version, m.title, m.mid)
                 continue
 
             label = str(m.version)
             if m.version in local_versions:
-                label += ' (l)'  # NEEDTR
+                label += self.tr(' (l)', 'This marks a version as *l*ocal-only. See also next line.')
 
             item = QtWidgets.QListWidgetItem(label, self.win.versionList)
             item.setData(QtCore.Qt.UserRole + 1, m)
 
             if m.version in local_versions:
-                item.setToolTip('This version is installed locally but not available anymore!')  # NEEDTR
+                item.setToolTip(self.tr('This version is installed locally but not available anymore!'))
 
             if m.version in inst_versions:
                 item.setCheckState(QtCore.Qt.Checked)
@@ -1978,7 +2012,8 @@ class LogViewer(Window):
         self.win.pathLabel.setText(path)
 
         if not os.path.isfile(path):
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Log file %s can\'t be shown because it\'s missing!' % path)  # NEEDTR
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr('Log file %s can\'t be shown because it\'s missing!') % path)
             return
 
         with open(path, 'r') as stream:

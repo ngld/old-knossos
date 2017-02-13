@@ -29,7 +29,10 @@ import semantic_version
 
 from . import center, util, progress, repo, api
 from .repo import Repo
-from .qt import QtWidgets
+from .qt import QtCore, QtWidgets
+
+
+translate = QtCore.QCoreApplication.translate
 
 
 class FetchTask(progress.Task):
@@ -356,11 +359,11 @@ class InstallTask(progress.MultistepTask):
                 for ar in self.get_results():
                     shutil.rmtree(ar['tpath'])
         elif self._error:
-            msg = (
+            msg = self.tr(
                 'An error occured during the installation of a mod. It might be partially installed.\n' +
                 'If you need more help, ask ngld or read the debug log!'
             )
-            QtWidgets.QMessageBox.critical(None, 'Knossos', msg)  # NEEDTR
+            QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
         else:
             mods = set()
 
@@ -737,7 +740,8 @@ class UpdateTask(InstallTask):
                     shutil.move(os.path.join(temppath, item), os.path.join(modpath, item))
             except:
                 logging.exception('Failed to move a file!')
-                QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to replace the old mod files with the updated files!')  # NEEDTR
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr(
+                    'Failed to replace the old mod files with the updated files!'))
 
                 if self.__check_after:
                     run_task(CheckTask())
@@ -888,13 +892,16 @@ class GOGExtractTask(progress.Task):
     def finish(self):
         results = self.get_results()
         if len(results) < 1:
-            QtWidgets.QMessageBox.critical(None, 'Error', 'The installer failed! Please read the log for more details...')  # NEEDTR
+            QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), self.tr(
+                'The installer failed! Please read the log for more details...'))
             return
         elif results[0] == -1:
-            QtWidgets.QMessageBox.critical(None, 'Error', 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?')  # NEEDTR
+            QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), self.tr(
+                'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?'))
             return
         else:
-            QtWidgets.QMessageBox.information(None, 'Done', 'FS2 has been successfully installed.')  # NEEDTR
+            QtWidgets.QMessageBox.information(None, translate('tasks', 'Done'), self.tr(
+                'FS2 has been successfully installed.'))
 
         fs2_path = results[0]
         center.settings['fs2_path'] = fs2_path
@@ -976,7 +983,7 @@ class WindowsUpdateTask(progress.Task):
         res = self.get_results()
 
         if len(res) < 1 or not res[0]:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to launch the update!')  # NEEDTR
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to launch the update!'))
 
 
 def run_task(task, cb=None):

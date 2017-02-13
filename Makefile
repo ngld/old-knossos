@@ -62,7 +62,7 @@ locale/knossos.ts: html/js/modlist.js html/modlist.html $(wildcard knossos/*.py)
 	pylupdate5 $(wildcard knossos/*.py) -ts locale/_py.ts
 	$(PYTHON) ./tools/common/js_lupdate.py -o html/js/modlist_ts.js html/modlist.html html/js/modlist.js
 	lupdate html/js/modlist_ts.js $(UI_FILES) -ts locale/_ui.ts
-	lconvert -i locale/_ui.ts locale/_py.ts -o locale/knossos.ts
+	lconvert -i locale/_py.ts locale/_ui.ts -o locale/knossos.ts
 
 locale/knossos_%.ts: locale/knossos.ts
 	lupdate -no-obsolete locale/knossos.ts -ts $@

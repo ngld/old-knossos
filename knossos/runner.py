@@ -38,6 +38,7 @@ _LIB_CACHE = None
 
 fs2_watcher = None
 fred_watcher = None
+translate = QtCore.QCoreApplication.translate
 
 
 class SignalContainer(QtCore.QObject):
@@ -166,19 +167,21 @@ class Fs2Watcher(threading.Thread):
 
     @run_in_qt
     def failed_msg(self, reason):
-        msg = 'Starting FS2 Open (%s) failed! (%s)' % (os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)  # NEEDTR
-        QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Failed', msg)
+        msg = translate('runner', 'Starting FS2 Open (%s) failed! (%s)') % (
+            os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)
+        QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('runner', 'Failed'), msg)
 
     @run_in_qt
     def fs2_missing_msg(self, fs2_bin):
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I can\'t find FSO! (The file "%s" is missing!)' % fs2_bin)  # NEEDTR
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('runner', 'I can\'t find FSO! (The file "%s" is missing!)') % fs2_bin)
 
     @run_in_qt
     def complain_missing(self, missing):
         if len(missing) > 1:
-            msg = "I can't start FSO because the libraries %s are missing!"  # NEEDTR
+            msg = translate('runner', "I can't start FSO because the libraries %s are missing!")
         else:
-            msg = "I can't start FSO because the library %s is missing!"  # NEEDTR
+            msg = translate('runner', "I can't start FSO because the library %s is missing!")
 
         QtWidgets.QMessageBox.critical(None, 'Knossos', msg % util.human_list(missing))
 
@@ -295,13 +298,14 @@ def run_fred(params=None):
 
     if not center.settings['fred_bin']:
         QtWidgets.QMessageBox.critical(None, 'Knossos',
-            'No FRED executable selected. Please go to Settings > Game settings and select one.')  # NEEDTR
+            translate('runner', 'No FRED executable selected. Please go to Settings > Game settings and select one.'))
         return
 
     fred_path = os.path.join(center.settings['fs2_path'], center.settings['fred_bin'])
     if not os.path.isfile(fred_path):
         QtWidgets.QMessageBox.critical(None, 'Knossos',
-            'The selected FRED executable was not found! Please go to Settings > Game settings and select one.')  # NEEDTR
+            translate('runner', 'The selected FRED executable was not found!' +
+                ' Please go to Settings > Game settings and select one.'))
         return
 
     if fred_watcher is None or not fred_watcher.is_alive():

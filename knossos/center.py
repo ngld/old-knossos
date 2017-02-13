@@ -27,6 +27,10 @@ NEB_API = 'https://fsnebula.org/api'
 DEBUG = os.environ.get('KN_DEBUG') == '1'
 SENTRY_DSN = 'https://77179552b41946488346a9a2d2669d74:f7b896367bd94f0ea960b8f0ee8b7a88@sentry.gruenprint.de/9'
 
+LANGUAGES = {
+    'en': 'English'
+}
+
 app = None
 main_win = None
 shared_files = {}
@@ -51,14 +55,14 @@ settings = {
     'nebula_link': 'https://fsnebula.org/',
     'update_channel': 'stable',
     'update_notify': True,
-    'ui_mode': 'hell',
     'keyboard_layout': 'default',
     'keyboard_setxkbmap': False,
     'use_raven': True,
     'mod_settings': {},
     'last_played': None,
     'sdl2_path': None,
-    'openal_path': None
+    'openal_path': None,
+    'language': None
 }
 
 if '-dev' in VERSION:

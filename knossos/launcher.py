@@ -72,6 +72,7 @@ from . import util
 
 app = None
 ipc = None
+translate = QtCore.QCoreApplication.translate
 
 
 def my_excepthook(type, value, tb):
@@ -228,14 +229,15 @@ def scheme_handler(link):
 
     if not link.startswith(('fs2://', 'fso://')):
         # NOTE: fs2:// is deprecated, we don't tell anyone about it.
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))  # NEEDTR
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('launcher', 'I don\'t know how to handle "%s"! I only know fso:// .') % (link))
         app.quit()
         return True
 
     link = urlparse.unquote(link.strip()).split('/')
 
     if len(link) < 3:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')  # NEEDTR
+        QtWidgets.QMessageBox.critical(None, 'Knossos', translate('launcher', 'Not enough arguments!'))
         app.quit()
         return True
 
@@ -248,7 +250,7 @@ def scheme_handler(link):
         while not ipc.server_exists():
             if time.time() - start > 20:
                 # That's too long!
-                QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to start server!')  # NEEDTR
+                QtWidgets.QMessageBox.critical(None, 'Knossos', translate('launcher', 'Failed to start server!'))
                 app.quit()
                 return True
 
@@ -257,7 +259,7 @@ def scheme_handler(link):
     try:
         ipc.open_connection(handle_ipc_error)
     except:
-        logging.exception('Failed to connect to myself!')  # NEEDTR
+        logging.exception('Failed to connect to myself!')
         handle_ipc_error()
         return False
 
@@ -300,7 +302,12 @@ def main():
     QtCore.QResource.registerResource(res_path)
 
     trans = QtCore.QTranslator()
-    if trans.load(QtCore.QLocale(), 'knossos', '_', get_file_path('')):
+    if center.settings['language']:
+        lang = center.settings['language']
+    else:
+        lang = QtCore.QLocale()
+
+    if trans.load(lang, 'knossos', '_', get_file_path('')):
         app.installTranslator(trans)
     else:
         del trans
@@ -368,4 +375,5 @@ def main():
         load_settings()
 
         # Try to tell the user
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')  # NEEDTR
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('launcher', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...'))

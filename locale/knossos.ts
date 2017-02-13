@@ -2,6 +2,629 @@
 <!DOCTYPE TS>
 <TS version="2.1">
 <context>
+    <name>FlagsWindow</name>
+    <message>
+        <location filename="../knossos/windows.py" line="1247"/>
+        <source>Until you select a working FS2 build, I won&apos;t be able to help you.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GOGExtractTask</name>
+    <message>
+        <location filename="../knossos/tasks.py" line="897"/>
+        <source>The installer failed! Please read the log for more details...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/tasks.py" line="901"/>
+        <source>The selected file wasn&apos;t a proper Inno Setup installer. Are you shure you selected the right file?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/tasks.py" line="905"/>
+        <source>FS2 has been successfully installed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GogExtractWindow</name>
+    <message>
+        <location filename="../knossos/windows.py" line="1152"/>
+        <source>Please select the setup_freespace2_*.exe file.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1152"/>
+        <source>Executable (*.exe)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1161"/>
+        <source>Not a file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1161"/>
+        <source>Please select a proper file!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1167"/>
+        <source>Please select the destination directory.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1172"/>
+        <source>Not a directory</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1172"/>
+        <source>Please select a proper directory!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>HellWindow</name>
+    <message>
+        <location filename="../knossos/windows.py" line="236"/>
+        <source>There&apos;s an update available!
+Do you want to install Knossos %s now?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="242"/>
+        <source>There&apos;s an update available!
+You should update to Knossos %s.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="323"/>
+        <source>Working...</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>InstallTask</name>
+    <message>
+        <location filename="../knossos/tasks.py" line="363"/>
+        <source>An error occured during the installation of a mod. It might be partially installed.
+If you need more help, ask ngld or read the debug log!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LogViewer</name>
+    <message>
+        <location filename="../knossos/windows.py" line="2022"/>
+        <source>Log file %s can&apos;t be shown because it&apos;s missing!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ModInstallWindow</name>
+    <message>
+        <location filename="../knossos/windows.py" line="1436"/>
+        <source>I&apos;m sorry but you won&apos;t be able to install &quot;%s&quot; because &quot;%s&quot; is missing!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1474"/>
+        <source>Installed</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ModSettingsWindow</name>
+    <message>
+        <location filename="../knossos/windows.py" line="1662"/>
+        <source> (missing)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1691"/>
+        <source>I&apos;m sorry but I can&apos;t install the selected packages because the dependency &quot;%s&quot; is missing!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1695"/>
+        <source>I&apos;m sorry but I can&apos;t install new packages for this mod since it&apos;s not available anymore!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1730"/>
+        <source>I&apos;m going to remove %s.
+</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1733"/>
+        <source>I&apos;m going to install %s.
+</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1739"/>
+        <source>Continue?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1753"/>
+        <source>This mod is missing the dependency &quot;%s&quot;!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1780"/>
+        <source>Latest (%s)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1789"/>
+        <source>Edit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1850"/>
+        <source>Loose files (%d)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1853"/>
+        <source>&lt;h2&gt;%s (%d/%d files OK)&lt;/h2&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1862"/>
+        <source>OK</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1869"/>
+        <source>Corrupted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1874"/>
+        <source>Missing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1902"/>
+        <source>Done!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1908"/>
+        <source>I can&apos;t repair this mod: %s</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ModVersionsWindow</name>
+    <message>
+        <location filename="../knossos/windows.py" line="1945"/>
+        <source> (l)</source>
+        <comment>This marks a version as *l*ocal-only. See also next line.</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1951"/>
+        <source>This version is installed locally but not available anymore!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SettingsDialog</name>
+    <message>
+        <location filename="../ui/settings2.ui" line="65"/>
+        <source>About Knossos</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="70"/>
+        <source>Launcher settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="77"/>
+        <source>Retail install</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="82"/>
+        <source>Mod sources</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="87"/>
+        <source>Library paths</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="93"/>
+        <source>Game settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="100"/>
+        <source>Video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="105"/>
+        <source>Audio</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="110"/>
+        <source>Input</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="115"/>
+        <source>Network</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="120"/>
+        <source>Default flags</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="126"/>
+        <source>Help</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="14"/>
+        <source>Settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="25"/>
+        <source>Save</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings2.ui" line="60"/>
+        <source>1</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SettingsWindow</name>
+    <message>
+        <location filename="../knossos/windows.py" line="518"/>
+        <source>Error</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="518"/>
+        <source>This source is already in the list! (As &quot;%s&quot;)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="547"/>
+        <source>Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="547"/>
+        <source>Do you really want to remove &quot;%s&quot;?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="616"/>
+        <source>There was an error trying to retrieve your device info (screen resolution, joysticks and audio devices). Please try again or report this error on the HLP thread.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="631"/>
+        <source>An unkown error (a crash?) occurred while trying to load the libraries!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="635"/>
+        <source>Success! Both libraries were loaded successfully.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="637"/>
+        <source>Error! One or both libraries failed to load.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="639"/>
+        <source>Not found</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="650"/>
+        <source>Not a file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="650"/>
+        <source>Please select a proper file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="707"/>
+        <source>No executable found!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="788"/>
+        <source>Bilinear</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="788"/>
+        <source>Trilinear</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="813"/>
+        <source>Off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="986"/>
+        <source>No Joystick</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="924"/>
+        <source>None</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="924"/>
+        <source>28k modem</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="924"/>
+        <source>56k modem</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="924"/>
+        <source>ISDN</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="924"/>
+        <source>DSL</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="924"/>
+        <source>Cable/LAN</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1066"/>
+        <source>The FSO binary &quot;%s&quot; is missing!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1071"/>
+        <source>The FSO binary &quot;%s&quot; is missing %s!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1073"/>
+        <source>The FSO binary quit with code %d!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1118"/>
+        <source>Sorry, but I can&apos;t find the fs2_open.log file.
+Did you run the debug build?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/windows.py" line="1129"/>
+        <source>Done!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>UpdateTask</name>
+    <message>
+        <location filename="../knossos/tasks.py" line="744"/>
+        <source>Failed to replace the old mod files with the updated files!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>WindowsUpdateTask</name>
+    <message>
+        <location filename="../knossos/tasks.py" line="988"/>
+        <source>Failed to launch the update!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>api</name>
+    <message>
+        <location filename="../knossos/api.py" line="71"/>
+        <source>Please select your FS2 directory.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="346"/>
+        <source>Error</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="271"/>
+        <source>Failed to install &quot;%s&quot;! Check the log for more information.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="280"/>
+        <source>I couldn&apos;t find a FS2 executable. Can&apos;t run FS2!!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="295"/>
+        <source>You don&apos;t have %s, yet. Shall I install it?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="310"/>
+        <source>Sorry, I can&apos;t start this mod because its dependency &quot;%s&quot; is missing!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="346"/>
+        <source>Failed to edit &quot;%s&quot;! I can&apos;t change the current mod!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="395"/>
+        <source>Hmm... I never got a mod list. Get a coder!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="401"/>
+        <source>Mod &quot;%s&quot; could not be found!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="410"/>
+        <source>these packages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="414"/>
+        <source>Do you really want to uninstall %s?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="415"/>
+        <source>%s will be removed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="441"/>
+        <source>Done!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="446"/>
+        <source>I probably failed to install the scheme handler.
+Run me as administrator and try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="69"/>
+        <source>Please select the installation directory.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>api.handle_ipc</name>
+    <message>
+        <location filename="../knossos/api.py" line="500"/>
+        <source>Mod &quot;%s&quot; is already installed!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="515"/>
+        <source>Mod &quot;%s&quot; is not yet installed!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/api.py" line="520"/>
+        <source>The action &quot;%s&quot; is unknown!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>launcher</name>
+    <message>
+        <location filename="../knossos/launcher.py" line="185"/>
+        <source>I can&apos;t find &quot;7z&quot;! Please install it and run this program again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/launcher.py" line="232"/>
+        <source>I don&apos;t know how to handle &quot;%s&quot;! I only know fso:// .</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/launcher.py" line="240"/>
+        <source>Not enough arguments!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/launcher.py" line="253"/>
+        <source>Failed to start server!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/launcher.py" line="378"/>
+        <source>I encountered a fatal error.
+I&apos;m sorry but I&apos;m going to crash now...</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>runner</name>
+    <message>
+        <location filename="../knossos/runner.py" line="170"/>
+        <source>Starting FS2 Open (%s) failed! (%s)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/runner.py" line="172"/>
+        <source>Failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/runner.py" line="176"/>
+        <source>I can&apos;t find FSO! (The file &quot;%s&quot; is missing!)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/runner.py" line="182"/>
+        <source>I can&apos;t start FSO because the libraries %s are missing!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/runner.py" line="184"/>
+        <source>I can&apos;t start FSO because the library %s is missing!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/runner.py" line="300"/>
+        <source>No FRED executable selected. Please go to Settings &gt; Game settings and select one.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/runner.py" line="306"/>
+        <source>The selected FRED executable was not found! Please go to Settings &gt; Game settings and select one.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>tasks</name>
+    <message>
+        <location filename="../knossos/tasks.py" line="901"/>
+        <source>Error</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../knossos/tasks.py" line="905"/>
+        <source>Done</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>AboutForm</name>
     <message>
         <location filename="../ui/settings_about.ui" line="69"/>
@@ -159,6 +782,11 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../ui/settings_fso.ui" line="74"/>
+        <source>FRED2 Build:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings_fso.ui" line="81"/>
         <source>Open fs2_open.log</source>
         <translation type="unfinished"></translation>
     </message>
@@ -316,6 +944,11 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../ui/settings_knossos.ui" line="100"/>
         <source>Automatically report errors</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/settings_knossos.ui" line="107"/>
+        <source>Language:</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -583,84 +1216,6 @@ If a text field contains &quot;auto&quot;, it means that Knossos will try to fin
     </message>
 </context>
 <context>
-    <name>SettingsDialog</name>
-    <message>
-        <location filename="../ui/settings2.ui" line="14"/>
-        <source>Settings</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="25"/>
-        <source>Save</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="60"/>
-        <source>1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="65"/>
-        <source>About Knossos</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="70"/>
-        <source>Launcher settings</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="77"/>
-        <source>Retail install</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="82"/>
-        <source>Mod sources</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="87"/>
-        <source>Library paths</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="93"/>
-        <source>Game settings</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="100"/>
-        <source>Video</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="105"/>
-        <source>Audio</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="110"/>
-        <source>Input</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="115"/>
-        <source>Network</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="120"/>
-        <source>Default flags</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/settings2.ui" line="126"/>
-        <source>Help</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
     <name>VersionSettingsForm</name>
     <message>
         <location filename="../ui/settings_versions.ui" line="20"/>
@@ -697,155 +1252,57 @@ If a text field contains &quot;auto&quot;, it means that Knossos will try to fin
     </message>
 </context>
 <context>
-    <name>modlist</name>
+    <name>modlist_ts</name>
     <message>
-        <location filename="../html/js/modlist.js" line="244"/>
-        <source>&lt;h1&gt;Welcome!&lt;/h1&gt;&lt;p&gt;It looks like you started Knossos for the first time.&lt;/p&gt;&lt;p&gt;You can tell me where your FS2 installation is, I could install FS2 using the GOG installer or maybe you want to install a Total Conversion?&lt;/p&gt;</source>
+        <location filename="../html/js/modlist_ts.js" line="2"/>
+        <source>&lt;div data-tr id=&quot;welcome&quot; class=&quot;hide info-page&quot;&gt;
+            &lt;h1&gt;Welcome!&lt;/h1&gt;
+
+            &lt;p&gt;It looks like you started Knossos for the first time.&lt;/p&gt;
+            &lt;p&gt;
+                You can tell me where your FS2 installation is, I could install FS2 using the GOG installer
+                or maybe you want to install a Total Conversion?
+            &lt;/p&gt;
+            &lt;hr&gt;
+
+            &lt;p&gt;
+                &lt;a class=&quot;btn btn-primary&quot; id=&quot;sel-fso&quot;&gt;Select FS2 directory&lt;/a&gt;
+            &lt;/p&gt;
+            &lt;p&gt;
+                &lt;a class=&quot;btn btn-primary&quot; id=&quot;gog-install&quot;&gt;Install FS2 using the GOG installer&lt;/a&gt;
+            &lt;/p&gt;
+            &lt;p&gt;
+                &lt;a class=&quot;btn btn-primary&quot; id=&quot;tc-install&quot;&gt;Install a TC&lt;/a&gt;
+            &lt;/p&gt;
+
+            &lt;p&gt;
+                This launcher is still in development. Please visit
+                &lt;a href=&quot;http://www.hard-light.net/forums/index.php?topic=93144.0&quot; target=&quot;_blank&quot;&gt;this HLP thread&lt;/a&gt;
+                and let me know what you think, what didn&apos;t work and what you would like to change.
+            &lt;/p&gt;
+            &lt;p&gt;-- ngld&lt;/p&gt;
+        &lt;/div&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../html/js/modlist.js" line="253"/>
-        <source>Select FS2 directory</source>
+        <location filename="../html/js/modlist_ts.js" line="3"/>
+        <location filename="../html/js/modlist_ts.js" line="6"/>
+        <source>&lt;span data-tr&gt;Play&lt;/span&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../html/js/modlist.js" line="256"/>
-        <source>Install FS2 using the GOG installer</source>
+        <location filename="../html/js/modlist_ts.js" line="4"/>
+        <source>&lt;span data-tr&gt;You haven&apos;t played any mod, yet. (Or you uninstalled your last played mod.)&lt;/span&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../html/js/modlist.js" line="259"/>
-        <source>Install a TC</source>
+        <location filename="../html/js/modlist_ts.js" line="5"/>
+        <source>&lt;span data-tr&gt;Install&lt;/span&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../html/js/modlist.js" line="261"/>
-        <source>&lt;p&gt;This launcher is still in development. Please visit &lt;a href=&quot;http://www.hard-light.net/forums/index.php?topic=93144.0&quot; target=&quot;_blank&quot;&gt;this HLP thread&lt;/a&gt; and let me know what you think, what didn&apos;t work and what you would like to change.&lt;/p&gt;&lt;p&gt;-- ngld&lt;/p&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../html/js/modlist.js" line="276"/>
-        <source>Loading</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../html/js/modlist.js" line="277"/>
-        <source>You haven&apos;t played any mod, yet.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../html/js/modlist.js" line="278"/>
-        <source>Play</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../html/js/modlist.js" line="279"/>
-        <source>Install</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../html/js/modlist.js" line="280"/>
-        <source>Update</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>api</name>
-    <message>
-        <location filename="../knossos/api.py" line="68"/>
-        <source>Please select your FS2 directory.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="266"/>
-        <source>Failed to install &quot;%s&quot;! Check the log for more information.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="275"/>
-        <source>I couldn&apos;t find a FS2 executable. Can&apos;t run FS2!!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="290"/>
-        <source>You don&apos;t have %s, yet. Shall I install it?</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="305"/>
-        <source>Sorry, I can&apos;t start this mod because its dependency &quot;%s&quot; is missing!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="341"/>
-        <source>Error</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="341"/>
-        <source>Failed to edit &quot;%s&quot;! I can&apos;t change the current mod!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="386"/>
-        <source>Hmm... I never got a mod list. Get a coder!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="392"/>
-        <source>Mod &quot;%s&quot; could not be found!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="401"/>
-        <source>these packages</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="405"/>
-        <source>Do you really want to uninstall %s?</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="406"/>
-        <source>%s will be removed.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="443"/>
-        <source>Done!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="448"/>
-        <source>I probably failed to install the scheme handler.
-Run me as administrator and try again.</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>api.handle_ipc</name>
-    <message>
-        <location filename="../knossos/api.py" line="502"/>
-        <source>Mod &quot;%s&quot; is already installed!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="517"/>
-        <source>Mod &quot;%s&quot; is not yet installed!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../knossos/api.py" line="522"/>
-        <source>The action &quot;%s&quot; is unknown!</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>launcher</name>
-    <message>
-        <location filename="../knossos/launcher.py" line="187"/>
-        <source>I can&apos;t find &quot;7z&quot;! Please install it and run this program again.</source>
+        <location filename="../html/js/modlist_ts.js" line="7"/>
+        <source>&lt;span data-tr&gt;Update&lt;/span&gt;</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
