@@ -104,7 +104,7 @@ def _get_hz_string_from_brand(processor_brand):
 		hz_brand = float(hz_brand)
 	except ValueError:
 		hz_brand = 0
-	
+
 	hz_brand = to_hz_string(hz_brand)
 
 	return (scale, hz_brand)
@@ -241,7 +241,7 @@ class CPUID(object):
 			address = ctypes.windll.kernel32.VirtualAlloc(ctypes.c_int(0), ctypes.c_size_t(size), MEM_COMMIT, PAGE_EXECUTE_READWRITE)
 			if not address:
 				raise Exception("Failed to VirtualAlloc")
-				
+
 			# Copy the byte code into the memory segment
 			memmove = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t)(ctypes._memmove_addr)
 			if memmove(address, byte_code, size) < 0:
@@ -795,7 +795,7 @@ def get_cpu_info_from_cpuid():
 	}
 
 def _get_field(raw_string, *field_names):
-	
+
 	for field_name in field_names:
 		if field_name in raw_string:
 			raw_field = raw_string.split(field_name)[1] # Everything after the field name

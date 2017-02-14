@@ -1,4 +1,4 @@
-## Copyright 2015 Knossos authors, see NOTICE file
+## Copyright 2017 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -28,28 +28,29 @@ uhf(__name__)
 from . import center, util, integration, api, web, repo, launcher, runner
 from .qt import QtCore, QtGui, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
-from .ui.gogextract import Ui_Dialog as Ui_Gogextract
-from .ui.add_repo import Ui_Dialog as Ui_AddRepo
-from .ui.settings2 import Ui_Dialog as Ui_Settings
-from .ui.settings_about import Ui_Form as Ui_Settings_About
-from .ui.settings_sources import Ui_Form as Ui_Settings_Sources
-from .ui.settings_versions import Ui_Form as Ui_Settings_Versions
-from .ui.settings_knossos import Ui_Form as Ui_Settings_Knossos
-from .ui.settings_fso import Ui_Form as Ui_Settings_Fso
-from .ui.settings_video import Ui_Form as Ui_Settings_Video
-from .ui.settings_audio import Ui_Form as Ui_Settings_Audio
-from .ui.settings_input import Ui_Form as Ui_Settings_Input
-from .ui.settings_network import Ui_Form as Ui_Settings_Network
-from .ui.settings_help import Ui_Form as Ui_Settings_Help
-from .ui.flags import Ui_Dialog as Ui_Flags
-from .ui.install import Ui_Dialog as Ui_Install
-from .ui.mod_settings import Ui_Dialog as Ui_Mod_Settings
-from .ui.mod_versions import Ui_Dialog as Ui_Mod_Versions
-from .ui.log_viewer import Ui_Dialog as Ui_Log_Viewer
+from .ui.gogextract import Ui_GogExtractDialog
+from .ui.add_repo import Ui_AddRepoDialog
+from .ui.settings2 import Ui_SettingsDialog
+from .ui.settings_about import Ui_AboutForm
+from .ui.settings_sources import Ui_ModSourcesForm
+from .ui.settings_libs import Ui_LibPathForm
+from .ui.settings_knossos import Ui_KnossosSettingsForm
+from .ui.settings_fso import Ui_FsoSettingsForm
+from .ui.settings_video import Ui_VideoSettingsForm
+from .ui.settings_audio import Ui_AudioSettingsForm
+from .ui.settings_input import Ui_InputSettingsForm
+from .ui.settings_network import Ui_NetworkSettingsForm
+from .ui.settings_help import Ui_HelpForm
+from .ui.flags import Ui_FlagsDialog
+from .ui.install import Ui_InstallDialog
+from .ui.mod_settings import Ui_ModSettingsDialog
+from .ui.mod_versions import Ui_ModVersionsDialog
+from .ui.log_viewer import Ui_LogDialog
 from .tasks import run_task, GOGExtractTask, InstallTask, UninstallTask, WindowsUpdateTask, CheckTask, CheckFilesTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
+translate = QtCore.QCoreApplication.translate
 
 
 class QDialog(QtWidgets.QDialog):
@@ -145,6 +146,9 @@ class Window(object):
 
         self.win.setStyleSheet(self._styles)
 
+    def tr(self, *args):
+        return translate(self.__class__.__name__, *args)
+
 
 class HellWindow(Window):
     _tasks = None
@@ -160,11 +164,11 @@ class HellWindow(Window):
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
 
         self.win.backButton.clicked.connect(self.win.webView.back)
-        self.win.searchEdit.textEdited.connect(self.search_mods)
+        self.win.searchEdit.textEdited.connect(self.update_mod_list)
         self.win.updateButton.clicked.connect(api.fetch_list)
         self.win.settingsButton.clicked.connect(self.show_settings)
 
-        for button in ('installed', 'available', 'updates', 'progress'):
+        for button in ('lastPlayed', 'installed', 'available', 'updates', 'progress'):
             bt = getattr(self.win, button + 'Button')
             hdl = functools.partial(self.update_mod_buttons, button)
 
@@ -178,6 +182,7 @@ class HellWindow(Window):
         center.signals.repo_updated.connect(self.check_new_repo)
         center.signals.task_launched.connect(self.watch_task)
 
+        self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
         self.win.pageControls.hide()
         self.win.progressInfo.hide()
         self.open()
@@ -187,7 +192,14 @@ class HellWindow(Window):
         center.signals.repo_updated.disconnect(self.check_new_repo)
         center.signals.task_launched.disconnect(self.watch_task)
 
-        super(HellWindow, self)._del()
+        # Trying to free this object usually leads to memory corruption
+        # See http://pyqt.sourceforge.net/Docs/PyQt5/gotchas.html#crashes-on-exit
+        # Since this is the main window and should only be closed whenever the application exits, skipping this
+        # won't lead to memory leaks.
+        # super(HellWindow, self)._del()
+
+    def finish_init(self):
+        self.check_fso()
 
     def check_fso(self, interactive=True):
         if center.settings['fs2_path'] is not None:
@@ -196,8 +208,7 @@ class HellWindow(Window):
             self.win.searchEdit.setEnabled(True)
             self.win.tabButtons.setEnabled(True)
 
-            if interactive and self.win.webView.url().toString() == 'qrc:///html/welcome.html':
-                self.update_mod_buttons('available')
+            self.update_mod_buttons('lastPlayed')
         else:
             # Make sure the user has a complete configuration
             if not SettingsWindow.has_config():
@@ -205,28 +216,29 @@ class HellWindow(Window):
                 tmp.write_config()
                 tmp.close()
 
-            self.win.webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
             self.win.pageControls.setEnabled(False)
             self.win.updateButton.setEnabled(False)
             self.win.searchEdit.setEnabled(False)
             self.win.tabButtons.setEnabled(False)
 
+            self.browser_ctrl.bridge.showWelcome.emit()
+
     def check_new_repo(self):
         updates = len(center.installed.get_updates())
-        self.win.updatesButton.setText('Updates (%d)' % updates)
+        self.win.updatesButton.setText(self.tr('Updates (%d)') % updates)
 
         self.update_mod_list()
 
     def ask_update(self, version):
         # We only have an updater for windows.
         if sys.platform.startswith('win'):
-            msg = 'There\'s an update available!\nDo you want to install Knossos %s now?' % str(version)
+            msg = self.tr('There\'s an update available!\nDo you want to install Knossos %s now?') % str(version)
             buttons = QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
             result = QtWidgets.QMessageBox.question(center.app.activeWindow(), 'Knossos', msg, buttons)
             if result == QtWidgets.QMessageBox.Yes:
                 run_task(WindowsUpdateTask())
         else:
-            msg = 'There\'s an update available!\nYou should update to Knossos %s.' % str(version)
+            msg = self.tr('There\'s an update available!\nYou should update to Knossos %s.') % str(version)
             QtWidgets.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
 
     def update_repo_list(self):
@@ -246,7 +258,7 @@ class HellWindow(Window):
             mods = {}
             for mid in center.installed.get_updates():
                 mods[mid] = center.installed.mods[mid]
-        elif self._mod_filter == 'progress':
+        else:
             mods = {}
 
         # Now filter the mods.
@@ -260,7 +272,9 @@ class HellWindow(Window):
 
     def update_mod_list(self):
         result, filter_ = self.search_mods()
-        self.browser_ctrl.bridge.updateModlist.emit(result, filter_)
+
+        if filter_ in ('installed', 'available', 'updates', 'progress'):
+            self.browser_ctrl.bridge.updateModlist.emit(result, filter_)
 
     def show_settings(self):
         SettingsWindow()
@@ -271,24 +285,20 @@ class HellWindow(Window):
     def check_loaded(self, success):
         self.win.unsetCursor()
 
-        page = self.win.webView.url().toString()
-        if page == 'qrc:///html/modlist.html':
-            self.win.listControls.show()
-            self.win.pageControls.hide()
-
-            # QtCore.QTimer.singleShot(30, lambda: self.update_mod_buttons(self._mod_filter))
-        else:
-            self.win.listControls.hide()
-            self.win.pageControls.show()
-
     def update_mod_buttons(self, clicked=None):
-        for button in ('installed', 'available', 'updates', 'progress'):
+        for button in ('lastPlayed', 'installed', 'available', 'updates', 'progress'):
             getattr(self.win, button + 'Button').setChecked(button == clicked)
 
         self._mod_filter = clicked
-        page = self.win.webView.url().toString()
-        if page != 'qrc:///html/modlist.html':
-            self.win.webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
+        if clicked == 'lastPlayed':
+            mod = center.settings['last_played']
+            if mod:
+                try:
+                    mod = center.installed.query(mod).get()
+                except repo.ModNotFound:
+                    mod = None
+
+            self.browser_ctrl.bridge.showLastPlayed.emit(mod)
         else:
             self.update_mod_list()
 
@@ -309,7 +319,7 @@ class HellWindow(Window):
         else:
             # TODO: Stop being lazy and calculate the aggregate progress.
             self.win.progressBar.hide()
-            self.win.progressLabel.setText('Working...')
+            self.win.progressLabel.setText(self.tr('Working...'))
 
     def _track_progress(self, task, pi):
         subs = [item for item in pi[1].values()]
@@ -345,16 +355,36 @@ class SettingsWindow(Window):
 
     def __init__(self):
         self._tabs = {}
-        self._create_win(Ui_Settings)
+        self._create_win(Ui_SettingsDialog)
+
+        # We're using the dialog's name as the context here because we want the translations to match.
+        self._label_lookup = {
+            translate('SettingsDialog', 'About Knossos'): 'about',
+            translate('SettingsDialog', 'Launcher settings'): 'kn_settings',
+            translate('SettingsDialog', 'Retail install'): 'retail_install',
+            translate('SettingsDialog', 'Mod sources'): 'mod_sources',
+            translate('SettingsDialog', 'Library paths'): 'lib_paths',
+            translate('SettingsDialog', 'Game settings'): 'fso_settings',
+            translate('SettingsDialog', 'Video'): 'fso_video',
+            translate('SettingsDialog', 'Audio'): 'fso_audio',
+            translate('SettingsDialog', 'Input'): 'fso_input',
+            translate('SettingsDialog', 'Network'): 'fso_network',
+            translate('SettingsDialog', 'Default flags'): 'fso_flags',
+            translate('SettingsDialog', 'Help'): 'help'
+        }
 
         self.win.treeWidget.expandAll()
         self.win.treeWidget.currentItemChanged.connect(self.select_tab)
         self.win.saveButton.clicked.connect(self.write_config)
 
-        self._tabs['About Knossos'] = tab = util.init_ui(Ui_Settings_About(), QtWidgets.QWidget())
+        self._tabs['about'] = tab = util.init_ui(Ui_AboutForm(), QtWidgets.QWidget())
 
-        self._tabs['Launcher settings'] = tab = util.init_ui(Ui_Settings_Knossos(), QtWidgets.QWidget())
+        self._tabs['kn_settings'] = tab = util.init_ui(Ui_KnossosSettingsForm(), QtWidgets.QWidget())
         tab.versionLabel.setText(center.VERSION)
+
+        for key, lang in center.LANGUAGES.items():
+            tab.langSelect.addItem(lang, QtCore.QVariant(key))
+
         tab.maxDownloads.setValue(center.settings['max_downloads'])
 
         if launcher.log_path is None:
@@ -379,37 +409,52 @@ class SettingsWindow(Window):
         else:
             tab.reportErrors.setCheckState(QtCore.Qt.Unchecked)
 
+        tab.langSelect.currentIndexChanged.connect(self.save_language)
         tab.maxDownloads.valueChanged.connect(self.update_max_downloads)
         tab.updateChannel.currentIndexChanged.connect(self.save_update_settings)
         tab.updateNotify.stateChanged.connect(self.save_update_settings)
         tab.reportErrors.stateChanged.connect(self.save_report_settings)
 
-        self._tabs['Retail install'] = tab = GogExtractWindow(False)
+        self._tabs['retail_install'] = tab = GogExtractWindow(False)
         tab.win.cancelButton.hide()
 
-        self._tabs['Mod sources'] = tab = util.init_ui(Ui_Settings_Sources(), QtWidgets.QWidget())
+        self._tabs['mod_sources'] = tab = util.init_ui(Ui_ModSourcesForm(), QtWidgets.QWidget())
         tab.addSource.clicked.connect(self.add_repo)
         tab.editSource.clicked.connect(self.edit_repo)
         tab.removeSource.clicked.connect(self.remove_repo)
         tab.sourceList.itemDoubleClicked.connect(self.edit_repo)
 
-        self._tabs['Mod versions'] = tab = util.init_ui(Ui_Settings_Versions(), QtWidgets.QWidget())
+        self._tabs['lib_paths'] = tab = util.init_ui(Ui_LibPathForm(), QtWidgets.QWidget())
+        if center.settings['sdl2_path']:
+            tab.sdlPath.setText(center.settings['sdl2_path'])
+        else:
+            tab.sdlPath.setText('auto')
 
-        self._tabs['Game settings'] = tab = util.init_ui(Ui_Settings_Fso(), QtWidgets.QWidget())
+        if center.settings['openal_path']:
+            tab.openAlPath.setText(center.settings['openal_path'])
+        else:
+            tab.openAlPath.setText('auto')
+
+        tab.sdlBtn.clicked.connect(functools.partial(self.select_path, tab.sdlPath))
+        tab.openAlBtn.clicked.connect(functools.partial(self.select_path, tab.openAlPath))
+        tab.testBtn.clicked.connect(self.test_libs)
+
+        self._tabs['fso_settings'] = tab = util.init_ui(Ui_FsoSettingsForm(), QtWidgets.QWidget())
         tab.browseButton.clicked.connect(self.select_fs2_path)
         tab.build.activated.connect(self.save_build)
+        tab.fredBuild.activated.connect(self.save_fred_build)
         tab.openLog.clicked.connect(self.show_fso_log)
 
-        self._tabs['Video'] = tab = util.init_ui(Ui_Settings_Video(), QtWidgets.QWidget())
-        self._tabs['Audio'] = tab = util.init_ui(Ui_Settings_Audio(), QtWidgets.QWidget())
-        self._tabs['Input'] = tab = util.init_ui(Ui_Settings_Input(), QtWidgets.QWidget())
-        self._tabs['Network'] = tab = util.init_ui(Ui_Settings_Network(), QtWidgets.QWidget())
+        self._tabs['fso_video'] = tab = util.init_ui(Ui_VideoSettingsForm(), QtWidgets.QWidget())
+        self._tabs['fso_audio'] = tab = util.init_ui(Ui_AudioSettingsForm(), QtWidgets.QWidget())
+        self._tabs['fso_input'] = tab = util.init_ui(Ui_InputSettingsForm(), QtWidgets.QWidget())
+        self._tabs['fso_network'] = tab = util.init_ui(Ui_NetworkSettingsForm(), QtWidgets.QWidget())
 
-        self._tabs['Default flags'] = tab = FlagsWindow(window=False)
+        self._tabs['fso_flags'] = tab = FlagsWindow(window=False)
         if center.settings['fs2_path'] is None:
             tab.win.setEnabled(False)
 
-        self._tabs['Help'] = util.init_ui(Ui_Settings_Help(), QtWidgets.QWidget())
+        self._tabs['help'] = util.init_ui(Ui_HelpForm(), QtWidgets.QWidget())
 
         center.signals.fs2_path_changed.connect(self.read_config)
         center.signals.fs2_bin_changed.connect(tab.read_flags)
@@ -417,12 +462,12 @@ class SettingsWindow(Window):
         self.update_repo_list()
         self.read_config()
 
-        self.show_tab('About Knossos')
+        self.show_tab('about')
         self.open()
 
     def _del(self):
         center.signals.fs2_path_changed.disconnect(self.read_config)
-        center.signals.fs2_bin_changed.disconnect(self._tabs['Default flags'].read_flags)
+        center.signals.fs2_bin_changed.disconnect(self._tabs['fso_flags'].read_flags)
 
         super(SettingsWindow, self)._del()
 
@@ -438,10 +483,10 @@ class SettingsWindow(Window):
         self.win.currentTab.show()
 
     def select_tab(self, item, prev):
-        self.show_tab(item.text(0))
+        self.show_tab(self._label_lookup[item.text(0)])
 
     def update_repo_list(self):
-        tab = self._tabs['Mod sources']
+        tab = self._tabs['mod_sources']
         tab.sourceList.clear()
 
         for i, r in enumerate(center.settings['repos']):
@@ -449,7 +494,7 @@ class SettingsWindow(Window):
             item.setData(QtCore.Qt.UserRole, i)
 
     def _edit_repo(self, repo_=None, idx=None):
-        win = util.init_ui(Ui_AddRepo(), QDialog(self.win))
+        win = util.init_ui(Ui_AddRepoDialog(), QDialog(self.win))
         win.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
 
         win.okButton.clicked.connect(win.accept)
@@ -469,7 +514,8 @@ class SettingsWindow(Window):
                 for r_source, r_title in center.settings['repos']:
                     if r_source == source:
                         found = True
-                        QtWidgets.QMessageBox.critical(self.win, 'Error', 'This source is already in the list! (As "%s")' % (r_title))
+                        QtWidgets.QMessageBox.critical(self.win, self.tr('Error'),
+                            self.tr('This source is already in the list! (As "%s")') % (r_title))
                         break
 
                 if not found:
@@ -486,19 +532,20 @@ class SettingsWindow(Window):
         self._edit_repo()
 
     def edit_repo(self):
-        tab = self._tabs['Mod sources']
+        tab = self._tabs['mod_sources']
         item = tab.sourceList.currentItem()
         if item is not None:
             idx = item.data(QtCore.Qt.UserRole)
             self._edit_repo(center.settings['repos'][idx], idx)
 
     def remove_repo(self):
-        tab = self._tabs['Mod sources']
+        tab = self._tabs['mod_sources']
         item = tab.sourceList.currentItem()
         if item is not None:
             idx = item.data(QtCore.Qt.UserRole)
-            answer = QtWidgets.QMessageBox.question(self.win, 'Are you sure?', 'Do you really want to remove "%s"?' % (item.text()),
-                                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+            answer = QtWidgets.QMessageBox.question(self.win, self.tr('Are you sure?'),
+                self.tr('Do you really want to remove "%s"?') % (item.text()),
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
 
             if answer == QtWidgets.QMessageBox.Yes:
                 del center.settings['repos'][idx]
@@ -507,7 +554,7 @@ class SettingsWindow(Window):
                 self.update_repo_list()
 
     def reorder_repos(self, parent, s_start, s_end, d_parent, d_row):
-        tab = self._tabs['Mod sources']
+        tab = self._tabs['mod_sources']
         repos = []
         for row in range(0, tab.sourceList.count()):
             item = self.win.sourceList.item(row)
@@ -523,7 +570,7 @@ class SettingsWindow(Window):
 
     def update_max_downloads(self, num=None):
         old_num = center.settings['max_downloads']
-        center.settings['max_downloads'] = num = self._tabs['Launcher settings'].maxDownloads.value()
+        center.settings['max_downloads'] = num = self._tabs['kn_settings'].maxDownloads.value()
 
         if num != old_num:
             util.DL_POOL.set_capacity(num)
@@ -545,17 +592,19 @@ class SettingsWindow(Window):
         return ratio_string
 
     @staticmethod
-    def has_config():
-        if sys.platform.startswith('win'):
-            config = QtCore.QSettings('HKEY_LOCAL_MACHINE\\Software\\Volition\\Freespace2', QtCore.QSettings.NativeFormat)
-        else:
-            config_file = os.path.join(api.get_fso_profile_path(), 'fs2_open.ini')
+    def _get_config():
+        config_file = os.path.join(api.get_fso_profile_path(), 'fs2_open.ini')
+        if not sys.platform.startswith('win') or os.path.isfile(config_file):
             config = QtCore.QSettings(config_file, QtCore.QSettings.IniFormat)
-
-        if not sys.platform.startswith('win'):
             config.beginGroup('Default')
+            return config, False
+        else:
+            config = QtCore.QSettings(r'HKEY_LOCAL_MACHINE\Software\Volition\Freespace2', QtCore.QSettings.NativeFormat)
+            return config, True
 
-        return config.contains('VideocardFs2open')
+    @classmethod
+    def has_config(cls):
+        return cls._get_config()[0].contains('VideocardFs2open')
 
     def get_deviceinfo(self):
         try:
@@ -563,50 +612,105 @@ class SettingsWindow(Window):
         except:
             logging.exception('Failed to retrieve device info!')
 
-            QtWidgets.QMessageBox.critical(None, 'Knossos',
-                'There was an error trying to retrieve your device info (screen resolution, joysticks and audio devices). ' +
-                'Please try again or report this error on the HLP thread.')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr(
+                'There was an error trying to retrieve your device info (screen resolution, joysticks and audio' +
+                ' devices). Please try again or report this error on the HLP thread.'))
             return None
 
         return info
 
+    def test_libs(self):
+        tab = self._tabs['lib_paths']
+        sdl_path = tab.sdlPath.text()
+        oal_path = tab.openAlPath.text()
+
+        try:
+            info = json.loads(util.check_output(launcher.get_cmd(['--lib-paths', sdl_path, oal_path])).strip())
+        except:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr('An unkown error (a crash?) occurred while trying to load the libraries!'))
+        else:
+            if info['sdl2'] and info['openal']:
+                msg = self.tr('Success! Both libraries were loaded successfully.')
+            else:
+                msg = self.tr('Error! One or both libraries failed to load.')
+
+            msg += '\n\nSDL2: %s\nOpenAL: %s' % (
+                info['sdl2'] if info['sdl2'] else self.tr('Not found'),
+                info['openal'] if info['openal'] else self.tr('Not found')
+            )
+            QtWidgets.QMessageBox.information(None, 'Knossos', msg)
+
+    def select_path(self, edit):
+        path = QtWidgets.QFileDialog.getOpenFileName(self.win, None, None)[0]
+
+        if path is not None and path != '':
+            if not os.path.isfile(path):
+                QtWidgets.QMessageBox.critical(self.win, self.tr('Not a file'),
+                    self.tr('Please select a proper file'))
+                return
+
+            edit.setText(os.path.abspath(path))
+
     def read_config(self):
         fs2_path = center.settings['fs2_path']
         fs2_bin = center.settings['fs2_bin']
+        fred_bin = center.settings['fred_bin']
 
-        tab = self._tabs['Game settings']
+        tab = self._tabs['fso_settings']
         tab.fs2PathLabel.setText(fs2_path)
         tab.build.clear()
 
         if fs2_path is not None:
-            self._builds = bins = api.get_executables()
+            bins = api.get_executables()
+            self._builds = []
+            self._fred_builds = []
 
             idx = 0
+            fred_idx = 0
             for name, path in bins:
-                tab.build.addItem(name)
+                if 'fred2' in name:
+                    self._fred_builds.append((name, path))
+                    tab.fredBuild.addItem(name)
 
-                if path == fs2_bin:
-                    tab.build.setCurrentIndex(idx)
+                    if path == fred_bin:
+                        tab.fredBuild.setCurrentIndex(fred_idx)
 
-                idx += 1
+                    fred_idx += 1
+                else:
+                    self._builds.append((name, path))
+                    tab.build.addItem(name)
 
-            if len(bins) == 1:
-                # Found only one binary, select it by default.
+                    if path == fs2_bin:
+                        tab.build.setCurrentIndex(idx)
+
+                    idx += 1
+
+            del idx, fred_idx
+
+            if len(self._builds) < 2:
                 tab.build.setEnabled(False)
-                self.save_build()
+
+                if len(self._builds) == 1:
+                    # Found only one binary, select it by default.
+                    self.save_build()
+                else:
+                    tab.build.addItem(self.tr('No executable found!'))
+
+            if len(self._fred_builds) < 2:
+                tab.fredBuild.setEnabled(False)
+
+                if len(self._fred_builds) == 1:
+                    self.save_fred_build()
+                else:
+                    tab.fredBuild.addItem(self.tr('No executable found!'))
 
         dev_info = self.get_deviceinfo()
 
         # ---Read fs2_open.ini or the registry---
-        if sys.platform.startswith('win'):
-            self.config = config = QtCore.QSettings('HKEY_LOCAL_MACHINE\\Software\\Volition\\Freespace2', QtCore.QSettings.NativeFormat)
-        else:
-            config_file = os.path.join(api.get_fso_profile_path(), 'fs2_open.ini')
-            self.config = config = QtCore.QSettings(config_file, QtCore.QSettings.IniFormat)
-
         # Be careful with any change, the keys are all case sensitive.
-        if not sys.platform.startswith('win'):
-            config.beginGroup('Default')
+        self.config, self.config_legacy = self._get_config()
+        config = self.config
 
         # video settings
         if config.contains('VideocardFs2open'):
@@ -653,7 +757,7 @@ class SettingsWindow(Window):
 
         # ---Video settings---
         # Screen resolution
-        vid_res = self._tabs['Video'].resolution
+        vid_res = self._tabs['fso_video'].resolution
         vid_res.clear()
 
         modes = []
@@ -669,7 +773,7 @@ class SettingsWindow(Window):
                 vid_res.setCurrentIndex(i)
 
         # Screen depth
-        vid_depth = self._tabs['Video'].colorDepth
+        vid_depth = self._tabs['fso_video'].colorDepth
         vid_depth.clear()
         vid_depth.addItems(['32-bit', '16-bit'])
 
@@ -678,9 +782,9 @@ class SettingsWindow(Window):
             vid_depth.setCurrentIndex(index)
 
         # Texture filter
-        vid_texfilter = self._tabs['Video'].textureFilter
+        vid_texfilter = self._tabs['fso_video'].textureFilter
         vid_texfilter.clear()
-        vid_texfilter.addItems(['Bilinear', 'Trilinear'])
+        vid_texfilter.addItems([self.tr('Bilinear'), self.tr('Trilinear')])
 
         try:
             index = int(texfilter)
@@ -693,9 +797,9 @@ class SettingsWindow(Window):
         vid_texfilter.setCurrentIndex(index)
 
         # Antialiasing
-        vid_aa = self._tabs['Video'].antialiasing
+        vid_aa = self._tabs['fso_video'].antialiasing
         vid_aa.clear()
-        vid_aa.addItems(['Off', '2x', '4x', '8x', '16x'])
+        vid_aa.addItems([self.tr('Off'), '2x', '4x', '8x', '16x'])
 
         index = vid_aa.findText('{0}x'.format(aa))
         if index == -1:
@@ -703,9 +807,9 @@ class SettingsWindow(Window):
         vid_aa.setCurrentIndex(index)
 
         # Anisotropic filtering
-        vid_af = self._tabs['Video'].anisotropic
+        vid_af = self._tabs['fso_video'].anisotropic
         vid_af.clear()
-        vid_af.addItems(['Off', '1x', '2x', '4x', '8x', '16x'])
+        vid_af.addItems([self.tr('Off'), '1x', '2x', '4x', '8x', '16x'])
 
         index = vid_af.findText('{0}x'.format(af))
         if index == -1:
@@ -715,8 +819,8 @@ class SettingsWindow(Window):
         # ---Sound settings---
         if dev_info and dev_info['audio_devs']:
             snd_devs, snd_default, snd_captures, snd_default_capture = dev_info['audio_devs']
-            snd_playback = self._tabs['Audio'].playbackDevice
-            snd_capture = self._tabs['Audio'].captureDevice
+            snd_playback = self._tabs['fso_audio'].playbackDevice
+            snd_capture = self._tabs['fso_audio'].captureDevice
             snd_playback.clear()
             snd_capture.clear()
 
@@ -744,7 +848,7 @@ class SettingsWindow(Window):
                 snd_capture.setCurrentIndex(index)
 
             # Fill sample rate textbox :
-            snd_samplerate = self._tabs['Audio'].sampleRate
+            snd_samplerate = self._tabs['fso_audio'].sampleRate
             if util.is_number(sample_rate):
                 sample_rate = int(sample_rate)
                 if sample_rate > 0 and sample_rate < 1000000:
@@ -756,16 +860,16 @@ class SettingsWindow(Window):
 
             # Fill EFX checkbox :
             if enable_efx == '1':
-                self._tabs['Audio'].enableEFX.setChecked(True)
+                self._tabs['fso_audio'].enableEFX.setChecked(True)
             else:
-                self._tabs['Audio'].enableEFX.setChecked(False)
+                self._tabs['fso_audio'].enableEFX.setChecked(False)
 
         # ---Joystick settings---
         joysticks = dev_info['joysticks'] if dev_info else []
-        ctrl_joystick = self._tabs['Input'].controller
+        ctrl_joystick = self._tabs['fso_input'].controller
 
         ctrl_joystick.clear()
-        ctrl_joystick.addItem('No Joystick')
+        ctrl_joystick.addItem(self.tr('No Joystick'))
         for joystick in joysticks:
             ctrl_joystick.addItem(joystick)
 
@@ -783,7 +887,7 @@ class SettingsWindow(Window):
             ctrl_joystick.setEnabled(False)
 
         # ---Keyboard settings---
-        kls = self._tabs['Input'].keyLayout
+        kls = self._tabs['fso_input'].keyLayout
         if sys.platform.startswith('linux'):
             kls.clear()
             for i, layout in enumerate(('default (qwerty)', 'qwertz', 'azerty')):
@@ -792,18 +896,18 @@ class SettingsWindow(Window):
                     kls.setCurrentIndex(i)
 
             if center.settings['keyboard_setxkbmap']:
-                self._tabs['Input'].useSetxkbmap.setChecked(True)
+                self._tabs['fso_input'].useSetxkbmap.setChecked(True)
             else:
-                self._tabs['Input'].useSetxkbmap.setChecked(False)
+                self._tabs['fso_input'].useSetxkbmap.setChecked(False)
         else:
             kls.setDisabled(True)
-            self._tabs['Input'].useSetxkbmap.setDisabled(True)
+            self._tabs['fso_input'].useSetxkbmap.setDisabled(True)
 
         # ---Network settings---
-        net_type = self._tabs['Network'].connectionType
-        net_speed = self._tabs['Network'].connectionSpeed
-        net_ip_f = self._tabs['Network'].forceAddress
-        net_port_f = self._tabs['Network'].localPort
+        net_type = self._tabs['fso_network'].connectionType
+        net_speed = self._tabs['fso_network'].connectionSpeed
+        net_ip_f = self._tabs['fso_network'].forceAddress
+        net_port_f = self._tabs['fso_network'].localPort
 
         net_type.clear()
         net_type.addItems(['None', 'Dialup', 'Broadband/LAN'])
@@ -816,7 +920,8 @@ class SettingsWindow(Window):
         net_type.setCurrentIndex(index)
 
         net_speed.clear()
-        net_speed.addItems(['None', '28k modem', '56k modem', 'ISDN', 'DSL', 'Cable/LAN'])
+        net_speed.addItems([self.tr('None'), self.tr('28k modem'), self.tr('56k modem'),
+            self.tr('ISDN'), self.tr('DSL'), self.tr('Cable/LAN')])
         net_speeds_read = {'none': 0, 'Slow': 1, '56K': 2, 'ISDN': 3, 'Cable': 4, 'Fast': 5}
         if net_speed in net_speeds_read:
             index = net_speeds_read[net_speed]
@@ -830,7 +935,7 @@ class SettingsWindow(Window):
     def write_config(self):
         config = self.config
 
-        if sys.platform.startswith('win'):
+        if self.config_legacy:
             section = ''
         else:
             config.beginGroup('Default')
@@ -838,71 +943,71 @@ class SettingsWindow(Window):
 
         # Getting ready to write key=value pairs to the ini file
         # Set video
-        new_res_width, new_res_height = self._tabs['Video'].resolution.currentText().split(' (')[0].split(' x ')
-        new_depth = self._tabs['Video'].colorDepth.currentText().split('-')[0]
+        new_res_width, new_res_height = self._tabs['fso_video'].resolution.currentText().split(' (')[0].split(' x ')
+        new_depth = self._tabs['fso_video'].colorDepth.currentText().split('-')[0]
         new_res = 'OGL -({0}x{1})x{2} bit'.format(new_res_width, new_res_height, new_depth)
         config.setValue('VideocardFs2open', new_res)
 
-        new_texfilter = self._tabs['Video'].textureFilter.currentIndex()
+        new_texfilter = self._tabs['fso_video'].textureFilter.currentIndex()
         config.setValue('TextureFilter', new_texfilter)
 
-        new_aa = self._tabs['Video'].antialiasing.currentText().split('x')[0]
+        new_aa = self._tabs['fso_video'].antialiasing.currentText().split('x')[0]
         config.setValue('OGL_AntiAliasSamples', new_aa)
 
-        new_af = self._tabs['Video'].anisotropic.currentText().split('x')[0]
+        new_af = self._tabs['fso_video'].anisotropic.currentText().split('x')[0]
         config.setValue('OGL_AnisotropicFilter', new_af)
 
         if not sys.platform.startswith('win'):
             config.endGroup()
 
         # sound
-        new_playback_device = self._tabs['Audio'].playbackDevice.currentText()
-        # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device ? Why ?
+        new_playback_device = self._tabs['fso_audio'].playbackDevice.currentText()
+        # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device.
         # ^ So I do it the way openal is supposed to work, but I'm not sure FS2 really behaves that way
         config.setValue('Sound/PlaybackDevice', new_playback_device)
         config.setValue(section + 'SoundDeviceOAL', new_playback_device)
         # ^ Useless according to SCP members, but wxlauncher does it anyway
 
-        new_capture_device = self._tabs['Audio'].captureDevice.currentText()
+        new_capture_device = self._tabs['fso_audio'].captureDevice.currentText()
         config.setValue('Sound/CaptureDevice', new_capture_device)
 
-        if self._tabs['Audio'].enableEFX.isChecked() is True:
+        if self._tabs['fso_audio'].enableEFX.isChecked() is True:
             new_enable_efx = 1
         else:
             new_enable_efx = 0
         config.setValue('Sound/EnableEFX', new_enable_efx)
 
-        new_sample_rate = self._tabs['Audio'].sampleRate.value()
+        new_sample_rate = self._tabs['fso_audio'].sampleRate.value()
         config.setValue('Sound/SampleRate', new_sample_rate)
 
         # joystick
-        if self._tabs['Input'].controller.currentText() == 'No Joystick':
+        if self._tabs['fso_input'].controller.currentText() == self.tr('No Joystick'):
             new_joystick_id = 99999
         else:
-            new_joystick_id = self._tabs['Input'].controller.currentIndex() - 1
+            new_joystick_id = self._tabs['fso_input'].controller.currentIndex() - 1
         config.setValue(section + 'CurrentJoystick', new_joystick_id)
 
         # keyboard
         if sys.platform.startswith('linux'):
-            key_layout = self._tabs['Input'].keyLayout.currentIndex()
+            key_layout = self._tabs['fso_input'].keyLayout.currentIndex()
             if key_layout == 0:
                 key_layout = 'default'
             else:
-                key_layout = self._tabs['Input'].keyLayout.itemText(key_layout)
+                key_layout = self._tabs['fso_input'].keyLayout.itemText(key_layout)
 
             center.settings['keyboard_layout'] = key_layout
-            center.settings['keyboard_setxkbmap'] = self._tabs['Input'].useSetxkbmap.isChecked()
+            center.settings['keyboard_setxkbmap'] = self._tabs['fso_input'].useSetxkbmap.isChecked()
 
         # networking
         net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
-        new_net_connection = net_types[self._tabs['Network'].connectionType.currentIndex()]
+        new_net_connection = net_types[self._tabs['fso_network'].connectionType.currentIndex()]
         config.setValue(section + 'NetworkConnection', new_net_connection)
 
         net_speeds = {0: 'none', 1: 'Slow', 2: '56K', 3: 'ISDN', 4: 'Cable', 5: 'Fast'}
-        new_net_speed = net_speeds[self._tabs['Network'].connectionSpeed.currentIndex()]
+        new_net_speed = net_speeds[self._tabs['fso_network'].connectionSpeed.currentIndex()]
         config.setValue(section + 'ConnectionSpeed', new_net_speed)
 
-        new_net_ip = self._tabs['Network'].forceAddress.text()
+        new_net_ip = self._tabs['fso_network'].forceAddress.text()
         if new_net_ip == '...':
             new_net_ip = ''
 
@@ -911,7 +1016,7 @@ class SettingsWindow(Window):
         else:
             config.setValue('Network/CustomIP', new_net_ip)
 
-        new_net_port = self._tabs['Network'].localPort.text()
+        new_net_port = self._tabs['fso_network'].localPort.text()
         if new_net_port == '0':
             new_net_port = ''
 
@@ -922,14 +1027,28 @@ class SettingsWindow(Window):
 
         # Save the new configuration.
         config.sync()
-        self._tabs['Default flags'].save()
+        self._tabs['fso_flags'].save()
+
+        tab = self._tabs['lib_paths']
+        sdl_path = tab.sdlPath.text()
+        if sdl_path == 'auto':
+            center.settings['sdl2_path'] = None
+        else:
+            center.settings['sdl2_path'] = sdl_path
+
+        openal_path = tab.openAlPath.text()
+        if openal_path == 'auto':
+            center.settings['openal_path'] = None
+        else:
+            center.settings['openal_path'] = openal_path
+
         api.save_settings()
 
     def select_fs2_path(self):
         api.select_fs2_path()
 
     def save_build(self):
-        fs2_bin = self._builds[self._tabs['Game settings'].build.currentIndex()][1]
+        fs2_bin = self._builds[self._tabs['fso_settings'].build.currentIndex()][1]
         if not os.path.isfile(os.path.join(center.settings['fs2_path'], fs2_bin)):
             return
 
@@ -940,13 +1059,14 @@ class SettingsWindow(Window):
             # We failed to run FSO but why?
             rc = runner.run_fs2_silent(['-help'])
             if rc == -128:
-                msg = 'The FSO binary "%s" is missing!' % fs2_bin
+                msg = self.tr('The FSO binary "%s" is missing!') % fs2_bin
             elif rc == -127:
-                # TODO: At this point we have run ldd twice already and the next call will run it again. Is there any way to avoid this?
+                # TODO: At this point we have run ldd twice already and the next call will run it again.
+                # Is there any way to avoid this?
                 _, missing = runner.fix_missing_libs(os.path.join(center.settings['fs2_path'], fs2_bin))
-                msg = 'The FSO binary "%s" is missing %s!' % (fs2_bin, util.human_list(missing))
+                msg = self.tr('The FSO binary "%s" is missing %s!') % (fs2_bin, util.human_list(missing))
             else:
-                msg = 'The FSO binary quit with code %d!' % rc
+                msg = self.tr('The FSO binary quit with code %d!') % rc
 
             center.settings['fs2_bin'] = old_bin
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
@@ -955,20 +1075,35 @@ class SettingsWindow(Window):
             api.save_settings()
             center.signals.fs2_bin_changed.emit()
 
+    def save_fred_build(self):
+        fred_bin = self._fred_builds[self._tabs['fso_settings'].fredBuild.currentIndex()][1]
+        if not os.path.isfile(os.path.join(center.settings['fs2_path'], fred_bin)):
+            return
+
+        center.settings['fred_bin'] = fred_bin
+        api.save_settings()
+
+    def save_language(self, p=None):
+        tab = self._tabs['kn_settings']
+        center.settings['language'] = str(tab.langSelect.currentData())
+        api.save_settings()
+
+        QtWidgets.QMessageBox.information(None, 'Knossos', 'Please restart Knossos to complete the language change.')
+
     def save_update_settings(self, p=None):
-        tab = self._tabs['Launcher settings']
+        tab = self._tabs['kn_settings']
         center.settings['update_channel'] = tab.updateChannel.currentText()
         center.settings['update_notify'] = tab.updateNotify.checkState() == QtCore.Qt.Checked
         api.save_settings()
 
     def save_report_settings(self, p=None):
-        tab = self._tabs['Launcher settings']
+        tab = self._tabs['kn_settings']
         center.settings['use_raven'] = tab.reportErrors.checkState() == QtCore.Qt.Checked
 
         if center.settings['use_raven']:
             api.enable_raven()
         else:
-            center.raven = None
+            api.disable_raven()
 
         api.save_settings()
 
@@ -976,7 +1111,8 @@ class SettingsWindow(Window):
         logpath = os.path.join(api.get_fso_profile_path(), 'data/fs2_open.log')
 
         if not os.path.isfile(logpath):
-            QtWidgets.QMessageBox.warning(None, 'Knossos', 'Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?')
+            QtWidgets.QMessageBox.warning(None, 'Knossos',
+                self.tr('Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?'))
         else:
             LogViewer(logpath)
 
@@ -986,7 +1122,7 @@ class SettingsWindow(Window):
     def clear_hash_cache(self):
         util.HASH_CACHE = dict()
         run_task(CheckTask())
-        QtWidgets.QMessageBox.information(None, 'Knossos', 'Done!')
+        QtWidgets.QMessageBox.information(None, 'Knossos', self.tr('Done!'))
 
 
 class GogExtractWindow(Window):
@@ -994,7 +1130,7 @@ class GogExtractWindow(Window):
     def __init__(self, window=True):
         super(GogExtractWindow, self).__init__(window)
 
-        self._create_win(Ui_Gogextract)
+        self._create_win(Ui_GogExtractDialog)
 
         self.win.gogPath.textChanged.connect(self.validate)
         self.win.destPath.textChanged.connect(self.validate)
@@ -1009,24 +1145,28 @@ class GogExtractWindow(Window):
             self.open()
 
     def select_installer(self):
-        path = QtWidgets.QFileDialog.getOpenFileName(self.win, 'Please select the setup_freespace2_*.exe file.',
-                                                 os.path.expanduser('~/Downloads'), 'Executable (*.exe)')
+        path = QtWidgets.QFileDialog.getOpenFileName(self.win,
+            self.tr('Please select the setup_freespace2_*.exe file.'),
+            os.path.expanduser('~/Downloads'), self.tr('Executable (*.exe)'))
+
         if isinstance(path, tuple):
             path = path[0]
 
         if path is not None and path != '':
             if not os.path.isfile(path):
-                QtWidgets.QMessageBox.critical(self.win, 'Not a file', 'Please select a proper file!')
+                QtWidgets.QMessageBox.critical(self.win, self.tr('Not a file'), self.tr('Please select a proper file!'))
                 return
 
             self.win.gogPath.setText(os.path.abspath(path))
 
     def select_dest(self):
-        path = QtWidgets.QFileDialog.getExistingDirectory(self.win, 'Please select the destination directory.', os.path.expanduser('~/Documents'))
+        path = QtWidgets.QFileDialog.getExistingDirectory(self.win, self.tr('Please select the destination directory.'),
+            os.path.expanduser('~/Documents'))
 
         if path is not None and path != '':
             if not os.path.isdir(path):
-                QtWidgets.QMessageBox.critical(self.win, 'Not a directory', 'Please select a proper directory!')
+                QtWidgets.QMessageBox.critical(self.win, self.tr('Not a directory'),
+                    self.tr('Please select a proper directory!'))
                 return
 
             self.win.destPath.setText(os.path.abspath(path))
@@ -1060,7 +1200,7 @@ class FlagsWindow(Window):
         self._selected = []
         self._mod = mod
 
-        self._create_win(Ui_Flags)
+        self._create_win(Ui_FlagsDialog)
         if window:
             self.win.setModal(True)
 
@@ -1099,7 +1239,7 @@ class FlagsWindow(Window):
 
         if flags is None:
             self.win.setEnabled(False)
-            self.win.cmdLine.setPlainText('Until you select a working FS2 build, I won\'t be able to help you.')
+            self.win.cmdLine.setPlainText(self.tr('Until you select a working FS2 build, I won\'t be able to help you.'))
             return
 
         self.win.setEnabled(True)
@@ -1264,7 +1404,7 @@ class ModInstallWindow(Window):
         super(ModInstallWindow, self).__init__()
 
         self._mod = mod
-        self._create_win(Ui_Install)
+        self._create_win(Ui_InstallDialog)
         self.win.splitter.setStretchFactor(0, 2)
         self.win.splitter.setStretchFactor(1, 1)
 
@@ -1288,7 +1428,8 @@ class ModInstallWindow(Window):
             all_pkgs = center.mods.process_pkg_selection(pkgs)
         except repo.ModNotFound as exc:
             logging.exception('Well, I won\'t be installing that...')
-            msg = 'I\'m sorry but you won\'t be able to install "%s" because "%s" is missing!' % (self._mod.title, exc.mid)
+            msg = self.tr('I\'m sorry but you won\'t be able to install "%s" because "%s" is missing!') % (
+                self._mod.title, exc.mid)
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
 
             self.close()
@@ -1325,7 +1466,7 @@ class ModInstallWindow(Window):
                 is_installed = center.installed.is_installed(pkg)
 
                 if is_installed:
-                    sub.setText(1, 'Installed')
+                    sub.setText(1, self.tr('Installed'))
 
                 if pkg.status == 'required' or pkg in needed_pkgs or is_installed:
                     sub.setCheckState(0, QtCore.Qt.Checked)
@@ -1409,7 +1550,7 @@ class ModSettingsWindow(Window):
 
         self._mod = mod
         self._mod_versions = []
-        self._create_win(Ui_Mod_Settings, QDialog)
+        self._create_win(Ui_ModSettingsDialog, QDialog)
         self.load_styles(':/ui/themes/default/mod_settings.css')
 
         self.win.modTitle.setText(self._mod.title)
@@ -1443,7 +1584,7 @@ class ModSettingsWindow(Window):
 
                         if not installed:
                             p_check.setProperty('error', True)
-                            p_check.setText(pkg.name + ' (missing)')
+                            p_check.setText(pkg.name + self.tr(' (missing)'))
                 else:
                     p_check.setCheckState(QtCore.Qt.Unchecked)
 
@@ -1513,7 +1654,7 @@ class ModSettingsWindow(Window):
                     item[0].setText(item[2].name)
                 elif not is_inst and item[2].status == 'required' and not item[0].property('error'):
                     item[0].setProperty('error', True)
-                    item[0].setText(item[2].name + ' (missing)')
+                    item[0].setText(item[2].name + self.tr(' (missing)'))
 
                 item[1] = is_inst
 
@@ -1542,9 +1683,12 @@ class ModSettingsWindow(Window):
                 install = center.mods.process_pkg_selection(install)
             except repo.ModNotFound as exc:
                 if center.mods.has(self._mod):
-                    QtWidgets.QMessageBox.critical(None, 'Knossos', "I'm sorry but I can't install the selected packages because some the dependency \"%s\" is missing!" % exc.mid)
+                    QtWidgets.QMessageBox.critical(None, 'Knossos',
+                        self.tr("I'm sorry but I can't install the selected packages because the dependency " +
+                            '"%s" is missing!') % exc.mid)
                 else:
-                    QtWidgets.QMessageBox.critical(None, 'Knossos', "I'm sorry but I can't install new packages for this mod since it's not available anymore!")
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("I'm sorry but I can't install new " +
+                        "packages for this mod since it's not available anymore!"))
 
                 install = []
 
@@ -1577,15 +1721,16 @@ class ModSettingsWindow(Window):
 
         msg = ''
         if len(remove) > 0:
-            msg += "I'm going to remove " + util.human_list([p.name for p in remove]) + ".\n"
+            msg += self.tr("I'm going to remove %s.\n") % util.human_list([p.name for p in remove])
 
         if len(install) > 0:
-            msg += "I'm going to install " + util.human_list([p.name for p in install if not center.installed.is_installed(p)]) + ".\n"
+            msg += self.tr("I'm going to install %s.\n") % util.human_list(
+                [p.name for p in install if not center.installed.is_installed(p)])
 
         box = QtWidgets.QMessageBox()
         box.setIcon(QtWidgets.QMessageBox.Question)
         box.setText(msg)
-        box.setInformativeText('Continue?')
+        box.setInformativeText(self.tr('Continue?'))
         box.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         box.setDefaultButton(QtWidgets.QMessageBox.Yes)
 
@@ -1599,7 +1744,8 @@ class ModSettingsWindow(Window):
             for dep in self._mod.resolve_deps():
                 mods.add(dep.get_mod())
         except repo.ModNotFound as exc:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'This mod is missing the dependency "%s"!' % exc.mid)
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr('This mod is missing the dependency "%s"!') % exc.mid)
             return
 
         mods.add(self._mod)
@@ -1625,7 +1771,7 @@ class ModSettingsWindow(Window):
             label.setWordWrap(True)
 
             sel = QtWidgets.QComboBox()
-            sel.addItem('Latest (%s)' % versions[0].version, None)
+            sel.addItem(self.tr('Latest (%s)') % versions[0].version, None)
 
             pin = center.installed.get_pin(mod)
             for n, mv in enumerate(versions):
@@ -1634,7 +1780,7 @@ class ModSettingsWindow(Window):
                 if pin == mv.version:
                     sel.setCurrentIndex(n + 1)
 
-            editBut = QtWidgets.QPushButton('Edit')
+            editBut = QtWidgets.QPushButton(self.tr('Edit'))
 
             layout.addWidget(label, i, 0)
             layout.addWidget(sel, i, 1)
@@ -1694,10 +1840,10 @@ class ModSettingsWindow(Window):
         for pkg, s, c, info in task.get_results():
             if pkg is None:
                 if len(info['loose']) > 0:
-                    report += '<h2>Loose files (%d)</h2>' % (len(info['loose']))
+                    report += '<h2>%s</h2>' % (self.tr('Loose files (%d)') % (len(info['loose'])))
                     report += '<ul><li>' + '</li><li>'.join(sorted(info['loose'])) + '</li></ul>'
             else:
-                report += '<h2>%s (%d/%d files OK)</h2>' % (pkg.name, s, c)
+                report += self.tr('<h2>%s (%d/%d files OK)</h2>') % (pkg.name, s, c)
                 ok_count = len(info['ok'])
                 corr_count = len(info['corrupt'])
                 miss_count = len(info['missing'])
@@ -1706,19 +1852,19 @@ class ModSettingsWindow(Window):
 
                 if ok_count > 0:
                     if corr_count > 0 or miss_count > 0:
-                        report += '<ul><li>OK<ul>'
+                        report += '<ul><li>%s<ul>' % self.tr('OK')
                         report += '<li>' + '</li><li>'.join(sorted(info['ok'])) + '</li>'
                         report += '</ul></li>'
                     else:
                         report += '<li>' + '</li><li>'.join(sorted(info['ok'])) + '</li>'
 
                 if corr_count > 0:
-                    report += '<li>Corrupted<ul>'
+                    report += '<li>%s<ul>' % self.tr('Corrupted')
                     report += '<li>' + '</li><li>'.join(sorted(info['corrupt'])) + '</li>'
                     report += '</ul></li>'
 
                 if miss_count > 0:
-                    report += '<li>Missing<ul>'
+                    report += '<li>%s<ul>' % self.tr('Missing')
                     report += '<li>' + '</li><li>'.join(sorted(info['missing'])) + '</li>'
                     report += '</ul></li>'
 
@@ -1746,13 +1892,13 @@ class ModSettingsWindow(Window):
                     os.unlink(item)
 
         self.win.unsetCursor()
-        QtWidgets.QMessageBox.information(None, 'Knossos', 'Done!')
+        QtWidgets.QMessageBox.information(None, 'Knossos', self.tr('Done!'))
 
     def repair_files(self):
         try:
             run_task(InstallTask(self._mod.packages))
         except repo.ModNotFound as exc:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', "I can't repair this mod: %s" % str(exc))
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("I can't repair this mod: %s") % str(exc))
 
 
 class ModVersionsWindow(Window):
@@ -1764,7 +1910,7 @@ class ModVersionsWindow(Window):
 
         self._mod = mod
         self._versions = []
-        self._create_win(Ui_Mod_Versions, QDialog)
+        self._create_win(Ui_ModVersionsDialog, QDialog)
         self.win.setModal(True)
 
         self.label_tpl(self.win.label, MOD=mod.title)
@@ -1783,18 +1929,19 @@ class ModVersionsWindow(Window):
 
         for m in mods:
             if len(m.packages) == 0:
-                logging.warning('Version "%s" for mod "%s" (%s) is empty! (It has no packages!!)', m.version, m.title, m.mid)
+                logging.warning('Version "%s" for mod "%s" (%s) is empty! (It has no packages!!)',
+                    m.version, m.title, m.mid)
                 continue
 
             label = str(m.version)
             if m.version in local_versions:
-                label += ' (l)'
+                label += self.tr(' (l)', 'This marks a version as *l*ocal-only. See also next line.')
 
             item = QtWidgets.QListWidgetItem(label, self.win.versionList)
             item.setData(QtCore.Qt.UserRole + 1, m)
 
             if m.version in local_versions:
-                item.setToolTip('This version is installed locally but not available anymore!')
+                item.setToolTip(self.tr('This version is installed locally but not available anymore!'))
 
             if m.version in inst_versions:
                 item.setCheckState(QtCore.Qt.Checked)
@@ -1841,7 +1988,7 @@ class ModInfoWindow(Window):
         super(ModInfoWindow, self).__init__(window)
 
         self._mod = mod
-        self._create_win(Ui_Mod_Settings, QDialog)
+        self._create_win(Ui_ModSettingsDialog, QDialog)
 
         self.win.modTitle.setText(mod.title)
         self.win.modLogo.setPixmap(QtGui.QPixmap(mod.logo))
@@ -1861,11 +2008,12 @@ class LogViewer(Window):
     def __init__(self, path, window=True):
         super(LogViewer, self).__init__(window)
 
-        self._create_win(Ui_Log_Viewer)
+        self._create_win(Ui_LogDialog)
         self.win.pathLabel.setText(path)
 
         if not os.path.isfile(path):
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Log file %s can\'t be shown because it\'s missing!' % path)
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr('Log file %s can\'t be shown because it\'s missing!') % path)
             return
 
         with open(path, 'r') as stream:

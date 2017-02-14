@@ -1,9 +1,21 @@
-.mod {
-    display: block;
+@import url(./bootstrap.min.css);
+@import url(./font-awesome.min.css);
+
+.info-page {
     padding: 10px;
-    padding-left: 40px;
+}
+
+#last-played .run-btn {
+    width: 100%;
+}
+
+#last-played .mod-logo {
+    margin: auto;
+}
+
+.mod {
+    padding: 10px 0;
     border-bottom: 1px solid #eee;
-    max-width: 100%;
 
     position: relative;
 }
@@ -23,16 +35,10 @@
 
 .mod .actions {
     position: absolute;
-    top: 0;
     right: 0;
-    bottom: 0;
+    bottom: 5px;
 
     padding: 0 10px;
-    display: none;
-}
-
-.mod:hover .actions {
-    display: block;
 }
 
 .progress-bar.simple {

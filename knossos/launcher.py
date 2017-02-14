@@ -1,4 +1,4 @@
-## Copyright 2015 Knossos authors, see NOTICE file
+## Copyright 2017 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -44,23 +44,20 @@ from . import center
 if not os.path.isdir(center.settings_path):
     os.makedirs(center.settings_path)
 
-log_path = None
-if sys.platform.startswith('win'):
-    # Windows won't display a console. Let's write our log messages to a file.
-    # We truncate the log file on every start to avoid filling the user's disk with useless data.
-    log_path = os.path.join(center.settings_path, 'log.txt')
+# We truncate the log file on every start to avoid filling the user's disk with useless data.
+log_path = os.path.join(center.settings_path, 'log.txt')
 
-    try:
-        if os.path.isfile(log_path):
-            os.unlink(log_path)
-    except:
-        # This will only be visible if the user is running a console version.
-        logging.exception('The log is in use by someone!')
-    else:
-        handler = logging.FileHandler(log_path, 'w')
-        handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
-        handler.setLevel(logging.DEBUG)
-        logging.getLogger().addHandler(handler)
+try:
+    if os.path.isfile(log_path):
+        os.unlink(log_path)
+except:
+    # This will only be visible if the user is running a console version.
+    logging.exception('The log is in use by someone!')
+else:
+    handler = logging.FileHandler(log_path, 'w')
+    handler.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
+    handler.setLevel(logging.DEBUG)
+    logging.getLogger().addHandler(handler)
 
 if not center.DEBUG:
     logging.getLogger().setLevel(logging.INFO)
@@ -68,13 +65,14 @@ if not center.DEBUG:
 if six.PY2:
     from . import py2_compat
 
-from .qt import QtCore, QtGui, QtWidgets, read_file, variant as qt_variant
+from .qt import QtCore, QtGui, QtWidgets, variant as qt_variant
 from .ipc import IPCComm
 from . import util
 
 
 app = None
 ipc = None
+translate = QtCore.QCoreApplication.translate
 
 
 def my_excepthook(type, value, tb):
@@ -181,17 +179,19 @@ def run_knossos():
     elif sys.platform == 'darwin' and os.path.isfile('7z'):
         util.SEVEN_PATH = os.path.abspath('7z')
 
+    translate = QtCore.QCoreApplication.translate
+
     if not util.test_7z():
-        QtWidgets.QMessageBox.critical(None, 'Error', 'I can\'t find "7z"! Please install it and run this program again.', QtWidgets.QMessageBox.Ok, QtWidgets.QMessageBox.Ok)
+        QtWidgets.QMessageBox.critical(None, 'Error', translate(
+            'launcher', 'I can\'t find "7z"! Please install it and run this program again.'),
+            QtWidgets.QMessageBox.Ok, QtWidgets.QMessageBox.Ok)
         return
 
-    # Try to load our settings.
-    settings = load_settings()
-    util.DL_POOL.set_capacity(settings['max_downloads'])
+    util.DL_POOL.set_capacity(center.settings['max_downloads'])
 
     center.app = app
     center.installed = repo.InstalledRepo()
-    center.installed.pins = settings['pins']
+    center.installed.pins = center.settings['pins']
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()
@@ -214,7 +214,7 @@ def run_knossos():
 
 def handle_ipc_error():
     global app, ipc
-    
+
     logging.error('Failed to connect to main process!')
 
     if ipc is not None:
@@ -227,14 +227,15 @@ def scheme_handler(link):
 
     if not link.startswith(('fs2://', 'fso://')):
         # NOTE: fs2:// is deprecated, we don't tell anyone about it.
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I don\'t know how to handle "%s"! I only know fso:// .' % (link))
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('launcher', 'I don\'t know how to handle "%s"! I only know fso:// .') % (link))
         app.quit()
         return True
 
     link = urlparse.unquote(link.strip()).split('/')
 
     if len(link) < 3:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Not enough arguments!')
+        QtWidgets.QMessageBox.critical(None, 'Knossos', translate('launcher', 'Not enough arguments!'))
         app.quit()
         return True
 
@@ -247,7 +248,7 @@ def scheme_handler(link):
         while not ipc.server_exists():
             if time.time() - start > 20:
                 # That's too long!
-                QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to start server!')
+                QtWidgets.QMessageBox.critical(None, 'Knossos', translate('launcher', 'Failed to start server!'))
                 app.quit()
                 return True
 
@@ -297,6 +298,20 @@ def main():
     res_path = get_file_path('resources.rcc')
     logging.debug('Loading resources from %s.', res_path)
     QtCore.QResource.registerResource(res_path)
+
+    logging.debug('Loading settings...')
+    load_settings()
+    
+    trans = QtCore.QTranslator()
+    if center.settings['language']:
+        lang = center.settings['language']
+    else:
+        lang = QtCore.QLocale()
+
+    if trans.load(lang, 'knossos', '_', get_file_path('')):
+        app.installTranslator(trans)
+    else:
+        del trans
 
     app.setWindowIcon(QtGui.QIcon(':/hlp.png'))
     ipc = IPCComm(center.settings_path)
@@ -357,8 +372,6 @@ def main():
     except:
         logging.exception('Uncaught exeception! Quitting...')
 
-        # Load raven if it's enabled in the settings
-        load_settings()
-
         # Try to tell the user
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...')
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('launcher', 'I encountered a fatal error.\nI\'m sorry but I\'m going to crash now...'))

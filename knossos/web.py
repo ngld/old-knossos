@@ -1,4 +1,4 @@
-## Copyright 2015 Knossos authors, see NOTICE file
+## Copyright 2017 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import logging
 import re
 import semantic_version
 
-from .qt import QtCore, QtWebChannel
+from .qt import QtCore, QtGui, QtWebChannel
 from . import center, api, repo, windows, tasks, util
 
 if not QtWebChannel:
@@ -76,6 +76,8 @@ class WebBridge(QtCore.QObject):
     # vercmp(a, b): int
     #   Compares two versions
 
+    showWelcome = QtCore.Signal()
+    showLastPlayed = QtCore.Signal('QVariant')
     updateModlist = QtCore.Signal('QVariantMap', str)
     modProgress = QtCore.Signal(str, float, str)
 
@@ -94,7 +96,15 @@ class WebBridge(QtCore.QObject):
             page.setWebChannel(channel)
             channel.registerObject('fs2mod', self)
 
-            webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
+            webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
+
+    @QtCore.Slot()
+    def finishInit(self):
+        center.main_win.finish_init()
+
+    @QtCore.Slot(str, str, result=str)
+    def tr(self, context, msg):
+        return QtCore.QCoreApplication.translate(context, msg)
 
     @QtCore.Slot(result=str)
     def getVersion(self):
@@ -115,6 +125,11 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot()
     def runGogInstaller(self):
         windows.GogExtractWindow()
+
+    @QtCore.Slot()
+    def enterTcMode(self):
+        api.select_fs2_path(tc_mode=True)
+        tasks.run_task(tasks.FetchTask())
 
     @QtCore.Slot(result='QVariantList')
     def getMods(self):
@@ -297,6 +312,15 @@ class WebBridge(QtCore.QObject):
         return 0
 
     @QtCore.Slot(str, str, result=int)
+    def runFredMod(self, mid, spec=None):
+        mod = self._get_mod(mid, spec)
+        if mod in (-1, -2):
+            return mod
+
+        api.run_mod(mod, fred=True)
+        return 0
+
+    @QtCore.Slot(str, str, result=int)
     def showSettings(self, mid=None, spec=None):
         if mid is None:
             windows.SettingsWindow()
@@ -331,6 +355,10 @@ class WebBridge(QtCore.QObject):
 
         return a.__cmp__(b)
 
+    @QtCore.Slot(str)
+    def openExternal(self, link):
+        QtGui.QDesktopServices.openUrl(link)
+
 
 if QtWebChannel:
     BrowserCtrl = WebBridge
@@ -346,11 +374,11 @@ else:
 
             settings = webView.settings()
             settings.setAttribute(QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
-            
+
             frame = webView.page().mainFrame()
             frame.javaScriptWindowObjectCleared.connect(self.insert_bridge)
 
-            webView.load(QtCore.QUrl('qrc:///html/welcome.html'))
+            webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
 
         def insert_bridge(self):
             frame = self._view.page().mainFrame()

@@ -1,4 +1,4 @@
-## Copyright 2015 Knossos authors, see NOTICE file
+## Copyright 2017 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -822,6 +822,13 @@ class InstalledMod(Mod):
 
     def save(self):
         modpath = os.path.join(center.settings['fs2_path'], self.folder)
+        im_path = util.ipath(modpath)
+
+        # Correct the casing of our folder if neccessary.
+        if im_path != modpath:
+            modpath = im_path
+            self.folder = modpath[len(center.settings['fs2_path']):].lstrip('/\\')
+
         path = os.path.join(modpath, 'mod.json')
         info = self.get()
 

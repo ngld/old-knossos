@@ -1,5 +1,7 @@
 var tasks = {};
 var progress_visible = false;
+var last_mod = null;
+var tr_table = {};
 
 function render_row(mvs, type) {
     var row = $('<div class="mod row">');
@@ -33,6 +35,11 @@ function render_row(mvs, type) {
             e.preventDefault();
 
             fs2mod.runMod(mod.id, mod.version);
+        });
+        row.find('.fred-btn').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.runFredMod(mod.id, mod.version);
         });
         row.find('.settings-btn').click(function (e) {
             e.preventDefault();
@@ -69,6 +76,8 @@ function render_row(mvs, type) {
 
 function update_mods(mods, type) {
     $('#loading').hide();
+    $('#mods').show();
+    $('.info-page').hide();
 
     if(type == 'progress') {
         progress_visible = true;
@@ -94,6 +103,34 @@ function update_mods(mods, type) {
         console.log(mod);
         mod_list.append(render_row(mod, type));
     });
+}
+
+function display_last(mod) {
+    $('#loading, .info-page').hide();
+    $('#mods').hide();
+
+    var cont = $('#last-played');
+    if(!mod) {
+        $('#no-last-played').show();
+        return;
+    } else {
+        cont.show();
+    }
+
+    cont.find('.run-btn').data('modid', mod.id);
+    cont.find('.title').text(mod.title);
+
+    if(mod.logo_path) {
+        cont.find('.mod-logo').attr('src', 'file://' + mod.logo_path).show();
+    } else {
+        cont.find('.mod-logo').hide();
+    }
+
+    var desc = cont.find('.desc').text(mod.description);
+    // Fix linebreaks
+    desc.html(desc.html().replace(/\n/g, '<br>'));
+
+    cont.show();
 }
 
 function _render_task(id, info) {
@@ -171,20 +208,88 @@ function remove_task(id) {
 
 function show_progress() {
     progress_visible = true;
-    var modlist = $('#mods').empty();
+    $('.info-page').hide();
+    var modlist = $('#mods').empty().show();
 
     $.each(tasks, function (id, obj) {
         modlist.append(_render_task(id, obj));
     });
 }
 
+function load_translations(cb) {
+    tr_table = {};
+    var keys = get_translation_source();
+
+    // Call fs2mod.tr() for each key
+    var next = 0;
+    function fetch() {
+        if(next < keys.length) {
+            var k = keys[next++];
+            fs2mod.tr('modlist_ts', k, function (res) {
+                tr_table[k] = res;
+                fetch();
+            });
+        } else {
+            cb();
+        }
+    }
+
+    fetch();
+}
+
+function show_welcome() {
+    $('.info-page, #mods, #loading').hide();
+    $('#welcome').show();
+}
+
 function init() {
+    $('.hide').removeClass('hide').hide();
+
+    $('#last-played .run-btn').click(function (e) {
+        e.preventDefault();
+
+        fs2mod.runMod($(this).data('modid'), '');
+    });
+
+    $('#sel-fso').click(function (e) {
+        e.preventDefault();
+
+        fs2mod.selFs2path();
+    });
+
+    $('#gog-install').click(function (e) {
+        e.preventDefault();
+
+        fs2mod.runGogInstaller();
+    });
+
+    $('#tc-install').click(function (e) {
+        e.preventDefault();
+
+        fs2mod.enterTcMode();
+    });
+
+    $('a[target="_blank"]').click(function (e) {
+        e.preventDefault();
+
+        fs2mod.openExternal($(this).attr('href'));
+    });
+
+    load_translations(function () {
+        $('div[data-tr], span[data-tr]').each(function () {
+            var $this = $(this);
+            $this.html(tr_table[$this.html()]);
+        });
+    });
+
+    fs2mod.showWelcome.connect(show_welcome);
+    fs2mod.showLastPlayed.connect(display_last);
     fs2mod.updateModlist.connect(update_mods);
     fs2mod.taskStarted.connect(add_task);
     fs2mod.taskProgress.connect(update_progress);
     fs2mod.taskFinished.connect(remove_task);
 
-    fs2mod.requestModlist(true);
+    fs2mod.finishInit();
 }
 
 if(window.qt) {

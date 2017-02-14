@@ -1,4 +1,4 @@
-## Copyright 2015 Knossos authors, see NOTICE file
+## Copyright 2017 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -115,38 +115,38 @@ class FlagsReader(object):
     _stream = None
     easy_flags = None
     flags = None
-    
+
     def __init__(self, stream):
         self._stream = stream
         self.read()
-    
+
     def unpack(self, fmt):
         if isinstance(fmt, struct.Struct):
             return fmt.unpack(self._stream.read(fmt.size))
         else:
             return struct.unpack(fmt, self._stream.read(struct.calcsize(fmt)))
-    
+
     def read(self):
         # Explanation of unpack() and Struct() parameters: http://docs.python.org/3/library/struct.html#format-characters
         self.easy_flags = OrderedDict()
         self.flags = OrderedDict()
-        
+
         easy_size, flag_size = self.unpack('2i')
-        
+
         easy_struct = struct.Struct('32s')
         flag_struct = struct.Struct('20s40s?ii16s256s')
-        
+
         if easy_size != easy_struct.size:
             logging.error('EasyFlags size is %d but I expected %d!', easy_size, easy_struct.size)
             return
-        
+
         if flag_size != flag_struct.size:
             logging.error('Flag size is %d but I expected %d!', flag_size, flag_struct.size)
             return
-        
+
         for i in range(self.unpack('i')[0]):
             self.easy_flags[1 << i] = self.unpack(easy_struct)[0].decode('utf8').strip('\x00')
-        
+
         for i in range(self.unpack('i')[0]):
             flag = self.unpack(flag_struct)
             flag = {
@@ -158,10 +158,10 @@ class FlagsReader(object):
                 'type': flag[5].decode('utf8').strip('\x00'),
                 'web_url': flag[6].decode('utf8').strip('\x00')
             }
-            
+
             if flag['type'] not in self.flags:
                 self.flags[flag['type']] = []
-            
+
             self.flags[flag['type']].append(flag)
 
 
@@ -224,7 +224,7 @@ class ResizableSemaphore(object):
             self._cond.notify_all()
 
         # logging.debug('Capacity set to %d, was %d. I now have %d free slots.', self._capacity, self._capacity - diff, self._free)
-    
+
     def get_consumed(self):
         with self._cond:
             return self._capacity - self._free
@@ -264,17 +264,17 @@ def call(*args, **kwargs):
         # Provide the called program with proper I/O on Windows.
         if 'stdin' not in kwargs:
             kwargs['stdin'] = subprocess.DEVNULL
-        
+
         if 'stdout' not in kwargs:
             kwargs['stdout'] = subprocess.DEVNULL
-        
+
         if 'stderr' not in kwargs:
             kwargs['stderr'] = subprocess.DEVNULL
-        
+
         si = subprocess.STARTUPINFO()
         si.dwFlags = subprocess.STARTF_USESHOWWINDOW
         si.wShowWindow = subprocess.SW_HIDE
-        
+
         kwargs['startupinfo'] = si
 
     logging.debug('Running %s', args[0])
@@ -286,14 +286,14 @@ def check_output(*args, **kwargs):
         # Provide the called program with proper I/O on Windows.
         if 'stdin' not in kwargs:
             kwargs['stdin'] = subprocess.DEVNULL
-        
+
         if 'stderr' not in kwargs:
             kwargs['stderr'] = subprocess.DEVNULL
-        
+
         si = subprocess.STARTUPINFO()
         si.dwFlags = subprocess.STARTF_USESHOWWINDOW
         si.wShowWindow = subprocess.SW_HIDE
-        
+
         kwargs['startupinfo'] = si
 
     if 'universal_newlines' not in kwargs:
@@ -388,7 +388,7 @@ def download(link, dest, headers=None, random_ua=False):
             return False
 
         logging.info('Downloading "%s"...', link)
-        
+
         try:
             result = HTTP_SESSION.get(link, headers=headers, stream=True)
         except requests.exceptions.ConnectionError:
@@ -453,7 +453,7 @@ def try_download(links, dest):
     for url in links:
         if download(url, dest):
             return True
-    
+
     return False
 
 
@@ -466,26 +466,22 @@ def normpath(path):
 def ipath(path):
     if os.path.exists(path):
         return path
-    
-    parent = os.path.dirname(path)
-    if not os.path.exists(parent):
-        parent = ipath(parent)
 
-        if not os.path.exists(parent):
-            # Well, nothing we can do here...
-            return path
+    parent, item = os.path.split(path)
+    parent = ipath(parent)
+
+    if not os.path.exists(parent):
+        # Well, nothing we can do here...
+        return path
 
     siblings = os.listdir(parent)
-    l_siblings = [s.lower() for s in siblings]
-    
-    oitem = item = os.path.basename(path)
-    if item.lower() in l_siblings:
-        item = siblings[l_siblings.index(item.lower())]
-        path = os.path.join(parent, item)
-    
-    if item != oitem:
-        logging.debug('Picking "%s" for "%s".', item, oitem)
-    
+    litem = item.lower()
+    for s in siblings:
+        if s.lower() == litem:
+            logging.debug('Picking "%s" for "%s".', s, item)
+            path = os.path.join(parent, s)
+            break
+
     return path
 
 
@@ -499,7 +495,7 @@ def pjoin(*args):
             path += arg
         else:
             path += '/' + arg
-    
+
     return path
 
 
@@ -527,7 +523,7 @@ def url_join(a, b):
 
 def gen_hash(path, algo='md5'):
     global HASH_CACHE
-    
+
     path = os.path.abspath(path)
     info = os.stat(path)
 
@@ -536,7 +532,7 @@ def gen_hash(path, algo='md5'):
         if mtime == info.st_mtime:
             # logging.debug('Found checksum for %s in cache.', path)
             return chksum
-    
+
     logging.debug('Calculating checksum for %s...', path)
 
     h = hashlib.new(algo)
@@ -551,7 +547,7 @@ def gen_hash(path, algo='md5'):
     chksum = h.hexdigest()
     if algo == 'md5':
         HASH_CACHE[path] = (chksum, info.st_mtime)
-    
+
     return chksum
 
 
@@ -578,11 +574,11 @@ def test_7z():
 
 def is_archive(path):
     path = path.lower()
-    
+
     for ext in ARCHIVE_FORMATS:
         if path.endswith('.' + ext):
             return True
-    
+
     return False
 
 
@@ -620,19 +616,19 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
         if not _rec:
             # This is a file like whatever.tar.gz. We have to call 7z two times for this kind of file:
             # First to get whatever.tar and a second time to extract that tar archive.
-            
+
             if not extract_archive(archive, os.path.dirname(archive), True, None, True):
                 return False
-            
+
             unc_archive = archive.split('.')
             # Remove the .gz or .bz2 or whatever ending...
             if unc_archive.pop() == 'tgz':
                 unc_archive.append('tar')
-            
+
             # ... and put it together again.
             unc_archive = '.'.join(unc_archive)
             res = extract_archive(unc_archive, outpath, overwrite, files, True)
-            
+
             # Cleanup
             os.unlink(unc_archive)
             return res
@@ -640,7 +636,7 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
     if archive.endswith('.dmg') and not _rec:
         # We have to call 7z twice for this file type. The first time, 7z only extracts the section contained in the file.
         # The second time, 7z extracts the actual contents from the HFS image.
-        
+
         with tempfile.TemporaryDirectory() as tp:
             if not extract_archive(archive, tp, False, None, True):
                 return False
@@ -652,7 +648,7 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
 
             # Now extract the image...
             return extract_archive(image[0], outpath, overwrite, files, True)
-        
+
     cmd = [SEVEN_PATH, 'x', '-o' + outpath]
     if overwrite:
         cmd.append('-y')
@@ -661,7 +657,7 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
 
     if files is not None:
         cmd.extend(files)
-    
+
     if QUIET:
         return call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
     else:
@@ -676,7 +672,7 @@ def convert_img(path, outfmt):
     if Image is not None:
         img = Image.open(path)
         img.save(dest)
-        
+
         return dest
     else:
         if _HAS_CONVERT is None:
@@ -690,7 +686,7 @@ def convert_img(path, outfmt):
                 return None
         elif _HAS_CONVERT is False:
             return None
-        
+
         subprocess.check_call(['convert', path, dest])
         return dest
 
@@ -764,7 +760,7 @@ def str_random(slen):
 def human_list(items):
     if not isinstance(items, list):
         items = list(items)
-    
+
     if len(items) == 0:
         return ''
     elif len(items) == 1:
@@ -783,7 +779,7 @@ def connect(sig, cb, *args):
 
 
 class Spec(semantic_version.Spec):
-    
+
     @classmethod
     def parse(self, specs_string):
         spec_texts = specs_string.split(',')
@@ -819,11 +815,11 @@ if sys.hexversion >= 0x020709F0:
     # the system OpenSSL which is *very* old and doesn't support newer features like TLSv1.2.
     # NOTE: It might be better to check ssl.OPENSSL_VERSION
     # See also https://www.python.org/dev/peps/pep-0466/
-    
+
     if 'requests.packages.urllib3.contrib.pyopenssl' in sys.modules:
         logging.info('Deactivating pyOpenSSL...')
         import requests.packages.urllib3.contrib.pyopenssl as pssl
-        
+
         pssl.extract_from_urllib3()
         del pssl
 

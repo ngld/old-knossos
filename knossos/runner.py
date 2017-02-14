@@ -1,4 +1,4 @@
-## Copyright 2015 Knossos authors, see NOTICE file
+## Copyright 2017 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -36,8 +36,9 @@ LIB_RE = re.compile(r'lib([a-zA-Z0-9\.\-\_\+]+)\.so(?:\..*)?')
 LDCONF_RE = re.compile(r'\s*(' + FILE_PATH_RE + r') \([^\)]+\) => (' + FILE_PATH_RE + r')')
 _LIB_CACHE = None
 
-
 fs2_watcher = None
+fred_watcher = None
+translate = QtCore.QCoreApplication.translate
 
 
 class SignalContainer(QtCore.QObject):
@@ -47,33 +48,35 @@ class SignalContainer(QtCore.QObject):
 # This wrapper makes sure that the wrapped function is always run in the QT main thread.
 def run_in_qt(func):
     cont = SignalContainer()
-    
+
     def dispatcher(*args):
         cont.signal.emit(list(args))
-    
+
     def listener(params):
         func(*params)
-    
+
     cont.signal.connect(listener)
-    
+
     return dispatcher
 
 
 class Fs2Watcher(threading.Thread):
     _params = None
+    _fred = False
     _key_layout = None
-    
-    def __init__(self, params=None):
+
+    def __init__(self, params=None, fred=False):
         super(Fs2Watcher, self).__init__()
-        
+
         if params is None:
             self._params = []
         else:
             self._params = params
-        
+
+        self._fred = fred
         self.daemon = True
         self.start()
-    
+
     def run(self):
         global fs2_watcher
 
@@ -82,8 +85,12 @@ class Fs2Watcher(threading.Thread):
         if center.settings['keyboard_layout'] != 'default':
             self._params.append('-keyboard_layout')
             self._params.append(center.settings['keyboard_layout'])
-        
-        fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
+
+        if self._fred:
+            fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fred_bin'])
+        else:
+            fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
+
         if not os.path.isfile(fs2_bin):
             self.fs2_missing_msg(fs2_bin)
             return
@@ -104,12 +111,15 @@ class Fs2Watcher(threading.Thread):
 
         if center.settings['keyboard_setxkbmap']:
             self.set_us_layout()
-        
+
         logging.debug('Launching FS2: %s', [fs2_bin] + self._params)
 
         if sys.platform.startswith('win'):
-            bin_path = center.settings['fs2_bin']
-            
+            if self._fred:
+                bin_path = center.settings['fred_bin']
+            else:
+                bin_path = center.settings['fs2_bin']
+
             if os.path.basename(bin_path) != bin_path:
                 # On Windows, the FSO engine changes the CWD to the directory the EXE file is in.
                 # Since the fs2_bin is in a subdirectory we'll have to copy it!
@@ -149,28 +159,30 @@ class Fs2Watcher(threading.Thread):
             center.signals.fs2_failed.emit(rc)
             self.failed_msg(reason)
             return
-        
+
         center.signals.fs2_launched.emit()
         p.wait()
         self.cleanup(fs2_bin, old_path)
         center.signals.fs2_quit.emit()
-    
+
     @run_in_qt
     def failed_msg(self, reason):
-        msg = 'Starting FS2 Open (%s) failed! (%s)' % (os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)
-        QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Failed', msg)
+        msg = translate('runner', 'Starting FS2 Open (%s) failed! (%s)') % (
+            os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)
+        QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('runner', 'Failed'), msg)
 
     @run_in_qt
     def fs2_missing_msg(self, fs2_bin):
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'I can\'t find FSO! (The file "%s" is missing!)' % fs2_bin)
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('runner', 'I can\'t find FSO! (The file "%s" is missing!)') % fs2_bin)
 
     @run_in_qt
     def complain_missing(self, missing):
         if len(missing) > 1:
-            msg = "I can't start FSO because the libraries %s are missing!"
+            msg = translate('runner', "I can't start FSO because the libraries %s are missing!")
         else:
-            msg = "I can't start FSO because the library %s is missing!"
-        
+            msg = translate('runner', "I can't start FSO because the library %s is missing!")
+
         QtWidgets.QMessageBox.critical(None, 'Knossos', msg % util.human_list(missing))
 
     def set_us_layout(self):
@@ -273,9 +285,31 @@ def fix_missing_libs(fpath):
 
 def run_fs2(params=None):
     global fs2_watcher
-    
+
     if fs2_watcher is None or not fs2_watcher.is_alive():
         fs2_watcher = Fs2Watcher(params)
+        return True
+    else:
+        return False
+
+
+def run_fred(params=None):
+    global fred_watcher
+
+    if not center.settings['fred_bin']:
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('runner', 'No FRED executable selected. Please go to Settings > Game settings and select one.'))
+        return
+
+    fred_path = os.path.join(center.settings['fs2_path'], center.settings['fred_bin'])
+    if not os.path.isfile(fred_path):
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('runner', 'The selected FRED executable was not found!' +
+                ' Please go to Settings > Game settings and select one.'))
+        return
+
+    if fred_watcher is None or not fred_watcher.is_alive():
+        fred_watcher = Fs2Watcher(params, fred=True)
         return True
     else:
         return False
@@ -305,3 +339,17 @@ def run_fs2_silent(params):
         return util.call([fs2_bin] + params, cwd=fs2_path, env=env)
     except OSError:
         return -129
+
+
+def stringify_cmdline(line):
+    result = []
+    for part in line:
+        if '"' in part:
+            raise Exception("It's impossible to pass double quotes to FSO!")
+
+        if ' ' in part:
+            part = '"%s"' % part
+
+        result.append(part)
+
+    return ' '.join(result)

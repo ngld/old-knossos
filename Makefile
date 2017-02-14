@@ -30,32 +30,49 @@ ifeq ($(UNAME),Darwin)
 	SED_I = sed -i ''
 endif
 
-.PHONY: run debug dist clean resources ui
+.PHONY: run debug dist clean update-trans resources ui
 
-run: resources ui
+run: locale/knossos.ts resources ui
 	$(PYTHON) knossos/__main__.py
 
-debug: resources ui
+debug: locale/knossos.ts resources ui
 	KN_DEBUG=1 $(PYTHON) knossos/__main__.py
 
-dist: resources ui
+dist: resources ui $(patsubst locale/knossos_%.ts,knossos/data/knossos_%.qm,$(wildcard locale/*.ts))
 	$(PYTHON) setup.py sdist bdist_wheel
 
 clean:
 	@# Delete all python bytecode files
 	find knossos -type f \( -name '*.pyc' -or -name '*.pyo' \) -delete
-	rm -f knossos/data/resources.rcc
+	rm -f knossos/data/resources.rcc knossos/data/*.qm ui/res.qrc
 
 	@# Keep the __init__.py but delete all other *.py files in knossos/ui.
 	find knossos/ui -name '__init__.py' -or -name '*.py' -delete
+
+update-trans: $(wildcard locale/knossos_*.ts)
 
 resources: knossos/data/resources.rcc
 
 ui: $(patsubst ui/%.ui,knossos/ui/%.py,$(UI_FILES))
 
-knossos/data/resources.rcc: $(RCC_FILES)
-	@./tools/common/run_helper.sh compile_resources
+ui/res.qrc: $(RCC_FILES)
+	@./tools/common/run_helper.sh gen_qrc > ui/res.qrc
+
+locale/knossos.ts: html/js/modlist.js html/modlist.html $(wildcard knossos/*.py) $(UI_FILES)
+	pylupdate5 $(wildcard knossos/*.py) -ts locale/_py.ts
+	$(PYTHON) ./tools/common/js_lupdate.py -o html/js/modlist_ts.js html/modlist.html html/js/modlist.js
+	lupdate html/js/modlist_ts.js $(UI_FILES) -ts locale/_ui.ts
+	lconvert -i locale/_py.ts locale/_ui.ts -o locale/knossos.ts
+
+locale/knossos_%.ts: locale/knossos.ts
+	lupdate -no-obsolete locale/knossos.ts -ts $@
+
+knossos/data/knossos_%.qm: locale/knossos_%.ts
+	lrelease -compress -removeidentical -markuntranslated '%' $< -qm $@
+
+knossos/data/resources.rcc: ui/res.qrc
+	rcc -binary ui/res.qrc -o knossos/data/resources.rcc
 
 knossos/ui/%.py: ui/%.ui
 	$(PYTHON) -mPyQt5.uic.pyuic -o $@ $<
-	@$(SED_I) -e 's#from PyQt5 import#from ..qt import#' -e '/^import resources.*/d' -e '/setContentsMargins(0, 0, 0, 0)/d' $@
+	@$(SED_I) -e 's#from PyQt5 import#from ..qt import#' -e '/^import res.*/d' -e '/setContentsMargins(0, 0, 0, 0)/d' $@

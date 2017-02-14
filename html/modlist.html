@@ -3,11 +3,10 @@
     <head>
         <meta charset="utf8">
         <title>Welcome</title>
-        <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
-        <link rel="stylesheet" type="text/css" href="css/font-awesome.min.css">
         <link rel="stylesheet" type="text/css" href="css/style.css">
         <script type="text/javascript" src="js/jquery.min.js"></script>
         <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
+        <script type="text/javascript" src="js/modlist_ts.js"></script>
         <script type="text/javascript" src="js/modlist.js"></script>
     </head>
     <body>
@@ -15,7 +14,50 @@
             Loading...
         </div>
 
-        <div id="mods"></div>
+        <div id="mods" class="container-fluid"></div>
+
+        <div data-tr id="welcome" class="hide info-page">
+            <h1>Welcome!</h1>
+
+            <p>It looks like you started Knossos for the first time.</p>
+            <p>
+                You can tell me where your FS2 installation is, I could install FS2 using the GOG installer
+                or maybe you want to install a Total Conversion?
+            </p>
+            <hr>
+
+            <p>
+                <a class="btn btn-primary" id="sel-fso">Select FS2 directory</a>
+            </p>
+            <p>
+                <a class="btn btn-primary" id="gog-install">Install FS2 using the GOG installer</a>
+            </p>
+            <p>
+                <a class="btn btn-primary" id="tc-install">Install a TC</a>
+            </p>
+
+            <p>
+                This launcher is still in development. Please visit
+                <a href="http://www.hard-light.net/forums/index.php?topic=93144.0" target="_blank">this HLP thread</a>
+                and let me know what you think, what didn't work and what you would like to change.
+            </p>
+            <p>-- ngld</p>
+        </div>
+
+        <div id="last-played" class="hide info-page">
+            <button class="btn btn-success run-btn">
+                <span data-tr>Play</span>
+                <i class="fa fa-play"></i>
+            </button> <br>
+
+            <h2 class="title"></h2>
+            <img class="mod-logo img-responsive">
+            <p class="desc"></p>
+        </div>
+
+        <div id="no-last-played" class="hide info-page">
+            <p class="lead"><span data-tr>You haven't played any mod, yet. (Or you uninstalled your last played mod.)</span></p>
+        </div>
 
         <div class="mod hide row" id="tpl-avail-mod">
             <div class="col-xs-6">
@@ -24,15 +66,16 @@
             
             <div class="col-xs-6">
                 <span class="title">Mod title</span>
-                <div class="actions">
-                    <button class="btn btn-success install-btn">
-                        Install
-                        <i class="fa fa-cloud-download"></i>
-                    </button>
-                    <button class="btn btn-info info-btn">
-                        <i class="fa fa-info-circle"></i>
-                    </button>
-                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-success install-btn">
+                    <span data-tr>Install</span>
+                    <i class="fa fa-cloud-download"></i>
+                </button>
+                <button class="btn btn-info info-btn">
+                    <i class="fa fa-info-circle"></i>
+                </button>
             </div>
         </div>
 
@@ -43,24 +86,28 @@
 
             <div class="col-xs-6">
                 <span class="title">Mod title</span>
-                <div class="actions">
-                    <button class="btn btn-success run-btn">
-                        Play
-                        <i class="fa fa-play"></i>
-                    </button>
-                    <button class="btn btn-default settings-btn">
-                        <i class="fa fa-cog"></i>
-                    </button>
-                    <button class="btn btn-danger del-btn">
-                        <i class="fa fa-times"></i>
-                    </button>
-                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-success run-btn">
+                    <span data-tr>Play</span>
+                    <i class="fa fa-play"></i>
+                </button>
+                <button class="btn btn-default fred-btn">
+                    FRED
+                </button>
+                <button class="btn btn-default settings-btn">
+                    <i class="fa fa-cog"></i>
+                </button>
+                <button class="btn btn-danger del-btn">
+                    <i class="fa fa-times"></i>
+                </button>
             </div>
         </div>
 
         <div class="mod hide" id="tpl-dl-mod">
             <span class="title">Mod title</span>
-            <div class="actions">
+            <div class="pull-right">
                 <button class="btn btn-danger abort-btn">
                     <i class="fa fa-times"></i>
                 </button>
@@ -83,7 +130,7 @@
                 <span class="title">Mod title</span>
                 <div class="actions">
                     <button class="btn btn-success update-btn">
-                        Update
+                        <span data-tr>Update</span>
                         <i class="fa fa-cloud-download"></i>
                     </button>
                 </div>

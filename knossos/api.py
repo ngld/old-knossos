@@ -1,4 +1,4 @@
-## Copyright 2015 Knossos authors, see NOTICE file
+## Copyright 2017 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -26,17 +26,19 @@ from . import uhf
 uhf(__name__)
 
 from . import center, util, repo, launcher, integration
-from .qt import QtWidgets
+from .qt import QtCore, QtWidgets
 from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, InstallTask, UninstallTask
-from .ui.select_list import Ui_Dialog as Ui_SelectList
+from .ui.select_list import Ui_SelectListDialog
 from .windows import HellWindow, ModSettingsWindow, ModInstallWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
-from .runner import run_fs2, run_fs2_silent
+from .runner import run_fs2, run_fred, run_fs2_silent, stringify_cmdline
 
-# TODO: Split this file up into smaller parts and move them into the respective modules (i.e. run_mod should be in runner).
+# TODO: Split this file up into smaller parts and move them into the respective modules
+# (i.e. run_mod should be in runner).
 
 ipc_block = None
+translate = QtCore.QCoreApplication.translate
 
 
 def save_settings():
@@ -56,14 +58,20 @@ def save_settings():
         pickle.dump(center.settings, stream, 2)
 
 
-def select_fs2_path(interact=True):
+def select_fs2_path(interact=True, tc_mode=False):
     if interact:
         if center.settings['fs2_path'] is None:
             path = os.path.expanduser('~')
         else:
             path = center.settings['fs2_path']
 
-        fs2_path = QtWidgets.QFileDialog.getExistingDirectory(center.main_win.win, 'Please select your FS2 directory.', path)
+        if tc_mode:
+            title = translate('api', 'Please select the installation directory.')
+        else:
+            title = translate('api', 'Please select your FS2 directory.')
+
+        fs2_path = QtWidgets.QFileDialog.getExistingDirectory(
+            center.main_win.win, title, path)
     else:
         fs2_path = center.settings['fs2_path']
 
@@ -78,7 +86,7 @@ def select_fs2_path(interact=True):
         elif len(bins) > 1:
             # Let the user choose.
 
-            select_win = util.init_ui(Ui_SelectList(), QtWidgets.QDialog(center.main_win.win))
+            select_win = util.init_ui(Ui_SelectListDialog(), QtWidgets.QDialog(center.main_win.win))
             has_default = False
             bins.sort()
 
@@ -249,7 +257,7 @@ def read_fso_cmdline():
     return cmdline
 
 
-def run_mod(mod):
+def run_mod(mod, fred=False):
     global installed
 
     if mod is None:
@@ -260,7 +268,8 @@ def run_mod(mod):
 
     def check_install():
         if not os.path.isdir(modpath) or mod.mid not in center.installed.mods:
-            QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Error', 'Failed to install "%s"! Check the log for more information.' % (mod.title))
+            QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('api', 'Error'),
+                translate('api', 'Failed to install "%s"! Check the log for more information.') % (mod.title))
         else:
             run_mod(mod)
 
@@ -268,7 +277,8 @@ def run_mod(mod):
         select_fs2_path()
 
         if center.settings['fs2_bin'] is None:
-            QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Error', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!')
+            QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('api', 'Error'),
+                translate('api', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!'))
             return
 
     try:
@@ -282,7 +292,7 @@ def run_mod(mod):
 
         msg = QtWidgets.QMessageBox()
         msg.setIcon(QtWidgets.QMessageBox.Question)
-        msg.setText('You don\'t have %s, yet. Shall I install it?' % (mod.title))
+        msg.setText(translate('api', 'You don\'t have %s, yet. Shall I install it?') % (mod.title))
         msg.setInformativeText('%s will be installed.' % (', '.join(titles)))
         msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
@@ -297,7 +307,8 @@ def run_mod(mod):
     try:
         mods = mod.get_mod_flag()
     except repo.ModNotFound as exc:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Sorry, I can\'t start this mod because its dependency "%s" is missing!' % exc.mid)
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('api', 'Sorry, I can\'t start this mod because its dependency "%s" is missing!') % exc.mid)
         return
 
     if mods is None:
@@ -328,14 +339,22 @@ def run_mod(mod):
 
     try:
         with open(path, 'w') as stream:
-            stream.write(' '.join([shlex.quote(p) for p in cmdline]))
+            stream.write(stringify_cmdline(cmdline))
     except:
         logging.exception('Failed to modify "%s". Not starting FS2!!', path)
 
-        QtWidgets.QMessageBox.critical(center.app.activeWindow(), 'Error', 'Failed to edit "%s"! I can\'t change the current mod!' % path)
+        QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('api', 'Error'),
+            translate('api', 'Failed to edit "%s"! I can\'t change the current mod!') % path)
     else:
         logging.info('Starting mod "%s" with cmdline "%s".', mod.title, cmdline)
-        run_fs2()
+
+        center.settings['last_played'] = mod.mid
+        save_settings()
+
+        if fred:
+            run_fred()
+        else:
+            run_fs2()
 
 
 def check_retail_files():
@@ -373,13 +392,13 @@ def is_fso_installed():
 
 def get_mod(mid, version=None):
     if center.mods is None:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'Hmm... I never got a mod list. Get a coder!')
+        QtWidgets.QMessageBox.critical(None, 'Knossos', translate('api', 'Hmm... I never got a mod list. Get a coder!'))
         return None
     else:
         try:
             return center.mods.query(mid, version)
         except ModNotFound:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Mod "%s" could not be found!' % mid)
+            QtWidgets.QMessageBox.critical(None, 'Knossos', translate('api', 'Mod "%s" could not be found!') % mid)
             return None
 
 
@@ -388,14 +407,14 @@ def uninstall_pkgs(pkgs, name=None, cb=None):
     titles = [pkg.name for pkg in pkgs if center.installed.is_installed(pkg)]
 
     if name is None:
-        name = 'these packages'
+        name = translate('api', 'these packages')
 
     msg = QtWidgets.QMessageBox()
     msg.setIcon(QtWidgets.QMessageBox.Question)
-    msg.setText('Do you really want to uninstall %s?' % name)
-    msg.setInformativeText('%s will be removed.' % (', '.join(titles)))
+    msg.setText(translate('api', 'Do you really want to uninstall %s?') % name)
+    msg.setInformativeText(translate('api', '%s will be removed.') % (', '.join(titles)))
     msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-    msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
+    msg.setDefaultButton(QtWidgets.QMessageBox.No)
 
     if msg.exec_() == QtWidgets.QMessageBox.Yes:
         task = UninstallTask(pkgs)
@@ -406,17 +425,6 @@ def uninstall_pkgs(pkgs, name=None, cb=None):
         return True
     else:
         return False
-
-
-def switch_ui_mode(nmode):
-    old_win = center.main_win
-    if nmode == 'hell':
-        center.main_win = HellWindow()
-    else:
-        logging.error('Unknown UI mode "%s"! (Maybe you tried to use a legacy UI...)' % nmode)
-
-    center.main_win.open()
-    old_win.close()
 
 
 #########
@@ -430,12 +438,13 @@ def install_scheme_handler(interactive=True):
     try:
         if integration.current.install_scheme_handler():
             if interactive:
-                QtWidgets.QMessageBox.information(None, 'Knossos', 'Done!')
+                QtWidgets.QMessageBox.information(None, 'Knossos', translate('api', 'Done!'))
             return
     except:
         logging.exception('Failed to install the scheme handler!')
 
-    QtWidgets.QMessageBox.critical(None, 'Knossos', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.')
+    QtWidgets.QMessageBox.critical(None, 'Knossos',
+        translate('api', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.'))
 
 
 def setup_ipc():
@@ -488,7 +497,8 @@ def handle_ipc(msg):
         if mod.mid not in center.installed.mods:
             ModInstallWindow(mod, pkgs)
         else:
-            QtWidgets.QMessageBox.information(None, 'Knossos', 'Mod "%s" is already installed!' % (mod.title))
+            QtWidgets.QMessageBox.information(None, 'Knossos',
+                translate('api.handle_ipc', 'Mod "%s" is already installed!') % (mod.title))
     elif msg[0] == 'settings':
         center.main_win.win.activateWindow()
 
@@ -502,11 +512,13 @@ def handle_ipc(msg):
                     name = msg[1]
                 else:
                     name = mod.title
-                QtWidgets.QMessageBox.information(None, 'Knossos', 'Mod "%s" is not yet installed!' % (name))
+                QtWidgets.QMessageBox.information(None, 'Knossos',
+                    translate('api.handle_ipc', 'Mod "%s" is not yet installed!') % (name))
             else:
                 ModSettingsWindow(mod)
     else:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', 'The action "%s" is unknown!' % (msg[0]))
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('api.handle_ipc', 'The action "%s" is unknown!') % (msg[0]))
 
 
 def _read_default_cmdline():
@@ -523,10 +535,10 @@ def enable_raven():
 
     from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
     from raven.handlers.logging import SentryHandler
-    from raven.conf import defaults
 
     if hasattr(sys, 'frozen'):
-        defaults.CA_BUNDLE = os.path.join(sys._MEIPASS, 'requests', 'cacert.pem')
+        from six.moves.urllib.parse import quote as urlquote
+        center.SENTRY_DSN += '?ca_certs=' + urlquote(os.path.join(sys._MEIPASS, 'requests', 'cacert.pem'))
 
     center.raven = Client(
         center.SENTRY_DSN,

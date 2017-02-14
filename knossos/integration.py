@@ -1,4 +1,4 @@
-## Copyright 2015 Knossos authors, see NOTICE file
+## Copyright 2017 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -17,19 +17,9 @@ from __future__ import absolute_import, print_function
 import sys
 import os
 import logging
-import ctypes
 import shlex
-import six
 
 from . import center, qt, launcher
-
-if qt.variant == 'PySide':
-    if six.PY2:
-        ctypes.pythonapi.PyCObject_AsVoidPtr.argtypes = [ctypes.py_object]
-        ctypes.pythonapi.PyCObject_AsVoidPtr.restype = ctypes.c_void_p
-    else:
-        ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object, ctypes.c_char_p]
-        ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
 
 
 class Integration(object):
@@ -47,7 +37,8 @@ class Integration(object):
         pass
 
     def annoy_user(self, activate=True):
-        pass
+        if center.main_win and activate:
+            center.app.alert(center.main_win, 3000)
 
     def install_scheme_handler(self):
         pass
@@ -105,20 +96,42 @@ class UnityIntegration(LinuxIntegration):
     launcher = None
 
     def __init__(self, Unity):
-        self.launcher = Unity.LauncherEntry.get_for_desktop_id('knossos.desktop')
+        try:
+            self.launcher = Unity.LauncherEntry.get_for_desktop_id('knossos.desktop')
+        except:
+            self.launcher = None
+            logging.exception('Failed to initialize LauncherEntry for Unity.')
 
     def show_progress(self, value):
-        self.launcher.set_property('progress_visible', True)
-        self.set_progress(value)
+        if self.launcher:
+            try:
+                self.launcher.set_property('progress_visible', True)
+                self.set_progress(value)
+            except:
+                logging.exception('Setting progress_visible for Unity failed!')
 
     def set_progress(self, value):
-        self.launcher.set_property('progress', value)
+        if self.launcher:
+            try:
+                self.launcher.set_property('progress', value)
+            except:
+                logging.exception('Setting progress for Unity failed!')
 
     def hide_progress(self):
-        self.launcher.set_property('progress_visible', False)
+        if self.launcher:
+            try:
+                self.launcher.set_property('progress_visible', False)
+            except:
+                logging.exception('Setting progress_visible for Unity failed!')
 
     def annoy_user(self, activate=True):
-        self.launcher.set_property('urgent', activate)
+        super(UnityIntegration, self).annoy_user(activate)
+
+        if self.launcher:
+            try:
+                self.launcher.set_property('urgent', activate)
+            except:
+                logging.exception('Setting urgent for Unity failed!')
 
 
 class WindowsIntegration(Integration):
@@ -139,13 +152,7 @@ class WindowsIntegration(Integration):
     def wid(self):
         win = center.main_win.win
         if win != self._win:
-            if qt.variant == 'PySide':
-                if six.PY2:
-                    self._hwnd = ctypes.pythonapi.PyCObject_AsVoidPtr(win.winId())
-                else:
-                    self._hwnd = ctypes.pythonapi.PyCapsule_GetPointer(win.winId(), None)
-            else:
-                self._hwnd = win.winId()
+            self._hwnd = win.winId()
             self._win = win
 
         return self._hwnd
@@ -159,9 +166,6 @@ class WindowsIntegration(Integration):
 
     def hide_progress(self):
         self.taskbar.SetProgressState(self.wid(), self.TBPF_NOPROGRESS)
-
-    def annoy_user(self, activate=True):
-        pass
 
     def install_scheme_handler(self):
         my_cmd = launcher.get_cmd()
@@ -208,6 +212,13 @@ def init():
             return
     elif sys.platform.startswith('linux'):
         try:
+            import gi
+            try:
+                if hasattr(gi, 'require_version'):
+                    gi.require_version('Unity', '6.0')
+            except:
+                logging.exception('Failed to specify Unity version.')
+
             from gi.repository import Unity
         except ImportError:
             # Can't find Unity.

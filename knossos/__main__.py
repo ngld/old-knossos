@@ -1,5 +1,5 @@
 #!/usr/bin/python
-## Copyright 2015 Knossos authors, see NOTICE file
+## Copyright 2017 Knossos authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -81,6 +81,43 @@ elif len(sys.argv) > 1 and sys.argv[1] == '--fso-config-path':
 
     clibs.init_sdl()
     print(clibs.get_config_path())
+elif len(sys.argv) > 1 and sys.argv[1] == '--lib-paths':
+    import json
+    from knossos import clibs, center
+
+    if len(sys.argv) > 3:
+        if sys.argv[2] == 'auto':
+            center.settings['sdl2_path'] = None
+        else:
+            center.settings['sdl2_path'] = sys.argv[2]
+
+        if sys.argv[3] == 'auto':
+            center.settings['openal_path'] = None
+        else:
+            center.settings['openal_path'] = sys.argv[3]
+
+    try:
+        clibs.init_sdl()
+    except:
+        clibs.sdl = None
+
+    try:
+        clibs.init_openal()
+    except:
+        clibs.acl = None
+
+    if center.settings['sdl2_path'] and clibs.sdl:
+        if clibs.sdl._name != center.settings['sdl2_path']:
+            clibs.sdl = None
+
+    if center.settings['openal_path'] and clibs.alc:
+        if clibs.alc._name != center.settings['openal_path']:
+            clibs.alc = None
+
+    print(json.dumps({
+        'sdl2': clibs.sdl._name if clibs.sdl else None,
+        'openal': clibs.alc._name if clibs.alc else None
+    }))
 else:
     from knossos import launcher
     launcher.main()
