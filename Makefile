@@ -30,7 +30,7 @@ ifeq ($(UNAME),Darwin)
 	SED_I = sed -i ''
 endif
 
-.PHONY: run debug dist clean update-trans resources ui
+.PHONY: run debug dist clean update-trans resources ui trans
 
 run: locale/knossos.ts resources ui
 	$(PYTHON) knossos/__main__.py
@@ -38,7 +38,7 @@ run: locale/knossos.ts resources ui
 debug: locale/knossos.ts resources ui
 	KN_DEBUG=1 $(PYTHON) knossos/__main__.py
 
-dist: resources ui $(patsubst locale/knossos_%.ts,knossos/data/knossos_%.qm,$(wildcard locale/*.ts))
+dist: trans resources ui
 	$(PYTHON) setup.py sdist bdist_wheel
 
 clean:
@@ -53,14 +53,18 @@ update-trans: $(wildcard locale/knossos_*.ts)
 
 resources: knossos/data/resources.rcc
 
+trans: html/js/modlist_ts.js $(patsubst locale/knossos_%.ts,knossos/data/knossos_%.qm,$(wildcard locale/*.ts))
+
 ui: $(patsubst ui/%.ui,knossos/ui/%.py,$(UI_FILES))
 
 ui/res.qrc: $(RCC_FILES)
 	@./tools/common/run_helper.sh gen_qrc > ui/res.qrc
 
-locale/knossos.ts: html/js/modlist.js html/modlist.html $(wildcard knossos/*.py) $(UI_FILES)
-	pylupdate5 $(wildcard knossos/*.py) -ts locale/_py.ts
+html/js/modlist_ts.js: html/js/modlist.js html/modlist.html
 	$(PYTHON) ./tools/common/js_lupdate.py -o html/js/modlist_ts.js html/modlist.html html/js/modlist.js
+
+locale/knossos.ts: html/js/modlist_ts.js $(wildcard knossos/*.py) $(UI_FILES)
+	pylupdate5 $(wildcard knossos/*.py) -ts locale/_py.ts
 	lupdate html/js/modlist_ts.js $(UI_FILES) -ts locale/_ui.ts
 	lconvert -i locale/_py.ts locale/_ui.ts -o locale/knossos.ts
 

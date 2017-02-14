@@ -357,7 +357,7 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(str)
     def openExternal(self, link):
-        QtGui.QDesktopServices.openUrl(link)
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(link))
 
 
 if QtWebChannel:

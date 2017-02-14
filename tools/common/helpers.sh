@@ -143,7 +143,7 @@ ensure_pyinstaller() {
 
 _cpr_add_files() {
     while read path; do
-        echo "<file>../$path</file>"
+        echo "<file alias=\"$path\">../$path</file>"
     done
 }
 
