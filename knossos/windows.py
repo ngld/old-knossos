@@ -930,7 +930,7 @@ class SettingsWindow(Window):
 
         net_speed.setCurrentIndex(index)
         net_ip_f.setText(net_ip)
-        net_port_f.setText(net_port)
+        net_port_f.setText(str(net_port))
 
     def write_config(self):
         config = self.config
