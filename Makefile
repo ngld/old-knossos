@@ -81,4 +81,4 @@ knossos/ui/%.py: ui/%.ui
 	$(PYTHON) -mPyQt5.uic.pyuic -o $@ $<
 	@$(SED_I) -e 's#from PyQt5 import#from ..qt import#' -e '/^import res.*/d' -e '/setContentsMargins(0, 0, 0, 0)/d' \
 		-e 's#from QtWebEngineWidgets import QWebEngineView#from ..qt import QtWebEngineWidgets#g' \
-		-e 's#QWebEngineView#QtWebEngineWidgets.QWebEngineView#g' $@
+		-e 's# QWebEngineView# QtWebEngineWidgets.QWebEngineView#g' $@
