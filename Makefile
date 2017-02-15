@@ -64,7 +64,7 @@ html/js/modlist_ts.js: html/js/modlist.js html/modlist.html
 	$(PYTHON) ./tools/common/js_lupdate.py -o html/js/modlist_ts.js html/modlist.html html/js/modlist.js
 
 locale/knossos.ts: html/js/modlist_ts.js $(wildcard knossos/*.py) $(UI_FILES)
-	pylupdate5 $(wildcard knossos/*.py) -ts locale/_py.ts
+	$(PYTHON) -mPyQt5.pylupdate_main $(wildcard knossos/*.py) -ts locale/_py.ts
 	lupdate html/js/modlist_ts.js $(UI_FILES) -ts locale/_ui.ts
 	lconvert -i locale/_py.ts locale/_ui.ts -o locale/knossos.ts
 
