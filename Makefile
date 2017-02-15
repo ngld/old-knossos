@@ -19,6 +19,10 @@ RCC_FILES = \
 UI_FILES = $(wildcard ui/*.ui)
 SED_I = sed -i
 PYTHON ?= python
+LUPDATE = lupdate
+LRELEASE = lrelease
+RCC = rcc
+
 PY3 := $(realpath $(shell which python3))
 ifneq ($(PY3),)
 	# Default to python3
@@ -32,10 +36,10 @@ endif
 
 .PHONY: run debug dist clean update-trans resources ui trans
 
-run: locale/knossos.ts resources ui
+run: html/js/modlist_ts.js resources ui
 	$(PYTHON) knossos/__main__.py
 
-debug: locale/knossos.ts resources ui
+debug: html/js/modlist_ts.js resources ui
 	KN_DEBUG=1 $(PYTHON) knossos/__main__.py
 
 dist: trans resources ui
@@ -44,7 +48,7 @@ dist: trans resources ui
 clean:
 	@# Delete all python bytecode files
 	find knossos -type f \( -name '*.pyc' -or -name '*.pyo' \) -delete
-	rm -f knossos/data/resources.rcc knossos/data/*.qm ui/res.qrc
+	rm -f knossos/data/resources.rcc knossos/data/*.qm html/js/modlist_ts.js ui/res.qrc
 
 	@# Keep the __init__.py but delete all other *.py files in knossos/ui.
 	find knossos/ui -name '__init__.py' -or -name '*.py' -delete
@@ -65,17 +69,16 @@ html/js/modlist_ts.js: html/js/modlist.js html/modlist.html
 
 locale/knossos.ts: html/js/modlist_ts.js $(wildcard knossos/*.py) $(UI_FILES)
 	$(PYTHON) -mPyQt5.pylupdate_main $(wildcard knossos/*.py) -ts locale/_py.ts
-	lupdate html/js/modlist_ts.js $(UI_FILES) -ts locale/_ui.ts
-	lconvert -i locale/_py.ts locale/_ui.ts -o locale/knossos.ts
+	$(LUPDATE) locale/_py.ts html/js/modlist_ts.js $(UI_FILES) -ts locale/_ui.ts
 
 locale/knossos_%.ts: locale/knossos.ts
-	lupdate -no-obsolete locale/knossos.ts -ts $@
+	$(LUPDATE) -no-obsolete locale/knossos.ts -ts $@
 
 knossos/data/knossos_%.qm: locale/knossos_%.ts
-	lrelease -compress -removeidentical -markuntranslated '%' $< -qm $@
+	$(LRELEASE) -compress -removeidentical -markuntranslated '%' $< -qm $@
 
 knossos/data/resources.rcc: ui/res.qrc
-	rcc -binary ui/res.qrc -o knossos/data/resources.rcc
+	$(RCC) -binary ui/res.qrc -o knossos/data/resources.rcc
 
 knossos/ui/%.py: ui/%.ui
 	$(PYTHON) -mPyQt5.uic.pyuic -o $@ $<
