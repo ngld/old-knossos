@@ -219,12 +219,16 @@ class Repo(object):
             raise ModNotFound('Mod "%s" wasn\'t found!' % (mid), mid)
 
         if spec is None and mid in self.pins:
-            spec = self.pins[mid]
+            spec = util.Spec.from_version(self.pins[mid])
 
         candidates = self.mods[mid]
         if spec is None:
             mod = candidates[0]
         else:
+            if isinstance(spec, semantic_version.Version):
+                logging.warning('Repo.query(): Expected Spec but got Version instead! (%s)' % repr(spec))
+                spec = util.Spec.from_version(spec)
+
             version = spec.select([mod.version for mod in candidates])
             if not version:
                 raise ModNotFound('Mod "%s" %s wasn\'t found!' % (mid, spec), mid, spec)
@@ -825,7 +829,7 @@ class InstalledMod(Mod):
         im_path = util.ipath(modpath)
 
         # Correct the casing of our folder if neccessary.
-        if im_path != modpath:
+        if self.folder not in ('', '.') and im_path != modpath:
             modpath = im_path
             self.folder = modpath[len(center.settings['fs2_path']):].lstrip('/\\')
 
