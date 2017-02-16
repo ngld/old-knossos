@@ -343,8 +343,15 @@ def get_lib_path(filename):
     global _LIB_CACHE
 
     if not _LIB_CACHE:
-        data = util.check_output(['ldconfig', '-p'], env={'LANG': 'C'}).splitlines()
         _LIB_CACHE = {}
+
+        try:
+            env = os.environ.copy()
+            env['LANG'] = 'C'
+            data = util.check_output(['ldconfig', '-p'], env=env).splitlines()
+        except subprocess.CalledProcessError:
+            logging.exception('Failed to run ldconfig!')
+            return None
 
         for line in data[1:]:
             m = LDCONF_RE.match(line)
