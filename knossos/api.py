@@ -29,7 +29,7 @@ from . import center, util, repo, launcher, integration
 from .qt import QtCore, QtWidgets
 from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, InstallTask, UninstallTask
 from .ui.select_list import Ui_SelectListDialog
-from .windows import HellWindow, ModSettingsWindow, ModInstallWindow
+from .windows import ModSettingsWindow, ModInstallWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
 from .runner import run_fs2, run_fred, run_fs2_silent, stringify_cmdline
@@ -173,7 +173,7 @@ def get_executables():
                 name = os.path.basename(app)
                 exes.append((name, os.path.join(name, 'Contents', 'MacOS', name[:-4])))
         else:
-            bins = glob.glob(os.path.join(fs2_path, 'fs2_open_*'))
+            bins = glob.glob(os.path.join(fs2_path, 'f*2_open_*'))
 
             for path in bins:
                 path = os.path.basename(path)
@@ -200,32 +200,42 @@ def get_cmdline(mod):
         return center.settings['cmdlines'].get('#default', [])[:]
 
 
-_profile_path = None
-def get_fso_profile_path():
-    global _profile_path
+def get_old_fso_profile_path():
+    if sys.platform.startswith('linux'):
+        leg_path = os.path.expanduser('~/.fs2_open')
+    elif sys.platform == 'darwin':
+        leg_path = os.path.expanduser('~/Library/FS2_Open')
+    else:
+        leg_path = center.settings['fs2_path']
 
-    if _profile_path is None:
+    return leg_path
+
+
+_new_profile_path = None
+def get_new_fso_profile_path():
+    global _new_profile_path
+
+    if _new_profile_path is None:
         try:
-            path = util.check_output(launcher.get_cmd(['--fso-config-path'])).strip()
+            _new_profile_path = util.check_output(launcher.get_cmd(['--fso-config-path'])).strip()
         except:
             logging.exception('Failed to retrieve FSO profile path from SDL!')
-            path = 'None'
+            _new_profile_path = 'None'
 
-        if sys.platform.startswith('linux'):
-            leg_path = os.path.expanduser('~/.fs2_open')
-        elif sys.platform == 'darwin':
-            leg_path = os.path.expanduser('~/Library/FS2_Open')
-        else:
-            leg_path = center.settings['fs2_path']
+    return _new_profile_path
 
-        if path in ('', 'None') or (not os.path.exists(path) and os.path.exists(leg_path)):
-            _profile_path = leg_path
-        else:
-            _profile_path = path
 
-        logging.info('Using profile path "%s".', _profile_path)
+def get_fso_profile_path():
+    path = get_new_fso_profile_path()
+    leg_path = get_old_fso_profile_path()
 
-    return _profile_path
+    if path in ('', 'None') or (not os.path.exists(os.path.join(path, 'fs2_open.ini')) and os.path.exists(leg_path)):
+        profile_path = leg_path
+    else:
+        profile_path = path
+
+    logging.info('Using profile path "%s".', profile_path)
+    return profile_path
 
 
 def read_fso_cmdline():

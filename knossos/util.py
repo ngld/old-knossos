@@ -115,6 +115,7 @@ class FlagsReader(object):
     _stream = None
     easy_flags = None
     flags = None
+    build_caps = None
 
     def __init__(self, stream):
         self._stream = stream
@@ -163,6 +164,24 @@ class FlagsReader(object):
                 self.flags[flag['type']] = []
 
             self.flags[flag['type']].append(flag)
+
+        self.build_caps = self.unpack('b')[0]
+
+    @property
+    def openal(self):
+        return self.build_caps & 1
+
+    @property
+    def no_d3d(self):
+        return self.build_caps & (1 << 1)
+
+    @property
+    def new_snd(self):
+        return self.build_caps & (1 << 2)
+
+    @property
+    def sdl(self):
+        return self.build_caps & (1 << 3)
 
 
 class ResizableSemaphore(object):
