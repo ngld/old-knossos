@@ -444,6 +444,7 @@ class SettingsWindow(Window):
         tab.build.activated.connect(self.save_build)
         tab.fredBuild.activated.connect(self.save_fred_build)
         tab.openLog.clicked.connect(self.show_fso_log)
+        tab.openConfigFolder.clicked.connect(self.show_fso_cfg_folder)
 
         self._tabs['fso_video'] = tab = util.init_ui(Ui_VideoSettingsForm(), QtWidgets.QWidget())
         self._tabs['fso_audio'] = tab = util.init_ui(Ui_AudioSettingsForm(), QtWidgets.QWidget())
@@ -1115,6 +1116,10 @@ class SettingsWindow(Window):
                 self.tr('Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?'))
         else:
             LogViewer(logpath)
+
+    def show_fso_cfg_folder(self):
+        path = api.get_fso_profile_path()
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl('file://' + path))
 
     def show_knossos_log(self):
         LogViewer(launcher.log_path)

@@ -85,6 +85,13 @@
    <item row="5" column="1">
     <widget class="QComboBox" name="fredBuild"/>
    </item>
+   <item row="7" column="1">
+    <widget class="QPushButton" name="openConfigFolder">
+     <property name="text">
+      <string>Open FS2's config folder</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>
