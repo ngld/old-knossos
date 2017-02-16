@@ -303,7 +303,7 @@ def run_mod(mod, fred=False):
         msg = QtWidgets.QMessageBox()
         msg.setIcon(QtWidgets.QMessageBox.Question)
         msg.setText(translate('api', 'You don\'t have %s, yet. Shall I install it?') % (mod.title))
-        msg.setInformativeText('%s will be installed.' % (', '.join(titles)))
+        msg.setInformativeText(translate('api', '%s will be installed.') % (', '.join(titles)))
         msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
 

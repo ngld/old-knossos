@@ -34,6 +34,7 @@ from threading import Condition, Event
 from collections import deque
 
 from . import center, progress
+from .qt import QtCore
 
 try:
     from PIL import Image
@@ -108,6 +109,7 @@ _HAS_TAR = None
 DL_POOL = None
 _DL_CANCEL = Event()
 _DL_CANCEL.clear()
+translate = QtCore.QCoreApplication.translate
 
 
 # See code/cmdline/cmdline.cpp (in the SCP source) for details on the data structure.
@@ -785,7 +787,7 @@ def human_list(items):
     elif len(items) == 1:
         return items[0]
     else:
-        return ', '.join(items[:-1]) + ' and ' + items[-1]
+        return ', '.join(items[:-1]) + translate('util.human_list', ' and ') + items[-1]
 
 
 def connect(sig, cb, *args):
