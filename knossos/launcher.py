@@ -215,7 +215,7 @@ def run_knossos():
 def handle_ipc_error():
     global app, ipc
 
-    logging.error('Failed to connect to main process!')
+    logging.warning('Failed to connect to main process!')
 
     if ipc is not None:
         ipc.clean()

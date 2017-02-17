@@ -548,7 +548,7 @@ def enable_raven():
 
     if hasattr(sys, 'frozen'):
         from six.moves.urllib.parse import quote as urlquote
-        center.SENTRY_DSN += '?ca_certs=' + urlquote(os.path.join(sys._MEIPASS, 'requests', 'cacert.pem'))
+        center.SENTRY_DSN += '&ca_certs=' + urlquote(os.path.join(sys._MEIPASS, 'requests', 'cacert.pem'))
 
     center.raven = Client(
         center.SENTRY_DSN,

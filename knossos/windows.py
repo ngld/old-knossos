@@ -202,7 +202,7 @@ class HellWindow(Window):
         self.check_fso()
 
     def check_fso(self, interactive=True):
-        if center.settings['fs2_path'] is not None:
+        if 'KN_WELCOME' not in os.environ and center.settings['fs2_path'] is not None:
             self.win.pageControls.setEnabled(True)
             self.win.updateButton.setEnabled(True)
             self.win.searchEdit.setEnabled(True)
