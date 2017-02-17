@@ -251,34 +251,34 @@ function init() {
         fs2mod.runMod($(this).data('modid'), '');
     });
 
-    $('#sel-fso').click(function (e) {
-        e.preventDefault();
-
-        fs2mod.selFs2path();
-    });
-
-    $('#gog-install').click(function (e) {
-        e.preventDefault();
-
-        fs2mod.runGogInstaller();
-    });
-
-    $('#tc-install').click(function (e) {
-        e.preventDefault();
-
-        fs2mod.enterTcMode();
-    });
-
-    $('a[target="_blank"]').click(function (e) {
-        e.preventDefault();
-
-        fs2mod.openExternal($(this).attr('href'));
-    });
-
     load_translations(function () {
         $('div[data-tr], span[data-tr]').each(function () {
             var $this = $(this);
             $this.html(tr_table[$this.html()]);
+        });
+
+        $('#sel-fso').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.selFs2path();
+        });
+
+        $('#gog-install').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.runGogInstaller();
+        });
+
+        $('#tc-install').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.enterTcMode();
+        });
+
+        $('a[target="_blank"]').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.openExternal($(this).attr('href'));
         });
     });
 
