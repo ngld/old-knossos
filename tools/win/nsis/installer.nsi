@@ -54,14 +54,6 @@ LangString DESC_desk_icon ${LANG_ENGLISH} "Creates a shortcut icon on your deskt
 LangString DESC_fso_support ${LANG_ENGLISH} "Allows you to open fso:// links with Knossos."
 LangString DESC_un_settings ${LANG_ENGLISH} "Removes all settings and cached files which were created by Knossos."
 
-Function .onVerifyInstDir
-    # Only allow empty directories or old installation directories.
-    ${If} ${FileExists} "$INSTDIR\*.*"
-    ${AndIfNot} ${FileExists} "$INSTDIR\Knossos.exe"
-        Abort
-    ${EndIf}
-FunctionEnd
-
 Section
     SetOutPath "$INSTDIR"
     WriteRegStr HKLM "Software\Knossos" "Install Dir" "$INSTDIR"
