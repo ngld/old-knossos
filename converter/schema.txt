@@ -13,7 +13,12 @@
             "notes": "...", // optional, these will be displayed during the installation.
             "folder": "<mod folder>", // optional, This folder will be created in the FS2 directory. default: mod ID
             "cmdline": "<flags>", // optional, allows the modder to specify a default cmdline for this mod
-            "submods": ["<ID1>", "..."], // optional
+            /*
+                optional, default: mod
+                Tells the client if this mod depends on retail files (mod), contains executables (engine) or is a
+                Total Conversion (tc).
+            */
+            "type": "<mod|tc|engine>",
             "packages": [ // optional
                 {
                     "name": "...", // required
@@ -141,12 +146,6 @@
                             "md5sum": "...",
                             "filesize": "<size in bytes>",
                             "urls": ["<URL1>", "<URL2>"], // The URLs are full URLs (they contain the filename).
-
-                            /* if is_archive */
-                                "contents": {
-                                    "<filename>": "<checksum>"
-                                }
-                            /* endif */
                         }
                     ],
                     "filelist": [
