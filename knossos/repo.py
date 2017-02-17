@@ -764,7 +764,7 @@ class InstalledMod(Mod):
         else:
             return None
 
-        mod.folder = os.path.basename(os.path.dirname(path))
+        mod.folder = os.path.dirname(path)[len(center.settings['fs2_path']):].lstrip('/\\')
         if mod.logo is not None and '://' not in mod.logo:
             mod.logo_path = os.path.join(os.path.dirname(path), mod.logo)
 

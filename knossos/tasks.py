@@ -25,6 +25,7 @@ import json
 import tempfile
 import threading
 import random
+import time
 import semantic_version
 
 from . import center, util, progress, repo, api
@@ -564,7 +565,18 @@ class InstallTask(progress.MultistepTask):
                         if not os.path.isdir(dparent):
                             os.makedirs(dparent)
 
-                        shutil.move(src_path, dest_path)
+                        tries = 3
+                        while tries > 0:
+                            try:
+                                shutil.move(src_path, dest_path)
+                            except OSError as e:
+                                logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
+                                tries -= 1
+
+                                if tries == 0:
+                                    raise
+                                else:
+                                    time.sleep(1)
                     except:
                         logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
                                           src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
@@ -667,7 +679,7 @@ class UninstallTask(progress.MultistepTask):
 
             my_files = (os.path.join(modpath, 'mod.json'), mod.logo_path)
             for path in my_files:
-                if os.path.isfile(path):
+                if path and os.path.isfile(path):
                     os.unlink(path)
 
             libs = os.path.join(modpath, '__k_plibs')
