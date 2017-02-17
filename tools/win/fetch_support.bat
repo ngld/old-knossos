@@ -16,6 +16,10 @@ if errorlevel 1 goto :error
 if exist py-env goto :skip_env
 
 echo Creating python environment...
+mkdir py-env
+mkdir py-env\Scripts
+py -3.5 -c "import sys, shutil;shutil.copyfile(sys.prefix + r'\vcruntime140.dll', r'py-env\Scripts\vcruntime140.dll')"
+
 py -3.5 -mvirtualenv py-env
 :: Make sure the python3.dll is in the right place
 py -3.5 -c "import sys, shutil;shutil.copyfile(sys.prefix + r'\python3.dll', r'py-env\Scripts\python3.dll')"
