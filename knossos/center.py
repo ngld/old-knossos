@@ -20,12 +20,12 @@ from .qt import QtCore
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.4.1'
+VERSION = '0.4.2'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
 NEB_API = 'https://fsnebula.org/api'
 DEBUG = os.environ.get('KN_DEBUG') == '1'
-SENTRY_DSN = 'https://77179552b41946488346a9a2d2669d74:f7b896367bd94f0ea960b8f0ee8b7a88@sentry.gruenprint.de/9'
+SENTRY_DSN = 'https://77179552b41946488346a9a2d2669d74:f7b896367bd94f0ea960b8f0ee8b7a88@sentry.gruenprint.de/9?timeout=5'
 
 LANGUAGES = {
     'en': 'English'

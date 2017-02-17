@@ -25,6 +25,7 @@ import json
 import tempfile
 import threading
 import random
+import time
 import semantic_version
 
 from . import center, util, progress, repo, api
@@ -357,7 +358,10 @@ class InstallTask(progress.MultistepTask):
             if self._cur_step == 1:
                 # Need to remove all those temporary directories.
                 for ar in self.get_results():
-                    shutil.rmtree(ar['tpath'])
+                    try:
+                        shutil.rmtree(ar['tpath'])
+                    except:
+                        logging.exception('Failed to remove "%s"!' % ar['tpath'])
         elif self._error:
             msg = self.tr(
                 'An error occured during the installation of a mod. It might be partially installed.\n' +
@@ -564,7 +568,21 @@ class InstallTask(progress.MultistepTask):
                         if not os.path.isdir(dparent):
                             os.makedirs(dparent)
 
-                        shutil.move(src_path, dest_path)
+                        # This move might fail on Windows with Permission Denied errors.
+                        # "[WinError 32] The process cannot access the file because it is being used by another process"
+                        # Just try it again several times to account of AV scanning and similar problems.
+                        tries = 5
+                        while tries > 0:
+                            try:
+                                shutil.move(src_path, dest_path)
+                            except Exception as e:
+                                logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
+                                tries -= 1
+
+                                if tries == 0:
+                                    raise
+                                else:
+                                    time.sleep(1)
                     except:
                         logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
                                           src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
@@ -605,7 +623,18 @@ class InstallTask(progress.MultistepTask):
                         if not os.path.isdir(dparent):
                             os.makedirs(dparent)
 
-                        shutil.move(arpath, dest_path)
+                        tries = 3
+                        while tries > 0:
+                            try:
+                                shutil.move(arpath, dest_path)
+                            except Exception as e:
+                                logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
+                                tries -= 1
+
+                                if tries == 0:
+                                    raise
+                                else:
+                                    time.sleep(1)
                     except:
                         logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
                                           arpath, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
@@ -660,29 +689,33 @@ class UninstallTask(progress.MultistepTask):
     def work2(self, mod):
         modpath = os.path.join(center.settings['fs2_path'], mod.folder)
 
-        if isinstance(mod, repo.IniMod):
-            shutil.rmtree(modpath)
-        elif len(mod.packages) == 0:
-            # Remove our files
+        try:
+            if isinstance(mod, repo.IniMod):
+                shutil.rmtree(modpath)
+            elif len(mod.packages) == 0:
+                # Remove our files
 
-            my_files = (os.path.join(modpath, 'mod.json'), mod.logo_path)
-            for path in my_files:
-                if os.path.isfile(path):
-                    os.unlink(path)
+                my_files = (os.path.join(modpath, 'mod.json'), mod.logo_path)
+                for path in my_files:
+                    if path and os.path.isfile(path):
+                        os.unlink(path)
 
-            libs = os.path.join(modpath, '__k_plibs')
-            if os.path.isdir(libs):
-                # Delete any symlinks before running shutil.rmtree().
-                for link in os.listdir(libs):
-                    item = os.path.join(libs, link)
-                    if os.path.islink(item):
-                        os.unlink(item)
+                libs = os.path.join(modpath, '__k_plibs')
+                if os.path.isdir(libs):
+                    # Delete any symlinks before running shutil.rmtree().
+                    for link in os.listdir(libs):
+                        item = os.path.join(libs, link)
+                        if os.path.islink(item):
+                            os.unlink(item)
 
-                shutil.rmtree(libs)
+                    shutil.rmtree(libs)
 
-            center.installed.del_mod(mod)
-        else:
-            mod.save()
+                center.installed.del_mod(mod)
+            else:
+                mod.save()
+        except:
+            logging.exception('Failed to uninstall mod from "%s"!' % modpath)
+            self._error = True
 
         # Remove empty directories.
         for path, dirs, files in os.walk(modpath, topdown=False):

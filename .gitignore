@@ -21,3 +21,6 @@ dist
 /ui/res.qrc
 /locale/_*.ts
 /html/js/modlist_ts.js
+
+# PyCharm / IntelliJ
+.idea

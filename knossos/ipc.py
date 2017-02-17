@@ -131,4 +131,4 @@ class IPCComm(QtCore.QObject):
         self._queue = []
 
     def _sock_error(self):
-        logging.error(self._socket.errorString())
+        logging.warning(self._socket.errorString())

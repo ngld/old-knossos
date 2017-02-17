@@ -202,7 +202,7 @@ class HellWindow(Window):
         self.check_fso()
 
     def check_fso(self, interactive=True):
-        if center.settings['fs2_path'] is not None:
+        if 'KN_WELCOME' not in os.environ and center.settings['fs2_path'] is not None:
             self.win.pageControls.setEnabled(True)
             self.win.updateButton.setEnabled(True)
             self.win.searchEdit.setEnabled(True)
@@ -444,6 +444,7 @@ class SettingsWindow(Window):
         tab.build.activated.connect(self.save_build)
         tab.fredBuild.activated.connect(self.save_fred_build)
         tab.openLog.clicked.connect(self.show_fso_log)
+        tab.openConfigFolder.clicked.connect(self.show_fso_cfg_folder)
 
         self._tabs['fso_video'] = tab = util.init_ui(Ui_VideoSettingsForm(), QtWidgets.QWidget())
         self._tabs['fso_audio'] = tab = util.init_ui(Ui_AudioSettingsForm(), QtWidgets.QWidget())
@@ -459,8 +460,12 @@ class SettingsWindow(Window):
         center.signals.fs2_path_changed.connect(self.read_config)
         center.signals.fs2_bin_changed.connect(tab.read_flags)
 
-        self.update_repo_list()
-        self.read_config()
+        try:
+            self.update_repo_list()
+            self.read_config()
+        except:
+            logging.exception('Failed to read the configuration!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The current configuration could not be read!'))
 
         self.show_tab('about')
         self.open()
@@ -715,14 +720,15 @@ class SettingsWindow(Window):
         # video settings
         if config.contains('VideocardFs2open'):
             rawres = config.value('VideocardFs2open')
-            res = rawres.split('(')[1].split(')')[0]
-            res_width, res_height = res.split('x')
-            depth = rawres.split(')x')[1][0:2]
 
             try:
+                res = rawres.split('(')[1].split(')')[0]
+                res_width, res_height = res.split('x')
+                depth = rawres.split(')x')[1][0:2]
+
                 res_width = int(res_width)
                 res_height = int(res_height)
-            except TypeError:
+            except (TypeError, IndexError):
                 res_width = res_height = None
         else:
             res_width = None
@@ -910,7 +916,7 @@ class SettingsWindow(Window):
         net_port_f = self._tabs['fso_network'].localPort
 
         net_type.clear()
-        net_type.addItems(['None', 'Dialup', 'Broadband/LAN'])
+        net_type.addItems([self.tr('None'), self.tr('Dialup'), self.tr('Broadband/LAN')])
         net_connections_read = {'none': 0, 'dialup': 1, 'LAN': 2}
         if net_connection in net_connections_read:
             index = net_connections_read[net_connection]
@@ -928,6 +934,9 @@ class SettingsWindow(Window):
         else:
             index = 5
 
+        if isinstance(net_port, int):
+            net_port = str(net_port)
+
         net_speed.setCurrentIndex(index)
         net_ip_f.setText(net_ip)
         net_port_f.setText(net_port)
@@ -941,93 +950,102 @@ class SettingsWindow(Window):
             config.beginGroup('Default')
             section = 'Default/'
 
-        # Getting ready to write key=value pairs to the ini file
-        # Set video
-        new_res_width, new_res_height = self._tabs['fso_video'].resolution.currentText().split(' (')[0].split(' x ')
-        new_depth = self._tabs['fso_video'].colorDepth.currentText().split('-')[0]
-        new_res = 'OGL -({0}x{1})x{2} bit'.format(new_res_width, new_res_height, new_depth)
-        config.setValue('VideocardFs2open', new_res)
+        try:
+            # Getting ready to write key=value pairs to the ini file
+            # Set video
+            new_res_width, new_res_height = self._tabs['fso_video'].resolution.currentText().split(' (')[0].split(' x ')
+            new_depth = self._tabs['fso_video'].colorDepth.currentText().split('-')[0]
+            new_res = 'OGL -({0}x{1})x{2} bit'.format(new_res_width, new_res_height, new_depth)
+            config.setValue('VideocardFs2open', new_res)
 
-        new_texfilter = self._tabs['fso_video'].textureFilter.currentIndex()
-        config.setValue('TextureFilter', new_texfilter)
+            new_texfilter = self._tabs['fso_video'].textureFilter.currentIndex()
+            config.setValue('TextureFilter', new_texfilter)
 
-        new_aa = self._tabs['fso_video'].antialiasing.currentText().split('x')[0]
-        config.setValue('OGL_AntiAliasSamples', new_aa)
+            new_aa = self._tabs['fso_video'].antialiasing.currentText().split('x')[0]
+            config.setValue('OGL_AntiAliasSamples', new_aa)
 
-        new_af = self._tabs['fso_video'].anisotropic.currentText().split('x')[0]
-        config.setValue('OGL_AnisotropicFilter', new_af)
+            new_af = self._tabs['fso_video'].anisotropic.currentText().split('x')[0]
+            config.setValue('OGL_AnisotropicFilter', new_af)
 
-        if not sys.platform.startswith('win'):
-            config.endGroup()
+            if not sys.platform.startswith('win'):
+                config.endGroup()
 
-        # sound
-        new_playback_device = self._tabs['fso_audio'].playbackDevice.currentText()
-        # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device.
-        # ^ So I do it the way openal is supposed to work, but I'm not sure FS2 really behaves that way
-        config.setValue('Sound/PlaybackDevice', new_playback_device)
-        config.setValue(section + 'SoundDeviceOAL', new_playback_device)
-        # ^ Useless according to SCP members, but wxlauncher does it anyway
+            # sound
+            new_playback_device = self._tabs['fso_audio'].playbackDevice.currentText()
+            # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device.
+            # ^ So I do it the way openal is supposed to work, but I'm not sure FS2 really behaves that way
+            config.setValue('Sound/PlaybackDevice', new_playback_device)
+            config.setValue(section + 'SoundDeviceOAL', new_playback_device)
+            # ^ Useless according to SCP members, but wxlauncher does it anyway
 
-        new_capture_device = self._tabs['fso_audio'].captureDevice.currentText()
-        config.setValue('Sound/CaptureDevice', new_capture_device)
+            new_capture_device = self._tabs['fso_audio'].captureDevice.currentText()
+            config.setValue('Sound/CaptureDevice', new_capture_device)
 
-        if self._tabs['fso_audio'].enableEFX.isChecked() is True:
-            new_enable_efx = 1
-        else:
-            new_enable_efx = 0
-        config.setValue('Sound/EnableEFX', new_enable_efx)
-
-        new_sample_rate = self._tabs['fso_audio'].sampleRate.value()
-        config.setValue('Sound/SampleRate', new_sample_rate)
-
-        # joystick
-        if self._tabs['fso_input'].controller.currentText() == self.tr('No Joystick'):
-            new_joystick_id = 99999
-        else:
-            new_joystick_id = self._tabs['fso_input'].controller.currentIndex() - 1
-        config.setValue(section + 'CurrentJoystick', new_joystick_id)
-
-        # keyboard
-        if sys.platform.startswith('linux'):
-            key_layout = self._tabs['fso_input'].keyLayout.currentIndex()
-            if key_layout == 0:
-                key_layout = 'default'
+            if self._tabs['fso_audio'].enableEFX.isChecked() is True:
+                new_enable_efx = 1
             else:
-                key_layout = self._tabs['fso_input'].keyLayout.itemText(key_layout)
+                new_enable_efx = 0
+            config.setValue('Sound/EnableEFX', new_enable_efx)
 
-            center.settings['keyboard_layout'] = key_layout
-            center.settings['keyboard_setxkbmap'] = self._tabs['fso_input'].useSetxkbmap.isChecked()
+            new_sample_rate = self._tabs['fso_audio'].sampleRate.value()
+            config.setValue('Sound/SampleRate', new_sample_rate)
 
-        # networking
-        net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
-        new_net_connection = net_types[self._tabs['fso_network'].connectionType.currentIndex()]
-        config.setValue(section + 'NetworkConnection', new_net_connection)
+            # joystick
+            if self._tabs['fso_input'].controller.currentText() == self.tr('No Joystick'):
+                new_joystick_id = 99999
+            else:
+                new_joystick_id = self._tabs['fso_input'].controller.currentIndex() - 1
+            config.setValue(section + 'CurrentJoystick', new_joystick_id)
 
-        net_speeds = {0: 'none', 1: 'Slow', 2: '56K', 3: 'ISDN', 4: 'Cable', 5: 'Fast'}
-        new_net_speed = net_speeds[self._tabs['fso_network'].connectionSpeed.currentIndex()]
-        config.setValue(section + 'ConnectionSpeed', new_net_speed)
+            # keyboard
+            if sys.platform.startswith('linux'):
+                key_layout = self._tabs['fso_input'].keyLayout.currentIndex()
+                if key_layout == 0:
+                    key_layout = 'default'
+                else:
+                    key_layout = self._tabs['fso_input'].keyLayout.itemText(key_layout)
 
-        new_net_ip = self._tabs['fso_network'].forceAddress.text()
-        if new_net_ip == '...':
-            new_net_ip = ''
+                center.settings['keyboard_layout'] = key_layout
+                center.settings['keyboard_setxkbmap'] = self._tabs['fso_input'].useSetxkbmap.isChecked()
 
-        if new_net_ip == '':
-            config.remove('Network/CustomIP')
-        else:
-            config.setValue('Network/CustomIP', new_net_ip)
+            # networking
+            net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
+            new_net_connection = net_types[self._tabs['fso_network'].connectionType.currentIndex()]
+            config.setValue(section + 'NetworkConnection', new_net_connection)
 
-        new_net_port = self._tabs['fso_network'].localPort.text()
-        if new_net_port == '0':
-            new_net_port = ''
+            net_speeds = {0: 'none', 1: 'Slow', 2: '56K', 3: 'ISDN', 4: 'Cable', 5: 'Fast'}
+            new_net_speed = net_speeds[self._tabs['fso_network'].connectionSpeed.currentIndex()]
+            config.setValue(section + 'ConnectionSpeed', new_net_speed)
 
-        if new_net_port == '':
-            config.remove(section + 'ForcePort')
-        else:
-            config.setValue(section + 'ForcePort', int(new_net_port))
+            new_net_ip = self._tabs['fso_network'].forceAddress.text()
+            if new_net_ip == '...':
+                new_net_ip = ''
 
-        # Save the new configuration.
-        config.sync()
-        self._tabs['fso_flags'].save()
+            if new_net_ip == '':
+                config.remove('Network/CustomIP')
+            else:
+                config.setValue('Network/CustomIP', new_net_ip)
+
+            new_net_port = self._tabs['fso_network'].localPort.text()
+            if new_net_port == '0':
+                new_net_port = ''
+            else:
+                try:
+                    new_net_port = int(new_net_port)
+                except TypeError:
+                    new_net_port = ''
+
+            if new_net_port == '':
+                config.remove(section + 'ForcePort')
+            else:
+                config.setValue(section + 'ForcePort', new_net_port)
+
+            # Save the new configuration.
+            config.sync()
+            self._tabs['fso_flags'].save()
+        except:
+            logging.exception('Failed to save the configuration!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save the configuration!'))
 
         tab = self._tabs['lib_paths']
         sdl_path = tab.sdlPath.text()
@@ -1115,6 +1133,10 @@ class SettingsWindow(Window):
                 self.tr('Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?'))
         else:
             LogViewer(logpath)
+
+    def show_fso_cfg_folder(self):
+        path = api.get_fso_profile_path()
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl('file://' + path))
 
     def show_knossos_log(self):
         LogViewer(launcher.log_path)

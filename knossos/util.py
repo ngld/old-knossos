@@ -34,6 +34,7 @@ from threading import Condition, Event
 from collections import deque
 
 from . import center, progress
+from .qt import QtCore
 
 try:
     from PIL import Image
@@ -108,6 +109,7 @@ _HAS_TAR = None
 DL_POOL = None
 _DL_CANCEL = Event()
 _DL_CANCEL.clear()
+translate = QtCore.QCoreApplication.translate
 
 
 # See code/cmdline/cmdline.cpp (in the SCP source) for details on the data structure.
@@ -115,6 +117,7 @@ class FlagsReader(object):
     _stream = None
     easy_flags = None
     flags = None
+    build_caps = None
 
     def __init__(self, stream):
         self._stream = stream
@@ -163,6 +166,24 @@ class FlagsReader(object):
                 self.flags[flag['type']] = []
 
             self.flags[flag['type']].append(flag)
+
+        self.build_caps = self.unpack('b')[0]
+
+    @property
+    def openal(self):
+        return self.build_caps & 1
+
+    @property
+    def no_d3d(self):
+        return self.build_caps & (1 << 1)
+
+    @property
+    def new_snd(self):
+        return self.build_caps & (1 << 2)
+
+    @property
+    def sdl(self):
+        return self.build_caps & (1 << 3)
 
 
 class ResizableSemaphore(object):
@@ -766,7 +787,7 @@ def human_list(items):
     elif len(items) == 1:
         return items[0]
     else:
-        return ', '.join(items[:-1]) + ' and ' + items[-1]
+        return ', '.join(items[:-1]) + translate('util.human_list', ' and ') + items[-1]
 
 
 def connect(sig, cb, *args):

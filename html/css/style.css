@@ -41,6 +41,14 @@
     padding: 0 10px;
 }
 
+.mod .top-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+
+    padding: 0 10px;
+}
+
 .progress-bar.simple {
     -webkit-transition: width 0s;
          -o-transition: width 0s;

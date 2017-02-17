@@ -26,7 +26,7 @@ import stat
 import shutil
 import six
 
-from . import center, util
+from . import center, util, api
 from .qt import QtCore, QtWidgets
 
 # TODO: What happens if a SONAME contains a space?
@@ -112,6 +112,9 @@ class Fs2Watcher(threading.Thread):
         if center.settings['keyboard_setxkbmap']:
             self.set_us_layout()
 
+        if not self._check_profile_migration():
+            self.failed_msg(translate('runner', 'Failed to migrate your profile!'))
+
         logging.debug('Launching FS2: %s', [fs2_bin] + self._params)
 
         if sys.platform.startswith('win'):
@@ -191,6 +194,109 @@ class Fs2Watcher(threading.Thread):
 
         util.call(['setxkbmap', '-layout', 'us'])
 
+    def _check_profile_migration(self):
+        if api.get_fso_flags().sdl:
+            old_path = api.get_old_fso_profile_path()
+            cur_path = api.get_fso_profile_path()
+
+            if cur_path == old_path:
+                # Need to migrate (https://github.com/scp-fs2open/wxLauncher/blob/56b50de7c22ffbea34fe2ccb7a8686b005ced50e/code/global/Compatibility.cpp#L86)
+                new_path = api.get_new_fso_profile_path()
+                if new_path == 'None':
+                    return False
+
+                logging.info('Copying pilots from old path to new path...')
+
+                try:
+                    shutil.copytree(os.path.join(old_path, 'data', 'players'), os.path.join(new_path, 'data', 'players'))
+                except:
+                    logging.exception('Failed to copy pilot files!')
+                    return False
+
+                if sys.platform == 'win32':
+                    # Read the registry and write the values to the new fs2_open.ini
+                    logging.info('Writing registry values to fs2_open.ini...')
+
+                    old_config = QtCore.QSettings(r'HKEY_LOCAL_MACHINE\Software\Volition\Freespace2', QtCore.QSettings.NativeFormat)
+                    new_config = QtCore.QSettings(os.path.join(new_path, 'fs2_open.ini'), QtCore.QSettings.IniFormat)
+
+                    new_config.beginGroup('Default')
+                    for k in old_config.childKeys():
+                        new_config.setValue(k, old_config.value(k))
+
+                    new_config.endGroup()
+
+                    for g in old_config.childGroups():
+                        new_config.beginGroup(g)
+                        old_config.beginGroup(g)
+
+                        for k in old_config.childKeys():
+                            new_config.setValue(k, old_config.value(k))
+
+                        new_config.endGroup()
+                        old_config.endGroup()
+                else:
+                    logging.info('Copying fs2_open.ini...')
+
+                    try:
+                        shutil.copyfile(os.path.join(old_path, 'fs2_open.ini'), os.path.join(new_path, 'fs2_open.ini'))
+                    except:
+                        logging.exception('Failed to copy config file!')
+                        return False
+
+            return True
+        else:
+            new_path = api.get_new_fso_profile_path()
+            cur_path = api.get_fso_profile_path()
+
+            if cur_path == new_path:
+                # Need to update the old path
+                logging.warning('Updating / creating old configuration because the selected build doesn\'t support ' +
+                    'the new location.')
+
+                old_path = api.get_old_fso_profile_path()
+                if old_path == 'None':
+                    return False
+
+                logging.info('Copying pilots from new path to old path...')
+                try:
+                    shutil.copytree(os.path.join(new_path, 'data', 'players'), os.path.join(old_path, 'data', 'players'))
+                except:
+                    logging.exception('Failed to copy pilot files!')
+                    return False
+
+                if sys.platform == 'win32':
+                    # Write the fs2_open.ini values to the registy
+                    logging.info('Writing fs2_open.ini values to registry...')
+
+                    old_config = QtCore.QSettings(r'HKEY_LOCAL_MACHINE\Software\Volition\Freespace2', QtCore.QSettings.NativeFormat)
+                    new_config = QtCore.QSettings(os.path.join(old_path, 'fs2_open.ini'), QtCore.QSettings.IniFormat)
+
+                    new_config.beginGroup('Default')
+                    for k in new_config.childKeys():
+                        old_config.setValue(k, new_config.value(k))
+
+                    new_config.endGroup()
+
+                    for g in new_config.childGroups():
+                        new_config.beginGroup(g)
+                        old_config.beginGroup(g)
+
+                        for k in new_config.childKeys():
+                            old_config.setValue(k, new_config.value(k))
+
+                        new_config.endGroup()
+                        old_config.endGroup()
+                else:
+                    logging.info('Copying fs2_open.ini from new path to old path...')
+                    try:
+                        shutil.copyfile(os.path.join(new_path, 'fs2_open.ini'), os.path.join(old_path, 'fs2_open.ini'))
+                    except:
+                        logging.exception('Failed to copy config file!')
+                        return False
+
+            return True
+
     def cleanup(self, fs2_bin, old_path=None):
         if self._key_layout is not None:
             util.call(['setxkbmap', '-layout', self._key_layout])
@@ -237,8 +343,15 @@ def get_lib_path(filename):
     global _LIB_CACHE
 
     if not _LIB_CACHE:
-        data = util.check_output(['ldconfig', '-p'], env={'LANG': 'C'}).splitlines()
         _LIB_CACHE = {}
+
+        try:
+            env = os.environ.copy()
+            env['LANG'] = 'C'
+            data = util.check_output(['ldconfig', '-p'], env=env).splitlines()
+        except subprocess.CalledProcessError:
+            logging.exception('Failed to run ldconfig!')
+            return None
 
         for line in data[1:]:
             m = LDCONF_RE.match(line)
