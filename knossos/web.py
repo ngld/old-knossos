@@ -14,6 +14,8 @@
 
 from __future__ import absolute_import, print_function
 
+import sys
+import os.path
 import logging
 import re
 import semantic_version
@@ -96,7 +98,16 @@ class WebBridge(QtCore.QObject):
             page.setWebChannel(channel)
             channel.registerObject('fs2mod', self)
 
-            webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
+            if '-dev' in center.VERSION:
+                link = './html/index.html'
+                if not hasattr(sys, 'frozen'):
+                    link = '.' + link
+
+                link = 'file://' + os.path.abspath(link)
+            else:
+                link = 'qrc:///html/index.html'
+
+            webView.load(QtCore.QUrl(link))
 
     @QtCore.Slot()
     def finishInit(self):
@@ -378,7 +389,16 @@ else:
             frame = webView.page().mainFrame()
             frame.javaScriptWindowObjectCleared.connect(self.insert_bridge)
 
-            webView.load(QtCore.QUrl('qrc:///html/modlist.html'))
+            if '-dev' in center.VERSION:
+                link = './html/index.html'
+                if not hasattr(sys, 'frozen'):
+                    link = '.' + link
+
+                link = 'file://' + os.path.abspath(link)
+            else:
+                link = 'qrc:///html/index.html'
+
+            webView.load(QtCore.QUrl(link))
 
         def insert_bridge(self):
             frame = self._view.page().mainFrame()

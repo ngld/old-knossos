@@ -1029,10 +1029,10 @@ class SettingsWindow(Window):
             new_net_port = self._tabs['fso_network'].localPort.text()
             if new_net_port == '0':
                 new_net_port = ''
-            else:
+            elif new_net_port != '':
                 try:
                     new_net_port = int(new_net_port)
-                except TypeError:
+                except ValueError:
                     new_net_port = ''
 
             if new_net_port == '':
