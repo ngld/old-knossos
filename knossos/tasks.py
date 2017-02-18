@@ -575,6 +575,7 @@ class InstallTask(progress.MultistepTask):
                         while tries > 0:
                             try:
                                 shutil.move(src_path, dest_path)
+                                break
                             except Exception as e:
                                 logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
                                 tries -= 1
@@ -627,6 +628,7 @@ class InstallTask(progress.MultistepTask):
                         while tries > 0:
                             try:
                                 shutil.move(arpath, dest_path)
+                                break
                             except Exception as e:
                                 logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
                                 tries -= 1
