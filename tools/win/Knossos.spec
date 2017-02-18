@@ -82,7 +82,7 @@ a = Analysis(['../../knossos/__main__.py'],
 idx = []
 for i, item in enumerate(a.binaries):
     fn = item[0].lower()
-    if fn.startswith(('ole', 'user32', 'msvcp')):
+    if fn.startswith(('ole', 'user32')):
         idx.append(i)
 
 for i in reversed(idx):
