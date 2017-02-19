@@ -26,7 +26,7 @@ function render_row(mvs, type) {
         row.find('.info-btn').click(function (e) {
             e.preventDefault();
 
-            fs2mod.showInfo(mod.id, mod.version);
+            fs2mod.showAvailableDetails(mod.id, mod.version);
         });
     } else if(type == 'installed') {
         row.html($('#tpl-installed-mod').html());
@@ -44,7 +44,7 @@ function render_row(mvs, type) {
         row.find('.settings-btn').click(function (e) {
             e.preventDefault();
 
-            fs2mod.showSettings(mod.id, mod.version);
+            fs2mod.showInstalledDetails(mod.id, mod.version);
         });
         row.find('.del-btn').click(function (e) {
             e.preventDefault();
@@ -79,6 +79,9 @@ function update_mods(mods, type) {
     $('#mods').show();
     $('.info-page').hide();
 
+    $('#tab-bar .btn').removeClass('btn-primary').addClass('btn-default');
+    $('#' + type + '-tab').removeClass('btn-default').addClass('btn-primary');
+
     if(type == 'progress') {
         progress_visible = true;
         show_progress();
@@ -100,14 +103,12 @@ function update_mods(mods, type) {
 
     names.forEach(function (item) {
         var mod = mods[item[0]];
-        console.log(mod);
         mod_list.append(render_row(mod, type));
     });
 }
 
 function display_last(mod) {
-    $('#loading, .info-page').hide();
-    $('#mods').hide();
+    $('#loading, .info-page, #mods').hide();
 
     var cont = $('#last-played');
     if(!mod) {
@@ -131,6 +132,18 @@ function display_last(mod) {
     desc.html(desc.html().replace(/\n/g, '<br>'));
 
     cont.show();
+}
+
+function display_mod_details(mod) {
+    $('#details-box').text(js_beautify(JSON.stringify(mod)));
+
+    $('#details-page *[data-field]').each(function () {
+        var $this = $(this);
+        $this.text(mod[$this.attr('data-field')]);
+    });
+
+    $('#mods, #tab-bar').hide();
+    $('#details-page, #details-tab-bar').show();
 }
 
 function _render_task(id, info) {
@@ -280,10 +293,46 @@ function init() {
 
             fs2mod.openExternal($(this).attr('href'));
         });
+
+        $('#update-list').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.fetchModlist();
+        });
+
+        $('#settings-btn').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.showSettings('', '');
+        });
+
+        $('#installed-tab').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.showTab('installed');
+        });
+
+        $('#available-tab').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.showTab('available');
+        });
+
+        $('#search-field').keyup(function (e) {
+            fs2mod.triggerSearch($(this).val());
+        });
+
+        $('#details-exit').click(function (e) {
+            e.preventDefault();
+
+            $('#details-tab-bar, #details-page').hide();
+            $('#tab-bar, #mods').show();
+        });
     });
 
     fs2mod.showWelcome.connect(show_welcome);
     fs2mod.showLastPlayed.connect(display_last);
+    fs2mod.showDetailsPage.connect(display_mod_details);
     fs2mod.updateModlist.connect(update_mods);
     fs2mod.taskStarted.connect(add_task);
     fs2mod.taskProgress.connect(update_progress);

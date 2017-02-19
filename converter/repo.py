@@ -16,6 +16,7 @@ import os
 import json
 import re
 import logging
+from datetime import datetime
 import semantic_version
 
 from knossos.util import pjoin, merge_dicts
@@ -42,10 +43,10 @@ class RepoConf(object):
             content = json.load(stream)
 
         self.path = path
-        
+
         self.includes = content.get('includes', [])
         self.remote_includes = content.get('remote_includes', [])
-        
+
         if 'mods' not in content:
             if 'id' in content and 'title' in content and 'packages' in content:
                 content = {'mods': [content]}
@@ -97,7 +98,7 @@ class RepoConf(object):
 
         if pretty:
             content['mods'].sort(key=lambda i: i['id'])
-        
+
         with open(path, 'w') as stream:
             if pretty:
                 json.dump(content, stream, indent=4)
@@ -122,14 +123,21 @@ class Mod(object):
     version = None
     folder = None
     logo = ''
+    tile = ''
     description = ''
     notes = ''
     cmdline = ''
-    submods = None
+    release_thread = None
+    videos = None
+    first_release = None
+    last_update = None
     actions = None
     packages = None
 
-    _fields = ('id', 'title', 'type', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
+    _fields = (
+        'id', 'title', 'type', 'version', 'folder', 'cmdline', 'logo', 'tile', 'description', 'notes',
+        'release_thread', 'videos', 'first_release', 'last_update', 'actions', 'packages'
+    )
     _req = ('id', 'title', 'version')
 
     def __init__(self, values=None, repo=None):
@@ -163,9 +171,13 @@ class Mod(object):
         self.folder = values.get('folder', self.mid).strip('/')  # make sure we have a relative path
         self.cmdline = values.get('cmdline', '')
         self.logo = values.get('logo', None)
+        self.tile = values.get('tile', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
-        self.submods = values.get('submods', [])
+        self.release_thread = values.get('release_thread', None)
+        self.videos = values.get('videos', [])
+        self.first_release = values.get('first_release', None)
+        self.last_update = values.get('last_update', None)
         self.packages = [Package(pkg, self) for pkg in values.get('packages', [])]
         self.actions = values.get('actions', [])
 
@@ -179,6 +191,24 @@ class Mod(object):
             logging.error('Failed to parse version for Mod "%s"! (%s)', self.title, str(exc))
             self._valid = False
             return
+
+        if self.first_release:
+            try:
+                self.first_release = datetime.strptime(self.first_release, '%Y-%m-%d')
+            except ValueError:
+                logging.error('Invalid first release date!')
+                self._valid = False
+
+        if self.last_update:
+            try:
+                self.last_update = datetime.strptime(self.last_update, '%Y-%m-%d')
+            except ValueError:
+                logging.error('Invalid last update date!')
+                self._valid = False
+
+        if not isinstance(self.videos, (list, tuple)):
+            logging.error('Invalid value for videos!')
+            self._valid = False
 
         # Enforce relative paths
         for act in self.actions:
@@ -213,7 +243,7 @@ class Mod(object):
                 logging.error('The action type "%s" for mod "%s" is unknown!', act['type'], self.title)
                 self._valid = False
                 continue
-            
+
             if 'dest' in act:
                 act['dest'] = act['dest'].lstrip('/')
 
@@ -226,9 +256,13 @@ class Mod(object):
             'folder': self.folder,
             'cmdline': self.cmdline,
             'logo': self.logo,
+            'tile': self.tile,
             'description': self.description,
             'notes': self.notes,
-            'submods': self.submods,
+            'first_release': self.first_release,
+            'last_update': self.last_update,
+            'release_thread': self.release_thread,
+            'videos': self.videos,
             'actions': self.actions,
             'packages': [pkg.get() for pkg in self.packages]
         }
@@ -265,7 +299,7 @@ class Mod(object):
 
         self.apply_actions(fs)
         filelist = fs.get_tree()
-        
+
         for name, item in filelist.items():
             pkg_filelist[item[0]].append({
                 'filename': name,
@@ -295,9 +329,6 @@ class Mod(object):
             elif act['type'] == 'mkdir':
                 for item in paths:
                     fs.makedirs(item)
-
-    def get_submods(self):
-        return [self._repo.query(mid) for mid in self.submods]
 
     def get_files(self):
         files = {}
@@ -504,7 +535,6 @@ class PkgFile(object):
             'is_archive': self.is_archive,
             'dest': self.dest,
             'urls': self.urls,
-            #'contents': self.contents,
             'md5sum': self.md5sum,
             'filesize': self.filesize
         }

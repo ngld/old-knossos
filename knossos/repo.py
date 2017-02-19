@@ -23,6 +23,7 @@ import shutil
 import hashlib
 import semantic_version
 import six
+from datetime import datetime
 from . import center, util
 
 # You have to fill this using https://github.com/workhorsy/py-cpuinfo .
@@ -263,11 +264,7 @@ class Repo(object):
             return False
 
     def get_tree(self):
-        submod_ids = []
-        for mid, mod in self.mods.items():
-            submod_ids.extend(mod[0].submods)
-
-        roots = set(self.mods.keys()) - set(submod_ids)
+        roots = set(self.mods.keys())
         return [self.mods[mid][0] for mid in roots]
 
     def get_list(self):
@@ -345,13 +342,19 @@ class Mod(object):
     cmdline = ''
     logo = None
     logo_path = None
+    tile = None
+    tile_path = None
     description = ''
     notes = ''
-    submods = None
+    release_thread = None
+    videos = None
+    first_release = None
+    last_update = None
     actions = None
     packages = None
 
-    __fields__ = ('mid', 'title', 'type', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
+    __fields__ = ('mid', 'title', 'type', 'version', 'folder', 'cmdline', 'logo', 'tile',
+        'description', 'notes', 'actions', 'packages')
 
     def __init__(self, values=None, repo=None):
         self.actions = []
@@ -374,9 +377,13 @@ class Mod(object):
         self.folder = values.get('folder', self.mid).strip('/')  # make sure we have a relative path
         self.cmdline = values.get('cmdline', '')
         self.logo = values.get('logo', None)
+        self.tile = values.get('tile', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
-        self.submods = values.get('submods', [])
+        self.release_thread = values.get('release_thread', None)
+        self.videos = values.get('videos', [])
+        self.first_release = values.get('first_release', None)
+        self.last_update = values.get('last_update', None)
         self.actions = values.get('actions', [])
 
         self.packages = []
@@ -386,11 +393,24 @@ class Mod(object):
                 if pkg.check_env():
                     self.packages.append(pkg)
 
-        if self._repo is not None and self._repo.base is not None and self.logo is not None:
-            if '://' in self._repo.base:
-                self.logo = util.url_join(self._repo.base, self.logo)
-            else:
-                self.logo = os.path.abspath(os.path.join(self._repo.base, self.logo))
+        if self._repo is not None and self._repo.base is not None:
+            if self.logo is not None:
+                if '://' in self._repo.base:
+                    self.logo = util.url_join(self._repo.base, self.logo)
+                else:
+                    self.logo = os.path.abspath(os.path.join(self._repo.base, self.logo))
+
+            if self.tile is not None:
+                if '://' in self._repo.base:
+                    self.tile = util.url_join(self._repo.base, self.tile)
+                else:
+                    self.tile = os.path.abspath(os.path.join(self._repo.base, self.tile))
+
+        if self.first_release:
+            self.first_release = datetime.strptime(self.first_release, '%Y-%m-%d')
+
+        if self.last_update:
+            self.last_update = datetime.strptime(self.last_update, '%Y-%m-%d')
 
         # Enforce relative paths
         for act in self.actions:
@@ -410,18 +430,20 @@ class Mod(object):
             'cmdline': self.cmdline,
             'logo': self.logo,
             'logo_path': self.logo,
+            'tile': self.tile,
+            'tile_path': self.tile,
             'description': self.description,
             'notes': self.notes,
-            'submods': self.submods,
+            'release_thread': self.release_thread,
+            'videos': self.videos,
+            'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
+            'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
             'actions': self.actions,
             'packages': [pkg.get() for pkg in self.packages]
         }
 
     def copy(self):
         return Mod(self.get(), self._repo)
-
-    def get_submods(self):
-        return [self._repo.query(mid) for mid in self.submods]
 
     def get_files(self):
         files = []
@@ -442,21 +464,33 @@ class Mod(object):
         return self._repo.process_pkg_selection(pkgs)
 
     def save_logo(self, dest):
-        if self.logo is None:
-            return
+        if self.logo is not None:
+            suffix = '.' + self.logo.split('.')[-1]
+            path = os.path.join(dest, 'logo_' + hashlib.md5(self.logo.encode('utf8')).hexdigest() + suffix)
 
-        suffix = '.' + self.logo.split('.')[-1]
-        path = os.path.join(dest, 'logo_' + hashlib.md5(self.logo.encode('utf8')).hexdigest() + suffix)
+            if not os.path.isfile(path):
+                if '://' in self.logo:
+                    # That's a URL
+                    with open(path, 'wb') as fobj:
+                        util.download(self.logo, fobj)
+                else:
+                    shutil.copyfile(self.logo, path)
 
-        if not os.path.isfile(path):
-            if '://' in self.logo:
-                # That's a URL
-                with open(path, 'wb') as fobj:
-                    util.download(self.logo, fobj)
-            else:
-                shutil.copyfile(self.logo, path)
+            self.logo_path = self.logo = os.path.abspath(path)
 
-        self.logo = os.path.abspath(path)
+        if self.tile is not None:
+            suffix = '.' + self.tile.split('.')[-1]
+            path = os.path.join(dest, 'tile_' + hashlib.md5(self.tile.encode('utf8')).hexdigest() + suffix)
+
+            if not os.path.isfile(path):
+                if '://' in self.tile:
+                    # That's a URL
+                    with open(path, 'wb') as fobj:
+                        util.download(self.tile, fobj)
+                else:
+                    shutil.copyfile(self.tile, path)
+
+            self.tile_path = self.tile = os.path.abspath(path)
 
 
 class Package(object):
@@ -596,7 +630,6 @@ class Package(object):
                     return False
 
             elif c_type == 'cpu_feature':
-                # return CPU_INFO is None or value in CPU_INFO['flags']
                 if CPU_INFO is None:
                     # We don't have any information on the current CPU so we just ignore this check.
                     return True
@@ -768,6 +801,9 @@ class InstalledMod(Mod):
         if mod.logo is not None and '://' not in mod.logo:
             mod.logo_path = os.path.join(os.path.dirname(path), mod.logo)
 
+        if mod.tile is not None and '://' not in mod.tile:
+            mod.tile_path = os.path.join(os.path.dirname(path), mod.tile)
+
         return mod
 
     @staticmethod
@@ -799,6 +835,12 @@ class InstalledMod(Mod):
             'description': self.description,
             'logo': self.logo,
             'logo_path': self.logo_path,
+            'tile': self.tile,
+            'tile_path': self.tile_path,
+            'release_thread': self.release_thread,
+            'videos': self.videos,
+            'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
+            'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
             'cmdline': self.cmdline,
             'packages': [pkg.get() for pkg in self.packages]
         }

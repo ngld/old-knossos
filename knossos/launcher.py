@@ -203,8 +203,6 @@ def run_knossos():
         center.mods.load_json(mod_db)
 
     center.main_win = HellWindow()
-    QtCore.QTimer.singleShot(1, api.init_self)
-
     center.main_win.open()
     app.exec_()
 

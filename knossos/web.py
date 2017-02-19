@@ -80,6 +80,7 @@ class WebBridge(QtCore.QObject):
 
     showWelcome = QtCore.Signal()
     showLastPlayed = QtCore.Signal('QVariant')
+    showDetailsPage = QtCore.Signal('QVariant')
     updateModlist = QtCore.Signal('QVariantMap', str)
     modProgress = QtCore.Signal(str, float, str)
 
@@ -218,6 +219,14 @@ class WebBridge(QtCore.QObject):
     def getRepos(self):
         return list(center.settings['repos'])
 
+    @QtCore.Slot(str)
+    def showTab(self, name):
+        center.main_win.update_mod_buttons(name)
+
+    @QtCore.Slot(str)
+    def triggerSearch(self, term):
+        center.main_win.perform_search(term)
+
     def _get_mod(self, mid, spec=None, mod_repo=None):
         if spec is not None:
             if spec == '':
@@ -242,12 +251,21 @@ class WebBridge(QtCore.QObject):
             return -1
 
     @QtCore.Slot(str, str, result=int)
-    def showInfo(self, mid, spec=None):
+    def showAvailableDetails(self, mid, spec=None):
         mod = self._get_mod(mid, spec, center.mods)
         if mod in (-1, -2):
             return mod
 
-        windows.ModInfoWindow(mod)
+        self.showDetailsPage.emit(mod.get())
+        return 0
+
+    @QtCore.Slot(str, str, result=int)
+    def showInstalledDetails(self, mid, spec=None):
+        mod = self._get_mod(mid, spec)
+        if mod in (-1, -2):
+            return mod
+
+        self.showDetailsPage.emit(mod.get())
         return 0
 
     @QtCore.Slot(str, str, 'QStringList', result=int)
@@ -333,7 +351,7 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=int)
     def showSettings(self, mid=None, spec=None):
-        if mid is None:
+        if mid is None or mid == '':
             windows.SettingsWindow()
             return 1
         else:

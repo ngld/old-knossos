@@ -5,11 +5,33 @@
         <title>Welcome</title>
         <link rel="stylesheet" type="text/css" href="css/style.css">
         <script type="text/javascript" src="js/jquery.min.js"></script>
+        <script type="text/javascript" src="js/beautify.min.js"></script>
         <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
         <script type="text/javascript" src="js/modlist_ts.js"></script>
         <script type="text/javascript" src="js/modlist.js"></script>
     </head>
     <body>
+        <div id="top-bar">
+            <input id="search-field" type="text" placeholder="Search">
+
+            <div class="pull-right">
+                <a href="#" class="btn btn-default" id="update-list">Update List</a>
+                <a href="#" class="btn btn-default" id="settings-btn">Settings</a>
+            </div>
+        </div>
+
+        <div id="tab-bar">
+            <a href="#" class="btn btn-default" id="installed-tab">Home</a>
+            <a href="#" class="btn btn-default" id="available-tab">Nebula</a>
+            <a href="#" class="btn btn-default" id="dev-tab">Development</a>
+        </div>
+
+        <div id="details-tab-bar" class="hide">
+            <a href="#" id="details-exit"><i class="fa fa-chevron-left"></i> Back</a>
+            |
+            Details
+        </div>
+
         <div id="loading">
             Loading...
         </div>
@@ -42,6 +64,14 @@
                 and let me know what you think, what didn't work and what you would like to change.
             </p>
             <p>-- ngld</p>
+        </div>
+
+        <div id="details-page" class="hide info-page">
+            <h1 data-field="title">Mod Title</h1>
+
+            <p data-field="description">Mod description</p>
+
+            <pre id="details-box">...</pre>
         </div>
 
         <div id="last-played" class="hide info-page">

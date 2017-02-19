@@ -153,6 +153,7 @@ class Window(object):
 class HellWindow(Window):
     _tasks = None
     _mod_filter = 'installed'
+    _search_text = ''
     browser_ctrl = None
     progress_win = None
 
@@ -163,18 +164,6 @@ class HellWindow(Window):
         self._create_win(Ui_Hell, QMainWindow)
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
 
-        self.win.backButton.clicked.connect(self.win.webView.back)
-        self.win.searchEdit.textEdited.connect(self.update_mod_list)
-        self.win.updateButton.clicked.connect(api.fetch_list)
-        self.win.settingsButton.clicked.connect(self.show_settings)
-
-        for button in ('lastPlayed', 'installed', 'available', 'updates', 'progress'):
-            bt = getattr(self.win, button + 'Button')
-            hdl = functools.partial(self.update_mod_buttons, button)
-
-            setattr(self, '_mod_button_hdl_' + button, hdl)
-            bt.clicked.connect(hdl)
-
         self.win.webView.loadStarted.connect(self.show_indicator)
         self.win.webView.loadFinished.connect(self.check_loaded)
 
@@ -183,7 +172,6 @@ class HellWindow(Window):
         center.signals.task_launched.connect(self.watch_task)
 
         self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
-        self.win.pageControls.hide()
         self.win.progressInfo.hide()
         self.open()
 
@@ -200,14 +188,10 @@ class HellWindow(Window):
 
     def finish_init(self):
         self.check_fso()
+        api.init_self()
 
     def check_fso(self, interactive=True):
         if 'KN_WELCOME' not in os.environ and center.settings['fs2_path'] is not None:
-            self.win.pageControls.setEnabled(True)
-            self.win.updateButton.setEnabled(True)
-            self.win.searchEdit.setEnabled(True)
-            self.win.tabButtons.setEnabled(True)
-
             self.update_mod_buttons('lastPlayed')
         else:
             # Make sure the user has a complete configuration
@@ -216,16 +200,11 @@ class HellWindow(Window):
                 tmp.write_config()
                 tmp.close()
 
-            self.win.pageControls.setEnabled(False)
-            self.win.updateButton.setEnabled(False)
-            self.win.searchEdit.setEnabled(False)
-            self.win.tabButtons.setEnabled(False)
-
             self.browser_ctrl.bridge.showWelcome.emit()
 
     def check_new_repo(self):
-        updates = len(center.installed.get_updates())
-        self.win.updatesButton.setText(self.tr('Updates (%d)') % updates)
+        # updates = len(center.installed.get_updates())
+        # self.win.updatesButton.setText(self.tr('Updates (%d)') % updates)
 
         self.update_mod_list()
 
@@ -262,7 +241,7 @@ class HellWindow(Window):
             mods = {}
 
         # Now filter the mods.
-        query = self.win.searchEdit.text().lower()
+        query = self._search_text
         result = {}
         for mid, mvs in mods.items():
             if query in mvs[0].title.lower():
@@ -286,9 +265,6 @@ class HellWindow(Window):
         self.win.unsetCursor()
 
     def update_mod_buttons(self, clicked=None):
-        for button in ('lastPlayed', 'installed', 'available', 'updates', 'progress'):
-            getattr(self.win, button + 'Button').setChecked(button == clicked)
-
         self._mod_filter = clicked
         if clicked == 'lastPlayed':
             mod = center.settings['last_played']
@@ -301,6 +277,10 @@ class HellWindow(Window):
             self.browser_ctrl.bridge.showLastPlayed.emit(mod)
         else:
             self.update_mod_list()
+
+    def perform_search(self, term):
+        self._search_text = term.lower()
+        self.update_mod_list()
 
     def watch_task(self, task):
         logging.debug('Task "%s" (%d, %s) started.', task.title, id(task), task.__class__)
