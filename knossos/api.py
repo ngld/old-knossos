@@ -229,7 +229,9 @@ def get_fso_profile_path():
     path = get_new_fso_profile_path()
     leg_path = get_old_fso_profile_path()
 
-    if path in ('', 'None') or (not os.path.exists(os.path.join(path, 'fs2_open.ini')) and os.path.exists(leg_path)):
+    if leg_path and (path in ('', 'None') or
+        (not os.path.exists(os.path.join(path, 'fs2_open.ini')) and os.path.exists(leg_path))
+    ):
         profile_path = leg_path
     else:
         profile_path = path
@@ -484,16 +486,30 @@ def handle_ipc(msg):
         center.main_win.win.activateWindow()
         center.main_win.win.raise_()
     elif msg[0] == 'run':
-        mod = get_mod(msg[1])
+        if len(msg) < 2:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                translate('api.handle_ipc', 'The fso://run/<mod id> link is missing a parameter!'))
+        else:
+            mod = get_mod(msg[1])
 
-        if mod is not None:
-            run_mod(mod)
+            if mod is not None:
+                run_mod(mod)
+            else:
+                QtWidgets.QMessageBox.critical(None, 'Knossos',
+                    translate('api.handle_ipc', 'The mod "%s" was not found!') % msg[1])
     elif msg[0] == 'install':
+        if len(msg) < 2:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                translate('api.handle_ipc', 'The fso://install/<mod id> link is missing a parameter!'))
+            return
+
         mod = get_mod(msg[1])
         pkgs = []
 
         if not mod:
             # TODO: Maybe we should update the mod DB here?
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                translate('api.handle_ipc', 'The mod "%s" was not found!') % msg[1])
             return
 
         if len(msg) > 2:
@@ -522,6 +538,7 @@ def handle_ipc(msg):
                     name = msg[1]
                 else:
                     name = mod.title
+
                 QtWidgets.QMessageBox.information(None, 'Knossos',
                     translate('api.handle_ipc', 'Mod "%s" is not yet installed!') % (name))
             else:
