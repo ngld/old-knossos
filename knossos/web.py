@@ -103,7 +103,7 @@ class WebBridge(QtCore.QObject):
                 if not hasattr(sys, 'frozen'):
                     link = '.' + link
 
-                link = 'file://' + os.path.abspath(link)
+                link = 'file:///' + os.path.abspath(link).replace('\\', '/')
             else:
                 link = 'qrc:///html/index.html'
 
@@ -394,7 +394,7 @@ else:
                 if not hasattr(sys, 'frozen'):
                     link = '.' + link
 
-                link = 'file://' + os.path.abspath(link)
+                link = 'file:///' + os.path.abspath(link).replace('\\', '/')
             else:
                 link = 'qrc:///html/index.html'
 
