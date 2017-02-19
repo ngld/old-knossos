@@ -16,6 +16,7 @@
 from setuptools import setup
 from codecs import open  # To use a consistent encoding
 from os import path
+import re
 
 here = path.abspath(path.dirname(__file__))
 
@@ -23,12 +24,28 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+# Grab the current version
+with open(path.join(here, 'knossos', 'center.py'), 'r') as f:
+    m = re.search(r"VERSION = '([^']+)'", f.read())
+    if m:
+        version = m.group(1)
+    else:
+        version = 'XXX'
+
+pkg_data = {
+    'knossos': ['data/*']
+}
+
+# Bundle the html files only for the dev versions
+if '-dev' in version:
+    pkg_data['knossos'].extend(['../html/*', '../html/css/*', '../html/fonts/*', '../html/js/*'])
+
 setup(
     name='knossos',
 
     # This version should comply with PEP440 (http://legacy.python.org/dev/peps/pep-0440/).
     # The first three numbers should be the same as VERSION in knossos/center.py.
-    version='XXX',
+    version=version,
 
     description='A simple mod manager for FreeSpace 2 Open',
     long_description=long_description,
@@ -55,9 +72,9 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.2',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4'
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6'
     ],
 
     keywords='fso freespace',
@@ -70,9 +87,7 @@ setup(
     extras_require={
     },
 
-    package_data={
-        'knossos': ['data/*']
-    },
+    package_data=pkg_data,
 
     data_files=[],
 
