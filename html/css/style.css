@@ -1,6 +1,8 @@
 @import url(./bootstrap.min.css);
 @import url(./font-awesome.min.css);
 
+/* -------------------------- Stuff that existed before MJN, probably won't be used long term. ----------------------------------*/
+
 .info-page {
     padding: 10px;
 }
@@ -11,34 +13,6 @@
 
 #last-played .mod-logo {
     margin: auto;
-}
-
-.mod {
-    padding: 10px 0;
-    border-bottom: 1px solid #eee;
-
-    position: relative;
-}
-
-.mod .no-logo {
-    display: inline-block;
-    max-width: 255px;
-    padding-bottom: 47.80%; /* 122px / 255px */
-    width: 100%;
-
-    background: rgb(100, 100, 100);
-}
-
-.mod .title {
-    font-size: 1.1em;
-}
-
-.mod .actions {
-    position: absolute;
-    right: 0;
-    bottom: 5px;
-
-    padding: 0 10px;
 }
 
 .mod .top-actions {
@@ -53,4 +27,485 @@
     -webkit-transition: width 0s;
          -o-transition: width 0s;
             transition: width 0s;
+}
+/* -------------------------- Settings for container elements ----------------------------------*/
+
+.body-container {
+	padding: 0;
+	overflow: hidden;
+	height: 100vh;
+	width: 100vw;
+}
+
+.main-menus {
+}
+
+/* -------------------------- Settings for top bar elements ----------------------------------*/
+
+#top-bar {
+	background-color: #1c1c1c;
+	height: 40px;
+	box-shadow: inset 0px 11px 10px -10px rgba(179,179,179,1),
+				inset -11px 0px 10px -10px rgba(179,179,179,1),
+				inset 11px 0px 10px -10px rgba(179,179,179,1);
+}
+
+.mod-search {
+	padding-top: 8px;
+	padding-left: 8px;
+	float: left;
+}
+
+.pull-right {
+	vertical-align: middle;
+	height: 40px;
+}
+
+.top-btn {
+	display: inline-block;
+	text-align: center;
+	white-space: nowrap;
+	cursor: pointer;
+	user-select: none;
+	border-radius: 0px;
+	width: 40px;
+	font-family: Arial, Tahoma, Verdana, FreeSans, sans-serif;
+	font-size: 20px;
+	color: #828282;
+	text-decoration: none;
+	height: 40px;
+}
+
+.top-btn:hover {
+	text-decoration: none;
+}
+
+.top-btn:active {
+	outline: none;
+	text-decoration: none;
+}
+.top-btn:focus {
+	outline: none;
+	text-decoration: none;
+}
+
+.help-image {
+	content: url(../images/helpicon.png);
+	height: 25px;
+	vertical-align: middle;
+	padding-top: 3px;
+}
+
+.top-btn:hover .help-image {
+	content: url(../images/helpicon-h.png);
+}
+
+.top-btn:active .help-image {
+	content: url(../images/helpicon-a.png);
+}
+
+.top-btn:focus .help-image {
+	content: url(../images/helpicon.png);
+}
+
+.update-image {
+	content: url(../images/updateicon.png);
+	height: 25px;
+	vertical-align: middle;
+	padding-top: 3px;
+}
+
+.top-btn:hover .update-image {
+	content: url(../images/updateicon-h.png);
+}
+
+.top-btn:active .update-image {
+	content: url(../images/updateicon-a.png);
+}
+
+.top-btn:focus .update-image {
+	content: url(../images/updateicon.png);
+}
+
+.settings-image {
+	content: url(../images/settingsicon.png);
+	height: 25px;
+	vertical-align: middle;
+	padding-top: 3px;
+}
+
+.top-btn:hover .settings-image {
+	content: url(../images/settingsicon-h.png);
+}
+
+.top-btn:active .settings-image {
+	content: url(../images/settingsicon-a.png);
+}
+
+.top-btn:focus .settings-image {
+	content: url(../images/settingsicon.png);
+}
+
+/* -------------------------- Settings for tab bar elements ----------------------------------*/
+
+#tab-bar {
+	background-color: #1c1c1c;
+	height: 25px;
+	box-shadow: inset 0px 7px 15px 0px rgba(0,0,0,1);
+}
+
+.main-btn {
+	display: inline-block;
+	text-align: center;
+	white-space: nowrap;
+	cursor: pointer;
+	user-select: none;
+	font-family: Arial, Tahoma, Verdana, FreeSans, sans-serif;
+	font-size: 20px;
+	color: #828282;
+	text-decoration: none !important;
+	height: 25px;
+}
+
+.main-btn:hover {
+	color: #ababab;
+}
+
+.main-btn.active {
+	outline: none;
+	color: #a6a6a6;
+}
+.main-btn:focus {
+	outline: none;
+	color: #3c991c;
+}
+
+.main-btn .icon {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	background-repeat: no-repeat;
+}
+
+.home-text {
+	height: 25px;
+	padding-left: 5px;
+	vertical-align: top;
+}
+
+.home-image {
+	background-image: url(../images/homebtn.png);
+	padding-left: 8px;
+}
+
+.main-btn:hover .home-image {
+	background-image: url(../images/homebtn-h.png);
+}
+
+.main-btn.active .home-image {
+	background-image: url(../images/homebtn-a.png);
+}
+
+.main-btn:focus .home-image {
+	background-image: url(../images/homebtn-a.png);
+}
+
+.explore-text {
+	margin-left: 5px;
+}
+
+.explore-image {
+	background-image: url(../images/explorebtn.png);
+	margin-left: 25px;
+}
+
+.main-btn:hover .explore-image {
+	background-image: url(../images/explorebtn-h.png);
+}
+
+.main-btn.active .explore-image {
+	background-image: url(../images/explorebtn-a.png);
+}
+
+.main-btn:focus .explore-image {
+	background-image: url(../images/explorebtn-a.png);
+}
+
+.develop-text {
+	margin-left: 5px;
+}
+
+.develop-image {
+	background-image: url(../images/developbtn.png);
+	margin-left: 55px;
+}
+
+.main-btn:hover .develop-image {
+	background-image: url(../images/developbtn-h.png);
+}
+
+.main-btn:active .develop-image {
+	background-image: url(../images/developbtn-a.png);
+}
+
+.main-btn:focus .develop-image {
+	background-image: url(../images/developbtn-a.png);
+}
+
+/* -------------------------- Settings for the main window view ----------------------------------*/
+
+.main-container { /* Let's make sure the mod list takes up the entire window and scrolls only vertically. */
+	position: absolute;
+	top: 65px;
+	bottom: 0;
+	width: 100%;
+	overflow-y: auto;
+	background-image: url(../images/BG.png);
+	background-repeat: repeat;
+	box-shadow: inset 0px 13px 15px -10px rgba(0,0,0,1),
+				inset 0px -13px 15px -10px rgba(0,0,0,1),
+				inset 13px 0px 15px -10px rgba(0,0,0,1),
+				inset -13px 0px 15px -10px rgba(0,0,0,1);
+}
+
+/* -------------------------- Settings for the scroll bar style ----------------------------------*/
+
+#scroll-style-1::-webkit-scrollbar {
+	width: 25px;
+	box-shadow: -6px 0px 15px 0px rgba(0,0,0,1);
+}
+#scroll-style-1::-webkit-scrollbar-track {
+	background-color: #1c1c1c;	
+}
+#scroll-style-1::-webkit-scrollbar-thumb {
+	background-color: #515151;
+	border: 9px solid transparent;
+	border-radius: 18px;
+	background-clip: content-box;
+}
+#scroll-style-1::-webkit-scrollbar-thumb:hover {
+	background-color: #7c7c7c;
+}
+#scroll-style-1::-webkit-scrollbar-thumb:active {
+	background-color: #a6a6a6;
+}
+#scroll-style-1::-webkit-scrollbar-button {
+	background: #1c1c1c center no-repeat;
+	height: 15px;
+}
+#scroll-style-1::-webkit-scrollbar-button:vertical:increment {
+	background-image: url(../images/scrolldown.png);
+}
+#scroll-style-1::-webkit-scrollbar-button:vertical:increment:hover {
+	background-image: url(../images/scrolldown-h.png);
+}
+#scroll-style-1::-webkit-scrollbar-button:vertical:increment:active {
+	background-image: url(../images/scrolldown-a.png);
+}
+#scroll-style-1::-webkit-scrollbar-button:vertical:decrement {
+	background-image: url(../images/scrollup.png);
+}
+#scroll-style-1::-webkit-scrollbar-button:vertical:decrement:hover {
+	background-image: url(../images/scrollup-h.png);
+}
+#scroll-style-1::-webkit-scrollbar-button:vertical:decrement:active {
+	background-image: url(../images/scrollup-a.png);
+}
+
+/* -------------------------- Settings that govern the mod node displays ----------------------------------*/
+
+.mod { /* Base settings for a single mod node */
+	display: inline-block;
+    position: relative;
+	margin: 12px;
+	margin-top: 24px;
+	height: auto;
+	width: auto;
+	box-shadow: 2px 2px 15px 0px rgba(0,0,0,1);
+	/*z-index: -2; Breaks mouse hover, but properly sets the mods under the global edge shadow. Dunno how to fix yet.*/
+}
+
+/* -------------------------- Settings to create the mod nodes ----------------------------------*/
+
+.mod-node .mod-title { /* This creates the mod title's red background box. */
+	background-color: #422626;
+	width: 150px;
+	height: 40px;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	padding: 8px;
+
+    font-size: 0.8em;
+	color: white;
+	font: Arial, Helvetica, sans-serif;
+}
+
+.mod-node .mod-image { /* Div sets up the portait mod image properties. */
+	width: 150px;
+	height: 225px;
+}
+
+.mod-node .mod-logo-container { /* Make sure any drop shadows for legacy mod images stays within the portrait node */
+	position: absolute;
+	top: 25px;
+	overflow: hidden;
+}
+
+.mod-node .mod-logo-legacy { /* Support for legacy (landscape) mod images and makes them look nice over the stock portrait background. */
+	vertical-align: middle;
+	margin-top: 50px;
+	margin-bottom: 50px;
+	box-shadow: 0px -4px 5px 1px rgba(255,252,222,1),
+		0px 4px 5px 1px rgba(255,252,222,1),
+		0px -23px 30px 5px rgba(0,0,0,1),
+		0px 23px 30px 5px rgba(0,0,0,1);
+}
+
+.mod-node .no-logo { /* If a mod has no image, let's create a div for it anyway. */
+    display: inline-block;
+    max-width: 150px;
+    padding-bottom: 47.80%; /* 122px / 255px */
+    width: 100%;
+
+    background: rgb(100, 100, 100);
+}
+
+.mod-node .mod-notifier { /* Places the top-right mod status notifier. */
+	position: absolute;
+	top: 0px;
+	right: 0px;
+}
+
+.mod-node .actions { /* Div to detect mouse hover */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+	opacity: 0;
+	transition: opacity 0.3s ease-in-out;
+}
+
+.mod-node .btn-wrapper { /* CENTER THE BUTTONS DAMMIT and darken the mod image on mosueover */
+	width: 100%;
+	height: 225px;
+	background-color: rgba(0,0,0,0.7);
+
+	padding-top: 30px;
+	text-align: center;
+}
+
+.mod-node .actions:hover { /* Display the buttons on mouseover */
+	opacity: 1;
+}
+
+.mod-node .actions:hover ~ .mod-title { /* Let's also lighten the red box around the mod title on mouseover */
+	background-color: #856d6d;
+}
+/* -----------------------------Here there be BUTTONS. Let's make them pretty.------------------------------- */
+
+.mod-btn {
+	display: inline-block;
+	padding: 6px 12px;
+	margin: 5px; /* Buttons need their space. They're shy. */
+	margin-bottom: 0px;
+	font-weight: 400;
+	line-height: 1.42857143;
+	text-align: center;
+	white-space: nowrap;
+	vertical-align: middle;
+	cursor: pointer;
+	user-select: none;
+	width: 100px;
+	height: auto;
+    font-family: Arial, Tahoma, Verdana, FreeSans, sans-serif;
+	font-size: 14px;
+	color: white;
+	border: 0;
+}
+
+.mod-btn:hover {
+	color: #efefef;
+}
+
+.mod-btn:active {
+	outline: none;
+	color: #a6a6a6;
+}
+
+.mod-btn:focus {
+	outline: none;
+}
+
+.btn-green { /* Settings that create the Play button */
+	background: url(../images/playbtn.png) 3px 5px no-repeat;
+	background-position: center;
+	height: 43px;
+}
+
+.btn-green:hover {
+	background-image: url(../images/playbtn-h.png);
+}
+
+.btn-green:active {
+	background-image: url(../images/playbtn-a.png);
+}
+
+.btn-grey { /* Settings that create the Details button */
+	background: url(../images/detailsbtn.png) 3px 5px no-repeat;
+	background-position: center;
+	height: 43px;
+}
+
+.btn-grey:hover {
+	background-image: url(../images/detailsbtn-h.png);
+}
+
+.btn-grey:active {
+	background-image: url(../images/detailsbtn-a.png);
+}
+
+.btn-blue { /* Settings that create the Install button */
+	background: url(../images/installbtn.png) 3px 5px no-repeat;
+	background-position: center;
+	height: 43px;
+}
+
+.btn-blue:hover {
+	background-image: url(../images/installbtn-h.png);
+}
+
+.btn-blue:active {
+	background-image: url(../images/installbtn-a.png);
+}
+
+.btn-red { /* Settings that create the Error button */
+	background: url(../images/errorbtn.png) 3px 5px no-repeat;
+	background-position: center;
+	height: 43px;
+}
+
+.btn-red:hover {
+	background-image: url(../images/errorbtn-h.png);
+}
+
+.btn-red:active {
+	background-image: url(../images/errorbtn-a.png);
+}
+
+.btn-orange { /* Settings that create the Error button */
+	background: url(../images/fredbtn.png) 3px 5px no-repeat;
+	background-position: center;
+	height: 43px;
+}
+
+.btn-orange:hover {
+	background-image: url(../images/fredbtn-h.png);
+}
+
+.btn-orange:active {
+	background-image: url(../images/fredbtn-a.png);
 }

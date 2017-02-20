@@ -163,6 +163,7 @@ class HellWindow(Window):
 
         self._create_win(Ui_Hell, QMainWindow)
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
+        self.win.verticalLayout.setContentsMargins(0, 0, 0, 0)
 
         self.win.webView.loadStarted.connect(self.show_indicator)
         self.win.webView.loadFinished.connect(self.check_loaded)

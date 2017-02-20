@@ -61,7 +61,7 @@ function render_row(mvs, type) {
         });
     }
 
-    var logo = row.find('.mod-logo');
+    var logo = row.find('.mod-logo-legacy');
     if(logo.length > 0) {
         if(mod.logo) {
             logo.attr('src', 'file://' + mod.logo_path);
@@ -70,7 +70,7 @@ function render_row(mvs, type) {
         }
     }
 
-    row.find('.title').text(mod.title);
+    row.find('.mod-title').text(mod.title);
     return row;
 }
 
@@ -79,8 +79,8 @@ function update_mods(mods, type) {
     $('#mods').show();
     $('.info-page').hide();
 
-    $('#tab-bar .btn').removeClass('btn-primary').addClass('btn-default');
-    $('#' + type + '-tab').removeClass('btn-default').addClass('btn-primary');
+    $('#tab-bar .main-btn').removeClass('active');
+    $('#' + type + '-tab').addClass('active');
 
     if(type == 'progress') {
         progress_visible = true;

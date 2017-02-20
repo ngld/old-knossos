@@ -1,170 +1,168 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf8">
-        <title>Welcome</title>
-        <link rel="stylesheet" type="text/css" href="css/style.css">
-        <script type="text/javascript" src="js/jquery.min.js"></script>
-        <script type="text/javascript" src="js/beautify.min.js"></script>
-        <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
-        <script type="text/javascript" src="js/modlist_ts.js"></script>
-        <script type="text/javascript" src="js/modlist.js"></script>
-    </head>
-    <body>
-        <div id="top-bar">
-            <input id="search-field" type="text" placeholder="Search">
-
-            <div class="pull-right">
-                <a href="#" class="btn btn-default" id="update-list">Update List</a>
-                <a href="#" class="btn btn-default" id="settings-btn">Settings</a>
-            </div>
-        </div>
-
-        <div id="tab-bar">
-            <a href="#" class="btn btn-default" id="installed-tab">Home</a>
-            <a href="#" class="btn btn-default" id="available-tab">Nebula</a>
-            <a href="#" class="btn btn-default" id="dev-tab">Development</a>
-        </div>
-
-        <div id="details-tab-bar" class="hide">
-            <a href="#" id="details-exit"><i class="fa fa-chevron-left"></i> Back</a>
-            |
-            Details
-        </div>
-
-        <div id="loading">
-            Loading...
-        </div>
-
-        <div id="mods" class="container-fluid"></div>
-
-        <div data-tr id="welcome" class="hide info-page">
-            <h1>Welcome!</h1>
-
-            <p>It looks like you started Knossos for the first time.</p>
-            <p>
-                You can tell me where your FS2 installation is, I could install FS2 using the GOG installer
-                or maybe you want to install a Total Conversion?
-            </p>
-            <hr>
-
-            <p>
-                <a class="btn btn-primary" id="sel-fso">Select FS2 directory</a>
-            </p>
-            <p>
-                <a class="btn btn-primary" id="gog-install">Install FS2 using the GOG installer</a>
-            </p>
-            <p>
-                <a class="btn btn-primary" id="tc-install">Install a TC</a>
-            </p>
-
-            <p>
-                This launcher is still in development. Please visit
-                <a href="http://www.hard-light.net/forums/index.php?topic=93144.0" target="_blank">this HLP thread</a>
-                and let me know what you think, what didn't work and what you would like to change.
-            </p>
-            <p>-- ngld</p>
-        </div>
-
-        <div id="details-page" class="hide info-page">
-            <h1 data-field="title">Mod Title</h1>
-
-            <p data-field="description">Mod description</p>
-
-            <pre id="details-box">...</pre>
-        </div>
-
-        <div id="last-played" class="hide info-page">
-            <button class="btn btn-success run-btn">
-                <span data-tr>Play</span>
-                <i class="fa fa-play"></i>
-            </button> <br>
-
-            <h2 class="title"></h2>
-            <img class="mod-logo img-responsive">
-            <p class="desc"></p>
-        </div>
-
-        <div id="no-last-played" class="hide info-page">
-            <p class="lead"><span data-tr>You haven't played any mod, yet. (Or you uninstalled your last played mod.)</span></p>
-        </div>
-
-        <div class="mod hide row" id="tpl-avail-mod">
-            <div class="col-xs-6">
-                <img class="mod-logo img-responsive">
-            </div>
+	<head>
+		<meta charset="utf8">
+		<title>Welcome</title>
+		<link rel="stylesheet" type="text/css" href="css/style.css">
+		<script type="text/javascript" src="js/jquery.min.js"></script>
+		<script type="text/javascript" src="js/beautify.min.js"></script>
+		<script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
+		<script type="text/javascript" src="js/modlist_ts.js"></script>
+		<script type="text/javascript" src="js/modlist.js"></script>
+	</head>
+	<body class="body-container">
+<!-------------------------------------------------------------------------------- Start the Top Menus ---------->
+		<div class="main-menus">
+			<div id="top-bar">
+				<div class="mod-search">
+					<input id="search-field" type="text" placeholder="Search">
+				</div>
+				<div class="pull-right">
+					<a href="#" class="top-btn" id="help-btn"><span class="help-image"></span></a>
+					<a href="#" class="top-btn" id="update-list"><span class="update-image"></span></a>
+					<a href="#" class="top-btn" id="settings-btn"><span class="settings-image"></span></a>
+				</div>
+			</div>
+<!-------------------------------------------------------------------------------- Start the Tab Menus ---------->
+			<div id="tab-bar">
+				<a href="#" class="main-btn" id="installed-tab"><span class="icon home-image"></span><span class="home-text">Home</span></a>
+				<a href="#" class="main-btn" id="available-tab"><span class="icon explore-image"></span><span class="explore-text">Explore</span></a>
+				<a href="#" class="main-btn" id="dev-tab"><span class="icon develop-image"></span><span class="develop-text">Development</span></a>
+			</div>
+<!-------------------------------------------------------------------------------- Start the Details Menu ---------->
+			<div id="details-tab-bar" class="hide">
+				<a href="#" id="details-exit"><i class="fa fa-chevron-left"></i> Back</a>
+				|
+				Details
+			</div>
+<!-------------------------------------------------------------------------------- Start the Loading screen ---------->
+			<div id="loading">
+				Loading...
+			</div>
             
-            <div class="col-xs-6">
-                <span class="title">Mod title</span>
-            </div>
+		</div> <!-- Close the Top Menu section -->
+<!-------------------------------------------------------------------------------- Build the Main View container ---------->
+		<div class="main-container" id="scroll-style-1">
+			<div id="mods" class="container-fluid"></div>
+<!-------------------------------------------------------------------------------- Start the Welcome page ---------->
+			<div data-tr id="welcome" class="hide info-page">
+				<h1>Welcome!</h1>
+					
+					<p>It looks like you started Knossos for the first time.</p>
+					<p>
+						You can tell me where your FS2 installation is, I could install FS2 using the GOG installer
+						or maybe you want to install a Total Conversion?
+					</p>
+					<hr>
+					
+					<p>
+						<a class="btn btn-primary" id="sel-fso">Select FS2 directory</a>
+					</p>
+					<p>
+						<a class="btn btn-primary" id="gog-install">Install FS2 using the GOG installer</a>
+					</p>
+					<p>
+						<a class="btn btn-primary" id="tc-install">Install a TC</a>
+					</p>
+					
+					<p>
+						This launcher is still in development. Please visit
+						<a href="http://www.hard-light.net/forums/index.php?topic=93144.0" target="_blank">this HLP thread</a>
+						and let me know what you think, what didn't work and what you would like to change.
+					</p>
+					<p>-- ngld</p>
+			</div>
+<!-------------------------------------------------------------------------------- Start the Details page ---------->
+			<div id="details-page" class="hide info-page">
+				<h1 data-field="title">Mod Title</h1>
+				
+				<p data-field="description">Mod description</p>
+				
+				<pre id="details-box">...</pre>
+			</div>
+<!-------------------------------------------------------------------------------- Start the Last Played page ---------->
+			<div id="last-played" class="hide info-page">
+				<button class="btn btn-success run-btn">
+					<span data-tr>Play</span>
+					<i class="fa fa-play"></i>
+				</button> <br>
+				
+				<h2 class="title"></h2>
+				<img class="mod-logo img-responsive">
+				<p class="desc"></p>
+			</div>
+			<div id="no-last-played" class="hide info-page">
+				<p class="lead"><span data-tr>You haven't played any mod, yet. (Or you uninstalled your last played mod.)</span></p>
+			</div>
+<!-------------------------------------------------------------------------------- Start the Home page ---------->
+			<div class="mod hide row" id="tpl-avail-mod">
+				<div class="mod-node"> <!--This begins the section that builds a single mod node. Javascript duplicates and appends this entire section once for each mod in the list.-->
+					<div class="mod-image">
+						<img src="images/modstock.jpg" class="mod-stock">
+						<div class="mod-logo-container">
+							<img class="mod-logo-legacy img-responsive">
+						</div>
+					</div>   
+					<div class="actions">
+						<div class="btn-wrapper">
+							<button class="mod-btn btn-blue install-btn">
+								<span class="btn-text">INSTALL</span>
+							</button>
+							<button class="mod-btn btn-grey info-btn">
+								<span class="btn-text">DETAILS</span>
+							</button>
+						</div>
+					</div>
+					<div class="mod-title">Mod title</div>
+				</div>
+			</div>
+<!-------------------------------------------------------------------------------- Start the Explore page ---------->
+			<div class="mod hide row" id="tpl-installed-mod">
+				<div class="mod-node"> <!--This begins the section that builds a single mod node. Javascript duplicates and appends this entire section once for each mod in the list.-->
+					<div class="mod-image">
+						<img src="images/modstock.jpg" class="mod-stock">
+						<div class="mod-logo-container">
+							<img class="mod-logo-legacy img-responsive">
+						</div>
+					</div>
+					<div class="mod-notifier">
+						<img src="images/modnotify_ready.png" class="notifier">
+					</div>
+					<div class="actions">
+						<div class="btn-wrapper">
+							<button class="mod-btn btn-green run-btn">
+								<span class="btn-text">PLAY</span>
+							</button><br>
+							<!--<button class="mod-btn btn-fred fred-btn">
+								FRED
+							</button><br>-->
+							<button class="mod-btn btn-grey settings-btn">
+								<spanS class="btn-text">DETAILS</span>
+							</button><br>
+							<!--<button class="mod-btn btn-delete del-btn">
+								<i class="fa fa-times"></i>
+							</button>-->
+						</div>
+					</div>
+					<div class="mod-title">Mod title</div>
+				</div>
+			</div>
+<!-------------------------------------------------------------------------------- Start the Update page ---------->
+			<div class="mod hide row" id="tpl-update-mod">
+				<div class="col-xs-6">
+					<img class="mod-logo img-responsive">
+				</div>
+				<div class="col-xs-6">
+					<span class="title">Mod title</span>
+					<div class="top-actions">
+						<button class="btn btn-success update-btn">
+							<span data-tr>Update</span>
+							<i class="fa fa-cloud-download"></i>
+						</button>
+					</div>
+				</div>
+			</div>
 
-            <div class="actions">
-                <button class="btn btn-success install-btn">
-                    <span data-tr>Install</span>
-                    <i class="fa fa-cloud-download"></i>
-                </button>
-                <button class="btn btn-info info-btn">
-                    <i class="fa fa-info-circle"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="mod hide row" id="tpl-installed-mod">
-            <div class="col-xs-6">
-                <img class="mod-logo img-responsive">
-            </div>
-
-            <div class="col-xs-6">
-                <span class="title">Mod title</span>
-            </div>
-
-            <div class="actions">
-                <button class="btn btn-success run-btn">
-                    <span data-tr>Play</span>
-                    <i class="fa fa-play"></i>
-                </button>
-                <button class="btn btn-default fred-btn">
-                    FRED
-                </button>
-                <button class="btn btn-default settings-btn">
-                    <i class="fa fa-cog"></i>
-                </button>
-                <button class="btn btn-danger del-btn">
-                    <i class="fa fa-times"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="mod hide" id="tpl-dl-mod">
-            <span class="title">Mod title</span>
-            <div class="pull-right">
-                <button class="btn btn-danger abort-btn">
-                    <i class="fa fa-times"></i>
-                </button>
-            </div>
-
-            <div class="progress">
-                <div class="progress-bar progress-bar-striped active master-prg" style="width: 0%;"></div>
-            </div>
-            <div class="well">
-
-            </div>
-        </div>
-
-        <div class="mod hide row" id="tpl-update-mod">
-            <div class="col-xs-6">
-                <img class="mod-logo img-responsive">
-            </div>
-            
-            <div class="col-xs-6">
-                <span class="title">Mod title</span>
-                <div class="top-actions">
-                    <button class="btn btn-success update-btn">
-                        <span data-tr>Update</span>
-                        <i class="fa fa-cloud-download"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </body>
+		</div><!-- Close the Main View Container section -->
+	</body>
 </html>
