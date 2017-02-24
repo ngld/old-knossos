@@ -29,6 +29,24 @@
 				<a href="#" class="main-btn" id="available-tab"><span class="icon explore-image"></span><span class="explore-text">Explore</span></a>
 				<a href="#" class="main-btn" id="dev-tab"><span class="icon develop-image"></span><span class="develop-text">Development</span></a>
 			</div>
+<!-------------------------------------------------------------------------------- Start the Filter Button ---------->
+            <div class="filter-container"> <!-- May need to use javascript to hide this div when not in a mod list view! -->
+            	<button class="filterbtn"></button>
+                <div class="filter-content">
+                    <div class="filter-lines">
+                        <button class="filter-content-btn last-played-btn">Last Played</button>
+                    </div>
+                    <div class="filter-lines">
+                        <button class="filter-content-btn alphabetical-btn">Alphabetical</button>
+                    </div>
+                    <div class="filter-lines">
+                        <button class="filter-content-btn last-updated-log-btn">Last Updated</button>
+                    </div>
+                    <div class="filter-lines">
+                        <button class="filter-content-btn last-released-btn">Last Released</button>
+                    </div>
+                </div>
+			</div>
 <!-------------------------------------------------------------------------------- Start the Details Menu ---------->
 			<div id="details-tab-bar" class="hide">
 				<a href="#" id="details-exit"><i class="fa fa-chevron-left"></i> Back</a>
@@ -94,7 +112,7 @@
 			<div id="no-last-played" class="hide info-page">
 				<p class="lead"><span data-tr>You haven't played any mod, yet. (Or you uninstalled your last played mod.)</span></p>
 			</div>
-<!-------------------------------------------------------------------------------- Start the Home page ---------->
+<!-------------------------------------------------------------------------------- Start the Explore page ---------->
 			<div class="mod hide row" id="tpl-avail-mod">
 				<div class="mod-node"> <!--This begins the section that builds a single mod node. Javascript duplicates and appends this entire section once for each mod in the list.-->
 					<div class="mod-image">
@@ -116,7 +134,7 @@
 					<div class="mod-title">Mod title</div>
 				</div>
 			</div>
-<!-------------------------------------------------------------------------------- Start the Explore page ---------->
+<!-------------------------------------------------------------------------------- Start the Home page ---------->
 			<div class="mod hide row" id="tpl-installed-mod">
 				<div class="mod-node"> <!--This begins the section that builds a single mod node. Javascript duplicates and appends this entire section once for each mod in the list.-->
 					<div class="mod-image">
@@ -142,6 +160,20 @@
 							<!--<button class="mod-btn btn-delete del-btn">
 								<i class="fa fa-times"></i>
 							</button>-->
+                            <div class="debug-dropdown">
+                                <button class="dropbtn"></button>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-lines">
+                                        <button class="drop-content-btn fast-debug-btn">Run Fast Debug</button>
+                                    </div>
+                                    <div class="dropdown-lines">
+                                        <button class="drop-content-btn debug-btn">Run Debug</button>
+                                    </div>
+                                    <div class="dropdown-lines">
+                                        <button class="drop-content-btn debug-log-btn">Upload Debug Log</button>
+                                    </div>
+                                </div>
+                            </div>
 						</div>
 					</div>
 					<div class="mod-title">Mod title</div>
