@@ -17,13 +17,7 @@ function render_row(mvs, type) {
     if(type == 'available') {
         row.html($('#tpl-avail-mod').html());
 
-        row.find('.install-btn').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.install(mod.id, mod.version, []);
-        });
-
-        row.find('.info-btn').click(function (e) {
+        row.find('.avail-cover').click(function (e) {
             e.preventDefault();
 
             fs2mod.showAvailableDetails(mod.id, mod.version);

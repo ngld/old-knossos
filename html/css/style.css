@@ -240,6 +240,10 @@
     box-shadow: inset 0px 0px 16px 1px rgba(117,170,210,1);
 }
 
+.filter-lines:hover * {
+    color: rgb(220, 220, 220);
+}
+
 .show {
     display: block;
 }
@@ -284,6 +288,10 @@
     width: 16px;
     height: 16px;
     background-repeat: no-repeat;
+}
+
+#installed-tab {
+    margin-left: 10px;
 }
 
 .home-text {
@@ -488,13 +496,18 @@
     transition: opacity 0.3s ease-in-out;
 }
 
-.mod-node .btn-wrapper { /* CENTER THE BUTTONS DAMMIT and darken the mod image on mosueover */
+.mod-node .btn-wrapper { /* CENTER THE BUTTONS DAMMIT and darken the mod image on mouseover */
     width: 100%;
     height: 225px;
     background-color: rgba(0,0,0,0.7);
 
     padding-top: 30px;
     text-align: center;
+}
+
+.mod-node .avail-cover {
+    background-color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
 }
 
 .mod-node .actions:hover { /* Display the buttons on mouseover */
@@ -578,6 +591,10 @@
 .dropdown-lines:hover {
     background-color: rgba(117,169,210,0.3);
     box-shadow: inset 0px 0px 16px 1px rgba(117,170,210,1);
+}
+
+.dropdown-lines:hover * {
+    color: rgb(220, 220, 220);
 }
 
 .show {
