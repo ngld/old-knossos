@@ -470,7 +470,8 @@ def setup_ipc():
 def shutdown_ipc():
     global ipc_block
 
-    ipc_block.close()
+    if ipc_block:
+        ipc_block.close()
 
 
 def handle_ipc(msg):

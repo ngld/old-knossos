@@ -193,7 +193,7 @@ class HellWindow(Window):
 
     def check_fso(self, interactive=True):
         if 'KN_WELCOME' not in os.environ and center.settings['fs2_path'] is not None:
-            self.update_mod_buttons('lastPlayed')
+            self.update_mod_buttons('installed')
         else:
             # Make sure the user has a complete configuration
             if not SettingsWindow.has_config():

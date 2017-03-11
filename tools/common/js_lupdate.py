@@ -57,13 +57,14 @@ def main(args):
                 msgs.append(m.group(2))
 
     with open(output, 'w') as stream:
-        stream.write('function msg_list() {\n')
+        stream.write('function get_translation_source() {\n')
+        stream.write('    var ts = [];\n')
+        stream.write('    function qsTr(k) { ts.push(k); }\n')
+
         for msg in msgs:
             stream.write('    qsTr(%s);\n' % json.dumps(msg))
 
-        stream.write('}\n\n')
-        stream.write('function get_translation_source() {\n')
-        stream.write('    return %s;\n}\n' % json.dumps(msgs))
+        stream.write('    return ts;\n}\n')
 
 
 if __name__ == '__main__':

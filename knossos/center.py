@@ -23,7 +23,6 @@ from .qt import QtCore
 VERSION = '0.5.0-dev'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
-NEB_API = 'https://fsnebula.org/api'
 DEBUG = os.environ.get('KN_DEBUG') == '1'
 SENTRY_DSN = 'https://77179552b41946488346a9a2d2669d74:f7b896367bd94f0ea960b8f0ee8b7a88@sentry.gruenprint.de/9?timeout=5'
 
@@ -33,7 +32,6 @@ LANGUAGES = {
 
 app = None
 main_win = None
-shared_files = {}
 fs2_watcher = None
 pmaster = None
 mods = None
@@ -47,6 +45,8 @@ settings = {
     'fs2_bin': None,
     'fred_bin': None,
     'fs2_path': None,
+    'base_path': None,
+    'base_dirs': [],
     'pins': {},
     'cmdlines': {},
     'hash_cache': None,
@@ -59,7 +59,6 @@ settings = {
     'keyboard_setxkbmap': False,
     'use_raven': True,
     'mod_settings': {},
-    'last_played': None,
     'sdl2_path': None,
     'openal_path': None,
     'language': None
@@ -67,6 +66,8 @@ settings = {
 
 if '-dev' in VERSION:
     settings['update_channel'] = 'develop'
+else:
+    settings['update_channel'] = 'stable'
 
 if sys.platform.startswith('win'):
     settings_path = os.path.expandvars('$APPDATA/knossos')

@@ -228,20 +228,28 @@ function load_translations(cb) {
     var keys = get_translation_source();
 
     // Call fs2mod.tr() for each key
-    var next = 0;
-    function fetch() {
-        if(next < keys.length) {
-            var k = keys[next++];
-            fs2mod.tr('modlist_ts', k, function (res) {
-                tr_table[k] = res;
-                fetch();
-            });
-        } else {
-            cb();
+    if(window.qt) {
+        var next = 0;
+        function fetch() {
+            if(next < keys.length) {
+                var k = keys[next++];
+                fs2mod.tr('modlist_ts', k, function (res) {
+                    tr_table[k] = res;
+                    fetch();
+                });
+            } else {
+                cb();
+            }
         }
-    }
 
-    fetch();
+        fetch();
+    } else {
+        for(var i = 0; i < keys.length; i++) {
+            tr_table[keys[i]] = fs2mod.tr('modlist_ts', keys[i]);
+        }
+
+        cb();
+    }
 }
 
 function show_welcome() {
