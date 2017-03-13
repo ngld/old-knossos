@@ -596,8 +596,5 @@ def init_self():
     center.signals.fs2_path_changed.connect(_read_default_cmdline)
     center.signals.fs2_path_changed.connect(check_retail_files)
 
-    center.main_win.check_fso(False)
-    center.main_win.update_mod_list()
-
     if center.settings['update_notify'] and not center.VERSION.endswith('-dev'):
         run_task(CheckUpdateTask())

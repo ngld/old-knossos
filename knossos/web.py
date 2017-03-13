@@ -84,8 +84,8 @@ class WebBridge(QtCore.QObject):
     updateModlist = QtCore.Signal('QVariantMap', str)
     modProgress = QtCore.Signal(str, float, str)
 
-    taskStarted = QtCore.Signal(float, str)
-    taskProgress = QtCore.Signal(float, float, str, str)
+    taskStarted = QtCore.Signal(float, str, list)
+    taskProgress = QtCore.Signal(float, float, str)
     taskFinished = QtCore.Signal(float)
 
     def __init__(self, webView=None):

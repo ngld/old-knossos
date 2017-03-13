@@ -3,16 +3,8 @@ var progress_visible = false;
 var last_mod = null;
 var tr_table = {};
 
-function render_row(mvs, type) {
-    var row = $('<div class="mod row">');
-    var mod;
-
-    if($.isArray(mvs)) {
-        mod = mvs[0];
-    } else {
-        mod = mvs;
-        mvs = [mod];
-    }
+function render_row(mod, type) {
+    var row = $('<div class="mod row">').attr('id', 'mod-' + mod.id);
 
     if(type == 'available') {
         row.html($('#tpl-avail-mod').html());
@@ -84,48 +76,11 @@ function update_mods(mods, type) {
         progress_visible = false;
     }
 
-    var names = [];
     var mod_list = $('#mods').html('');
 
     $.each(mods, function (mid, info) {
-        names.push([mid, info[0].title]);
+        mod_list.append(render_row(info, type));
     });
-
-    names.sort(function (a, b) {
-        return a[1] > b[1] ? 1 : (a[1] < b[1] ? -1 : 0);
-    });
-
-    names.forEach(function (item) {
-        var mod = mods[item[0]];
-        mod_list.append(render_row(mod, type));
-    });
-}
-
-function display_last(mod) {
-    $('#loading, .info-page, #mods').hide();
-
-    var cont = $('#last-played');
-    if(!mod) {
-        $('#no-last-played').show();
-        return;
-    } else {
-        cont.show();
-    }
-
-    cont.find('.run-btn').data('modid', mod.id);
-    cont.find('.title').text(mod.title);
-
-    if(mod.logo_path) {
-        cont.find('.mod-logo').attr('src', 'file://' + mod.logo_path).show();
-    } else {
-        cont.find('.mod-logo').hide();
-    }
-
-    var desc = cont.find('.desc').text(mod.description);
-    // Fix linebreaks
-    desc.html(desc.html().replace(/\n/g, '<br>'));
-
-    cont.show();
 }
 
 function display_mod_details(mod) {
@@ -140,86 +95,33 @@ function display_mod_details(mod) {
     $('#details-page, #details-tab-bar').show();
 }
 
-function _render_task(id, info) {
-    var cont = $('<div class="mod">').html($('#tpl-dl-mod').html());
-    cont.attr('id', 'task-' + id);
+function add_task(id, text, mods) {
+    tasks[id] = { title: text, progress: 0, mods: mods };
 
-    cont.find('.abort-btn').click(function (e) {
-        e.preventDefault();
-
-        fs2mod.abortTask(id);
-    });
-
-    _update_task(cont, info);
-    return cont;
-}
-
-function _update_task(cont, info) {
-    var label = cont.find('.title');
-    var prg_bar = cont.find('.master-prg');
-    prg_bar.css('width', info.progress + '%');
-
-    label.text(info.title);
-    
-    var sub_well = cont.find('.well');
-    
-    $.each(info.subs, function (i, sub) {
-        var row = sub_well.find('.s-' + i);
-        if(row.length == 0) {
-            row = $('<div>').html('<span></span><br><div class="progress"><div class="progress-bar"></div></div>');
-            row.addClass('s-' + i);
-            sub_well.append(row);
-        }
-
-        if(sub[1] == 'Done' || sub[1] == 'Ready') {
-            row.hide();
-        } else {
-            row.show();
-            row.find('span').text(sub[1]);
-            row.find('.progress-bar').css('width', (sub[0] * 100) + '%');
-        }
+    $.each(mods, function (i, mid) {
+        $('#mod-' + mid + ' .mod-progress .bar').css('width', '0%')
     });
 }
 
-function add_task(id, text) {
-    tasks[id] = { title: text, progress: 0, subs: [] };
-
-    if(progress_visible) {
-        $('#mods').append(_render_task(id, tasks[id]));
-    }
-}
-
-function update_progress(id, percent, info, text) {
+function update_progress(id, percent, text) {
+    var mods = tasks[id].mods;
     tasks[id] = {
         progress: percent,
-        subs: JSON.parse(info),
-        title: text
+        title: text,
+        mods: mods
     };
 
-    if(progress_visible) {
-        var task_cont = $('#task-' + id);
-        if(task_cont.length == 0) {
-            $('#mods').append(_render_task(id, tasks[id]));
-        } else {
-            _update_task(task_cont, tasks[id]);
-        }
-    }
+    $.each(mods, function (i, mid) {
+        $('#mod-' + mid + ' .mod-progress .bar').css('width', percent + '%')
+    });
 }
 
 function remove_task(id) {
+    var mods = tasks[id].mods;
     delete tasks[id];
-    $('#task-' + id).remove();
 
-    console.log(['Remove', id]);
-}
-
-function show_progress() {
-    progress_visible = true;
-    $('.info-page').hide();
-    var modlist = $('#mods').empty().show();
-
-    $.each(tasks, function (id, obj) {
-        modlist.append(_render_task(id, obj));
+    $.each(mods, function (i, mid) {
+        $('#mod-' + mid + ' .mod-progress .bar').css('width', '0%')
     });
 }
 
@@ -333,7 +235,6 @@ function init() {
     });
 
     fs2mod.showWelcome.connect(show_welcome);
-    fs2mod.showLastPlayed.connect(display_last);
     fs2mod.showDetailsPage.connect(display_mod_details);
     fs2mod.updateModlist.connect(update_mods);
     fs2mod.taskStarted.connect(add_task);

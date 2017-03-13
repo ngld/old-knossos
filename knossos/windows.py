@@ -169,7 +169,6 @@ class HellWindow(Window):
         self.win.webView.loadFinished.connect(self.check_loaded)
 
         center.signals.update_avail.connect(self.ask_update)
-        center.signals.repo_updated.connect(self.check_new_repo)
         center.signals.task_launched.connect(self.watch_task)
 
         self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
@@ -178,7 +177,6 @@ class HellWindow(Window):
 
     def _del(self):
         center.signals.update_avail.disconnect(self.ask_update)
-        center.signals.repo_updated.disconnect(self.check_new_repo)
         center.signals.task_launched.disconnect(self.watch_task)
 
         # Trying to free this object usually leads to memory corruption
@@ -191,23 +189,11 @@ class HellWindow(Window):
         self.check_fso()
         api.init_self()
 
-    def check_fso(self, interactive=True):
+    def check_fso(self):
         if 'KN_WELCOME' not in os.environ and center.settings['fs2_path'] is not None:
             self.update_mod_buttons('installed')
         else:
-            # Make sure the user has a complete configuration
-            if not SettingsWindow.has_config():
-                tmp = SettingsWindow()
-                tmp.write_config()
-                tmp.close()
-
             self.browser_ctrl.bridge.showWelcome.emit()
-
-    def check_new_repo(self):
-        # updates = len(center.installed.get_updates())
-        # self.win.updatesButton.setText(self.tr('Updates (%d)') % updates)
-
-        self.update_mod_list()
 
     def ask_update(self, version):
         # We only have an updater for windows.
@@ -286,25 +272,25 @@ class HellWindow(Window):
     def watch_task(self, task):
         logging.debug('Task "%s" (%d, %s) started.', task.title, id(task), task.__class__)
         self._tasks[id(task)] = task
-        self.browser_ctrl.bridge.taskStarted.emit(id(task), task.title)
+        self.browser_ctrl.bridge.taskStarted.emit(id(task), task.title, task.mods)
 
         task.done.connect(functools.partial(self._forget_task, task))
         task.progress.connect(functools.partial(self._track_progress, task))
 
-        if len(self._tasks) == 1:
-            self.win.progressInfo.show()
-            self.win.progressLabel.setText(task.title)
-            self.win.progressBar.setValue(0)
+        if len(task.mods) == 0:
+            if len(self._tasks) == 1:
+                self.win.progressInfo.show()
+                self.win.progressLabel.setText(task.title)
+                self.win.progressBar.setValue(0)
 
-            integration.current.show_progress(0)
-        else:
-            # TODO: Stop being lazy and calculate the aggregate progress.
-            self.win.progressBar.hide()
-            self.win.progressLabel.setText(self.tr('Working...'))
+                integration.current.show_progress(0)
+            else:
+                # TODO: Stop being lazy and calculate the aggregate progress.
+                self.win.progressBar.hide()
+                self.win.progressLabel.setText(self.tr('Working...'))
 
     def _track_progress(self, task, pi):
-        subs = [item for item in pi[1].values()]
-        self.browser_ctrl.bridge.taskProgress.emit(id(task), pi[0] * 100, json.dumps(subs), pi[2])
+        self.browser_ctrl.bridge.taskProgress.emit(id(task), pi[0] * 100, pi[2])
 
         if len(self._tasks) == 1:
             integration.current.set_progress(pi[0])

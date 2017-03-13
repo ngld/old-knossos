@@ -364,7 +364,7 @@ def get_lib_path(filename):
     return _LIB_CACHE.get(filename)
 
 
-def fix_missing_libs(fpath):
+def fix_missing_libs(fpath, augment_ldpath=True):
     base = os.path.dirname(fpath)
     patch_dir = os.path.join(base, '__k_plibs')
 
@@ -376,7 +376,10 @@ def fix_missing_libs(fpath):
 
     if len(missing) == 0:
         # Yay, nothing to do.
-        return '', missing
+        if augment_ldpath:
+            return os.environ.get('LD_LIBRARY_PATH', ''), missing
+        else:
+            return '', missing
 
     for lib in missing[:]:
         p_name = os.path.join(patch_dir, lib)
@@ -392,6 +395,11 @@ def fix_missing_libs(fpath):
 
                     os.symlink(fixed_name, p_name)
                     missing.remove(lib)
+
+    if augment_ldpath:
+        ld_path = os.environ.get('LD_LIBRARY_PATH', '')
+        if ld_path != '':
+            patch_dir += ':' + ld_path
 
     return patch_dir, missing
 
