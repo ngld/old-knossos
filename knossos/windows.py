@@ -190,7 +190,7 @@ class HellWindow(Window):
         api.init_self()
 
     def check_fso(self):
-        if 'KN_WELCOME' not in os.environ and center.settings['fs2_path'] is not None:
+        if 'KN_WELCOME' not in os.environ and center.settings['base_path'] is not None:
             self.update_mod_buttons('installed')
         else:
             self.browser_ctrl.bridge.showWelcome.emit()
@@ -252,17 +252,8 @@ class HellWindow(Window):
         self.win.unsetCursor()
 
     def update_mod_buttons(self, clicked=None):
-        self._mod_filter = clicked
-        if clicked == 'lastPlayed':
-            mod = center.settings['last_played']
-            if mod:
-                try:
-                    mod = center.installed.query(mod).get()
-                except repo.ModNotFound:
-                    mod = None
-
-            self.browser_ctrl.bridge.showLastPlayed.emit(mod)
-        else:
+        if center.settings['base_path'] is not None:
+            self._mod_filter = clicked
             self.update_mod_list()
 
     def perform_search(self, term):

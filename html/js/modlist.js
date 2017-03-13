@@ -1,5 +1,4 @@
 var tasks = {};
-var progress_visible = false;
 var last_mod = null;
 var tr_table = {};
 
@@ -68,18 +67,10 @@ function update_mods(mods, type) {
     $('#tab-bar .main-btn').removeClass('active');
     $('#' + type + '-tab').addClass('active');
 
-    if(type == 'progress') {
-        progress_visible = true;
-        show_progress();
-        return;
-    } else {
-        progress_visible = false;
-    }
-
     var mod_list = $('#mods').html('');
 
     $.each(mods, function (mid, info) {
-        mod_list.append(render_row(info, type));
+        mod_list.append(render_row(info[0], type));
     });
 }
 
@@ -174,24 +165,6 @@ function init() {
             $this.html(tr_table[$this.html()]);
         });
 
-        $('#sel-fso').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.selFs2path();
-        });
-
-        $('#gog-install').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.runGogInstaller();
-        });
-
-        $('#tc-install').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.enterTcMode();
-        });
-
         $('a[target="_blank"]').click(function (e) {
             e.preventDefault();
 
@@ -231,6 +204,26 @@ function init() {
 
             $('#details-tab-bar, #details-page').hide();
             $('#tab-bar, #mods').show();
+        });
+
+        $('.browse-btn').click(function (e) {
+            e.preventDefault();
+
+            var target = $(this).attr('data-browse-target');
+            if(window.qt) {
+                fs2mod.browseFolder('Please select a folder', $(target).val(), function (path) {
+                    if(path) $(target).val(path);
+                });
+            } else {
+                var path = fs2mod.browseFolder('Please select a folder', $(target).val());
+                if(path) $(target).val(path);
+            }
+        });
+
+        $('.welcome-continue').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.setBasePath($('#kn-data-path').val());
         });
     });
 

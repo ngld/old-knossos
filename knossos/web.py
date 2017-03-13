@@ -20,7 +20,7 @@ import logging
 import re
 import semantic_version
 
-from .qt import QtCore, QtGui, QtWebChannel
+from .qt import QtCore, QtGui, QtWidgets, QtWebChannel
 from . import center, api, repo, windows, tasks, util
 
 if not QtWebChannel:
@@ -387,6 +387,19 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str)
     def openExternal(self, link):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(link))
+
+    @QtCore.Slot(str, str, result=str)
+    def browseFolder(self, title, path):
+        return QtWidgets.QFileDialog.getExistingDirectory(None, title, path)
+
+    @QtCore.Slot(str)
+    def setBasePath(self, path):
+        if not os.path.isdir(path):
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('WebBridge', 'The selected path is not a directory!'))
+        else:
+            center.settings['base_path'] = os.path.abspath(path)
+            api.save_settings()
+            center.main_win.check_fso()
 
 
 if QtWebChannel:

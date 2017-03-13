@@ -64,31 +64,33 @@
 			<div id="mods" class="container-fluid"></div>
 <!-------------------------------------------------------------------------------- Start the Welcome page ---------->
 			<div data-tr id="welcome" class="hide info-page">
-				<h1>Welcome!</h1>
+				<div class="container">
+					<h1>Welcome!</h1>
 					
 					<p>It looks like you started Knossos for the first time.</p>
-					<p>
-						You can tell me where your FS2 installation is, I could install FS2 using the GOG installer
-						or maybe you want to install a Total Conversion?
-					</p>
+					<p>You need to select a directoy where Knossos will store the game data (models, textures, etc.).</p>
+					
+					<form class="form-horizontal">
+						<div class="form-group">
+							<div class="col-xs-8">
+								<input type="text" class="form-control" id="kn-data-path">
+							</div>
+							<div class="col-xs-4">
+								<button class="btn btn-default browse-btn" data-browse-target="#kn-data-path">Browse...</button>
+							</div>
+						</div>
+					</form>
+					
+					<p><button class="btn btn-primary welcome-continue">Continue</button></p>
+
 					<hr>
-					
-					<p>
-						<a class="btn btn-primary" id="sel-fso">Select FS2 directory</a>
-					</p>
-					<p>
-						<a class="btn btn-primary" id="gog-install">Install FS2 using the GOG installer</a>
-					</p>
-					<p>
-						<a class="btn btn-primary" id="tc-install">Install a TC</a>
-					</p>
-					
 					<p>
 						This launcher is still in development. Please visit
 						<a href="http://www.hard-light.net/forums/index.php?topic=93144.0" target="_blank">this HLP thread</a>
 						and let me know what you think, what didn't work and what you would like to change.
 					</p>
 					<p>-- ngld</p>
+				</div>
 			</div>
 <!-------------------------------------------------------------------------------- Start the Details page ---------->
 			<div id="details-page" class="hide info-page">
