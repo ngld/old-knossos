@@ -34,6 +34,10 @@ ifeq ($(UNAME),Darwin)
 	SED_I = sed -i ''
 endif
 
+ifeq ($(UNAME),FreeBSD)
+	SED_I = gsed -i
+endif
+
 .PHONY: run debug dist clean update-trans resources ui trans
 
 run: html/js/modlist_ts.js resources ui
