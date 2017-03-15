@@ -19,6 +19,9 @@ import os
 import logging
 import shlex
 
+from . import uhf
+uhf(__name__)
+
 from . import center, qt, launcher
 
 

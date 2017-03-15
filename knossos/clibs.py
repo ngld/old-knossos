@@ -18,6 +18,9 @@ import sys
 import logging
 import ctypes.util
 
+from . import uhf
+uhf(__name__)
+
 from . import center
 
 

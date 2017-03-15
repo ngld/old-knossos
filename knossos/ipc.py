@@ -19,6 +19,9 @@ import uuid
 import logging
 import functools
 
+from . import uhf
+uhf(__name__)
+
 from .qt import QtCore, QtNetwork
 
 

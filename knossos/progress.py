@@ -19,6 +19,9 @@ import logging
 import threading
 import six
 
+from . import uhf
+uhf(__name__)
+
 from .qt import QtCore
 
 try:

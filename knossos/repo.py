@@ -24,6 +24,10 @@ import hashlib
 import semantic_version
 import six
 from datetime import datetime
+
+from . import uhf
+uhf(__name__)
+
 from . import center, util
 
 # You have to fill this using https://github.com/workhorsy/py-cpuinfo .
