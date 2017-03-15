@@ -16,6 +16,9 @@ from __future__ import absolute_import, print_function
 
 import os
 import sys
+from . import uhf
+uhf(__name__)
+
 from .qt import QtCore
 
 # The version should follow the http://semver.org guidelines.
