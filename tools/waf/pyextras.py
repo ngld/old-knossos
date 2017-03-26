@@ -61,4 +61,37 @@ def try_program(conf, cmds, var, msg, test_param='--version'):
             pass
 
     conf.end_msg(False)
-    conf.fatal('Could not find %s!' % msg)
+    conf.fatal('Could not find %r!' % cmds)
+
+
+CTYPES_CHECK_TPL = """
+import sys, ctypes.util
+
+lib = sys.argv[2]
+if '.' not in lib:
+    lib = ctypes.util.find_library(lib)
+    if not lib:
+        sys.stderr.write('Could not resolve library!')
+        sys.exit(1)
+
+try:
+    ctypes.cdll.LoadLibrary(lib)
+except:
+    sys.stderr.write('Failed to load library!')
+    sys.exit(1)
+"""
+
+@conf
+def check_ctypes_lib(conf, names, msg):
+    conf.start_msg('Checking for %s' % msg)
+
+    for name in names:
+        try:
+            conf.cmd_and_log(conf.env.PYTHON + ['-c', CTYPES_CHECK_TPL, '--', name])
+            conf.end_msg(name)
+            return
+        except:
+            pass
+
+    conf.end_msg(False)
+    conf.fatal('Could not find %r!' % names)

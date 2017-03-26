@@ -67,10 +67,20 @@ def build_qrc(task):
 def options(opt):
     opt.load('python')
 
+    opt.add_option('--qtbin', type='string', default='', dest='qtbin', help='Path to Qt\'s dev tools (lrelease, lupdate, rcc)')
+
 
 def configure(cfg):
     cfg.load('python')
     cfg.load('pyextras', tooldir='tools/waf')
+
+    opts = Options.options
+    qtbin = getattr(opts, 'qtbin')
+    path = os.environ['PATH']
+    if qtbin:
+        path = qtbin + os.pathsep + path
+
+    cfg.env.PATH = path
 
     cfg.check_python_version((2, 7, 0))
     cfg.check_python_module('PyQt5')
@@ -85,6 +95,11 @@ def configure(cfg):
     cfg.find_program(['lrelease-qt5', 'lrelease'], var='LRELEASE', msg='Checking for lrelease')
     cfg.find_program(['rcc-qt5', 'rcc'], var='RCC', msg='Checking for rcc')
 
+    cfg.find_program(['7z', '7za'], var='7Z', msg='Checking for 7zip')
+    
+    cfg.check_ctypes_lib(['libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib'], msg='SDL2')
+    cfg.check_ctypes_lib(['libopenal.so.1.15.1', 'openal', 'OpenAL'], msg='OpenAL')
+
     cfg.env.JS_LUPDATE = cfg.env.PYTHON + [cfg.path.find_node('./tools/common/js_lupdate.py').abspath()]
     cfg.env.NOPYCACHE = True
 
@@ -92,6 +107,7 @@ def configure(cfg):
 def build(bld):
     bld.load('python')
     bld.load('pyextras', tooldir='tools/waf')
+    os.environ['PATH'] = bld.env.PATH
 
     bld(features='pyuic py', source=UI_FILES, outpath='knossos/ui')
     bld(features='py', source=SRC_FILES)
@@ -125,6 +141,7 @@ class LaunchCmd(BuildContext):
 
 
 def launch(ctx):
+    os.environ['PATH'] = ctx.env.PATH
     ctx.exec_command(ctx.env.PYTHON + ['-mknossos'], cwd=ctx.bldnode, stdout=None, stderr=None)
 
 
@@ -138,6 +155,8 @@ class UpdateTrans(BuildContext):
 
 
 def update_trans(ctx):
+    os.environ['PATH'] = ctx.env.PATH
+
     ctx(
         rule   = '${PYLUPDATE} ${SRC} -ts ${TGT}',
         source = SRC_FILES,
