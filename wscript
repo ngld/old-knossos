@@ -78,15 +78,17 @@ def configure(cfg):
     qtbin = getattr(opts, 'qtbin')
     path = os.environ['PATH']
     if qtbin:
-        path = qtbin + os.pathsep + path
+        path = os.path.abspath(qtbin) + os.pathsep + path
 
-    cfg.env.PATH = path
+    os.environ['PATH'] = cfg.environ['PATH'] = cfg.env.PATH = path
 
     cfg.check_python_version((2, 7, 0))
     cfg.check_python_module('PyQt5')
     cfg.check_python_module('semantic_version')
     cfg.check_python_module('six')
     cfg.check_python_module('requests')
+    if sys.platform == 'win32':
+        cfg.check_python_module('comtypes')
 
     cfg.try_program([['${PYTHON}', '-mPyQt5.uic.pyuic'], ['pyuic5'], ['pyuic']], var='PYUIC', msg='pyuic')
     cfg.try_program([['${PYTHON}', '-mPyQt5.pylupdate_main'], ['pylupdate5'], ['pylupdate']], var='PYLUPDATE', msg='pylupdate', test_param='-version')
@@ -121,7 +123,7 @@ def build(bld):
     bld(
         rule   = build_qrc,
         source = bld.path.ant_glob('html/**') + bld.path.ant_glob('ui/**.png') + bld.path.ant_glob('ui/**.jpg') +
-            bld.path.ant_glob('ui/**.css') + ['knossos/data/hlp.png'],
+            bld.path.ant_glob('ui/**.css') + ['html/js/modlist_ts.js', 'knossos/data/hlp.png'],
         target       = 'knossos/data/resources.rcc',
         install_path = '${PYTHONDIR}/knossos/data'
     )
