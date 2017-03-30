@@ -99,15 +99,7 @@ class WebBridge(QtCore.QObject):
             page.setWebChannel(channel)
             channel.registerObject('fs2mod', self)
 
-            if '-dev' in center.VERSION:
-                link = './html/index.html'
-                if not hasattr(sys, 'frozen'):
-                    link = '.' + link
-
-                link = 'file:///' + os.path.abspath(link).replace('\\', '/')
-            else:
-                link = 'qrc:///html/index.html'
-
+            link = 'qrc:///html/index.html'
             webView.load(QtCore.QUrl(link))
 
     @QtCore.Slot()
@@ -126,22 +118,9 @@ class WebBridge(QtCore.QObject):
     def isFsoInstalled(self):
         return api.is_fso_installed()
 
-    @QtCore.Slot(result=bool)
-    def isFs2PathSet(self):
-        return center.settings['fs2_path'] is not None
-
-    @QtCore.Slot()
-    def selectFs2path(self):
-        api.select_fs2_path()
-
     @QtCore.Slot()
     def runGogInstaller(self):
         windows.GogExtractWindow()
-
-    @QtCore.Slot()
-    def enterTcMode(self):
-        api.select_fs2_path(tc_mode=True)
-        tasks.run_task(tasks.FetchTask())
 
     @QtCore.Slot(result='QVariantList')
     def getMods(self):
@@ -399,6 +378,7 @@ class WebBridge(QtCore.QObject):
         else:
             center.settings['base_path'] = os.path.abspath(path)
             api.save_settings()
+            tasks.run_task(tasks.FetchTask())
             center.main_win.check_fso()
 
 
@@ -420,15 +400,7 @@ else:
             frame = webView.page().mainFrame()
             frame.javaScriptWindowObjectCleared.connect(self.insert_bridge)
 
-            if '-dev' in center.VERSION:
-                link = './html/index.html'
-                if not hasattr(sys, 'frozen'):
-                    link = '.' + link
-
-                link = 'file:///' + os.path.abspath(link).replace('\\', '/')
-            else:
-                link = 'qrc:///html/index.html'
-
+            link = 'qrc:///html/index.html'
             webView.load(QtCore.QUrl(link))
 
         def insert_bridge(self):

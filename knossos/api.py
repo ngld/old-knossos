@@ -27,8 +27,7 @@ uhf(__name__)
 
 from . import center, util, repo, launcher, integration
 from .qt import QtCore, QtWidgets
-from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, InstallTask, UninstallTask
-from .ui.select_list import Ui_SelectListDialog
+from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, UninstallTask
 from .windows import ModSettingsWindow, ModInstallWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
@@ -58,65 +57,6 @@ def save_settings():
         pickle.dump(center.settings, stream, 2)
 
 
-def select_fs2_path(interact=True, tc_mode=False):
-    if interact:
-        if center.settings['fs2_path'] is None:
-            path = os.path.expanduser('~')
-        else:
-            path = center.settings['fs2_path']
-
-        if tc_mode:
-            title = translate('api', 'Please select the installation directory.')
-        else:
-            title = translate('api', 'Please select your FS2 directory.')
-
-        fs2_path = QtWidgets.QFileDialog.getExistingDirectory(
-            center.main_win.win, title, path)
-    else:
-        fs2_path = center.settings['fs2_path']
-
-    if fs2_path is not None and os.path.isdir(fs2_path):
-        center.settings['fs2_path'] = os.path.abspath(fs2_path)
-
-        bins = get_executables()
-        if len(bins) == 1:
-            # Found only one binary, select it by default.
-
-            center.settings['fs2_bin'] = bins[0][1]
-        elif len(bins) > 1:
-            # Let the user choose.
-
-            select_win = util.init_ui(Ui_SelectListDialog(), QtWidgets.QDialog(center.main_win.win))
-            has_default = False
-            bins.sort()
-
-            for i, path in enumerate(bins):
-                select_win.listWidget.addItem(path[0])
-
-                if not has_default and 'DEBUG' not in path[0]:
-                    # Select the first non-debug build as default.
-
-                    select_win.listWidget.setCurrentRow(i)
-                    has_default = True
-
-            select_win.listWidget.itemDoubleClicked.connect(select_win.accept)
-            select_win.okButton.clicked.connect(select_win.accept)
-            select_win.cancelButton.clicked.connect(select_win.reject)
-
-            if select_win.exec_() == QtWidgets.QDialog.Accepted:
-                center.settings['fs2_bin'] = bins[select_win.listWidget.currentRow()][1]
-
-            select_win.deleteLater()
-        else:
-            center.settings['fs2_bin'] = None
-
-        center.main_win.check_fso()
-        center.signals.fs2_path_changed.emit()
-
-        if center.settings['fs2_bin'] is not None:
-            center.signals.fs2_bin_changed.emit()
-
-
 def get_fso_flags():
     global fso_flags
 
@@ -126,16 +66,12 @@ def get_fso_flags():
     if center.fso_flags is not None and center.fso_flags[0] == center.settings['fs2_bin']:
         return center.fso_flags[1]
 
-    fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
+    fs2_bin = center.settings['fs2_bin']
     if not os.path.isfile(fs2_bin):
         return None
 
-    if sys.platform.startswith('win'):
-        flags_path = os.path.join(center.settings['fs2_path'], os.path.dirname(center.settings['fs2_bin']), 'flags.lch')
-    else:
-        flags_path = os.path.join(center.settings['fs2_path'], 'flags.lch')
-
-    rc = run_fs2_silent(['-get_flags'])
+    flags_path = os.path.join(os.path.dirname(center.settings['fs2_bin']), 'flags.lch')
+    rc = run_fs2_silent(['-get_flags', '-parse_cmdline_only'])
 
     flags = None
 
@@ -153,7 +89,6 @@ def get_fso_flags():
 
 def get_executables():
     exes = []
-    fs2_path = center.settings['fs2_path']
 
     for mid, mvs in center.installed.mods.items():
         for mod in mvs:
@@ -166,20 +101,22 @@ def get_executables():
                     path = os.path.join(mod.folder, item['file'])
                     exes.append((name, path))
 
-    if fs2_path is not None and os.path.isdir(fs2_path):
-        fs2_path = os.path.abspath(fs2_path)
-        if sys.platform == 'darwin':
-            for app in glob.glob(os.path.join(fs2_path, '*.app')):
-                name = os.path.basename(app)
-                exes.append((name, os.path.join(name, 'Contents', 'MacOS', name[:-4])))
-        else:
-            bins = glob.glob(os.path.join(fs2_path, 'f*2_open_*'))
+    bin_path = center.settings['base_path']
+    if bin_path is not None:
+        bin_path = os.path.abspath(os.path.join(bin_path, 'bin/custom'))
+        if os.path.isdir(bin_path):
+            if sys.platform == 'darwin':
+                for app in glob.glob(os.path.join(bin_path, '*.app')):
+                    name = os.path.basename(app)
+                    exes.append((name, os.path.join(name, 'Contents', 'MacOS', name[:-4])))
+            else:
+                bins = glob.glob(os.path.join(bin_path, 'f*2_open_*'))
 
-            for path in bins:
-                path = os.path.basename(path)
+                for path in bins:
+                    path = os.path.basename(path)
 
-                if not path.endswith(('.map', '.pdb')):
-                    exes.append((path, path))
+                    if not path.endswith(('.map', '.pdb')):
+                        exes.append((path, path))
 
     return exes
 
@@ -206,7 +143,9 @@ def get_old_fso_profile_path():
     elif sys.platform == 'darwin':
         leg_path = os.path.expanduser('~/Library/FS2_Open')
     else:
-        leg_path = center.settings['fs2_path']
+        # TODO: This obviously won't work in most cases because we most likely won't be running FSO
+        # from the base directory.
+        leg_path = center.settings['base_path']
 
     return leg_path
 
@@ -275,45 +214,16 @@ def run_mod(mod, fred=False):
     if mod is None:
         mod = repo.Mod()
 
-    modpath = util.ipath(os.path.join(center.settings['fs2_path'], mod.folder))
     mods = []
-
-    def check_install():
-        if not os.path.isdir(modpath) or mod.mid not in center.installed.mods:
-            QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('api', 'Error'),
-                translate('api', 'Failed to install "%s"! Check the log for more information.') % (mod.title))
-        else:
-            run_mod(mod)
-
-    if center.settings['fs2_bin'] is None:
-        select_fs2_path()
-
-        if center.settings['fs2_bin'] is None:
-            QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('api', 'Error'),
-                translate('api', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!'))
-            return
 
     try:
         inst_mod = center.installed.query(mod)
     except repo.ModNotFound:
         inst_mod = None
 
-    if inst_mod is None:
-        deps = center.mods.process_pkg_selection(mod.resolve_deps())
-        titles = [pkg.name for pkg in deps if not center.installed.is_installed(pkg)]
-
-        msg = QtWidgets.QMessageBox()
-        msg.setIcon(QtWidgets.QMessageBox.Question)
-        msg.setText(translate('api', 'You don\'t have %s, yet. Shall I install it?') % (mod.title))
-        msg.setInformativeText(translate('api', '%s will be installed.') % (', '.join(titles)))
-        msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-        msg.setDefaultButton(QtWidgets.QMessageBox.Yes)
-
-        if msg.exec_() == QtWidgets.QMessageBox.Yes:
-            task = InstallTask(deps)
-            task.done.connect(check_install)
-            run_task(task)
-
+    if not inst_mod:
+        QtWidgets.QMessageBox.critical(None, translate('api', 'Error'),
+            translate('api', 'The mod "%s" could not be found!') % mod)
         return
 
     try:
@@ -324,6 +234,12 @@ def run_mod(mod, fred=False):
         return
 
     if mods is None:
+        return
+
+    fs2_bin = mod.get_bin(fred=fred)
+    if not fs2_bin:
+        QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('api', 'Error'),
+            translate('api', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!'))
         return
 
     # Look for the cmdline path.
@@ -360,29 +276,26 @@ def run_mod(mod, fred=False):
     else:
         logging.info('Starting mod "%s" with cmdline "%s".', mod.title, cmdline)
 
-        center.settings['last_played'] = mod.mid
-        save_settings()
-
-        if fred:
-            run_fred()
-        else:
-            run_fs2()
+        mod.track_last_played()
+        run_fs2(fs2_bin)
 
 
 def check_retail_files():
-    if center.settings['fs2_path'] is None:
+    if center.settings['base_path'] is None:
         return
 
     has_retail = False
-    for item in os.listdir(center.settings['fs2_path']):
-        if item.lower() == 'root_fs2.vp':
-            has_retail = True
-            break
+    fs2_path = os.path.join(center.settings['base_path'], 'FS2')
+    if os.path.isdir(fs2_path):
+        for item in os.listdir(fs2_path):
+            if item.lower() == 'root_fs2.vp':
+                has_retail = True
+                break
 
     if has_retail:
-        logging.debug('The FS2 path (%s) contains retail files!', center.settings['fs2_path'])
+        logging.debug('The FS2 path (%s) contains retail files!', center.settings['base_path'])
     else:
-        logging.debug('The FS2 path (%s) does not contain retail files!', center.settings['fs2_path'])
+        logging.debug('The FS2 path (%s) does not contain retail files!', center.settings['base_path'])
 
     if has_retail != center.has_retail:
         center.has_retail = has_retail
@@ -392,14 +305,6 @@ def check_retail_files():
 ##############
 # Public API #
 ##############
-
-
-def is_fso_installed():
-    fs2_path = center.settings['fs2_path']
-    if fs2_path is not None:
-        fs2_bin = os.path.join(fs2_path, center.settings['fs2_bin'])
-
-    return fs2_path is not None and fs2_bin is not None and os.path.isdir(fs2_path) and os.path.isfile(fs2_bin)
 
 
 def get_mod(mid, version=None):

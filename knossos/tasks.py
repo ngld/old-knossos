@@ -117,31 +117,37 @@ class CheckTask(progress.MultistepTask):
         self.title = 'Checking installed mods...'
 
     def init1(self):
-        if center.settings['fs2_path'] is None:
-            logging.error('A CheckTask was launched even though no FS2 path was set!')
+        if center.settings['base_path'] is None:
+            logging.error('A CheckTask was launched even though no base path was set!')
         else:
             center.installed.clear()
-            self.add_work(('',))
+            self.add_work(((center.settings['base_path'], None),))
+            self.add_work([(p, None) for p in center.settings['base_dirs']])
 
     def work1(self, p):
-        fs2path = center.settings['fs2_path']
         mods = center.installed
+        path, base_mod = p
 
-        for subdir in os.listdir(fs2path) + [fs2path]:
-            kfile = os.path.join(fs2path, subdir, 'mod.')
+        subs = []
 
-            if os.path.isfile(kfile + 'json'):
-                kfile = kfile + 'json'
-            elif os.path.isfile(kfile + 'ini'):
-                kfile = kfile + 'ini'
-            else:
-                continue
+        for base in os.listdir(path):
+            sub = os.path.join(path, base)
 
-            try:
-                mods.add_mod(repo.InstalledMod.load(kfile))
-            except:
-                logging.exception('Failed to parse "%s"!', kfile)
-                continue
+            if os.path.isdir(sub):
+                subs.append(sub)
+            elif base.lower() in ('mod.json', 'mod.ini'):
+                try:
+                    mod = repo.InstalledMod.load(sub)
+                    if base_mod:
+                        mod.set_base(base_mod)
+                    else:
+                        base_mod = mod
+
+                    mods.add_mod(mod)
+                except:
+                    logging.exception('Failed to parse "%s"!', sub)
+
+        self.add_work([(p, base_mod) for p in subs])
 
     def init2(self):
         pkgs = []
@@ -157,9 +163,7 @@ class CheckTask(progress.MultistepTask):
         self.add_work(pkgs)
 
     def work2(self, pkg):
-        fs2path = center.settings['fs2_path']
         mod = pkg.get_mod()
-        modpath = os.path.join(fs2path, mod.folder)
         pkg_files = pkg.filelist
         count = float(len(pkg_files))
         success = 0
@@ -170,7 +174,7 @@ class CheckTask(progress.MultistepTask):
         msgs = []
 
         for info in pkg_files:
-            mypath = util.ipath(os.path.join(modpath, info['filename']))
+            mypath = util.ipath(os.path.join(mod.folder, info['filename']))
             fix = False
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
@@ -229,15 +233,11 @@ class CheckFilesTask(progress.MultistepTask):
         super(CheckFilesTask, self).__init__(threads=3)
 
         self.title = 'Checking "%s"...' % mod.title
-
-        if center.settings['fs2_path'] is None:
-            logging.error('A CheckFilesTask was launched even though no FS2 path was set!')
-            return
-
+        self.mods = [mod]
         self._mod = mod
 
     def init1(self):
-        modpath = os.path.join(center.settings['fs2_path'], self._mod.folder)
+        modpath = self._mod.folder
         pkgs = []
 
         for pkg in self._mod.packages:
@@ -282,7 +282,7 @@ class CheckFilesTask(progress.MultistepTask):
         self.add_work(('',))
 
     def work2(self, d):
-        modpath = os.path.join(center.settings['fs2_path'], self._mod.folder)
+        modpath = self._mod.folder
         fnames = set()
         loose = []
 
@@ -403,8 +403,7 @@ class InstallTask(progress.MultistepTask):
         self.add_work(mods)
 
     def work1(self, mod):
-        fs2_path = center.settings['fs2_path']
-        modpath = os.path.join(fs2_path, mod.folder)
+        modpath = mod.folder
         mfiles = mod.get_files()
         mnames = [f['filename'] for f in mfiles] + ['knossos.bmp', 'mod.json']
 
@@ -422,9 +421,9 @@ class InstallTask(progress.MultistepTask):
 
             if info is not None and info['version'] != str(mod.version):
                 mod.folder += '_kv_' + str(mod.version)
-                modpath = os.path.join(fs2_path, mod.folder)
+                modpath = mod.folder
 
-        if mod.folder not in ('', '.') and os.path.isdir(modpath):
+        if os.path.isdir(modpath):
             for path, dirs, files in os.walk(modpath):
                 relpath = path[len(modpath):].lstrip('/\\')
                 for item in files:

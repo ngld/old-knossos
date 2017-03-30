@@ -391,11 +391,10 @@ class Mod(object):
         self.actions = values.get('actions', [])
 
         self.packages = []
-        if self.mtype != 'mod' or center.has_retail:
-            for pkg in values.get('packages', []):
-                pkg = Package(pkg, self)
-                if pkg.check_env():
-                    self.packages.append(pkg)
+        for pkg in values.get('packages', []):
+            pkg = Package(pkg, self)
+            if pkg.check_env():
+                self.packages.append(pkg)
 
         if self._repo is not None and self._repo.base is not None:
             if self.logo is not None:
@@ -801,7 +800,7 @@ class InstalledMod(Mod):
         else:
             return None
 
-        mod.folder = os.path.dirname(path)[len(center.settings['fs2_path']):].lstrip('/\\')
+        mod.folder = os.path.dirname(path)
         if mod.logo is not None and '://' not in mod.logo:
             mod.logo_path = os.path.join(os.path.dirname(path), mod.logo)
 
@@ -871,13 +870,13 @@ class InstalledMod(Mod):
                 break
 
     def save(self):
-        modpath = os.path.join(center.settings['fs2_path'], self.folder)
+        modpath = self.folder
         im_path = util.ipath(modpath)
 
         # Correct the casing of our folder if neccessary.
-        if self.folder not in ('', '.') and im_path != modpath:
+        if im_path != modpath:
             modpath = im_path
-            self.folder = modpath[len(center.settings['fs2_path']):].lstrip('/\\')
+            self.folder = modpath
 
         path = os.path.join(modpath, 'mod.json')
         info = self.get()
@@ -894,29 +893,29 @@ class InstalledMod(Mod):
         with open(path, 'w') as stream:
             json.dump(info, stream)
 
-    def get_mod_flag(self):
-        mods = [self.folder]
+    # def get_mod_flag(self):
+    #     mods = [self.folder]
 
-        if center.settings['mod_settings'].get(self.mid, {}).get('parse_mod_ini', False):
-            ini = IniMod()
-            ini.load(os.path.join(os.path.dirname(self._path), 'mod.ini'))
-            return ini.get_mod_flag()
+    #     if center.settings['mod_settings'].get(self.mid, {}).get('parse_mod_ini', False):
+    #         ini = IniMod()
+    #         ini.load(os.path.join(os.path.dirname(self._path), 'mod.ini'))
+    #         return ini.get_mod_flag()
 
-        try:
-            for dep in self.resolve_deps():
-                folder = dep.get_mod().folder
-                if folder not in mods:
-                    mods.append(folder)
-        except ModNotFound:
-            logging.exception('A dependency for an installed mod is missing!')
-            raise
+    #     try:
+    #         for dep in self.resolve_deps():
+    #             folder = dep.get_mod().folder
+    #             if folder not in mods:
+    #                 mods.append(folder)
+    #     except ModNotFound:
+    #         logging.exception('A dependency for an installed mod is missing!')
+    #         raise
 
-        m = []
-        for item in mods:
-            if item.strip() != '':
-                m.append(os.path.basename(util.ipath(os.path.join(center.settings['fs2_path'], item))))
+    #     m = []
+    #     for item in mods:
+    #         if item.strip() != '':
+    #             m.append(os.path.basename(util.ipath(os.path.join(center.settings['fs2_path'], item))))
 
-        return m
+    #     return m
 
 
 class IniMod(InstalledMod):
