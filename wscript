@@ -1,3 +1,4 @@
+import sys
 import os
 from waflib import Options
 from waflib.Build import BuildContext
