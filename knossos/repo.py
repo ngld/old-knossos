@@ -813,6 +813,7 @@ class InstalledMod(Mod):
     def convert(mod):
         data = mod.get()
         data['packages'] = []
+        data['folder'] = os.path.join(center.settings['base_path'], data['folder'])
 
         return InstalledMod(data)
 
@@ -832,6 +833,7 @@ class InstalledMod(Mod):
 
     def get(self):
         return {
+            'installed': True,
             'id': self.mid,
             'title': self.title,
             'version': str(self.version),

@@ -77,13 +77,61 @@ function update_mods(mods, type) {
 function display_mod_details(mod) {
     $('#details-box').text(js_beautify(JSON.stringify(mod)));
 
+    $('#details-page *[data-if]').each(function () {
+        var $this = $(this);
+        if(!mod[$this.attr('data-if')]) $this.remove();
+    });
+
     $('#details-page *[data-field]').each(function () {
         var $this = $(this);
         $this.text(mod[$this.attr('data-field')]);
     });
 
+    if(mod.release_thread) {
+        $('#details-page .btn-release').click(function (e) {
+            e.preventDefault();
+
+            fs2mod.openExternal(mod.release_thread);
+        });
+    } else {
+        $('#details-page .btn-release').hide();
+    }
+
+    if(mod.videos.length > 0) {
+        $('#details-page .btn-videos').click(function (e) {
+            e.preventDefault();
+
+            alert('TODO');
+        });
+    } else {
+        $('#details-page .btn-videos').hide();
+    }
+
+    var bbox = $('#details-page .btn-box').html('');
+
+    if(mod.installed) {
+        $(`<button class="mod-btn btn-green run-btn">
+            <span class="btn-text">PLAY</span>
+        </button>`).appendTo(bbox).click(function (e) {
+            e.preventDefault();
+
+            alert('TODO');
+        });
+    } else {
+        $(`<button class="mod-btn btn-green run-btn">
+            <span class="btn-text">INSTALL</span>
+        </button>`).appendTo(bbox).click(function (e) {
+            e.preventDefault();
+
+            fs2mod.install(mod.id, mod.version, []);
+        });
+    }
+
+
     $('#mods, #tab-bar').hide();
     $('#details-page, #details-tab-bar').show();
+
+    $('.main-container')[0].scrollTop = 0;
 }
 
 function add_task(id, text, mods) {
@@ -204,6 +252,7 @@ function init() {
 
             $('#details-tab-bar, #details-page').hide();
             $('#tab-bar, #mods').show();
+            $('.main-container')[0].scrollTop = 0;
         });
 
         $('.browse-btn').click(function (e) {

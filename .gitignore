@@ -29,3 +29,4 @@ dist
 
 # WAF
 .waf*
+/html/js/modlist_ts.js

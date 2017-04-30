@@ -722,3 +722,38 @@
 .btn-orange:active {
     background-image: url(../images/fredbtn-a.png);
 }
+
+
+/* Details page */
+#details-page {
+    color: #fff;
+}
+
+#details-page .img-frame {
+    min-height: 300px;
+    background: rgb(100, 100, 100);
+    position: relative;
+}
+
+#details-page .title-frame {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 5px;
+    font-size: 14px;
+}
+
+#details-page .title-frame h1 {
+    font-size: 18px;
+    margin-top: 5px;
+    margin-bottom: 0px;
+}
+
+#details-page .date-frame {
+    margin-left: 5px;
+}
+
+#details-page .short-frame {
+    margin-top: 5px;
+}

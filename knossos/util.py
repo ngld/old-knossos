@@ -485,7 +485,7 @@ def normpath(path):
 
 # Try to map a case insensitive path to an existing one.
 def ipath(path):
-    if os.path.exists(path):
+    if os.path.exists(path) or path == '':
         return path
 
     parent, item = os.path.split(path)

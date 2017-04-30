@@ -49,15 +49,14 @@
 			</div>
 <!-------------------------------------------------------------------------------- Start the Details Menu ---------->
 			<div id="details-tab-bar" class="hide">
-				<a href="#" id="details-exit"><i class="fa fa-chevron-left"></i> Back</a>
-				|
-				Details
+				<a href="#" id="details-exit" class="main-btn"><i class="fa fa-chevron-left"></i> Back</a>
+				<span class="main-btn active">Details</span>
 			</div>
 <!-------------------------------------------------------------------------------- Start the Loading screen ---------->
 			<div id="loading">
 				Loading...
 			</div>
-            
+
 		</div> <!-- Close the Top Menu section -->
 <!-------------------------------------------------------------------------------- Build the Main View container ---------->
 		<div class="main-container" id="scroll-style-1">
@@ -94,9 +93,28 @@
 			</div>
 <!-------------------------------------------------------------------------------- Start the Details page ---------->
 			<div id="details-page" class="hide info-page">
-				<h1 data-field="title">Mod Title</h1>
-				
-				<p data-field="description">Mod description</p>
+                <div class="img-frame">
+                        <div class="title-frame">
+                                <h1 data-field="title">Mod Title</h1>
+                                Version <span data-field="version">0.0</span>
+                        </div>
+                </div>
+
+                <div class="container">
+                        <div class="pull-left btn-box"></div>
+
+                        <div class="short-frame pull-right">
+                                <button class="btn btn-danger btn-release">FORUM</button>
+                                <button class="btn btn-primary btn-videos">VIDEOS</button>
+
+                                <div class="date-frame pull-right">
+                                        <div data-if="first_release">Release: <span data-field="first_release">?</span></div>
+                                        <div data-if="last_update"><em>Last Updated: <span data-field="last_update">?</span></em></div>
+                                </div>
+                        </div>
+                </div>
+
+                <p data-field="description">Mod description</p>
 				
 				<pre id="details-box">...</pre>
 			</div>
@@ -122,7 +140,7 @@
 						<div class="mod-logo-container">
 							<img class="mod-logo-legacy img-responsive">
 						</div>
-					</div>   
+					</div>
 					<div class="actions">
 						<div class="btn-wrapper avail-cover"></div>
 					</div>
