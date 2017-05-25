@@ -12,12 +12,8 @@ build
 dist
 /knossos/ui/*
 /knossos/data/resources.rcc
-/tools/common/pyinstaller/
-/tools/win/support/*.dll
-/tools/win/support/*.exe
-/tools/win/version
-/tools/mac/version
-/tools/mac/pyenv
+/html/js/modlist_ts.js
+/tools/windows/support/*
 /knossos.egg-info/
 
 # Sublime Text
@@ -27,6 +23,6 @@ dist
 .idea
 .lock-*
 
-# WAF
-.waf*
-/html/js/modlist_ts.js
+# Ninja
+/build.ninja
+.ninja_*

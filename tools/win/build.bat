@@ -6,8 +6,7 @@ rmdir /S /Q dist
 if errorlevel 1 goto :error
 
 :start_build
-call py-env\Scripts\activate.bat
-python -OO -mPyInstaller -d --distpath=.\dist --workpath=.\build --path=py-env\Lib\site-packages\PyQt5\qt\bin Knossos.spec -y
+python -OO -mPyInstaller -d --distpath=.\dist --workpath=.\build Knossos.spec -y
 if errorlevel 1 goto :error
 
 if "%KN_BUILD_DEBUG%" == "yes" goto :end
