@@ -28,3 +28,4 @@ dist
 .ninja_*
 .vagrant
 /knossos/data/resources.qrc
+ssh_config

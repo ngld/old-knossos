@@ -20,7 +20,6 @@ import logging
 import json
 import shlex
 import glob
-import pickle
 
 from . import uhf
 uhf(__name__)
@@ -53,8 +52,8 @@ def save_settings():
 
     center.settings['pins'] = center.installed.pins
 
-    with open(os.path.join(center.settings_path, 'settings.pick'), 'wb') as stream:
-        pickle.dump(center.settings, stream, 2)
+    with open(os.path.join(center.settings_path, 'settings.json'), 'w') as stream:
+        json.dump(center.settings, stream)
 
 
 def get_fso_flags():

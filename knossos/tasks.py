@@ -218,9 +218,10 @@ class CheckTask(progress.MultistepTask):
                     mod.save()
                 elif c > 0:
                     logging.warning('Package %s of mod %s (%s) is completely corrupted!!' % (pkg.name, mod.mid, mod.title))
+                    print('# %s' % msg)
 
             if pkg is not None:
-                pkg.check_notes = m
+                pkg.check_notes = msg
                 pkg.files_ok = s
                 pkg.files_checked = c
 

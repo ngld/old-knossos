@@ -239,10 +239,11 @@ class HellWindow(Window):
                 else:
                     item['status'] = 'ready'
 
-                    for pkg in mod.packages:
-                        if hasattr(pkg, 'files_checked') and pkg.files_ok < pkg.files_checked:
-                            item['status'] = 'error'
-                            break
+                    if self._mod_filter == 'home':
+                        for pkg in mod.packages:
+                            if pkg.files_checked > 0 and pkg.files_ok < pkg.files_checked:
+                                item['status'] = 'error'
+                                break
 
                 result.append(item)
 

@@ -107,20 +107,16 @@ def get_file_path(name):
 
 
 def load_settings():
-    import pickle
     from . import api
 
-    spath = os.path.join(center.settings_path, 'settings.pick')
+    spath = os.path.join(center.settings_path, 'settings.json')
     settings = center.settings
     if os.path.exists(spath):
         defaults = settings.copy()
 
         try:
-            with open(spath, 'rb') as stream:
-                if six.PY3:
-                    settings.update(pickle.load(stream, encoding='utf8', errors='replace'))
-                else:
-                    settings.update(pickle.load(stream))
+            with open(spath, 'r') as stream:
+                settings.update(json.load(stream))
         except:
             logging.exception('Failed to load settings from "%s"!', spath)
 
