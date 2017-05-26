@@ -129,23 +129,27 @@ class CheckTask(progress.MultistepTask):
         path, base_mod = p
 
         subs = []
+        mod_file = None
 
         for base in os.listdir(path):
             sub = os.path.join(path, base)
 
             if os.path.isdir(sub):
                 subs.append(sub)
-            elif base.lower() in ('mod.json', 'mod.ini'):
-                try:
-                    mod = repo.InstalledMod.load(sub)
-                    if base_mod:
-                        mod.set_base(base_mod)
-                    else:
-                        base_mod = mod
+            elif base.lower() == 'mod.json' or (base.lower() == 'mod.ini' and not mod_file):
+                mod_file = sub
 
-                    mods.add_mod(mod)
-                except:
-                    logging.exception('Failed to parse "%s"!', sub)
+        if mod_file:
+            try:
+                mod = repo.InstalledMod.load(mod_file)
+                if base_mod:
+                    mod.set_base(base_mod)
+                else:
+                    base_mod = mod
+
+                mods.add_mod(mod)
+            except:
+                logging.exception('Failed to parse "%s"!', sub)
 
         self.add_work([(p, base_mod) for p in subs])
 
@@ -320,10 +324,12 @@ class InstallTask(progress.MultistepTask):
     _steps = 2
     _error = False
     _7z_lock = None
-    mod = None
     check_after = True
 
     def __init__(self, pkgs, mod=None, check_after=True):
+        super(InstallTask, self).__init__()
+
+        self._mods = set()
         self._pkgs = []
         self._pkg_names = []
         self.check_after = check_after
@@ -331,20 +337,16 @@ class InstallTask(progress.MultistepTask):
         if sys.platform == 'win32':
             self._7z_lock = threading.Lock()
 
-        rmods = center.mods
-
         if mod is not None:
-            self.mod = mod
+            self.mods = [mod]
 
-        # Make sure we have remote mods here!
         for pkg in pkgs:
-            mod = pkg.get_mod()
-            pkg = rmods.query(pkg)
-            self._pkgs.append(pkg)
+            ins_pkg = center.installed.add_pkg(pkg)
+            self._pkgs.append(ins_pkg)
+            self._mods.add(ins_pkg.get_mod())
             self._pkg_names.append((mod.mid, pkg.name))
 
-        super(InstallTask, self).__init__()
-
+        center.signals.repo_updated.emit()
         self.done.connect(self.finish)
         self.title = 'Installing mods...'
 
@@ -369,38 +371,20 @@ class InstallTask(progress.MultistepTask):
             )
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
         else:
-            mods = set()
-
-            # Register installed pkgs
-            for pkg in self._pkgs:
-                logo_path = pkg.get_mod().logo_path
-                pkg = center.installed.add_pkg(pkg)
-                mod = pkg.get_mod()
-                mod.logo_path = logo_path
-                mods.add(mod)
-
             # Generate mod.json files.
-            for mod in mods:
-                util.get(center.settings['nebula_link'] + 'api/track/install/' + mod.mid)
-                mod.save()
-
-        # Revert all changes made to the mod object.
-        for mod in self._mods:
-            p = mod.folder.rfind('_kv_')
-            if p > -1:
-                mod.folder = mod.folder[:p]
+            for mod in self._mods:
+                try:
+                    mod.save()
+                    util.get(center.settings['nebula_link'] + 'api/track/install/' + mod.mid)
+                except:
+                    logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
         if self.check_after:
             run_task(CheckTask())
 
     def init1(self):
-        mods = set()
-        for pkg in self._pkgs:
-            mods.add(pkg.get_mod())
-
         self._threads = 3
-        self._mods = mods
-        self.add_work(mods)
+        self.add_work(self._mods)
 
     def work1(self, mod):
         modpath = mod.folder
@@ -430,6 +414,8 @@ class InstallTask(progress.MultistepTask):
                     itempath = util.pjoin(relpath, item)
                     if not itempath.startswith('__k_plibs') and itempath not in mnames:
                         logging.info('File "%s" is left over.', itempath)
+        else:
+            logging.debug('Folder %s for %s does not yet exist.', mod, modpath)
 
         amount = float(len(mfiles))
         for i, info in enumerate(mfiles):
@@ -441,6 +427,7 @@ class InstallTask(progress.MultistepTask):
             itempath = util.ipath(os.path.join(modpath, info['filename']))
             if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
                 archives.add((mod.mid, info['package'], info['archive']))
+                logging.debug('%s is missing for %s.', itempath, mod)
 
         self.post(archives)
 
@@ -472,8 +459,7 @@ class InstallTask(progress.MultistepTask):
     def work2(self, archive):
         with tempfile.TemporaryDirectory() as tpath:
             arpath = os.path.join(tpath, archive['filename'])
-            fs2path = center.settings['fs2_path']
-            modpath = os.path.join(fs2path, archive['mod'].folder)
+            modpath = archive['mod'].folder
 
             # TODO: Maybe this should be an option?
             retries = 3
@@ -531,6 +517,7 @@ class InstallTask(progress.MultistepTask):
                     self._7z_lock.acquire()
 
                 progress.update(0.98, 'Extracting %s...' % archive['filename'])
+                logging.debug('Extracting %s into %s', archive['filename'], modpath)
 
                 if util.extract_archive(arpath, cpath):
                     done = True

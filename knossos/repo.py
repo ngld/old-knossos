@@ -172,6 +172,26 @@ class Repo(object):
 
         mod._repo = self
 
+    def remove_mod(self, mod):
+        mid = mod.mid
+
+        if mid not in self.mods:
+            raise ModNotFound('Mod "%s" (%s) could not be removed from %s!' % (mid, mod.version, self.base))
+
+        idx = None
+        for i, item in enumerate(self.mods[mid]):
+            if item.version == mod.version:
+                idx = i
+                break
+
+        if not idx:
+            raise ModNotFound('Mod "%s" (%s) could not be removed from %s because the exact version was missing!' % (mid, mod.version, self.base))
+
+        del self.mods[mid][idx]
+
+        if len(self.mods[mid]) == 0:
+            del self.mods[mid]
+
     def merge(self, repo):
         for mvs in repo.mods.values():
             for mod in mvs:
@@ -363,6 +383,7 @@ class Mod(object):
     def __init__(self, values=None, repo=None):
         self.actions = []
         self.packages = []
+        self.videos = []
 
         if repo is not None:
             self._repo = repo
@@ -815,7 +836,9 @@ class InstalledMod(Mod):
         data['packages'] = []
         data['folder'] = os.path.join(center.settings['base_path'], data['folder'])
 
-        return InstalledMod(data)
+        nmod = InstalledMod(data)
+        nmod.logo_path = mod.logo_path
+        return nmod
 
     def __init__(self, values=None):
         super(InstalledMod, self).__init__(values)
@@ -826,6 +849,9 @@ class InstalledMod(Mod):
         values['packages'] = []
 
         super(InstalledMod, self).set(values)
+        
+        if 'folder' in values:
+            self.folder = values['folder']
 
         self.check_notes = values.get('check_notes', '')
         for pkg in pkgs:
