@@ -100,6 +100,7 @@ def build_file_list(path, exts=None):
     return result
 
 
+# based on https://stackoverflow.com/a/29215357
 def escape_for_cmd_exe(arg):
     # Escape an argument string to be suitable to be passed to
     # cmd.exe on Windows
@@ -116,15 +117,7 @@ def escape_for_cmd_exe(arg):
     # @return [String] an escaped string suitable to be passed as a program
     #   argument to cmd.exe
 
-    meta_chars = '()%!^"<>&|'
-    meta_re = re.compile('(' + '|'.join(re.escape(char) for char in list(meta_chars)) + ')')
-    meta_map = {char: "^%s" % char for char in meta_chars}
-
-    def escape_meta_chars(m):
-        char = m.group(1)
-        return meta_map[char]
-
-    return meta_re.sub(escape_meta_chars, arg)
+    return re.sub(r'[\(\)\%\!\^"\<\>\&\|]', r'^\g<0>', arg)
 
 
 _find_unsafe = re.compile(r'[^a-zA-Z0-9_^@%+=:,./-]').search
@@ -186,16 +179,16 @@ def cmdenv(cmd, env):
         cmd = escape_for_cmd_exe(cmd)
 
         for n, v in env.items():
-            prefix += 'set %s=%s && ' % (n, v)
+            prefix += 'set %s && ' % quote('%s=%s' % (n, v))
     else:
         for n, v in env.items():
-            prefix += '%s=%s ' % (n, v)
+            prefix += '%s=%s ' % (n, quote(str(v)))
 
     return prefix + cmd
 
 
 def check_module(mod, required=True):
-    info('Checking for %s...' % mod)
+    info('Checking %s...' % mod)
 
     try:
         __import__(mod)

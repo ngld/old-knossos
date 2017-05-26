@@ -15,6 +15,7 @@
 import sys
 import os.path
 
+os.chdir(os.path.abspath(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.abspath('tools/common'))
 
 from ninja_syntax import Writer
@@ -34,12 +35,21 @@ UI_FILES = [
 ]
 
 RCC_FILES = [
-    'knossos/data/hlp.png'
+    'knossos/data/hlp.png',
+    'html/css/bootstrap.min.css',
+    'html/css/font-awesome.min.css',
+    'html/css/style.css',
+    'html/fonts/fontawesome-webfont.woff',
+    'html/fonts/fontawesome-webfont.ttf',
+    'html/js/jquery.js',
+    'html/js/vue.min.js',
+    'html/js/modlist_ts.js',
+    'html/js/modlist.js',
+    'html/js/beautify.js',
+    'html/index.html'
 ] + \
-    build_file_list('html') + \
+    build_file_list('html/images') + \
     build_file_list('ui', ('*.png', '*.jpg', '*.css'))
-
-RCC_FILES = [file for file in RCC_FILES if os.path.isfile(file)]
 
 SRC_FILES = [
     'knossos/third_party/__init__.py',
@@ -89,26 +99,44 @@ find_program(['7z', '7za'], '7zip')
 check_ctypes_lib(['libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib'], 'SDL2')
 check_ctypes_lib(['libopenal.so.1.15.1', 'openal', 'OpenAL'], 'OpenAL')
 
-os.chdir(os.path.abspath(os.path.dirname(__file__)))
+info('Writing knossos/data/resources.qrc...\n')
+
+out = '<!DOCTYPE RCC><RCC version="1.0">'
+out += '<qresource>'
+
+for path in RCC_FILES:
+    if os.path.basename(path) == 'hlp.png':
+        out += '<file alias="hlp.png">%s</file>' % os.path.abspath(path)
+    elif path.endswith('.min.js'):
+        out += '<file alias="%s">%s</file>' % (path[:-7] + '.js', os.path.abspath(path))
+    else:
+        out += '<file alias="%s">%s</file>' % (path, os.path.abspath(path))
+
+out += '</qresource>'
+out += '</RCC>'
+with open('knossos/data/resources.qrc', 'w') as stream:
+    stream.write(out)
+
 info('Writing build.ninja...\n')
 
-with open(os.path.join('build.ninja'), 'w') as stream:
+with open('build.ninja', 'w') as stream:
     n = Writer(stream)
 
     n.comment('Transformers')
     n.rule('uic', py_script('tools/common/uic.py', ['$in', '$out'] + pyuic), 'UIC $out')
-    n.rule('rcc', py_script('tools/common/rcc.py', [rcc, '$out', '$in']), 'RCC $out')
+    n.rule('rcc', cmd2str([rcc, '-binary', '$in', '-o', '$out']), 'RCC $out')
     n.rule('js_lupdate', py_script('tools/common/js_lupdate.py', ['-o', '$out', '$in']), 'JS-LUPDATE $out')
     n.rule('pylupdate', cmd2str(pylupdate + ['$in', '-ts', '$out']), 'PY-LUPDATE $out')
     n.rule('lupdate', cmd2str([lupdate, '$in', '-ts', '$out']), 'LUPDATE $out')
 
     n.comment('Files')
     ui_targets = build_targets(n, UI_FILES, 'uic', new_ext='py', new_path='knossos/ui')
-    n.build('knossos/data/resources.rcc', 'rcc', RCC_FILES)
+    n.build('knossos/data/resources.rcc', 'rcc', 'knossos/data/resources.qrc')
     n.build('html/js/modlist_ts.js', 'js_lupdate', ['html/js/modlist.js', 'html/index.html'])
     n.build('locale/_py.ts', 'pylupdate', SRC_FILES)
     n.build('locale/_ui.ts', 'lupdate', ['locale/_py.ts', 'html/js/modlist_ts.js'] + UI_FILES)
 
+    n.comment('Shortcuts')
     n.build('resources', 'phony', ui_targets + ['knossos/data/resources.rcc', 'html/js/modlist_ts.js'])
 
     n.comment('Scripts')
@@ -125,7 +153,7 @@ with open(os.path.join('build.ninja'), 'w') as stream:
     n.rule('run', py_script('knossos/__main__.py'), 'RUN', pool='console')
     n.build('run', 'run', 'resources')
 
-    n.rule('debug', cmdenv(py_script('knossos/__main__.py'), {'KN_DEBUG': 1}), 'DEBUG', pool='console')
+    n.rule('debug', cmdenv(py_script('knossos/__main__.py'), {'KN_DEBUG': 1, 'QTWEBENGINE_REMOTE_DEBUGGING': 4006}), 'DEBUG', pool='console')
     n.build('debug', 'debug', 'resources')
 
     if sys.platform == 'win32':

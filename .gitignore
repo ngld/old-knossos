@@ -27,3 +27,4 @@ dist
 /build.ninja
 .ninja_*
 .vagrant
+/knossos/data/resources.qrc
