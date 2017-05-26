@@ -4,7 +4,8 @@
 /* -------------------------- Stuff that existed before MJN, probably won't be used long term. ----------------------------------*/
 
 .info-page {
-    padding: 10px;
+    padding: 15px;
+    color: #fff;
 }
 
 #last-played .run-btn {
@@ -38,8 +39,8 @@
     background-color: #1c1c1c;
 }
 
-#welcome {
-    color: #eee;
+#loading {
+    color: #fff;
 }
 
 
@@ -377,47 +378,52 @@
                 inset -13px 0px 15px -10px rgba(0,0,0,1);
 }
 
+.main-notice {
+    color: #fff;
+    margin-top: 10px;
+}
+
 /* -------------------------- Settings for the scroll bar style ----------------------------------*/
 
-#scroll-style-1::-webkit-scrollbar {
+.scroll-style::-webkit-scrollbar {
     width: 25px;
     box-shadow: -6px 0px 15px 0px rgba(0,0,0,1);
 }
-#scroll-style-1::-webkit-scrollbar-track {
+.scroll-style::-webkit-scrollbar-track {
     background-color: #1c1c1c;    
 }
-#scroll-style-1::-webkit-scrollbar-thumb {
+.scroll-style::-webkit-scrollbar-thumb {
     background-color: #515151;
     border: 9px solid transparent;
     border-radius: 18px;
     background-clip: content-box;
 }
-#scroll-style-1::-webkit-scrollbar-thumb:hover {
+.scroll-style::-webkit-scrollbar-thumb:hover {
     background-color: #7c7c7c;
 }
-#scroll-style-1::-webkit-scrollbar-thumb:active {
+.scroll-style::-webkit-scrollbar-thumb:active {
     background-color: #a6a6a6;
 }
-#scroll-style-1::-webkit-scrollbar-button {
+.scroll-style::-webkit-scrollbar-button {
     background: #1c1c1c center no-repeat;
     height: 15px;
 }
-#scroll-style-1::-webkit-scrollbar-button:vertical:increment {
+.scroll-style::-webkit-scrollbar-button:vertical:increment {
     background-image: url(../images/scrolldown.png);
 }
-#scroll-style-1::-webkit-scrollbar-button:vertical:increment:hover {
+.scroll-style::-webkit-scrollbar-button:vertical:increment:hover {
     background-image: url(../images/scrolldown-h.png);
 }
-#scroll-style-1::-webkit-scrollbar-button:vertical:increment:active {
+.scroll-style::-webkit-scrollbar-button:vertical:increment:active {
     background-image: url(../images/scrolldown-a.png);
 }
-#scroll-style-1::-webkit-scrollbar-button:vertical:decrement {
+.scroll-style::-webkit-scrollbar-button:vertical:decrement {
     background-image: url(../images/scrollup.png);
 }
-#scroll-style-1::-webkit-scrollbar-button:vertical:decrement:hover {
+.scroll-style::-webkit-scrollbar-button:vertical:decrement:hover {
     background-image: url(../images/scrollup-h.png);
 }
-#scroll-style-1::-webkit-scrollbar-button:vertical:decrement:active {
+.scroll-style::-webkit-scrollbar-button:vertical:decrement:active {
     background-image: url(../images/scrollup-a.png);
 }
 
@@ -633,11 +639,14 @@
     cursor: pointer;
     user-select: none;
     width: 100px;
-    height: auto;
     font-family: Arial, Tahoma, Verdana, FreeSans, sans-serif;
     font-size: 14px;
     color: white;
     border: 0;
+
+    background: 3px 5px no-repeat;
+    background-position: center;
+    height: 43px;
 }
 
 .mod-btn:hover {
@@ -654,9 +663,7 @@
 }
 
 .btn-green { /* Settings that create the Play button */
-    background: url(../images/playbtn.png) 3px 5px no-repeat;
-    background-position: center;
-    height: 43px;
+    background-image: url(../images/playbtn.png);
 }
 
 .btn-green:hover {
@@ -668,9 +675,7 @@
 }
 
 .btn-grey { /* Settings that create the Details button */
-    background: url(../images/detailsbtn.png) 3px 5px no-repeat;
-    background-position: center;
-    height: 43px;
+    background-image: url(../images/detailsbtn.png);
 }
 
 .btn-grey:hover {
@@ -682,9 +687,7 @@
 }
 
 .btn-blue { /* Settings that create the Install button */
-    background: url(../images/installbtn.png) 3px 5px no-repeat;
-    background-position: center;
-    height: 43px;
+    background-image: url(../images/installbtn.png);
 }
 
 .btn-blue:hover {
@@ -696,9 +699,7 @@
 }
 
 .btn-red { /* Settings that create the Error button */
-    background: url(../images/errorbtn.png) 3px 5px no-repeat;
-    background-position: center;
-    height: 43px;
+    background-image: url(../images/errorbtn.png);
 }
 
 .btn-red:hover {
@@ -709,10 +710,8 @@
     background-image: url(../images/errorbtn-a.png);
 }
 
-.btn-orange { /* Settings that create the Error button */
-    background: url(../images/fredbtn.png) 3px 5px no-repeat;
-    background-position: center;
-    height: 43px;
+.btn-orange { /* Settings that create the FRED button */
+    background-image: url(../images/fredbtn.png);
 }
 
 .btn-orange:hover {
@@ -723,12 +722,20 @@
     background-image: url(../images/fredbtn-a.png);
 }
 
-
-/* Details page */
-#details-page {
-    color: #fff;
+.btn-yellow {
+    background-image: url(../images/updatebtn.png);
 }
 
+.btn-yellow:hover {
+    background-image: url(../images/updatebtn-h.png);
+}
+
+.btn-yellow:active {
+    background-image: url(../images/updatebtn-a.png);
+}
+
+
+/* Details page */
 #details-page .img-frame {
     min-height: 300px;
     background: rgb(100, 100, 100);

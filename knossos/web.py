@@ -81,7 +81,7 @@ class WebBridge(QtCore.QObject):
     showWelcome = QtCore.Signal()
     showLastPlayed = QtCore.Signal('QVariant')
     showDetailsPage = QtCore.Signal('QVariant')
-    updateModlist = QtCore.Signal('QVariantMap', str)
+    updateModlist = QtCore.Signal('QVariantList', str)
     modProgress = QtCore.Signal(str, float, str)
 
     taskStarted = QtCore.Signal(float, str, list)
@@ -99,12 +99,22 @@ class WebBridge(QtCore.QObject):
             page.setWebChannel(channel)
             channel.registerObject('fs2mod', self)
 
-            link = 'qrc:///html/index.html'
+            if center.DEBUG and os.path.isdir('../html'):
+                link = 'file://' + os.path.abspath('../html/index.html')
+            else:
+                link = 'qrc:///html/index.html'
+
             webView.load(QtCore.QUrl(link))
 
-    @QtCore.Slot()
-    def finishInit(self):
+    @QtCore.Slot('QVariantList', result='QVariantMap')
+    def finishInit(self, tr_keys):
         center.main_win.finish_init()
+
+        trs = {}
+        for k in tr_keys:
+            trs[k] = QtCore.QCoreApplication.translate('modlist_ts', k)
+
+        return trs
 
     @QtCore.Slot(str, str, result=str)
     def tr(self, context, msg):

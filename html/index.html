@@ -1,208 +1,218 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<meta charset="utf8">
-		<title>Welcome</title>
-		<link rel="stylesheet" type="text/css" href="css/style.css">
-		<script type="text/javascript" src="js/jquery.min.js"></script>
-		<script type="text/javascript" src="js/beautify.min.js"></script>
-		<script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
-		<script type="text/javascript" src="js/modlist_ts.js"></script>
-		<script type="text/javascript" src="js/modlist.js"></script>
-	</head>
-	<body class="body-container">
+    <head>
+        <meta charset="utf8">
+        <title>Welcome</title>
+        <link rel="stylesheet" type="text/css" href="css/style.css">
+        <!-- Knossos automatically uses vue.min.js here unless it's running in DEBUG mode!! -->
+        <script type="text/javascript" src="js/vue.js"></script>
+        <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
+        <script type="text/javascript" src="js/modlist_ts.js"></script>
+        <script type="text/javascript" src="js/modlist.js"></script>
+    </head>
+    <body class="body-container">
+        <script type="text/x-template" id="kn-tab">
+            
+        </script>
+
 <!-------------------------------------------------------------------------------- Start the Top Menus ---------->
-		<div class="main-menus">
-			<div id="top-bar">
-				<div class="mod-search">
-					<input id="search-field" type="text" placeholder="Search">
-				</div>
-				<div class="pull-right">
-					<a href="#" class="top-btn" id="help-btn"><span class="help-image"></span></a>
-					<a href="#" class="top-btn" id="update-list"><span class="update-image"></span></a>
-					<a href="#" class="top-btn" id="settings-btn"><span class="settings-image"></span></a>
-				</div>
-			</div>
-<!-------------------------------------------------------------------------------- Start the Tab Menus ---------->
-			<div id="tab-bar">
-				<a href="#" class="main-btn" id="installed-tab"><span class="icon home-image"></span><span class="home-text">Home</span></a>
-				<a href="#" class="main-btn" id="available-tab"><span class="icon explore-image"></span><span class="explore-text">Explore</span></a>
-				<a href="#" class="main-btn" id="dev-tab"><span class="icon develop-image"></span><span class="develop-text">Development</span></a>
-			</div>
-<!-------------------------------------------------------------------------------- Start the Filter Button ---------->
-            <div class="filter-container"> <!-- May need to use javascript to hide this div when not in a mod list view! -->
-            	<button class="filterbtn"></button>
-                <div class="filter-content">
-                    <div class="filter-lines">
-                        <button class="filter-content-btn last-played-btn">Last Played</button>
+        <script type="text/x-template" id="kn-page">
+            <div>
+                <div class="main-menus">
+                    <div class="pull-right">
+                        <a href="#" class="top-btn" v-on:click="showHelp"><span class="help-image"></span></a>
+                        <a href="#" class="top-btn" v-on:click="updateList"><span class="update-image"></span></a>
+                        <!-- <a href="#" class="top-btn" v-on:clikc="showSettings"><span class="settings-image"></span></a> -->
                     </div>
-                    <div class="filter-lines">
-                        <button class="filter-content-btn alphabetical-btn">Alphabetical</button>
-                    </div>
-                    <div class="filter-lines">
-                        <button class="filter-content-btn last-updated-log-btn">Last Updated</button>
-                    </div>
-                    <div class="filter-lines">
-                        <button class="filter-content-btn last-released-btn">Last Released</button>
-                    </div>
-                </div>
-			</div>
-<!-------------------------------------------------------------------------------- Start the Details Menu ---------->
-			<div id="details-tab-bar" class="hide">
-				<a href="#" id="details-exit" class="main-btn"><i class="fa fa-chevron-left"></i> Back</a>
-				<span class="main-btn active">Details</span>
-			</div>
-<!-------------------------------------------------------------------------------- Start the Loading screen ---------->
-			<div id="loading">
-				Loading...
-			</div>
-
-		</div> <!-- Close the Top Menu section -->
-<!-------------------------------------------------------------------------------- Build the Main View container ---------->
-		<div class="main-container" id="scroll-style-1">
-			<div id="mods" class="container-fluid"></div>
-<!-------------------------------------------------------------------------------- Start the Welcome page ---------->
-			<div data-tr id="welcome" class="hide info-page">
-				<div class="container">
-					<h1>Welcome!</h1>
-					
-					<p>It looks like you started Knossos for the first time.</p>
-					<p>You need to select a directoy where Knossos will store the game data (models, textures, etc.).</p>
-					
-					<form class="form-horizontal">
-						<div class="form-group">
-							<div class="col-xs-8">
-								<input type="text" class="form-control" id="kn-data-path">
-							</div>
-							<div class="col-xs-4">
-								<button class="btn btn-default browse-btn" data-browse-target="#kn-data-path">Browse...</button>
-							</div>
-						</div>
-					</form>
-					
-					<p><button class="btn btn-primary welcome-continue">Continue</button></p>
-
-					<hr>
-					<p>
-						This launcher is still in development. Please visit
-						<a href="http://www.hard-light.net/forums/index.php?topic=93144.0" target="_blank">this HLP thread</a>
-						and let me know what you think, what didn't work and what you would like to change.
-					</p>
-					<p>-- ngld</p>
-				</div>
-			</div>
-<!-------------------------------------------------------------------------------- Start the Details page ---------->
-			<div id="details-page" class="hide info-page">
-                <div class="img-frame">
-                        <div class="title-frame">
-                                <h1 data-field="title">Mod Title</h1>
-                                Version <span data-field="version">0.0</span>
+                    <div id="top-bar">
+                        <div class="mod-search">
+                            <input v-model="search_text" type="text" placeholder="Search">
                         </div>
+                    </div>
+                </div>
+    <!-------------------------------------------------------------------------------- Start the Tab Menus ---------->
+                <div id="tab-bar" v-if="page !== 'details'">
+                    <a href="#" class="main-btn" v-for="(label, name) in tabs" v-bind:class="{ active: tab === name }" v-on:click="showTab(name)">
+                        <span :class="'icon ' + name + '-image'"></span>
+                        {{ label }}
+                    </a>
+                </div>
+    <!-------------------------------------------------------------------------------- Start the Filter Button ---------->
+                <div class="filter-container" v-if="page === 'modlist'">
+                    <button class="filterbtn" v-on:click="show_filter = true"></button>
+                    <div class="filter-content" v-show="show_filter" v-on:click="show_filter = false">
+                        <div class="filter-lines">
+                            <button class="filter-content-btn last-played-btn">Last Played</button>
+                        </div>
+                        <div class="filter-lines">
+                            <button class="filter-content-btn alphabetical-btn">Alphabetical</button>
+                        </div>
+                        <div class="filter-lines">
+                            <button class="filter-content-btn last-updated-log-btn">Last Updated</button>
+                        </div>
+                        <div class="filter-lines">
+                            <button class="filter-content-btn last-released-btn">Last Released</button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="container">
-                        <div class="pull-left btn-box"></div>
+    <!-------------------------------------------------------------------------------- Start the Details Menu ---------->
+                <div id="details-tab-bar" v-if="page === 'details'">
+                    <a href="#" class="main-btn" v-on:click="exitDetails"><i class="fa fa-chevron-left"></i> Back</a>
+                    <span class="main-btn active">Details</span>
+                </div>
 
-                        <div class="short-frame pull-right">
-                                <button class="btn btn-danger btn-release">FORUM</button>
-                                <button class="btn btn-primary btn-videos">VIDEOS</button>
+    <!-------------------------------------------------------------------------------- Build the Main View container ---------->
+                <div class="main-container scroll-style">
+                    <div class="container-fluid" v-if="page === 'modlist'">
+                        <kn-mod v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod>
+                        <div v-if="mods.length === 0" class="main-notice">No mods found.</div>
+                    </div>
+
+    <!-------------------------------------------------------------------------------- Start the Welcome page ---------->
+                    <div data-tr class="info-page" v-if="page === 'welcome'">
+                        <div class="container main-notice">
+                            <h1>Welcome!</h1>
+                            
+                            <p>It looks like you started Knossos for the first time.</p>
+                            <p>You need to select a directoy where Knossos will store the game data (models, textures, etc.).</p>
+                            
+                            <form class="form-horizontal">
+                                <div class="form-group">
+                                    <div class="col-xs-8">
+                                        <input type="text" class="form-control" v-model="data_path">
+                                    </div>
+                                    <div class="col-xs-4">
+                                        <button class="btn btn-default" v-on:click="selectFolder">Browse...</button>
+                                    </div>
+                                </div>
+                            </form>
+                            
+                            <p><button class="btn btn-primary" v-on:click="finishWelcome">Continue</button></p>
+
+                            <hr>
+                            <p>
+                                This launcher is still in development. Please visit
+                                <a v-on:click="openLink('http://www.hard-light.net/forums/index.php?topic=93144.0')">this HLP thread</a>
+                                and let me know what you think, what didn't work and what you would like to change.
+                            </p>
+                            <p>-- ngld</p>
+                        </div>
+                    </div>
+
+    <!-------------------------------------------------------------------------------- Start the Details page ---------->
+                    <div class="info-page" id="details-page" v-if="page === 'details'">
+                        <div class="img-frame">
+                            <div class="title-frame">
+                                <h1>{{ mod.title }}</h1>
+                                Version <span>{{ mod.version }}</span>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <button class="mod-btn btn-green" v-if="tab === 'home' && (mod.status === 'ready' || mod.status === 'update')" v-on:click="playMod">
+                                    <span class="btn-text">PLAY</span>
+                                </button>
+
+                                <button class="mod-btn btn-yellow" v-if="tab === 'home' && mod.status === 'update'" v-on:click="updateMod">
+                                    <span class="btn-text">UPDATE</span>
+                                </button>
+
+                                <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstallMod">
+                                    <span class="btn-text">UNINSTALL</span>
+                                </button>
+
+                                <button class="mod-btn btn-blue" v-if="tab === 'explore'" v-on:click="installMod">
+                                    <span class="btn-text">INSTALL</span>
+                                </button>
+
+                                <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status === 'updating'" v-on:click="cancelMod">
+                                    <span class="btn-text">CANCEL</span>
+                                </button>
+                            </div>
+
+                            <div class="col-sm-6 short-frame">
+                                <button class="btn btn-danger" v-if="mod.release_thread" v-on:click="openLink(mod.release_thread)">FORUM</button>
+                                <button class="btn btn-primary" v-if="mod.videos.length > 0" v-on:click="showVideos(mod.videos)">VIDEOS</button>
 
                                 <div class="date-frame pull-right">
-                                        <div data-if="first_release">Release: <span data-field="first_release">?</span></div>
-                                        <div data-if="last_update"><em>Last Updated: <span data-field="last_update">?</span></em></div>
+                                    <div v-if="mod.first_release">Release: {{ mod.first_release }}</div>
+                                    <div v-if="mod.last_update"><em>Last Updated: {{ mod.last_update }}</em></div>
                                 </div>
+                            </div>
                         </div>
-                </div>
 
-                <p data-field="description">Mod description</p>
-				
-				<pre id="details-box">...</pre>
-			</div>
-<!-------------------------------------------------------------------------------- Start the Last Played page ---------->
-			<div id="last-played" class="hide info-page">
-				<button class="btn btn-success run-btn">
-					<span data-tr>Play</span>
-					<i class="fa fa-play"></i>
-				</button> <br>
-				
-				<h2 class="title"></h2>
-				<img class="mod-logo img-responsive">
-				<p class="desc"></p>
-			</div>
-			<div id="no-last-played" class="hide info-page">
-				<p class="lead"><span data-tr>You haven't played any mod, yet. (Or you uninstalled your last played mod.)</span></p>
-			</div>
-<!-------------------------------------------------------------------------------- Start the Explore page ---------->
-			<div class="mod hide row" id="tpl-avail-mod">
-				<div class="mod-node"> <!--This begins the section that builds a single mod node. Javascript duplicates and appends this entire section once for each mod in the list.-->
-					<div class="mod-image">
-						<img src="images/modstock.jpg" class="mod-stock">
-						<div class="mod-logo-container">
-							<img class="mod-logo-legacy img-responsive">
-						</div>
-					</div>
-					<div class="actions">
-						<div class="btn-wrapper avail-cover"></div>
-					</div>
-					<div class="mod-title">Mod title</div>
-				</div>
-			</div>
-<!-------------------------------------------------------------------------------- Start the Home page ---------->
-			<div class="mod hide row" id="tpl-installed-mod">
-				<div class="mod-node"> <!--This begins the section that builds a single mod node. Javascript duplicates and appends this entire section once for each mod in the list.-->
-					<div class="mod-image">
-						<img src="images/modstock.jpg" class="mod-stock">
-						<div class="mod-logo-container">
-							<img class="mod-logo-legacy img-responsive">
-						</div>
-					</div>
-					<div class="mod-notifier">
-						<img src="images/modnotify_ready.png" class="notifier">
-					</div>
-					<div class="actions">
-						<div class="btn-wrapper">
-							<button class="mod-btn btn-green run-btn">
-								<span class="btn-text">PLAY</span>
-							</button><br>
-							<button class="mod-btn btn-grey settings-btn">
-								<spanS class="btn-text">DETAILS</span>
-							</button><br>
-							<div class="debug-dropdown">
+                        <p>{{ mod.description }}</p>
+                    </div>
+                </div>
+            </div>
+        </script>
+
+    <!-------------------------------------------------------------------------------- Start the Home page ---------->
+        <script type="text/x-template" id="kn-mod">
+            <!--This begins the section that builds a single mod node. Javascript duplicates and appends this entire section once for each mod in the list.-->
+            <div class="mod row">
+                <div class="mod-node">
+                    <div class="mod-image">
+                        <img src="images/modstock.jpg" class="mod-stock">
+                        <div class="mod-logo-container">
+                            <img class="mod-logo-legacy img-responsive" v-if="mod.logo_path" :src="'file://' + mod.logo_path">
+                        </div>
+                    </div>
+                    <div class="mod-notifier" v-if="tab === 'home'">
+                        <img :src="'images/modnotify_' + mod.status + '.png'" class="notifier">
+                    </div>
+                    <div class="actions">
+                        <div class="btn-wrapper">
+                            <button class="mod-btn btn-green" v-if="tab === 'home' && (mod.status === 'ready' || mod.status === 'update')" v-on:click="play">
+                                <span class="btn-text">PLAY</span>
+                            </button>
+
+                            <button class="mod-btn btn-yellow" v-if="tab === 'home' && mod.status === 'update'" v-on:click="update">
+                                <span class="btn-text">UPDATE</span>
+                            </button>
+
+                            <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstall">
+                                <span class="btn-text">UNINSTALL</span>
+                            </button>
+
+                            <button class="mod-btn btn-blue" v-if="tab === 'explore'" v-on:click="install">
+                                <span class="btn-text">INSTALL</span>
+                            </button>
+
+                            <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status === 'updating'" v-on:click="cancel">
+                                <span class="btn-text">CANCEL</span>
+                            </button>
+
+                            <button class="mod-btn btn-grey" v-on:click="showDetails">
+                                <span class="btn-text">DETAILS</span>
+                            </button>
+
+                            <div class="debug-dropdown" v-if="tab === 'home'">
                                 <button class="dropbtn"></button>
                                 <div class="dropdown-content">
                                     <div class="dropdown-lines">
-                                        <button class="drop-content-btn fast-debug-btn">Run Fast Debug</button>
+                                        <button class="drop-content-btn">Run Fast Debug</button>
                                     </div>
                                     <div class="dropdown-lines">
-                                        <button class="drop-content-btn debug-btn">Run Debug</button>
+                                        <button class="drop-content-btn">Run Debug</button>
                                     </div>
                                     <div class="dropdown-lines">
-                                        <button class="drop-content-btn debug-log-btn">Upload Debug Log</button>
+                                        <button class="drop-content-btn">Upload Debug Log</button>
                                     </div>
                                 </div>
                             </div>
-						</div>
-					</div>
-					<div class="mod-progress"><div class="bar"></div></div>
-					<div class="mod-title">Mod title</div>
-				</div>
-			</div>
-<!-------------------------------------------------------------------------------- Start the Update page ---------->
-			<div class="mod hide row" id="tpl-update-mod">
-				<div class="col-xs-6">
-					<img class="mod-logo img-responsive">
-				</div>
-				<div class="col-xs-6">
-					<span class="title">Mod title</span>
-					<div class="top-actions">
-						<button class="btn btn-success update-btn">
-							<span data-tr>Update</span>
-							<i class="fa fa-cloud-download"></i>
-						</button>
-					</div>
-				</div>
-			</div>
+                        </div>
+                    </div>
+                    <div class="mod-progress" v-show="mod.progress > 0"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>
+                    <div class="mod-title">{{ mod.title }}</div>
+                </div>
+            </div>
+        </script>
 
-		</div><!-- Close the Main View Container section -->
-	</body>
+        <div id="loading">
+            Loading...
+        </div>
+    </body>
 </html>

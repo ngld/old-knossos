@@ -139,14 +139,16 @@ class Window(object):
 
 class HellWindow(Window):
     _tasks = None
-    _mod_filter = 'installed'
+    _mod_filter = 'home'
     _search_text = ''
+    _updating_mods = None
     browser_ctrl = None
     progress_win = None
 
     def __init__(self, window=True):
         super(HellWindow, self).__init__(window)
         self._tasks = {}
+        self._updating_mods = {}
 
         self._create_win(Ui_Hell, QMainWindow)
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
@@ -157,6 +159,7 @@ class HellWindow(Window):
 
         center.signals.update_avail.connect(self.ask_update)
         center.signals.task_launched.connect(self.watch_task)
+        center.signals.repo_updated.connect(self.update_mod_list)
 
         self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
         self.win.progressInfo.hide()
@@ -178,7 +181,7 @@ class HellWindow(Window):
 
     def check_fso(self):
         if 'KN_WELCOME' not in os.environ and center.settings['base_path'] is not None:
-            self.update_mod_buttons('installed')
+            self.update_mod_buttons('home')
         else:
             self.browser_ctrl.bridge.showWelcome.emit()
 
@@ -200,33 +203,56 @@ class HellWindow(Window):
     def search_mods(self):
         mods = None
 
-        if self._mod_filter == 'installed':
+        if self._mod_filter == 'home':
             mods = center.installed.mods
-        elif self._mod_filter == 'available':
+        elif self._mod_filter == 'explore':
             mods = {}
             for mid, mvs in center.mods.mods.items():
                 if mid not in center.installed.mods:
                     mods[mid] = mvs
-        elif self._mod_filter == 'updates':
-            mods = {}
-            for mid in center.installed.get_updates():
-                mods[mid] = center.installed.mods[mid]
+        # elif self._mod_filter == 'updates':
+        #     mods = {}
+        #     for mid in center.installed.get_updates():
+        #         mods[mid] = center.installed.mods[mid]
         else:
             mods = {}
 
         # Now filter the mods.
         query = self._search_text
-        result = {}
+        result = []
         for mid, mvs in mods.items():
             if query in mvs[0].title.lower():
-                result[mid] = [mod.get() for mod in mvs]
+                mod = mvs[0]
+                item = mod.get()
+                item['progress'] = 0
 
+                try:
+                    rmod = center.mods.query(mod)
+                except repo.ModNotFound:
+                    rmod = None
+
+                if rmod and rmod.version > mod.version:
+                    item['status'] = 'update'
+                elif mod.mid in self._updating_mods:
+                    item['status'] = 'updating'
+                    item['progress'] = self._updating_mods[mod.mid]
+                else:
+                    item['status'] = 'ready'
+
+                    for pkg in mod.packages:
+                        if hasattr(pkg, 'files_checked') and pkg.files_ok < pkg.files_checked:
+                            item['status'] = 'error'
+                            break
+
+                result.append(item)
+
+        result.sort(key=lambda m: m['title'])
         return result, self._mod_filter
 
     def update_mod_list(self):
         result, filter_ = self.search_mods()
 
-        if filter_ in ('installed', 'available', 'updates', 'progress'):
+        if filter_ in ('home', 'explore'):
             self.browser_ctrl.bridge.updateModlist.emit(result, filter_)
 
     def show_settings(self):
@@ -250,7 +276,10 @@ class HellWindow(Window):
     def watch_task(self, task):
         logging.debug('Task "%s" (%d, %s) started.', task.title, id(task), task.__class__)
         self._tasks[id(task)] = task
-        self.browser_ctrl.bridge.taskStarted.emit(id(task), task.title, task.mods)
+        self.browser_ctrl.bridge.taskStarted.emit(id(task), task.title, [m.mid for m in task.mods])
+
+        for m in task.mods:
+            self._updating_mods[m.mid] = 0
 
         task.done.connect(functools.partial(self._forget_task, task))
         task.progress.connect(functools.partial(self._track_progress, task))
@@ -270,6 +299,9 @@ class HellWindow(Window):
     def _track_progress(self, task, pi):
         self.browser_ctrl.bridge.taskProgress.emit(id(task), pi[0] * 100, pi[2])
 
+        for m in task.mods:
+            self._updating_mods[m.mid] = pi[0] * 100
+
         if len(self._tasks) == 1:
             integration.current.set_progress(pi[0])
             self.win.progressBar.setValue(pi[0] * 100)
@@ -278,6 +310,9 @@ class HellWindow(Window):
         logging.debug('Task "%s" (%d) finished.', task.title, id(task))
         self.browser_ctrl.bridge.taskFinished.emit(id(task))
         del self._tasks[id(task)]
+
+        for m in task.mods:
+            del self._updating_mods[m.mid]
 
         if len(self._tasks) == 1:
             task = list(self._tasks.values())[0]
@@ -705,7 +740,7 @@ class ModInstallWindow(Window):
         self.label_tpl(self.win.dlSizeLabel, DL_SIZE=util.format_bytes(dl_size))
 
     def install(self):
-        center.main_win.update_mod_buttons('progress')
+        center.main_win.update_mod_buttons('home')
 
         run_task(InstallTask(self.get_selected_pkgs(), self._mod))
         self.close()
