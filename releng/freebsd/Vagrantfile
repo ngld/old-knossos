@@ -1,6 +1,6 @@
 Vagrant.configure("2") do |config|
   config.vm.define "knossos-builder"
-  config.vm.box = "freebsd-11.0-release"
+  config.vm.box = "packer/builds/FreeBSD-11.0-RELEASE-amd64.box"
 
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.synced_folder "../..", "/opt/knossos", type: "rsync",

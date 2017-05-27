@@ -41,11 +41,9 @@ RCC_FILES = [
     'html/css/style.css',
     'html/fonts/fontawesome-webfont.woff',
     'html/fonts/fontawesome-webfont.ttf',
-    'html/js/jquery.js',
     'html/js/vue.min.js',
     'html/js/modlist_ts.js',
     'html/js/modlist.js',
-    'html/js/beautify.js',
     'html/index.html'
 ] + \
     build_file_list('html/images') + \
