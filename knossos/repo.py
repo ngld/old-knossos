@@ -876,6 +876,9 @@ class InstalledMod(Mod):
             'packages': [pkg.get() for pkg in self.packages]
         }
 
+    def set_base(self, base):
+        pass
+
     def add_pkg(self, pkg):
         pkg = InstalledPackage.convert(pkg, self)
         found = False

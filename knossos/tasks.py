@@ -218,7 +218,6 @@ class CheckTask(progress.MultistepTask):
                     mod.save()
                 elif c > 0:
                     logging.warning('Package %s of mod %s (%s) is completely corrupted!!' % (pkg.name, mod.mid, mod.title))
-                    print('# %s' % msg)
 
             if pkg is not None:
                 pkg.check_notes = msg
@@ -325,6 +324,7 @@ class InstallTask(progress.MultistepTask):
     _steps = 2
     _error = False
     _7z_lock = None
+    _pkg_prog = None
     check_after = True
 
     def __init__(self, pkgs, mod=None, check_after=True):
@@ -333,6 +333,8 @@ class InstallTask(progress.MultistepTask):
         self._mods = set()
         self._pkgs = []
         self._pkg_names = []
+        self._pkg_prog = {}
+        self._local = threading.local()
         self.check_after = check_after
 
         if sys.platform == 'win32':
@@ -350,6 +352,17 @@ class InstallTask(progress.MultistepTask):
         center.signals.repo_updated.emit()
         self.done.connect(self.finish)
         self.title = 'Installing mods...'
+
+    def _track_progress(self, prog, text):
+        with self._progress_lock:
+            if self._local.pkg:
+                self._pkg_prog[self._local.pkg] = (self._pkg_prog[self._local.pkg][0], prog, text)
+
+            total = 0
+            for label, prog, text in self._pkg_prog.values():
+                total += prog
+
+            self.progress.emit((total / max(1, len(self._pkg_prog)), self._pkg_prog, 'Installing mods...'))
 
     def abort(self):
         super(InstallTask, self).abort()
@@ -391,6 +404,7 @@ class InstallTask(progress.MultistepTask):
         modpath = mod.folder
         mfiles = mod.get_files()
         mnames = [f['filename'] for f in mfiles] + ['knossos.bmp', 'mod.json']
+        self._local.pkg = None
 
         archives = set()
         progress.update(0, 'Checking %s...' % mod.title)
@@ -448,6 +462,8 @@ class InstallTask(progress.MultistepTask):
                     item['pkg'] = pkg
                     downloads.append(item)
 
+                    self._pkg_prog[id(item)] = ('%s: %s' % (mod.title, item['filename']), 0, 'Checking...')
+
         if len(archives) == 0:
             logging.info('Nothing to do for this InstallTask!')
         elif len(downloads) == 0:
@@ -458,6 +474,8 @@ class InstallTask(progress.MultistepTask):
         self.add_work(downloads)
 
     def work2(self, archive):
+        self._local.pkg = id(archive)
+
         with tempfile.TemporaryDirectory() as tpath:
             arpath = os.path.join(tpath, archive['filename'])
             modpath = archive['mod'].folder
@@ -629,6 +647,8 @@ class InstallTask(progress.MultistepTask):
                                           arpath, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
                         self._error = True
 
+            progress.update(1, 'Done.')
+
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
 class UninstallTask(progress.MultistepTask):
@@ -655,11 +675,10 @@ class UninstallTask(progress.MultistepTask):
         self.add_work(self._pkgs)
 
     def work1(self, pkg):
-        fs2path = center.settings['fs2_path']
         mod = pkg.get_mod()
 
         for item in pkg.filelist:
-            path = util.ipath(os.path.join(fs2path, mod.folder, item['filename']))
+            path = util.ipath(os.path.join(mod.folder, item['filename']))
             if not os.path.isfile(path):
                 logging.warning('File "%s" for mod "%s" (%s) is missing during uninstall!', item['filename'], mod.title, mod.mid)
             else:
@@ -676,7 +695,7 @@ class UninstallTask(progress.MultistepTask):
         self.add_work(mods)
 
     def work2(self, mod):
-        modpath = os.path.join(center.settings['fs2_path'], mod.folder)
+        modpath = mod.folder
 
         try:
             if isinstance(mod, repo.IniMod):
@@ -748,9 +767,8 @@ class UpdateTask(InstallTask):
             run_task(next_task)
 
     def _finish2(self):
-        fs2path = center.settings['fs2_path']
-        modpath = os.path.join(fs2path, self._old_mod.folder)
-        temppath = os.path.join(fs2path, self._new_modpath)
+        modpath = self._old_mod.folder
+        temppath = self._new_modpath
 
         if '_kv_' not in modpath:
             # Move all files from the temporary directory to the new one.

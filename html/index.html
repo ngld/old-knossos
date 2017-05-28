@@ -119,12 +119,23 @@
                                     <span class="btn-text">UPDATE</span>
                                 </button>
 
-                                <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstallMod">
+                                <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status === 'error'" v-on:click="showModErrors">
+                                    <span class="btn-text">ERROR</span>
+                                </button>
+
+                                <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstallMod">
                                     <span class="btn-text">UNINSTALL</span>
                                 </button>
 
                                 <button class="mod-btn btn-blue" v-if="tab === 'explore'" v-on:click="installMod">
                                     <span class="btn-text">INSTALL</span>
+                                </button>
+
+                                <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" v-on:click="showModProgress">
+                                    <span class="small-btn-text">
+                                        INSTALLING...<br>
+                                        {{ Math.round(mod.progress) }}%
+                                    </span>
                                 </button>
 
                                 <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status === 'updating'" v-on:click="cancelMod">
@@ -144,12 +155,41 @@
                         </div>
 
                         <p>{{ mod.description }}</p>
+                    </div>
+                </div>
 
-                        <div v-for="pkg in mod.packages" v-if="pkg.check_notes && pkg.check_notes.length > 0">
-                            <strong>{{ pkg.name }}</strong><br>
-                            <ul>
-                                <li v-for="msg in pkg.check_notes">{{ msg }}</li>
-                            </ul>
+                <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>
+
+                <div class="popup" v-if="popup_visible">
+                    <div class="title clearfix">
+                        {{ popup_title }}
+
+                        <a href="" class="pull-right" @click.prevent="popup_visible = false">
+                            <i class="fa fa-times"></i>
+                        </a>
+                    </div>
+                    <div class="content scroll-style">
+                        <div v-if="popup_mode === 'html'" v-html="popup_content"></div>
+
+                        <div v-if="popup_mode === 'mod_errors'">
+                            <div v-for="pkg in popup_content.packages" v-if="pkg.check_notes && pkg.check_notes.length > 0">
+                                <strong>{{ pkg.name }}</strong><br>
+                                <ul>
+                                    <li v-for="msg in pkg.check_notes">{{ msg }}</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div v-if="popup_mode === 'mod_progress'">
+                            <div v-for="row in popup_content.progress_info" class="row">
+                                <div class="col-xs-4 mod-prog-label">{{ row[0] }}</div>
+                                <div class="col-xs-5">
+                                    <div :class="'mod-prog-bar' + (row[1] === 1 ? ' complete' : '')">
+                                        <div class="inner" :style="'width: ' + (row[1] * 100) + '%'"></div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-3 mod-prog-status">{{ row[2] }}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -180,12 +220,23 @@
                                 <span class="btn-text">UPDATE</span>
                             </button>
 
-                            <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstall">
+                            <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status === 'error'" v-on:click="showErrors">
+                                <span class="btn-text">ERROR</span>
+                            </button>
+
+                            <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstall">
                                 <span class="btn-text">UNINSTALL</span>
                             </button>
 
                             <button class="mod-btn btn-blue" v-if="tab === 'explore'" v-on:click="install">
                                 <span class="btn-text">INSTALL</span>
+                            </button>
+
+                            <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" v-on:click="showProgress">
+                                <span class="small-btn-text">
+                                    INSTALLING...<br>
+                                    {{ Math.round(mod.progress) }}%
+                                </span>
                             </button>
 
                             <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status === 'updating'" v-on:click="cancel">

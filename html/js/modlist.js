@@ -29,6 +29,20 @@ function init() {
             showDetails() {
                 vm.mod = this.mod;
                 vm.page = 'details';
+            },
+
+            showErrors() {
+                vm.popup_content = this.mod;
+                vm.popup_title = 'Mod errors';
+                vm.popup_mode = 'mod_errors';
+                vm.popup_visible = true;
+            },
+
+            showProgress() {
+                vm.popup_content = this.mod;
+                vm.popup_title = 'Installation Details';
+                vm.popup_mode = 'mod_progress';
+                vm.popup_visible = true;
             }
         }
     });
@@ -58,7 +72,12 @@ function init() {
             data_path: '?',
 
             // details page
-            mod: null
+            mod: null,
+
+            popup_visible: false,
+            popup_title: 'Popup',
+            popup_mode: '',
+            popup_content: null
         },
 
         watch: {
@@ -125,6 +144,20 @@ function init() {
 
             updateMod() {
                 fs2mod.updateMod(this.mod.id, '');
+            },
+
+            showModErrors() {
+                vm.popup_content = this.mod;
+                vm.popup_title = 'Mod errors';
+                vm.popup_mode = 'mod_errors';
+                vm.popup_visible = true;
+            },
+
+            showModProgress() {
+                vm.popup_content = this.mod;
+                vm.popup_title = 'Installation Details';
+                vm.popup_mode = 'mod_progress';
+                vm.popup_visible = true;
             }
         }
     });
@@ -161,9 +194,12 @@ function init() {
     });
 
     fs2mod.taskProgress.connect((tid, progress, details) => {
+        details = JSON.parse(details);
         for(let mid of tasks[tid].mods) {
-            if(mod_table[mid])
+            if(mod_table[mid]) {
                 mod_table[mid].progress = progress;
+                mod_table[mid].progress_info = details;
+            }
         }
     });
 

@@ -19,6 +19,7 @@ import sys
 import logging
 import shlex
 import functools
+import json
 import semantic_version
 
 from . import uhf
@@ -225,6 +226,7 @@ class HellWindow(Window):
                 mod = mvs[0]
                 item = mod.get()
                 item['progress'] = 0
+                item['progress_info'] = {}
 
                 try:
                     rmod = center.mods.query(mod)
@@ -298,7 +300,7 @@ class HellWindow(Window):
                 self.win.progressLabel.setText(self.tr('Working...'))
 
     def _track_progress(self, task, pi):
-        self.browser_ctrl.bridge.taskProgress.emit(id(task), pi[0] * 100, pi[2])
+        self.browser_ctrl.bridge.taskProgress.emit(id(task), pi[0] * 100, json.dumps(pi[1]))
 
         for m in task.mods:
             self._updating_mods[m.mid] = pi[0] * 100
