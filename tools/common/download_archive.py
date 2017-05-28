@@ -112,6 +112,8 @@ def main():
     if thread.failed:
         error('The download failed because the download was incomplete or corrupted!')
 
+    thread.join()
+
 
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, lambda *_: error('', 0))  # Properly handle Control+C

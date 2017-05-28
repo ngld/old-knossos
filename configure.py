@@ -165,10 +165,10 @@ with open('build.ninja', 'w') as stream:
         nsis = find_program(['makensis', r'C:\Program Files (x86)\NSIS\makensis.exe', r'C:\Program Files\NSIS\makensis.exe'], 'NSIS', required=False)
         if nsis:
             version = 'TODO'
-            n.rule('nsis', cmd2str([nsis, '/NOCD', r'/DKNOSSOS_ROOT=.\\', '/DKNOSSOS_VERSION=%s' % version, '$in']), 'NSIS')
-            n.build('releng/windows/nsis/installer.nsi', 'nsis', 'build')
-            n.build('releng/windows/nsis/updater.nsi', 'nsis', 'build')
+            n.rule('nsis', cmd2str([nsis, '/NOCD', r'/DKNOSSOS_ROOT=.\\', '/DKNOSSOS_VERSION=%s' % version, '$in']), 'NSIS $out')
+            n.build('releng/windows/dist/installer.exe', 'nsis', 'releng/windows/nsis/installer.nsi', implicit='build')
+            n.build('releng/windows/dist/updater.exe', 'nsis', 'releng/windows/nsis/updater.nsi', implicit='build')
             
-            n.build('installer', 'phony', ['releng/windows/nsis/installer.nsi', 'releng/windows/nsis/updater.nsi'])
+            n.build('installer', 'phony', ['releng/windows/dist/installer.exe', 'releng/windows/dist/updater.exe'])
 
 info('\nDone! Use "ninja run" to start Knossos.\n')
