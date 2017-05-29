@@ -78,6 +78,7 @@
     color: #828282;
     text-decoration: none;
     height: 40px;
+	margin-top: 3px;
 }
 
 .top-btn:hover {
@@ -257,6 +258,16 @@
     height: 25px;
     box-shadow: inset 0px 7px 15px 0px rgba(0,0,0,1);
     margin-right: 25px;
+	margin-left: 9px;
+}
+
+#details-tab-bar {
+	text-align: center;
+}
+
+#details-tab-bar .main-btn{
+	padding-left: 20px;
+	padding-right: 20px;
 }
 
 .main-btn {
@@ -448,7 +459,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 8px;
+    padding: 11px;
 
     font-size: 0.8em;
     color: white;
@@ -529,6 +540,12 @@
 .mod-node .mod-progress {
     height: 3px;
     background-color: #422626;
+	transition: all 0.3s ease-in-out;
+}
+
+.mod-node .actions:hover ~ .mod-progress { /* Let's also lighten the red box for the progress area */
+    background-color: #856d6d;
+    transition: all 0.3s ease-in-out;
 }
 
 .mod-node .mod-progress .bar {
@@ -664,6 +681,7 @@
 .mod-btn .small-btn-text {
     font-size: 10px;
     line-height: 1.1;
+	display: block;
 }
 
 .btn-green { /* Settings that create the Play button */
@@ -817,14 +835,19 @@
     overflow-y: auto;
     color: #fff;
 
-    padding: 10px 15px;
+    padding: 5px 15px;
     background: #2e2e2e;
+}
+
+.popup .row:nth-child(even) {
+	background: #444444;
 }
 
 .mod-prog-label {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+	color: #bbbbbb;
 }
 
 .mod-prog-bar {
@@ -836,14 +859,17 @@
 }
 
 .mod-prog-bar .inner {
-    background: #11f;
+    background: #1c4499;
     height: 100%;
 }
 
 .mod-prog-bar.complete .inner {
-    background: #1f1;
+    background: #3c991c;
 }
 
 .mod-prog-status {
     font-size: 12px;
+	height: 100%;
+	line-height: 100%;
+	margin-top: 4px;
 }

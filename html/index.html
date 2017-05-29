@@ -59,7 +59,7 @@
     <!-------------------------------------------------------------------------------- Start the Details Menu ---------->
                 <div id="details-tab-bar" v-if="page === 'details'">
                     <a href="#" class="main-btn" v-on:click="exitDetails"><i class="fa fa-chevron-left"></i> Back</a>
-                    <span class="main-btn active">Details</span>
+                    <span class="main-btn active"><i class="fa fa-exclamation-circle"></i> Details</span>
                 </div>
 
     <!-------------------------------------------------------------------------------- Build the Main View container ---------->
@@ -263,7 +263,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="mod-progress" v-show="mod.progress > 0"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>
+					<div class="mod-progress"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>
                     <div class="mod-title">{{ mod.title }}</div>
                 </div>
             </div>
