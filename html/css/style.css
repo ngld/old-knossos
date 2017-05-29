@@ -47,6 +47,7 @@
 /* -------------------------- Settings for top bar elements ----------------------------------*/
 
 #top-bar {
+	position: relative;
     background-color: #1c1c1c;
     height: 40px;
     box-shadow: inset 0px 7px 10px -10px rgba(179,179,179,1),
@@ -63,6 +64,9 @@
 
 .pull-right {
     vertical-align: middle;
+	position: absolute;
+	right: 10px;
+	z-index: 1;
 }
 
 .top-btn {
@@ -156,7 +160,7 @@
 .filter-container {
     width: 19px;
     height: 13px;
-    top: 53px;
+    top: 56px;
     right: 9px;
     position: absolute;
 }
@@ -256,13 +260,14 @@
 #tab-bar {
     background-color: #1c1c1c;
     height: 25px;
-    box-shadow: inset 0px 7px 15px 0px rgba(0,0,0,1);
     margin-right: 25px;
 	margin-left: 9px;
+	margin-top: 3px;
 }
 
 #details-tab-bar {
 	text-align: center;
+	margin-top: 3px;
 }
 
 #details-tab-bar .main-btn{
@@ -376,7 +381,7 @@
 
 .main-container { /* Let's make sure the mod list takes up the entire window and scrolls only vertically. */
     position: absolute;
-    top: 72px;
+    top: 78px;
     bottom: 7px;
     width: calc(100% - 14px);
     overflow-y: auto;
