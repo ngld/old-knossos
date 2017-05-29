@@ -47,7 +47,7 @@
 /* -------------------------- Settings for top bar elements ----------------------------------*/
 
 #top-bar {
-	position: relative;
+    position: relative;
     background-color: #1c1c1c;
     height: 40px;
     box-shadow: inset 0px 7px 10px -10px rgba(179,179,179,1),
@@ -64,9 +64,9 @@
 
 .pull-right {
     vertical-align: middle;
-	position: absolute;
-	right: 10px;
-	z-index: 1;
+    position: absolute;
+    right: 10px;
+    z-index: 1;
 }
 
 .top-btn {
@@ -262,12 +262,12 @@
     height: 25px;
     margin-right: 25px;
     margin-left: 9px;
-	margin-top: 3px;
+    margin-top: 3px;
 }
 
 #details-tab-bar {
     text-align: center;
-	margin-top: 3px;
+    margin-top: 3px;
 }
 
 #details-tab-bar .main-btn{
