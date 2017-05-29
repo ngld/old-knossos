@@ -12,6 +12,9 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+!addincludedir "${KNOSSOS_ROOT}releng\windows\support\NSIS"
+!addplugindir "${KNOSSOS_ROOT}releng\windows\support\NSIS"
+
 !include MUI2.nsh
 !include nsProcess.nsh
 
@@ -20,7 +23,7 @@ InstallDir "$PROGRAMFILES\Knossos"
 InstallDirRegKey HKLM "Software\Knossos" "Install Dir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
-OutFile dist\updater.exe
+OutFile ${KNOSSOS_ROOT}releng\windows\dist\updater.exe
 
 !define MUI_ICON ${KNOSSOS_ROOT}knossos\data\hlp.ico
 !define MUI_INSTFILESPAGE_HEADER_SUBTEXT
@@ -58,7 +61,7 @@ Section
     Delete "$INSTDIR\*.pyd"
 
     SetOverwrite on
-    File /r dist\Knossos\*
+    File /r ${KNOSSOS_ROOT}releng\windows\dist\Knossos\*
 
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "DisplayVersion" "${KNOSSOS_VERSION}"
 

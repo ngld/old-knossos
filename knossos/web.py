@@ -105,7 +105,6 @@ class WebBridge(QtCore.QObject):
                     link = '/' + link.replace('\\', '/')
 
                 link = 'file://' + link
-                print(link)
             else:
                 link = 'qrc:///html/index.html'
 

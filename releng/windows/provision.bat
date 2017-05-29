@@ -9,7 +9,7 @@ SET "PATH=%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
 echo ==> Installing packages...
 rem We're stuck with Python 3.5.x until PyInstaller supports Python 3.6
 choco install -y --no-progress python3 --version 3.5.2
-choco install -y --no-progress vcredist2010 nsis
+choco install -y --no-progress vcredist2010 vcredist2015 nsis
 
 echo ==> Installing python dependencies...
 py -3 -mpip install -U pip
