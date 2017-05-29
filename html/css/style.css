@@ -835,14 +835,19 @@
     overflow-y: auto;
     color: #fff;
 
-    padding: 10px 15px;
+    padding: 5px 15px;
     background: #2e2e2e;
+}
+
+.popup .row:nth-child(even) {
+	background: #444444;
 }
 
 .mod-prog-label {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+	color: #bbbbbb;
 }
 
 .mod-prog-bar {
@@ -854,14 +859,17 @@
 }
 
 .mod-prog-bar .inner {
-    background: #11f;
+    background: #1c4499;
     height: 100%;
 }
 
 .mod-prog-bar.complete .inner {
-    background: #1f1;
+    background: #3c991c;
 }
 
 .mod-prog-status {
     font-size: 12px;
+	height: 100%;
+	line-height: 100%;
+	margin-top: 4px;
 }
