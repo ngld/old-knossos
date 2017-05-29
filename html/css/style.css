@@ -459,7 +459,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 8px;
+    padding: 11px;
 
     font-size: 0.8em;
     color: white;
@@ -540,6 +540,12 @@
 .mod-node .mod-progress {
     height: 3px;
     background-color: #422626;
+	transition: all 0.3s ease-in-out;
+}
+
+.mod-node .actions:hover ~ .mod-progress { /* Let's also lighten the red box for the progress area */
+    background-color: #856d6d;
+    transition: all 0.3s ease-in-out;
 }
 
 .mod-node .mod-progress .bar {
