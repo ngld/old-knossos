@@ -26,7 +26,7 @@ from .qt import QtCore
 VERSION = '0.5.0-dev'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
-DEBUG = os.environ.get('KN_DEBUG').strip() == '1'
+DEBUG = os.getenv('KN_DEBUG', '0').strip() == '1'
 SENTRY_DSN = 'https://77179552b41946488346a9a2d2669d74:f7b896367bd94f0ea960b8f0ee8b7a88@sentry.gruenprint.de/9?timeout=5'
 
 LANGUAGES = {
