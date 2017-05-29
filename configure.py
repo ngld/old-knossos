@@ -129,7 +129,7 @@ with open('build.ninja', 'w') as stream:
 
     n.comment('Files')
     ui_targets = build_targets(n, UI_FILES, 'uic', new_ext='py', new_path='knossos/ui')
-    n.build('knossos/data/resources.rcc', 'rcc', 'knossos/data/resources.qrc')
+    n.build('knossos/data/resources.rcc', 'rcc', 'knossos/data/resources.qrc', implicit=RCC_FILES)
     n.build('html/js/modlist_ts.js', 'js_lupdate', ['html/js/modlist.js', 'html/index.html'])
     n.build('locale/_py.ts', 'pylupdate', SRC_FILES)
     n.build('locale/_ui.ts', 'lupdate', ['locale/_py.ts', 'html/js/modlist_ts.js'] + UI_FILES)

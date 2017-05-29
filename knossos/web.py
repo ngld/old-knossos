@@ -14,6 +14,7 @@
 
 from __future__ import absolute_import, print_function
 
+import sys
 import os.path
 import logging
 import re
@@ -99,7 +100,12 @@ class WebBridge(QtCore.QObject):
             channel.registerObject('fs2mod', self)
 
             if center.DEBUG and os.path.isdir('../html'):
-                link = 'file://' + os.path.abspath('../html/index.html')
+                link = os.path.abspath('../html/index.html')
+                if sys.platform == 'win32':
+                    link = '/' + link.replace('\\', '/')
+
+                link = 'file://' + link
+                print(link)
             else:
                 link = 'qrc:///html/index.html'
 
