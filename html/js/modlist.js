@@ -47,9 +47,13 @@ function init() {
         }
     });
 
-    Vue.component('kn-tab', {
-        template: '#kn-tab',
-        props: ['key', 'name', 'tab', 'showTab']
+    Vue.component('kn-drawer', {
+        template: '#kn-drawer',
+        props: ['label'],
+
+        data: () => ({
+            open: false
+        })
     });
 
     let vm = new Vue({
@@ -100,7 +104,7 @@ function init() {
             },
 
             showSettings() {
-                alert('Not yet implemented!');
+                this.page = 'settings';
             },
 
             showTab(tab) {

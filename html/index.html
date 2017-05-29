@@ -11,9 +11,6 @@
         <script type="text/javascript" src="js/modlist.js"></script>
     </head>
     <body class="body-container">
-        <script type="text/x-template" id="kn-tab">
-            
-        </script>
 
 <!-------------------------------------------------------------------------------- Start the Top Menus ---------->
         <script type="text/x-template" id="kn-page">
@@ -22,7 +19,7 @@
                     <div class="pull-right">
                         <a href="#" class="top-btn" v-on:click="showHelp"><span class="help-image"></span></a>
                         <a href="#" class="top-btn" v-on:click="updateList"><span class="update-image"></span></a>
-                        <!-- <a href="#" class="top-btn" v-on:clikc="showSettings"><span class="settings-image"></span></a> -->
+                        <a href="#" class="top-btn" v-on:click="showSettings"><span class="settings-image"></span></a>
                     </div>
                     <div id="top-bar">
                         <div class="mod-search">
@@ -156,6 +153,213 @@
 
                         <p>{{ mod.description }}</p>
                     </div>
+
+                    <div class="info-page settings-page container-fluid" v-if="page === 'settings'">
+                        <div class="row form-horizontal">
+                            <div class="col-sm-6">
+                                <h2>Settings</h2>
+
+                                <kn-drawer label="Knossos Defaults">
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Data Path:</label>
+                                        <div class="col-sm-8">
+                                            <button>Browse</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Max Downloads:</label>
+                                        <div class="col-sm-8">
+                                            <input type="number" style="width: 50px">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Send Error Reports:</label>
+                                        <div class="col-sm-8">
+                                            <input type="checkbox">
+                                        </div>
+                                    </div>
+                                </kn-drawer>
+
+                                <kn-drawer label="Video Defaults">
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Resolution:</label>
+                                        <div class="col-sm-8"><select></select></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Bit Depth:</label>
+                                        <div class="col-sm-2"><select></select></div>
+                                        <label class="col-sm-3 control-label">Texture Filter:</label>
+                                        <div class="col-sm-2"><select></select></div>
+                                    </div>
+                                </kn-drawer>
+
+                                <kn-drawer label="Audio Defaults">
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Playback Device:</label>
+                                        <div class="col-sm-8">
+                                            <select></select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Capture Device:</label>
+                                        <div class="col-sm-8">
+                                            <select></select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Enable EFX:</label>
+                                        <div class="col-sm-1"><input type="checkbox"></div>
+
+                                        <label class="col-sm-3 control-label">Sample Rate:</label>
+                                        <div class="col-sm-4">
+                                            <input type="number">
+                                        </div>
+                                    </div>
+                                </kn-drawer>
+
+                                <kn-drawer label="Joystick Defaults">
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Joystick:</label>
+                                        <div class="col-sm-8">
+                                            <select></select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <div class="col-sm-8 col-sm-offset-5">
+                                            <button>Detect</button>
+                                            <button>Calibrate</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <div class="col-sm-4 col-sm-offset-4">
+                                            Force Feedback:
+                                            <input type="checkbox">
+                                        </div>
+                                        <div class="col-sm-4">
+                                            Directional Hit:
+                                            <input type="checkbox">
+                                        </div>
+                                    </div>
+                                </kn-drawer>
+                            </div>
+                            <div class="col-sm-6">
+                                <kn-drawer label="Exec Defaults">
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">FSO Exec:</label>
+                                        <div class="col-sm-8">
+                                            <select></select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">FRED Exec:</label>
+                                        <div class="col-sm-8">
+                                            <select></select>
+                                        </div>
+                                    </div>
+                                </kn-drawer>
+
+                                <kn-drawer label="Speech Defaults">
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Voice:</label>
+                                        <div class="col-sm-8">
+                                            <select></select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Volume:</label>
+                                        <div class="col-sm-8">
+                                            # SLIDER #
+                                            <button>Test</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Use Speech In:</label>
+                                        <div class="col-sm-4">
+                                            Tech Room:
+                                            <input type="checkbox">
+                                        </div>
+                                        <div class="col-sm-4">
+                                            In-Game:
+                                            <input type="checkbox">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <div class="col-sm-4 col-sm-offset-4">
+                                            Briefings:
+                                            <input type="checkbox">
+                                        </div>
+                                        <div class="col-sm-4">
+                                            Multiplayer:
+                                            <input type="checkbox">
+                                        </div>
+                                    </div>
+                                </kn-drawer>
+
+                                <kn-drawer label="Network Defaults">
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Connection Type:</label>
+                                        <div class="col-sm-3">
+                                            <select disabled></select>
+                                        </div>
+                                        <label class="col-sm-2 control-label">Force Local Port:</label>
+                                        <div class="col-sm-2">
+                                            <input type="number" disabled>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Connection Speed:</label>
+                                        <div class="col-sm-3">
+                                            <select disabled></select>
+                                        </div>
+                                        <label class="col-sm-3 control-label">Force IP Address:</label>
+                                        <div class="col-sm-2">
+                                            <input type="text" disabled>
+                                        </div>
+                                    </div>
+                                </kn-drawer>
+
+                                <kn-drawer label="Flag Defaults">
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Easy Setup:</label>
+                                        <div class="col-sm-8">
+                                            <select></select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">Custom Flags:</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" style="width: 100%">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">List Type:</label>
+                                        <div class="col-sm-8">
+                                            <select></select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <div class="col-sm-1ß col-sm-offset-2">
+                                            TODO
+                                        </div>
+                                    </div>
+                                </kn-drawer>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>
@@ -265,6 +469,21 @@
                     </div>
                     <div class="mod-progress"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>
                     <div class="mod-title">{{ mod.title }}</div>
+                </div>
+            </div>
+        </script>
+
+        <script type="text/x-template" id="kn-drawer">
+            <div class="kn-drawer">
+                <div class="title" @click="open = !open">
+                    <div class="text">{{ label }}</div>
+                    <div class="line"></div>
+                    <i :class="{ fa: true, 'fa-chevron-down': !open, 'fa-chevron-up': open }"></i>
+                </div>
+                <div class="content-wrapper">
+                    <div :class="{ content: true, open: open }">
+                        <slot></slot>
+                    </div>
                 </div>
             </div>
         </script>
