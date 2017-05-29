@@ -681,6 +681,7 @@
 .mod-btn .small-btn-text {
     font-size: 10px;
     line-height: 1.1;
+	display: block;
 }
 
 .btn-green { /* Settings that create the Play button */
