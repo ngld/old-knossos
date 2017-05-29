@@ -78,6 +78,7 @@
     color: #828282;
     text-decoration: none;
     height: 40px;
+	margin-top: 3px;
 }
 
 .top-btn:hover {
@@ -257,6 +258,16 @@
     height: 25px;
     box-shadow: inset 0px 7px 15px 0px rgba(0,0,0,1);
     margin-right: 25px;
+	margin-left: 9px;
+}
+
+#details-tab-bar {
+	text-align: center;
+}
+
+#details-tab-bar .main-btn{
+	padding-left: 20px;
+	padding-right: 20px;
 }
 
 .main-btn {
