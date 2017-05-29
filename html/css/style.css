@@ -82,7 +82,7 @@
     color: #828282;
     text-decoration: none;
     height: 40px;
-	margin-top: 3px;
+    margin-top: 3px;
 }
 
 .top-btn:hover {
@@ -216,7 +216,7 @@
 }
 
 .filterbtn:focus ~ .filter-content {
-	display: block;
+    display: block;
 }
 
 .filter-content-btn {
@@ -261,18 +261,18 @@
     background-color: #1c1c1c;
     height: 25px;
     margin-right: 25px;
-	margin-left: 9px;
+    margin-left: 9px;
 	margin-top: 3px;
 }
 
 #details-tab-bar {
-	text-align: center;
+    text-align: center;
 	margin-top: 3px;
 }
 
 #details-tab-bar .main-btn{
-	padding-left: 20px;
-	padding-right: 20px;
+    padding-left: 20px;
+    padding-right: 20px;
 }
 
 .main-btn {
@@ -545,7 +545,7 @@
 .mod-node .mod-progress {
     height: 3px;
     background-color: #422626;
-	transition: all 0.3s ease-in-out;
+    transition: all 0.3s ease-in-out;
 }
 
 .mod-node .actions:hover ~ .mod-progress { /* Let's also lighten the red box for the progress area */
@@ -608,7 +608,7 @@
 }
 
 .dropbtn:focus ~ .dropdown-content {
-	display: block;
+    display: block;
 }
 
 .drop-content-btn {
@@ -686,7 +686,7 @@
 .mod-btn .small-btn-text {
     font-size: 10px;
     line-height: 1.1;
-	display: block;
+    display: block;
 }
 
 .btn-green { /* Settings that create the Play button */
@@ -845,14 +845,14 @@
 }
 
 .popup .row:nth-child(even) {
-	background: #444444;
+    background: #444444;
 }
 
 .mod-prog-label {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-	color: #bbbbbb;
+    color: #bbbbbb;
 }
 
 .mod-prog-bar {
@@ -874,7 +874,7 @@
 
 .mod-prog-status {
     font-size: 12px;
-	height: 100%;
-	line-height: 100%;
-	margin-top: 4px;
+    height: 100%;
+    line-height: 100%;
+    margin-top: 4px;
 }
