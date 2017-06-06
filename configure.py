@@ -160,15 +160,28 @@ with open('build.ninja', 'w') as stream:
         if check_module('PyInstaller', required=False):
             pyinstaller = 'cmd /C "cd releng\\windows" && ' + cmd2str([sys.executable, '-OO', '-mPyInstaller', '-d', '--distpath=.\\dist', '--workpath=.\\build', 'Knossos.spec', '-y'])
             n.rule('pyinstaller', pyinstaller, 'PACKAGE', pool='console')
-            n.build('build', 'pyinstaller', ['resources'] + SRC_FILES)
+            n.build('pyi', 'pyinstaller', ['resources'] + SRC_FILES)
 
-        nsis = find_program(['makensis', r'C:\Program Files (x86)\NSIS\makensis.exe', r'C:\Program Files\NSIS\makensis.exe'], 'NSIS', required=False)
-        if nsis:
-            version = 'TODO'
-            n.rule('nsis', cmd2str([nsis, '/NOCD', r'/DKNOSSOS_ROOT=.\\', '/DKNOSSOS_VERSION=%s' % version, '$in']), 'NSIS $out')
-            n.build('releng/windows/dist/installer.exe', 'nsis', 'releng/windows/nsis/installer.nsi', implicit='build')
-            n.build('releng/windows/dist/updater.exe', 'nsis', 'releng/windows/nsis/updater.nsi', implicit='build')
-            
-            n.build('installer', 'phony', ['releng/windows/dist/installer.exe', 'releng/windows/dist/updater.exe'])
+            nsis = find_program(['makensis', r'C:\Program Files (x86)\NSIS\makensis.exe', r'C:\Program Files\NSIS\makensis.exe'], 'NSIS', required=False)
+            if nsis:
+                version = 'TODO'
+                n.rule('nsis', cmd2str([nsis, '/NOCD', r'/DKNOSSOS_ROOT=.\\', '/DKNOSSOS_VERSION=%s' % version, '$in']), 'NSIS $out')
+                n.build('releng/windows/dist/installer.exe', 'nsis', 'releng/windows/nsis/installer.nsi', implicit='pyi')
+                n.build('releng/windows/dist/updater.exe', 'nsis', 'releng/windows/nsis/updater.nsi', implicit='pyi')
+
+                n.build('installer', 'phony', ['releng/windows/dist/installer.exe', 'releng/windows/dist/updater.exe'])
+
+    if sys.platform == 'darwin':
+        n.comment('macOS')
+
+        if check_module('PyInstaller', required=False):
+            pyinstaller = 'cd releng/macos && ' + cmd2str([sys.executable, '-OO', '-mPyInstaller', '-d', '--distpath=./dist', '--workpath=./build', 'Knossos.spec', '-y'])
+            n.rule('pyinstaller', pyinstaller, 'PACKAGE', pool='console')
+            n.build('pyi', 'pyinstaller', ['resources'] + SRC_FILES)
+
+            dmgbuild = find_program(['dmgbuild'], 'dmgbuild', required=False)
+            if dmgbuild:
+                n.rule('dmgbuild', 'cd releng/macos && ' + cmd2str([dmgbuild, '-s', 'dmgbuild_cfg.py', 'Knossos', 'Knossos.dmg']), 'DMG')
+                n.build('dmg', 'dmgbuild', 'releng/macos/dmgbuild_cfg.py', implicit='pyi')
 
 info('\nDone! Use "ninja run" to start Knossos.\n')
