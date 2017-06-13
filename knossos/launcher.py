@@ -292,7 +292,7 @@ def main():
     else:
         lang = QtCore.QLocale()
 
-    if trans.load(lang, 'knossos', '_', get_file_path('')):
+    if trans.load(lang, 'knossos', '_', get_file_path(''), '.etak'):
         app.installTranslator(trans)
     else:
         del trans
