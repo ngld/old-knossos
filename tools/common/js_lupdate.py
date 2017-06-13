@@ -46,7 +46,7 @@ def main(args):
             print('ERROR: Unknwown file extension: %s' % fn)
             sys.exit(1)
 
-        with open(fn, 'r') as stream:
+        with open(fn, 'r', encoding='utf-8') as stream:
             data = stream.read()
 
         for m in pat.finditer(data):
@@ -56,7 +56,7 @@ def main(args):
             if m.group(2):
                 msgs.append(m.group(2))
 
-    with open(output, 'w') as stream:
+    with open(output, 'w', encoding='utf-8') as stream:
         stream.write('function get_translation_source() {\n')
         stream.write('    var ts = [];\n')
         stream.write('    function qsTr(k) { ts.push(k); }\n')

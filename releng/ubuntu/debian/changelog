@@ -1,0 +1,84 @@
+knossos (0.4.4-1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Sun, 19 Feb 2017 16:23:14 +0100
+
+knossos (0.4.3-1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Sat, 18 Feb 2017 01:59:01 +0100
+
+knossos (0.4.2-1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Sat, 18 Feb 2017 00:27:54 +0100
+
+knossos (0.4.1-1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Tue, 14 Feb 2017 23:44:45 +0100
+
+knossos (0.3.2-1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Wed, 08 Feb 2017 01:35:19 +0100
+
+knossos (0.3.1-1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Tue, 07 Feb 2017 11:53:52 +0100
+
+knossos (0.3.0-1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Tue, 07 Feb 2017 01:24:16 +0100
+
+knossos (0.2.0-1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Thu, 02 Feb 2017 23:31:30 +0100
+
+knossos (0.1.2-1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Wed, 01 Feb 2017 23:31:09 +0100
+
+knossos (0.1.1-1~utopic) utopic; urgency=medium
+
+  * New upstream release 
+
+ -- ngld <ngld@tproxy.de>  Tue, 03 Feb 2015 22:38:40 +0100
+
+knossos (0.1.0-1~trusty) trusty; urgency=medium
+
+  * New upstream release
+  * Added python3-pyside packages as dependency.
+
+ -- ngld <ngld@tproxy.de>  Fri, 30 Jan 2015 02:22:58 +0100
+
+knossos (0.0.0+dev3-1~trusty) trusty; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Thu, 20 Nov 2014 22:27:51 +0100
+
+knossos (0.0.0+dev2-2~trusty) trusty; urgency=medium
+
+  * Fixed dependencies
+
+ -- ngld <ngld@tproxy.de>  Mon, 10 Nov 2014 21:33:58 +0100
+
+knossos (0.0.0+dev2-1~trusty) trusty; urgency=medium
+
+  * Initial release
+
+ -- ngld <ngld@tproxy.de>  Mon, 10 Nov 2014 19:58:04 +0100

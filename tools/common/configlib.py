@@ -206,7 +206,7 @@ def try_program(cmds, name, msg='Looking for %s...', test_param='--version', req
     for cmd in cmds:
         try:
             silent_check(cmd + [test_param])
-        except CalledProcessError:
+        except (CalledProcessError, FileNotFoundError):
             pass
         else:
             info(' ' + ' '.join(cmd) + '\n')
