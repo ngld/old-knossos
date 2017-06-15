@@ -11,6 +11,10 @@ export QT_SELECT=5
 VERSION="$(python3 setup.py get_version)"
 UBUNTU_VERSION="xenial"
 
+echo "Installing Babel..."
+rm -rf node_modules
+npm i babel-cli babel-preset-env
+
 python3 configure.py
 ninja resources
 
