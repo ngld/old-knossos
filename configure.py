@@ -87,7 +87,7 @@ if sys.platform == 'win32':
     check_module('comtypes')
 
 babel = False
-if True or not check_module('PyQt5.QtWebChannel', required=False):
+if not check_module('PyQt5.QtWebChannel', required=False):
     check_module('PyQt5.QtWebKit')
 
     nodejs = find_program(['node', 'nodejs'], 'node')
