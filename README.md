@@ -24,8 +24,10 @@ To run this script you'll need the following:
 
 ## Usage
 
-To start the mod manager run ```make run``` inside this directory.
+After your first checkout you will have to run `python configure.py` once. If it aborts before displaying `Writing build.ninja...`, you have to fix the error before you can continue.
 If it complains that ```rcc``` is missing, you will need to install the developer packages for Qt5.
+
+Now you can use `ninja run` to launch Knossos in release mode and `ninja debug` to launch it in debug mode. In debug mode you can use a chromium-based browser to access the DevTools by navigating to http://localhost:4006/.
 
 The converter is a console-only script. Use ```python converter.py -h``` to read its help.
 
