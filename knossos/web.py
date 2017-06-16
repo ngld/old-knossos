@@ -18,66 +18,17 @@ import sys
 import os.path
 import logging
 import re
+import json
 import semantic_version
 
 from .qt import QtCore, QtGui, QtWidgets, QtWebChannel
-from . import center, api, repo, windows, tasks, util
+from . import center, api, repo, windows, tasks, util, settings
 
 if not QtWebChannel:
     from .qt import QtWebKit
 
 
 class WebBridge(QtCore.QObject):
-
-    # NOTE: Update https://github.com/ngld/knossos/wiki/JS%20API whenever you make an API change.
-    # getVersion(): str
-    #   Returns Knossos's version
-    # isFsoInstalled(): bool
-    #   Returns true if fs2_open is installed and configured.
-    # isFs2PathSet(): bool
-    #   Returns true if the path to the FS2 directory is set.
-    # selectFs2path(): void
-    #   Prompts the user to select their FS2 directory.
-    # runGogInstaller(): void
-    #   Launches the GOGExtract wizard.
-    # getMods(): list of mod objects
-    #   Returns a list of all available mods (see the generated section of schema.txt).
-    # getInstalledMods(): list of mod objects
-    #   Returns a list of all installed mods (see the generated section of schema.txt).
-    # getUpdates(): object
-    #   Returns a map which follows this syntax: result[mid][local_version] = most_recent_version
-    # isInstalled(mid, spec?): bool
-    #   Returns true if the given mod is installed. The parameters are the same as query()'s.
-    # query(mid, spec?): mod object
-    #   Allows the web page to query the local mod cache. The first parameter is the mod ID.
-    #   The second parameter is optional and can specify a version requirement. (i.e. ">=3.0.*")
-    #   If no matching mod is found, null is returned.
-    # fetchModlist(): void
-    #   Update the local mod cache.
-    # addRepo(name, link): void
-    #   Adds a new repository.
-    # getRepos(): list of [<name>, <link>]
-    #   Returns a list of all configured repositories.
-    # install(mid, spec?, pkgs?): int
-    #   Installs the given mod. The first two parameters are the same as query()'s.
-    #   The third parameter is optional and contains the names of all packages which should be installed (defaults to all required).
-    #   Returns -1 if the mod wasn't found, -2 if some of the given packages are missing, 0 if the install failed and 1 on success.
-    # uninstall(mid, pkgs?): bool
-    #   Uninstalls the given mod. The first parameter is the mod's ID. The second parameter should be used if only some packages should be uninstalled.
-    #   Returns true on success.
-    # abortDownload(mid): void
-    #   Aborts the download for the given mod.
-    # runMod(mid): void
-    #   Launch fs2_open with the given mod selected.
-    # showSettings(mid?): void
-    #   Open the settings window for the given mod or fs2_open if no mid is given.
-    #   Returns -1 if the mod wasn't found, -2 if the spec is invalid and 1 on success.
-    # showPackageList(mid, spec?): int
-    #   Open a window which allows the user to install and uninstall packages for the given mod.
-    #   Returns -1 if the mod wasn't found, -2 if the spec is invalid and 1 on success.
-    # vercmp(a, b): int
-    #   Compares two versions
-
     showWelcome = QtCore.Signal()
     showLastPlayed = QtCore.Signal('QVariant')
     showDetailsPage = QtCore.Signal('QVariant')
@@ -99,13 +50,12 @@ class WebBridge(QtCore.QObject):
             page.setWebChannel(channel)
             channel.registerObject('fs2mod', self)
 
-            if center.DEBUG and os.path.isdir('../html'):
+            if center.DEBUG and os.path.isdir('../html') and os.environ.get('KN_BABEL') != 'True':
                 link = os.path.abspath('../html/index.html')
                 if sys.platform == 'win32':
                     link = '/' + link.replace('\\', '/')
 
                 link = 'file://' + link
-                print(link)
             else:
                 link = 'qrc:///html/index.html'
 
@@ -396,6 +346,39 @@ class WebBridge(QtCore.QObject):
             tasks.run_task(tasks.FetchTask())
             center.main_win.check_fso()
 
+    @QtCore.Slot(result=str)
+    def getSettings(self):
+        return json.dumps(settings.get_settings())
+
+    @QtCore.Slot(str, str)
+    def saveSetting(self, key, value):
+        try:
+            value = json.loads(value)
+        except:
+            logging.exception('Failed to decode new value for setting "%s"! (%s)' % (key, value))
+        else:
+            settings.save_setting(key, value)
+
+    @QtCore.Slot(str)
+    def saveFsoSettings(self, data):
+        try:
+            data = json.loads(data)
+        except:
+            logging.exception('Failed to decode new FSO settings! (%s)' % data)
+        else:
+            settings.save_fso_settings(data)
+
+    @QtCore.Slot(result=str)
+    def getDefaultFsoCaps(self):
+        try:
+            flags = api.get_fso_flags()
+            if flags:
+                flags = flags.to_dict()
+
+            return json.dumps(flags)
+        except:
+            logging.exception('Failed to encode FSO flags!')
+
 
 if QtWebChannel:
     BrowserCtrl = WebBridge
@@ -407,7 +390,7 @@ else:
 
         def __init__(self, webView):
             self._view = webView
-            self.bridge = WebBridge(None)
+            self.bridge = WebBridge()
 
             settings = webView.settings()
             settings.setAttribute(QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)

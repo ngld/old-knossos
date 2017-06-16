@@ -1,6 +1,17 @@
 function init() {
     let task_mod_map = {};
 
+    function call(ref) {
+        let args = Array.prototype.slice.apply(arguments, [1]);
+        
+        if(window.qt) {
+            ref.apply(null, args);
+        } else {
+            let cb = args.pop();
+            cb(ref.apply(null, args));
+        }
+    }
+
     Vue.component('kn-mod', {
         template: '#kn-mod',
         props: ['mod', 'tab'],
@@ -47,9 +58,135 @@ function init() {
         }
     });
 
-    Vue.component('kn-tab', {
-        template: '#kn-tab',
-        props: ['key', 'name', 'tab', 'showTab']
+    Vue.component('kn-drawer', {
+        template: '#kn-drawer',
+        props: ['label'],
+
+        data: () => ({
+            open: false
+        })
+    });
+
+    Vue.component('kn-settings-page', {
+        template: '#kn-settings-page',
+        props: [],
+
+        data: () => ({
+            knossos: {},
+            fso: {},
+            old_settings: {},
+            default_fs2_bin: null,
+            default_fred_bin: null,
+            caps: null
+        }),
+
+        beforeMount() {
+            call(fs2mod.getSettings, (settings) => {
+                settings = JSON.parse(settings);
+
+                this.knossos = Object.assign({}, settings.knossos);
+                this.fso = Object.assign({}, settings.fso);
+                this.old_settings = settings;
+                this.default_fs2_bin = settings.knossos.fs2_bin;
+                this.default_fred_bin = settings.knossos.fred_bin;
+            });
+            call(fs2mod.getDefaultFsoCaps, (caps) => {
+                this.caps = JSON.parse(caps);
+            });
+        },
+
+        methods: {
+            changeBasePath() {
+                call(fs2mod.browseFolder, 'Please select a folder', this.base_path, (path) => {
+                    if(path) this.base_path = path;
+                });
+            },
+
+            save() {
+                for(let set of ['base_path', 'max_downloads', 'use_raven']) {
+                    if(this.knossos[set] != this.old_settings.knossos[set]) {
+                        fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
+                    }
+                }
+
+                let fso = Object.assign({}, this.fso);
+                for(let key of Object.keys(this.old_settings.fso)) {
+                    if(!fso[key]) fso[key] = this.old_settings.fso[key];
+                }
+
+                console.log(fso);
+                fs2mod.saveFsoSettings(JSON.stringify(fso));
+            }
+        },
+
+        watch: {
+            default_fs2_bin(new_bin) {
+                if(this.default_fs2_bin === null) return;
+
+                call(fs2mod.saveSetting, 'fs2_bin', JSON.stringify(new_bin), () => {
+                    call(fs2mod.getDefaultFsoCaps, (caps) => {
+                        this.caps = JSON.parse(caps);
+                    });
+                });
+            },
+
+            default_fred_bin(new_bin) {
+                if(this.default_fred_bin === null) return;
+
+                fs2mod.saveSetting('fred_bin', JSON.stringify(new_bin));
+            }
+        }
+    });
+
+    Vue.component('flag-editor', {
+        template: '#flag-editor',
+        props: ['caps', 'cmdline'],
+
+        data: () => ({
+            easy_flags: {},
+            flags: {},
+            selected_easy_flags: '',
+            custom_flags: '',
+            bool_flags: {},
+            list_type: 'Graphics'
+        }),
+
+        methods: {
+            processCmdline() {
+                console.log(this);
+                if(!this.caps) return;
+
+                const flags = {};
+                const custom = [];
+                for(let part of this.cmdline.split(' ')) {
+                    if(this.caps.flags[part]) {
+                        flags[part] = true;
+                    } else {
+                        custom.push(part);
+                    }
+                }
+
+                this.easy_flags = this.caps.easy_flags;
+                this.flags = this.caps.flags;
+                this.selected_easy_flags = '';
+                this.custom_flags = custom.join(' ');
+                this.bool_flags = flags;
+                this.list_type = 'Audio';
+            },
+
+            showFlagDoc(url) {
+                vm.popup_visible = true;
+                vm.popup_mode = 'frame';
+                vm.popup_title = 'Flag Documentation';
+                vm.popup_content = url;
+            }
+        },
+
+        watch: {
+            caps() {
+                this.processCmdline();
+            }
+        }
     });
 
     let vm = new Vue({
@@ -100,7 +237,7 @@ function init() {
             },
 
             showSettings() {
-                alert('Not yet implemented!');
+                this.page = 'settings';
             },
 
             showTab(tab) {
@@ -112,14 +249,9 @@ function init() {
             },
 
             selectFolder() {
-                if(window.qt) {
-                    fs2mod.browseFolder('Please select a folder', this.data_path, (path) => {
-                        if(path) this.data_path = path;
-                    });
-                } else {
-                    let path = fs2mod.browseFolder('Please select a folder', this.data_path);
+                call(fs2mod.browseFolder, 'Please select a folder', this.data_path, (path) => {
                     if(path) this.data_path = path;
-                }
+                });
             },
 
             finishWelcome() {
@@ -171,7 +303,6 @@ function init() {
     });
     fs2mod.updateModlist.connect((mods, type) => {
         window.mt = mod_table = {};
-        console.log(mods);
         for(let mod of mods) {
             mod_table[mod.id] = mod;
         }
@@ -216,11 +347,7 @@ function init() {
         delete tasks[tid];
     });
 
-    if(window.qt) {
-        fs2mod.finishInit(get_translation_source(), (t) => vm.trans = t);
-    } else {
-        vm.trans = fs2mod.finishInit(get_translation_source());
-    }
+    call(fs2mod.finishInit, get_translation_source(), (t) => vm.trans = t);
 }
 
 if(window.qt) {

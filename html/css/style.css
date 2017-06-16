@@ -398,6 +398,10 @@
     margin-top: 10px;
 }
 
+.info-page input, .main-notice input, .info-page button, .main-notice button {
+    color: #000;
+}
+
 /* -------------------------- Settings for the scroll bar style ----------------------------------*/
 
 .scroll-style::-webkit-scrollbar {
@@ -850,6 +854,17 @@
     background: #2e2e2e;
 }
 
+.popup .content.iframe {
+    padding: 0;
+    overflow: hidden;
+}
+
+.popup .content > iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
 .popup .row:nth-child(even) {
     background: #444444;
 }
@@ -883,4 +898,55 @@
     height: 100%;
     line-height: 100%;
     margin-top: 4px;
+}
+
+/* drawer */
+.kn-drawer .title {
+    cursor: pointer;
+}
+
+.kn-drawer .title .text {
+    display: inline-block;
+    width: 200px;
+    text-align: right;
+    font-size: 20px;
+}
+
+.kn-drawer .title .line {
+    display: inline-block;
+    vertical-align: top;
+    margin-top: 13px;
+    width: calc(100% - 225px);
+    border-top: 2px solid white;
+}
+
+.kn-drawer .title .fa {
+    float: right;
+    margin-top: 5px;
+}
+
+.kn-drawer .content {
+    visibility: hidden;
+}
+
+.kn-drawer .content.open {
+    visibility: visible;
+}
+
+.settings-page select {
+    width: 100%;
+    color: #000;
+}
+
+.settings-page input {
+    max-width: 100%;
+}
+
+.checklist {
+    background: white;
+    padding: 5px 5px 5px 25px;
+    height: 200px;
+    overflow: auto;
+
+    color: #000;
 }

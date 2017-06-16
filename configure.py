@@ -86,6 +86,22 @@ check_module('requests')
 if sys.platform == 'win32':
     check_module('comtypes')
 
+babel = False
+if not check_module('PyQt5.QtWebChannel', required=False):
+    check_module('PyQt5.QtWebKit')
+
+    nodejs = find_program(['node', 'nodejs'], 'node')
+
+    info('Checking babel...')
+    if os.path.isfile('node_modules/.bin/babel'):
+        info(' ok\n')
+        babel = True
+
+        RCC_FILES.remove('html/js/modlist.js')
+        RCC_FILES.append('html/js/modlist.out.js')
+    else:
+        fail(' not found!\nPlease install babel with "npm i babel-cli babel-preset-env babel-polyfill".')
+
 pyuic = try_program([[sys.executable, '-mPyQt5.uic.pyuic'], ['pyuic5'], ['pyuic']], 'pyuic')
 pylupdate = try_program([[sys.executable, '-mPyQt5.pylupdate_main'], ['pylupdate5'], ['pylupdate']], 'pylupdate', test_param='-version')
 
@@ -105,7 +121,7 @@ out += '<qresource>'
 for path in RCC_FILES:
     if os.path.basename(path) == 'hlp.png':
         out += '<file alias="hlp.png">%s</file>' % os.path.abspath(path)
-    elif path.endswith('.min.js'):
+    elif path.endswith(('.min.js', '.es5.js')):
         out += '<file alias="%s">%s</file>' % (path[:-7] + '.js', os.path.abspath(path))
     else:
         out += '<file alias="%s">%s</file>' % (path, os.path.abspath(path))
@@ -127,12 +143,22 @@ with open('build.ninja', 'w') as stream:
     n.rule('pylupdate', cmd2str(pylupdate + ['$in', '-ts', '$out']), 'PY-LUPDATE $out')
     n.rule('lupdate', cmd2str([lupdate, '$in', '-ts', '$out']), 'LUPDATE $out')
 
+    if babel:
+        n.rule('babel', cmd2str([nodejs, 'node_modules/.bin/babel', '--presets=env', '$in', '--out-file', '$out']), 'BABEL $out')
+
+    if sys.platform.startswith('linux'):
+        n.rule('cat', 'cat $in > $out', 'CAT $out')
+
     n.comment('Files')
     ui_targets = build_targets(n, UI_FILES, 'uic', new_ext='py', new_path='knossos/ui')
     n.build('knossos/data/resources.rcc', 'rcc', 'knossos/data/resources.qrc', implicit=RCC_FILES)
     n.build('html/js/modlist_ts.js', 'js_lupdate', ['html/js/modlist.js', 'html/index.html'])
     n.build('locale/_py.ts', 'pylupdate', SRC_FILES)
     n.build('locale/_ui.ts', 'lupdate', ['locale/_py.ts', 'html/js/modlist_ts.js'] + UI_FILES)
+
+    if babel:
+        n.build('html/js/modlist.es5.js', 'babel', 'html/js/modlist.js')
+        n.build('html/js/modlist.out.js', 'cat', ['node_modules/babel-polyfill/dist/polyfill.js', 'html/js/modlist.es5.js'])
 
     n.comment('Shortcuts')
     n.build('resources', 'phony', ui_targets + ['knossos/data/resources.rcc', 'html/js/modlist_ts.js'])
@@ -151,7 +177,7 @@ with open('build.ninja', 'w') as stream:
     n.rule('run', py_script('knossos/__main__.py'), 'RUN', pool='console')
     n.build('run', 'run', 'resources')
 
-    n.rule('debug', cmdenv(py_script('knossos/__main__.py'), {'KN_DEBUG': 1, 'QTWEBENGINE_REMOTE_DEBUGGING': 4006}), 'DEBUG', pool='console')
+    n.rule('debug', cmdenv(py_script('knossos/__main__.py'), {'KN_DEBUG': 1, 'KN_BABEL': babel, 'QTWEBENGINE_REMOTE_DEBUGGING': 4006}), 'DEBUG', pool='console')
     n.build('debug', 'debug', 'resources')
 
     if sys.platform == 'win32':
@@ -160,15 +186,28 @@ with open('build.ninja', 'w') as stream:
         if check_module('PyInstaller', required=False):
             pyinstaller = 'cmd /C "cd releng\\windows" && ' + cmd2str([sys.executable, '-OO', '-mPyInstaller', '-d', '--distpath=.\\dist', '--workpath=.\\build', 'Knossos.spec', '-y'])
             n.rule('pyinstaller', pyinstaller, 'PACKAGE', pool='console')
-            n.build('build', 'pyinstaller', ['resources'] + SRC_FILES)
+            n.build('pyi', 'pyinstaller', ['resources'] + SRC_FILES)
 
-        nsis = find_program(['makensis', r'C:\Program Files (x86)\NSIS\makensis.exe', r'C:\Program Files\NSIS\makensis.exe'], 'NSIS', required=False)
-        if nsis:
-            version = 'TODO'
-            n.rule('nsis', cmd2str([nsis, '/NOCD', r'/DKNOSSOS_ROOT=.\\', '/DKNOSSOS_VERSION=%s' % version, '$in']), 'NSIS $out')
-            n.build('releng/windows/dist/installer.exe', 'nsis', 'releng/windows/nsis/installer.nsi', implicit='build')
-            n.build('releng/windows/dist/updater.exe', 'nsis', 'releng/windows/nsis/updater.nsi', implicit='build')
-            
-            n.build('installer', 'phony', ['releng/windows/dist/installer.exe', 'releng/windows/dist/updater.exe'])
+            nsis = find_program(['makensis', r'C:\Program Files (x86)\NSIS\makensis.exe', r'C:\Program Files\NSIS\makensis.exe'], 'NSIS', required=False)
+            if nsis:
+                version = 'TODO'
+                n.rule('nsis', cmd2str([nsis, '/NOCD', r'/DKNOSSOS_ROOT=.\\', '/DKNOSSOS_VERSION=%s' % version, '$in']), 'NSIS $out')
+                n.build('releng/windows/dist/installer.exe', 'nsis', 'releng/windows/nsis/installer.nsi', implicit='pyi')
+                n.build('releng/windows/dist/updater.exe', 'nsis', 'releng/windows/nsis/updater.nsi', implicit='pyi')
+
+                n.build('installer', 'phony', ['releng/windows/dist/installer.exe', 'releng/windows/dist/updater.exe'])
+
+    if sys.platform == 'darwin':
+        n.comment('macOS')
+
+        if check_module('PyInstaller', required=False):
+            pyinstaller = 'cd releng/macos && ' + cmd2str([sys.executable, '-OO', '-mPyInstaller', '-d', '--distpath=./dist', '--workpath=./build', 'Knossos.spec', '-y'])
+            n.rule('pyinstaller', pyinstaller, 'PACKAGE', pool='console')
+            n.build('pyi', 'pyinstaller', ['resources'] + SRC_FILES)
+
+            dmgbuild = find_program(['dmgbuild'], 'dmgbuild', required=False)
+            if dmgbuild:
+                n.rule('dmgbuild', 'cd releng/macos && ' + cmd2str([dmgbuild, '-s', 'dmgbuild_cfg.py', 'Knossos', 'Knossos.dmg']), 'DMG')
+                n.build('dmg', 'dmgbuild', 'releng/macos/dmgbuild_cfg.py', implicit='pyi')
 
 info('\nDone! Use "ninja run" to start Knossos.\n')

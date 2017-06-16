@@ -331,8 +331,8 @@ def run_fred(params=None):
 
 
 def run_fs2_silent(params):
-    fs2_path = center.settings['fs2_path']
-    fs2_bin = os.path.join(fs2_path, center.settings['fs2_bin'])
+    base_path = center.settings['base_path']
+    fs2_bin = os.path.join(base_path, 'bin', center.settings['fs2_bin'])
 
     if not os.path.isfile(fs2_bin):
         return -128
@@ -351,7 +351,7 @@ def run_fs2_silent(params):
         env['LD_LIBRARY_PATH'] = ld_path
 
     try:
-        return util.call([fs2_bin] + params, cwd=fs2_path, env=env)
+        return util.call([fs2_bin] + params, cwd=base_path, env=env)
     except OSError:
         return -129
 

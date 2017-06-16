@@ -7,6 +7,9 @@ Vagrant.configure("2") do |config|
     config.vm.define "knossos-builder"
     config.vm.box = "windows_10"
 
-    config.vm.synced_folder "../..", "/cygdrive/c/knossos", type: "rsync", rsync__args: ["--verbose", "--archive", "-z", "--copy-links"]
+    config.vm.synced_folder "../..", "/cygdrive/c/knossos", type: "rsync",
+    	rsync__args: ["--verbose", "--archive", "-z", "--copy-links"],
+    	rsync__exclude: ["dist", "build", "packer", ".vagrant"]
+
     config.vm.provision :shell, inline: "cd /knossos/releng/windows; cmd /C provision.bat"
 end
