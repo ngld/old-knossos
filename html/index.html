@@ -151,7 +151,7 @@
                             </div>
                         </div>
 
-                        <p>{{ mod.description }}</p>
+                        <p v-html="mod.description"></p>
                     </div>
 
                     <div class="info-page settings-page container-fluid" v-if="page === 'settings'">

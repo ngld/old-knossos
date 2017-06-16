@@ -24,6 +24,7 @@ import hashlib
 import semantic_version
 import six
 from datetime import datetime
+from semantic_version import SpecItem
 
 from . import uhf
 uhf(__name__)
@@ -362,7 +363,7 @@ class Mod(object):
     title = ''
     mtype = 'mod'
     version = None
-    folder = None
+    parent = None
     cmdline = ''
     logo = None
     logo_path = None
@@ -377,7 +378,7 @@ class Mod(object):
     actions = None
     packages = None
 
-    __fields__ = ('mid', 'title', 'type', 'version', 'folder', 'cmdline', 'logo', 'tile',
+    __fields__ = ('mid', 'title', 'type', 'version', 'parent', 'cmdline', 'logo', 'tile',
         'description', 'notes', 'actions', 'packages')
 
     def __init__(self, values=None, repo=None):
@@ -399,7 +400,7 @@ class Mod(object):
         self.title = values['title']
         self.mtype = values.get('type', 'mod')  # Backwards compatibility
         self.version = semantic_version.Version(values['version'], partial=True)
-        self.folder = values.get('folder', self.mid).strip('/')  # make sure we have a relative path
+        self.parent = values.get('parent', 'FSO')
         self.cmdline = values.get('cmdline', '')
         self.logo = values.get('logo', None)
         self.tile = values.get('tile', None)
@@ -450,7 +451,7 @@ class Mod(object):
             'title': self.title,
             'type': self.mtype,
             'version': str(self.version),
-            'folder': self.folder,
+            'parent': self.parent,
             'cmdline': self.cmdline,
             'logo': self.logo,
             'logo_path': self.logo,
@@ -613,7 +614,7 @@ class Package(object):
         result = []
         for dep in self.dependencies:
             version = dep['version']
-            if re.match('\d.*', version):
+            if version != '*' and not SpecItem.re_spec.match(version):
                 # Make a spec out of this version
                 version = '==' + version
 
@@ -805,6 +806,7 @@ class InstalledRepo(Repo):
 
 class InstalledMod(Mod):
     check_notes = ''
+    folder = None
     _path = None
 
     @staticmethod
@@ -834,7 +836,15 @@ class InstalledMod(Mod):
     def convert(mod):
         data = mod.get()
         data['packages'] = []
-        data['folder'] = os.path.join(center.settings['base_path'], data['folder'])
+
+        # IMPORTANT: This code decides where newly installed mods are stored.
+        base = center.settings['base_path']
+        if data['type'] == 'engine':
+            data['folder'] = os.path.join(base, 'bin', data['id'])
+        elif data['type'] == 'tc':
+            data['folder'] = os.path.join(base, data['id'])
+        else:
+            data['folder'] = os.path.join(base, data['parent'], data['id'])
 
         nmod = InstalledMod(data)
         nmod.logo_path = mod.logo_path
@@ -862,6 +872,8 @@ class InstalledMod(Mod):
             'installed': True,
             'id': self.mid,
             'title': self.title,
+            'type': self.mtype,
+            'parent': self.parent,
             'version': str(self.version),
             'description': self.description,
             'logo': self.logo,
@@ -924,29 +936,44 @@ class InstalledMod(Mod):
         with open(path, 'w') as stream:
             json.dump(info, stream)
 
-    # def get_mod_flag(self):
-    #     mods = [self.folder]
+    def get_mod_flag(self):
+        return []
 
-    #     if center.settings['mod_settings'].get(self.mid, {}).get('parse_mod_ini', False):
-    #         ini = IniMod()
-    #         ini.load(os.path.join(os.path.dirname(self._path), 'mod.ini'))
-    #         return ini.get_mod_flag()
+    def get_executables(self):
+        deps = self.resolve_deps(True)
+        skipped = set()
+        exes = []
 
-    #     try:
-    #         for dep in self.resolve_deps():
-    #             folder = dep.get_mod().folder
-    #             if folder not in mods:
-    #                 mods.append(folder)
-    #     except ModNotFound:
-    #         logging.exception('A dependency for an installed mod is missing!')
-    #         raise
+        for pkg in deps:
+            mod = pkg.get_mod()
+            if mod.mid in skipped:
+                continue
 
-    #     m = []
-    #     for item in mods:
-    #         if item.strip() != '':
-    #             m.append(os.path.basename(util.ipath(os.path.join(center.settings['fs2_path'], item))))
+            if mod.mtype != 'engine':
+                skipped.add(mod.mid)
+                continue
 
-    #     return m
+            for exe in pkg.executables:
+                exe = exe.copy()
+                exe['file'] = os.path.join(mod.folder, exe['file'])
+                exes.append(exe)
+
+        if not exes:
+            # I'll enable this part once all mods are migrated (i.e. have FSO or another engine added to their dependencies).
+            # raise Exception('No engine found for "%s"!' % self.title)
+            
+            # For now we just use FSO.
+            mod = center.installed.query('FSO')
+            if not mod:
+                raise Exception('No engine found for "%s"!' % self.title)
+
+            for pkg in mod.packages:
+                for exe in pkg.executables:
+                    exe = exe.copy()
+                    exe['file'] = os.path.join(mod.folder, exe['file'])
+                    exes.append(exe)
+
+        return exes
 
 
 class IniMod(InstalledMod):

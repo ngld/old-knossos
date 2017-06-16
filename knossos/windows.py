@@ -315,7 +315,8 @@ class HellWindow(Window):
         del self._tasks[id(task)]
 
         for m in task.mods:
-            del self._updating_mods[m.mid]
+            if m.mid in self._updating_mods:
+                del self._updating_mods[m.mid]
 
         if len(self._tasks) == 1:
             task = list(self._tasks.values())[0]

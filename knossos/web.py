@@ -22,7 +22,7 @@ import json
 import semantic_version
 
 from .qt import QtCore, QtGui, QtWidgets, QtWebChannel
-from . import center, api, repo, windows, tasks, util, settings
+from . import center, api, runner, repo, windows, tasks, util, settings
 
 if not QtWebChannel:
     from .qt import QtWebKit
@@ -281,7 +281,7 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return mod
 
-        api.run_mod(mod)
+        runner.run_mod(mod)
         return 0
 
     @QtCore.Slot(str, str, result=int)
@@ -290,7 +290,7 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return mod
 
-        api.run_mod(mod, fred=True)
+        runner.run_mod(mod, fred=True)
         return 0
 
     @QtCore.Slot(str, str, result=int)

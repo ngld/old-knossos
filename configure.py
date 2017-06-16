@@ -66,6 +66,7 @@ SRC_FILES = [
     'knossos/qt.py',
     'knossos/repo.py',
     'knossos/runner.py',
+    'knossos/settings.py',
     'knossos/tasks.py',
     'knossos/util.py',
     'knossos/web.py',

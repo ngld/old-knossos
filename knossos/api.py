@@ -30,7 +30,7 @@ from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, UninstallTas
 from .windows import ModSettingsWindow, ModInstallWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
-from .runner import run_fs2, run_fred, run_fs2_silent, stringify_cmdline
+from .runner import run_fs2, run_fs2_silent, run_mod
 
 # TODO: Split this file up into smaller parts and move them into the respective modules
 # (i.e. run_mod should be in runner).
@@ -205,78 +205,6 @@ def read_fso_cmdline():
             break
 
     return cmdline
-
-
-def run_mod(mod, fred=False):
-    global installed
-
-    if mod is None:
-        mod = repo.Mod()
-
-    mods = []
-
-    try:
-        inst_mod = center.installed.query(mod)
-    except repo.ModNotFound:
-        inst_mod = None
-
-    if not inst_mod:
-        QtWidgets.QMessageBox.critical(None, translate('api', 'Error'),
-            translate('api', 'The mod "%s" could not be found!') % mod)
-        return
-
-    try:
-        mods = mod.get_mod_flag()
-    except repo.ModNotFound as exc:
-        QtWidgets.QMessageBox.critical(None, 'Knossos',
-            translate('api', 'Sorry, I can\'t start this mod because its dependency "%s" is missing!') % exc.mid)
-        return
-
-    if mods is None:
-        return
-
-    fs2_bin = mod.get_bin(fred=fred)
-    if not fs2_bin:
-        QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('api', 'Error'),
-            translate('api', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!'))
-        return
-
-    # Look for the cmdline path.
-    path = os.path.join(get_fso_profile_path(), 'data/cmdline_fso.cfg')
-    cmdline = get_cmdline(mod)
-
-    if len(mods) == 0:
-        for i, part in enumerate(cmdline):
-            if part == '-mod':
-                del cmdline[i]
-
-                if len(cmdline) > i:
-                    del cmdline[i]
-
-                break
-
-    elif '-mod' not in cmdline:
-        cmdline.append('-mod')
-        cmdline.append(','.join(mods))
-
-    if not os.path.isfile(path):
-        basep = os.path.dirname(path)
-        if not os.path.isdir(basep):
-            os.makedirs(basep)
-
-    try:
-        with open(path, 'w') as stream:
-            stream.write(stringify_cmdline(cmdline))
-    except:
-        logging.exception('Failed to modify "%s". Not starting FS2!!', path)
-
-        QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('api', 'Error'),
-            translate('api', 'Failed to edit "%s"! I can\'t change the current mod!') % path)
-    else:
-        logging.info('Starting mod "%s" with cmdline "%s".', mod.title, cmdline)
-
-        mod.track_last_played()
-        run_fs2(fs2_bin)
 
 
 def check_retail_files():

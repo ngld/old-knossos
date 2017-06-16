@@ -345,9 +345,14 @@ class InstallTask(progress.MultistepTask):
 
         for pkg in pkgs:
             ins_pkg = center.installed.add_pkg(pkg)
+            pmod = ins_pkg.get_mod()
             self._pkgs.append(ins_pkg)
-            self._mods.add(ins_pkg.get_mod())
-            self._pkg_names.append((mod.mid, pkg.name))
+            self._mods.add(pmod)
+            self._pkg_names.append((pmod.mid, ins_pkg.name))
+
+        for m in self._mods:
+            if m not in self.mods:
+                self.mods.append(m)
 
         center.signals.repo_updated.emit()
         self.done.connect(self.finish)
@@ -471,6 +476,7 @@ class InstallTask(progress.MultistepTask):
             self._error = True
 
         self._threads = 0
+        print(downloads)
         self.add_work(downloads)
 
     def work2(self, archive):
