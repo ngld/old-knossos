@@ -971,11 +971,11 @@ class IniMod(InstalledMod):
                 name = line[0].strip()
                 value = line[1].strip(' \r\n\t;')
 
-                if name == 'modname':
+                if name == 'modname' and value != "":
                     self.title = value + ' (ini)'
                 elif name == 'infotext':
                     self.description = value
-                elif name.startswith('image'):
+                elif name.startswith('image') and value != "":
                     self.logo = value
                 elif name == 'primarylist':
                     if value != '':
