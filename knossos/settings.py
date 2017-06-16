@@ -41,12 +41,13 @@ def get_settings():
             for sub in os.listdir(bin_path):
                 subp = os.path.join(bin_path, sub)
 
-                for fn in os.listdir(subp):
-                    if os.path.isfile(os.path.join(subp, fn)):
-                        if 'fred' in fn:
-                            fred_bins.append(os.path.join(sub, fn))
-                        else:
-                            fs2_bins.append(os.path.join(sub, fn))
+                if os.path.isdir(subp):
+                    for fn in os.listdir(subp):
+                        if os.path.isfile(os.path.join(subp, fn)):
+                            if 'fred' in fn:
+                                fred_bins.append(os.path.join(sub, fn))
+                            else:
+                                fs2_bins.append(os.path.join(sub, fn))
 
     fso['fs2_bins'] = fs2_bins
     fso['fred_bins'] = fred_bins
