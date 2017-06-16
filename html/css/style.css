@@ -99,60 +99,60 @@
 }
 
 .help-image {
-    content: url(../images/helpicon.png);
+    content: url(../images/icon-help.png);
     height: 25px;
     vertical-align: middle;
     padding-top: 3px;
 }
 
 .top-btn:hover .help-image {
-    content: url(../images/helpicon-h.png);
+    content: url(../images/icon-help-h.png);
 }
 
 .top-btn:active .help-image {
-    content: url(../images/helpicon-a.png);
+    content: url(../images/icon-help-a.png);
 }
 
 .top-btn:focus .help-image {
-    content: url(../images/helpicon.png);
+    content: url(../images/icon-help.png);
 }
 
 .update-image {
-    content: url(../images/updateicon.png);
+    content: url(../images/icon-update.png);
     height: 25px;
     vertical-align: middle;
     padding-top: 3px;
 }
 
 .top-btn:hover .update-image {
-    content: url(../images/updateicon-h.png);
+    content: url(../images/icon-update-h.png);
 }
 
 .top-btn:active .update-image {
-    content: url(../images/updateicon-a.png);
+    content: url(../images/icon-update-a.png);
 }
 
 .top-btn:focus .update-image {
-    content: url(../images/updateicon.png);
+    content: url(../images/icon-update.png);
 }
 
 .settings-image {
-    content: url(../images/settingsicon.png);
+    content: url(../images/icon-settings.png);
     height: 25px;
     vertical-align: middle;
     padding-top: 3px;
 }
 
 .top-btn:hover .settings-image {
-    content: url(../images/settingsicon-h.png);
+    content: url(../images/icon-settings-h.png);
 }
 
 .top-btn:active .settings-image {
-    content: url(../images/settingsicon-a.png);
+    content: url(../images/icon-settings-a.png);
 }
 
 .top-btn:focus .settings-image {
-    content: url(../images/settingsicon.png);
+    content: url(../images/icon-settings.png);
 }
 
 /* ----------------------------- This is the filter rollout button section. ------------------------------- */
@@ -178,27 +178,27 @@
     color: #828282;
     text-decoration: none;
     height: 13px;
-    background-image: url(../images/filtericon.png);
+    background-image: url(../images/icon-filter.png);
     border: none;
     background-color: transparent;
 }
 
 .filter-image {
-    background-image: url(../images/filtericon.png);
+    background-image: url(../images/icon-filter.png);
 }
 
 .filterbtn:hover {
-    background-image: url(../images/filtericon-h.png);
+    background-image: url(../images/icon-filter-h.png);
     outline: none;
 }
 
 .filterbtn:active {
-    background-image: url(../images/filtericon-a.png);
+    background-image: url(../images/icon-filter-a.png);
     outline: none;
 }
 
 .filterbtn:focus {
-    background-image: url(../images/filtericon-a.png);
+    background-image: url(../images/icon-filter-a.png);
     outline: none;
 }
 
@@ -319,20 +319,20 @@
 }
 
 .home-image {
-    background-image: url(../images/homebtn.png);
+    background-image: url(../images/iconbtn-home.png);
     padding-left: 8px;
 }
 
 .main-btn:hover .home-image {
-    background-image: url(../images/homebtn-h.png);
+    background-image: url(../images/iconbtn-home-h.png);
 }
 
 .main-btn.active .home-image {
-    background-image: url(../images/homebtn-a.png);
+    background-image: url(../images/iconbtn-home-a.png);
 }
 
 .main-btn:focus .home-image {
-    background-image: url(../images/homebtn-a.png);
+    background-image: url(../images/iconbtn-home-a.png);
 }
 
 .explore-text {
@@ -340,20 +340,20 @@
 }
 
 .explore-image {
-    background-image: url(../images/explorebtn.png);
+    background-image: url(../images/iconbtn-explore.png);
     margin-left: 25px;
 }
 
 .main-btn:hover .explore-image {
-    background-image: url(../images/explorebtn-h.png);
+    background-image: url(../images/iconbtn-explore-h.png);
 }
 
 .main-btn.active .explore-image {
-    background-image: url(../images/explorebtn-a.png);
+    background-image: url(../images/iconbtn-explore-a.png);
 }
 
 .main-btn:focus .explore-image {
-    background-image: url(../images/explorebtn-a.png);
+    background-image: url(../images/iconbtn-explore-a.png);
 }
 
 .develop-text {
@@ -361,20 +361,20 @@
 }
 
 .develop-image {
-    background-image: url(../images/developbtn.png);
+    background-image: url(../images/iconbtn-develop.png);
     margin-left: 25px;
 }
 
 .main-btn:hover .develop-image {
-    background-image: url(../images/developbtn-h.png);
+    background-image: url(../images/iconbtn-develop-h.png);
 }
 
 .main-btn:active .develop-image {
-    background-image: url(../images/developbtn-a.png);
+    background-image: url(../images/iconbtn-develop-a.png);
 }
 
 .main-btn:focus .develop-image {
-    background-image: url(../images/developbtn-a.png);
+    background-image: url(../images/iconbtn-develop-a.png);
 }
 
 /* -------------------------- Settings for the main window view ----------------------------------*/
@@ -428,22 +428,22 @@
     height: 15px;
 }
 .scroll-style::-webkit-scrollbar-button:vertical:increment {
-    background-image: url(../images/scrolldown.png);
+    background-image: url(../images/scrollbtn-down.png);
 }
 .scroll-style::-webkit-scrollbar-button:vertical:increment:hover {
-    background-image: url(../images/scrolldown-h.png);
+    background-image: url(../images/scrollbtn-down-h.png);
 }
 .scroll-style::-webkit-scrollbar-button:vertical:increment:active {
-    background-image: url(../images/scrolldown-a.png);
+    background-image: url(../images/scrollbtn-down-a.png);
 }
 .scroll-style::-webkit-scrollbar-button:vertical:decrement {
-    background-image: url(../images/scrollup.png);
+    background-image: url(../images/scrollbtn-up.png);
 }
 .scroll-style::-webkit-scrollbar-button:vertical:decrement:hover {
-    background-image: url(../images/scrollup-h.png);
+    background-image: url(../images/scrollbtn-up-h.png);
 }
 .scroll-style::-webkit-scrollbar-button:vertical:decrement:active {
-    background-image: url(../images/scrollup-a.png);
+    background-image: url(../images/scrollbtn-up-a.png);
 }
 
 /* -------------------------- Settings that govern the mod node displays ----------------------------------*/
@@ -570,7 +570,7 @@
 /* ----------------------------- This is the debug dropdown button section. ------------------------------- */
 
 .dropbtn {
-    background: url(../images/dropdownicon.png) no-repeat left top;
+    background: url(../images/dropdown.png) no-repeat left top;
     color: white;
     padding: 0px;
     font-size: 16px;
@@ -581,12 +581,12 @@
 }
 
 .dropbtn:hover {
-    background: url(../images/dropdownicon-h.png) no-repeat left top;
+    background: url(../images/dropdown-h.png) no-repeat left top;
     outline: none;
 }
 
 .dropbtn:focus {
-    background: url(../images/dropdownicon-a.png) no-repeat left top;
+    background: url(../images/dropdown-a.png) no-repeat left top;
     outline: none;
 }
 
