@@ -694,75 +694,75 @@
 }
 
 .btn-green { /* Settings that create the Play button */
-    background-image: url(../images/playbtn.png);
+    background-image: url(../images/btn-green.png);
 }
 
 .btn-green:hover {
-    background-image: url(../images/playbtn-h.png);
+    background-image: url(../images/btn-green-h.png);
 }
 
 .btn-green:active {
-    background-image: url(../images/playbtn-a.png);
+    background-image: url(../images/btn-green-a.png);
 }
 
 .btn-grey { /* Settings that create the Details button */
-    background-image: url(../images/detailsbtn.png);
+    background-image: url(../images/btn-grey.png);
 }
 
 .btn-grey:hover {
-    background-image: url(../images/detailsbtn-h.png);
+    background-image: url(../images/btn-grey-h.png);
 }
 
 .btn-grey:active {
-    background-image: url(../images/detailsbtn-a.png);
+    background-image: url(../images/btn-grey-a.png);
 }
 
 .btn-blue { /* Settings that create the Install button */
-    background-image: url(../images/installbtn.png);
+    background-image: url(../images/btn-blue.png);
 }
 
 .btn-blue:hover {
-    background-image: url(../images/installbtn-h.png);
+    background-image: url(../images/btn-blue-h.png);
 }
 
 .btn-blue:active {
-    background-image: url(../images/installbtn-a.png);
+    background-image: url(../images/btn-blue-a.png);
 }
 
 .btn-red { /* Settings that create the Error button */
-    background-image: url(../images/errorbtn.png);
+    background-image: url(../images/btn-red.png);
 }
 
 .btn-red:hover {
-    background-image: url(../images/errorbtn-h.png);
+    background-image: url(../images/btn-red-h.png);
 }
 
 .btn-red:active {
-    background-image: url(../images/errorbtn-a.png);
+    background-image: url(../images/btn-red-a.png);
 }
 
 .btn-orange { /* Settings that create the FRED button */
-    background-image: url(../images/fredbtn.png);
+    background-image: url(../images/btn-orange.png);
 }
 
 .btn-orange:hover {
-    background-image: url(../images/fredbtn-h.png);
+    background-image: url(../images/btn-orange-h.png);
 }
 
 .btn-orange:active {
-    background-image: url(../images/fredbtn-a.png);
+    background-image: url(../images/btn-orange-a.png);
 }
 
 .btn-yellow {
-    background-image: url(../images/updatebtn.png);
+    background-image: url(../images/btn-yellow.png);
 }
 
 .btn-yellow:hover {
-    background-image: url(../images/updatebtn-h.png);
+    background-image: url(../images/btn-yellow-h.png);
 }
 
 .btn-yellow:active {
-    background-image: url(../images/updatebtn-a.png);
+    background-image: url(../images/btn-yellow-a.png);
 }
 
 
