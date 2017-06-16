@@ -971,18 +971,20 @@ class IniMod(InstalledMod):
                 name = line[0].strip()
                 value = line[1].strip(' \r\n\t;')
 
-                if name == 'modname' and value != "":
+                # Skip empty values
+                if value == '':
+                    continue
+
+                if name == 'modname':
                     self.title = value + ' (ini)'
                 elif name == 'infotext':
                     self.description = value
-                elif name.startswith('image') and value != "":
+                elif name.startswith('image'):
                     self.logo = value
                 elif name == 'primarylist':
-                    if value != '':
-                        self._pr_list = value.split(',')
+                    self._pr_list = value.split(',')
                 elif name in ('secondarylist', 'secondrylist'):
-                    if value != '':
-                        self._sc_list = value.split(',')
+                    self._sc_list = value.split(',')
 
         self.folder = os.path.basename(os.path.dirname(path))
         if self.title == '':
