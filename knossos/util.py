@@ -185,6 +185,16 @@ class FlagsReader(object):
     def sdl(self):
         return self.build_caps & (1 << 3)
 
+    def to_dict(self):
+        return {
+            'easy_flags': self.easy_flags,
+            'flags': self.flags,
+            'openal': self.openal,
+            'no_d3d': self.no_d3d,
+            'new_snd': self.new_snd,
+            'sdl': self.sdl
+        }
+
 
 class ResizableSemaphore(object):
     _capacity = 0

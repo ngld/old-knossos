@@ -65,11 +65,11 @@ def get_fso_flags():
     if center.fso_flags is not None and center.fso_flags[0] == center.settings['fs2_bin']:
         return center.fso_flags[1]
 
-    fs2_bin = center.settings['fs2_bin']
+    fs2_bin = os.path.join(center.settings['base_path'], 'bin', center.settings['fs2_bin'])
     if not os.path.isfile(fs2_bin):
         return None
 
-    flags_path = os.path.join(os.path.dirname(center.settings['fs2_bin']), 'flags.lch')
+    flags_path = os.path.join(center.settings['base_path'], 'flags.lch')
     rc = run_fs2_silent(['-get_flags', '-parse_cmdline_only'])
 
     flags = None

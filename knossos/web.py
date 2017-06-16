@@ -359,6 +359,26 @@ class WebBridge(QtCore.QObject):
         else:
             settings.save_setting(key, value)
 
+    @QtCore.Slot(str)
+    def saveFsoSettings(self, data):
+        try:
+            data = json.loads(data)
+        except:
+            logging.exception('Failed to decode new FSO settings! (%s)' % data)
+        else:
+            settings.save_fso_settings(data)
+
+    @QtCore.Slot(result=str)
+    def getDefaultFsoCaps(self):
+        try:
+            flags = api.get_fso_flags()
+            if flags:
+                flags = flags.to_dict()
+
+            return json.dumps(flags)
+        except:
+            logging.exception('Failed to encode FSO flags!')
+
 
 if QtWebChannel:
     BrowserCtrl = WebBridge

@@ -47,30 +47,19 @@ raven_handler = None
 settings = {
     'fs2_bin': None,
     'fred_bin': None,
-    'fs2_path': None,
     'base_path': None,
     'base_dirs': [],
-    'pins': {},
-    'cmdlines': {},
     'hash_cache': None,
     'max_downloads': 3,
     'repos': [('https://fsnebula.org/repo/master.json', 'FSNebula')],
     'nebula_link': 'https://fsnebula.org/',
-    'update_channel': 'stable',
     'update_notify': True,
-    'keyboard_layout': 'default',
-    'keyboard_setxkbmap': False,
     'use_raven': True,
     'mod_settings': {},
     'sdl2_path': None,
     'openal_path': None,
     'language': None
 }
-
-if '-dev' in VERSION:
-    settings['update_channel'] = 'develop'
-else:
-    settings['update_channel'] = 'stable'
 
 if sys.platform.startswith('win'):
     settings_path = os.path.expandvars('$APPDATA/knossos')

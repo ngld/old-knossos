@@ -155,210 +155,7 @@
                     </div>
 
                     <div class="info-page settings-page container-fluid" v-if="page === 'settings'">
-                        <div class="row form-horizontal">
-                            <div class="col-sm-6">
-                                <h2>Settings</h2>
-
-                                <kn-drawer label="Knossos Defaults">
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Data Path:</label>
-                                        <div class="col-sm-8">
-                                            <button>Browse</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Max Downloads:</label>
-                                        <div class="col-sm-8">
-                                            <input type="number" style="width: 50px">
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Send Error Reports:</label>
-                                        <div class="col-sm-8">
-                                            <input type="checkbox">
-                                        </div>
-                                    </div>
-                                </kn-drawer>
-
-                                <kn-drawer label="Video Defaults">
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Resolution:</label>
-                                        <div class="col-sm-8"><select></select></div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Bit Depth:</label>
-                                        <div class="col-sm-2"><select></select></div>
-                                        <label class="col-sm-3 control-label">Texture Filter:</label>
-                                        <div class="col-sm-2"><select></select></div>
-                                    </div>
-                                </kn-drawer>
-
-                                <kn-drawer label="Audio Defaults">
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Playback Device:</label>
-                                        <div class="col-sm-8">
-                                            <select></select>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Capture Device:</label>
-                                        <div class="col-sm-8">
-                                            <select></select>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Enable EFX:</label>
-                                        <div class="col-sm-1"><input type="checkbox"></div>
-
-                                        <label class="col-sm-3 control-label">Sample Rate:</label>
-                                        <div class="col-sm-4">
-                                            <input type="number">
-                                        </div>
-                                    </div>
-                                </kn-drawer>
-
-                                <kn-drawer label="Joystick Defaults">
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Joystick:</label>
-                                        <div class="col-sm-8">
-                                            <select></select>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <div class="col-sm-8 col-sm-offset-5">
-                                            <button>Detect</button>
-                                            <button>Calibrate</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <div class="col-sm-4 col-sm-offset-4">
-                                            Force Feedback:
-                                            <input type="checkbox">
-                                        </div>
-                                        <div class="col-sm-4">
-                                            Directional Hit:
-                                            <input type="checkbox">
-                                        </div>
-                                    </div>
-                                </kn-drawer>
-                            </div>
-                            <div class="col-sm-6">
-                                <kn-drawer label="Exec Defaults">
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">FSO Exec:</label>
-                                        <div class="col-sm-8">
-                                            <select></select>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">FRED Exec:</label>
-                                        <div class="col-sm-8">
-                                            <select></select>
-                                        </div>
-                                    </div>
-                                </kn-drawer>
-
-                                <kn-drawer label="Speech Defaults">
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Voice:</label>
-                                        <div class="col-sm-8">
-                                            <select></select>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Volume:</label>
-                                        <div class="col-sm-8">
-                                            # SLIDER #
-                                            <button>Test</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Use Speech In:</label>
-                                        <div class="col-sm-4">
-                                            Tech Room:
-                                            <input type="checkbox">
-                                        </div>
-                                        <div class="col-sm-4">
-                                            In-Game:
-                                            <input type="checkbox">
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <div class="col-sm-4 col-sm-offset-4">
-                                            Briefings:
-                                            <input type="checkbox">
-                                        </div>
-                                        <div class="col-sm-4">
-                                            Multiplayer:
-                                            <input type="checkbox">
-                                        </div>
-                                    </div>
-                                </kn-drawer>
-
-                                <kn-drawer label="Network Defaults">
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Connection Type:</label>
-                                        <div class="col-sm-3">
-                                            <select disabled></select>
-                                        </div>
-                                        <label class="col-sm-2 control-label">Force Local Port:</label>
-                                        <div class="col-sm-2">
-                                            <input type="number" disabled>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Connection Speed:</label>
-                                        <div class="col-sm-3">
-                                            <select disabled></select>
-                                        </div>
-                                        <label class="col-sm-3 control-label">Force IP Address:</label>
-                                        <div class="col-sm-2">
-                                            <input type="text" disabled>
-                                        </div>
-                                    </div>
-                                </kn-drawer>
-
-                                <kn-drawer label="Flag Defaults">
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Easy Setup:</label>
-                                        <div class="col-sm-8">
-                                            <select></select>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">Custom Flags:</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" style="width: 100%">
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="col-sm-4 control-label">List Type:</label>
-                                        <div class="col-sm-8">
-                                            <select></select>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <div class="col-sm-1ß col-sm-offset-2">
-                                            TODO
-                                        </div>
-                                    </div>
-                                </kn-drawer>
-                            </div>
-                        </div>
+                        <kn-settings-page></kn-settings-page>
                     </div>
                 </div>
 
@@ -372,8 +169,9 @@
                             <i class="fa fa-times"></i>
                         </a>
                     </div>
-                    <div class="content scroll-style">
+                    <div :class="{ content: true, 'scroll-style': true, iframe: popup_mode === 'frame' }">
                         <div v-if="popup_mode === 'html'" v-html="popup_content"></div>
+                        <iframe v-if="popup_mode === 'frame'" :src="popup_content"></iframe>
 
                         <div v-if="popup_mode === 'mod_errors'">
                             <div v-for="pkg in popup_content.packages" v-if="pkg.check_notes && pkg.check_notes.length > 0">
@@ -483,6 +281,275 @@
                 <div class="content-wrapper">
                     <div :class="{ content: true, open: open }">
                         <slot></slot>
+                    </div>
+                </div>
+            </div>
+        </script>
+
+        <script type="text/x-template" id="kn-settings-page">
+            <div class="row form-horizontal">
+                <div class="col-sm-6">
+                    <h2>
+                        Settings
+                        <small><button class="btn btn-success pull-right" @click="save">Save</button></small>
+                    </h2>
+
+                    <kn-drawer label="Knossos">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Data Path:</label>
+                            <div class="col-sm-8">
+                                <small>{{ knossos.base_path }}</small>
+                                <button @click.prevent="changeBasePath">Browse</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Max Downloads:</label>
+                            <div class="col-sm-8">
+                                <input type="number" style="width: 50px" v-model="knossos.max_downloads">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Send Error Reports:</label>
+                            <div class="col-sm-8">
+                                <input type="checkbox" v-model="knossos.use_raven">
+                            </div>
+                        </div>
+                    </kn-drawer>
+
+                    <kn-drawer label="Video">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Resolution:</label>
+                            <div class="col-sm-8">
+                                <select v-model="fso.active_mode">
+                                    <option v-for="res in fso.modes">{{ res }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Bit Depth:</label>
+                            <div class="col-sm-2">
+                                <select v-model="fso.depth">
+                                    <option value="16">16-bit</option>
+                                    <option value="32">32-bit</option>
+                                </select>
+                            </div>
+                            <label class="col-sm-3 control-label">Texture Filter:</label>
+                            <div class="col-sm-2">
+                                <select v-model="fso.texfilter">
+                                    <option value="0">Bilinear</option>
+                                    <option value="1">Trilinear</option>
+                                </select>
+                            </div>
+                        </div>
+                    </kn-drawer>
+
+                    <kn-drawer label="Audio">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Playback Device:</label>
+                            <div class="col-sm-8">
+                                <select v-model="fso.active_audio_dev">
+                                    <option v-for="dev in fso.audio_devs">{{ dev }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Capture Device:</label>
+                            <div class="col-sm-8">
+                                <select v-model="fso.active_cap_dev">
+                                    <option v-for="dev in fso.cap_devs">{{ dev }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Enable EFX:</label>
+                            <div class="col-sm-1"><input type="checkbox" v-model="fso.enable_efx"></div>
+
+                            <label class="col-sm-3 control-label">Sample Rate:</label>
+                            <div class="col-sm-4">
+                                <input type="number" v-model="fso.sample_rate">
+                            </div>
+                        </div>
+                    </kn-drawer>
+                </div>
+                <div class="col-sm-6">
+                    <kn-drawer label="Exec">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">FSO Exec:</label>
+                            <div class="col-sm-8">
+                                <select v-model="default_fs2_bin">
+                                    <option v-for="bin in fso.fs2_bins">{{ bin }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">FRED Exec:</label>
+                            <div class="col-sm-8">
+                                <select v-model="default_fred_bin">
+                                    <option v-for="bin in fso.fred_bins">{{ bin }}</option>
+                                </select>
+                            </div>
+                        </div>
+                    </kn-drawer>
+
+                    <kn-drawer label="Speech" v-if="fso.has_voice">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Voice:</label>
+                            <div class="col-sm-8">
+                                <select disabled></select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Volume:</label>
+                            <div class="col-sm-8">
+                                <input type="range" min="0" max="100" style="width: calc(100% - 80px); display: inline-block;" disabled>
+                                <button disabled>Test</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Use Speech In:</label>
+                            <div class="col-sm-4">
+                                Tech Room:
+                                <input type="checkbox" disabled>
+                            </div>
+                            <div class="col-sm-4">
+                                In-Game:
+                                <input type="checkbox" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-4 col-sm-offset-4">
+                                Briefings:
+                                <input type="checkbox" disabled>
+                            </div>
+                            <div class="col-sm-4">
+                                Multiplayer:
+                                <input type="checkbox" disabled>
+                            </div>
+                        </div>
+                    </kn-drawer>
+
+                    <kn-drawer label="Joystick">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Joystick:</label>
+                            <div class="col-sm-8">
+                                <select v-model="fso.joystick_id">
+                                    <option>No Joystick</option>
+                                    <option v-for="(joy, i) in fso.joysticks" :value="i">{{ joy }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="col-sm-8 col-sm-offset-5">
+                                <button disabled>Detect</button>
+                                <button disabled>Calibrate</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="col-sm-4 col-sm-offset-4">
+                                Force Feedback:
+                                <input type="checkbox" disabled>
+                            </div>
+                            <div class="col-sm-4">
+                                Directional Hit:
+                                <input type="checkbox" disabled>
+                            </div>
+                        </div>
+                    </kn-drawer>
+
+                    <!-- The positioning for this section is hard with the current grid system...
+                        Will be fixed later.
+                        --ngld
+
+                    <kn-drawer label="Network">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Connection Type:</label>
+                            <div class="col-sm-3">
+                                <select>
+                                    <option>None</option>
+                                    <option>Dialup</option>
+                                    <option>Broadband/LAN</option>
+                                </select>
+                            </div>
+                            <label class="col-sm-2 control-label">Force Local Port:</label>
+                            <div class="col-sm-2">
+                                <input type="number" disabled>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Connection Speed:</label>
+                            <div class="col-sm-3">
+                                <select disabled>
+                                    <option>None</option>
+                                    <option>28k modem</option>
+                                    <option>56k modem</option>
+                                    <option>ISDN</option>
+                                    <option>DSL</option>
+                                    <option>Cable/LAN</option>
+                                </select>
+                            </div>
+                            <label class="col-sm-3 control-label">Force IP Address:</label>
+                            <div class="col-sm-2">
+                                <input type="text" disabled>
+                            </div>
+                        </div>
+                    </kn-drawer>
+                    -->
+
+                    <kn-drawer label="Flag Defaults">
+                        <flag-editor :caps="caps" :cmdline="''" ref="flagEditor"></flag-editor>
+                    </kn-drawer>
+                </div>
+            </div>
+        </script>
+
+        <script type="text/x-template" id="flag-editor">
+            <div>
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Easy Setup:</label>
+                    <div class="col-sm-8">
+                        <select v-model="selected_easy_flags">
+                            <option value="">Select a group</option>
+                            <option v-for="(name, idx) in easy_flags" :value="idx">{{ name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Custom Flags:</label>
+                    <div class="col-sm-8">
+                        <input type="text" style="width: 100%" v-model="custom_flags">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">List Type:</label>
+                    <div class="col-sm-8">
+                        <select v-model="list_type">
+                            <option v-for="(flags, name) in flags">{{ name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-8 col-sm-offset-4">
+                        <div class="checklist">
+                            <label class="checkbox" v-for="flag in flags[list_type]">
+                                <input type="checkbox" v-model="bool_flags[flag.name]">
+                                {{ flag.desc === '' ? flag.name : flag.desc }}
+                                <a :href="flag.web_url" @click.prevent="showFlagDoc(flag.web_url)" v-if="flag.web_url" class="pull-right">?</a>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
