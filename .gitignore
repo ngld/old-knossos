@@ -32,3 +32,4 @@ ssh_config
 releng/freebsd/packer/
 /node_modules/
 /html/js/modlist.*.js
+/releng/config/

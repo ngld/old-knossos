@@ -23,7 +23,7 @@ InstallDir "$PROGRAMFILES\Knossos"
 InstallDirRegKey HKLM "Software\Knossos" "Install Dir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
-OutFile ${KNOSSOS_ROOT}releng\windows\dist\updater.exe
+OutFile ${KNOSSOS_ROOT}releng\windows\dist\update-${KNOSSOS_VERSION}.exe
 
 !define MUI_ICON ${KNOSSOS_ROOT}knossos\data\hlp.ico
 !define MUI_INSTFILESPAGE_HEADER_SUBTEXT

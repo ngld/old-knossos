@@ -7,6 +7,9 @@ sudo chown packager .
 rsync -a --exclude=dist --exclude=build --exclude=packer --exclude=.vagrant src/ work/
 cd work
 
+. releng/config/config.sh
+import_key
+
 export QT_SELECT=5
 VERSION="$(python3 setup.py get_version)"
 UBUNTU_VERSION="xenial"
@@ -26,7 +29,21 @@ cd ../knossos
 tar -xzf ../"knossos_$VERSION.orig.tar.gz"
 cp -a ../src/releng/ubuntu/debian .
 
-cat > debian/changelog <<EOF
+if [ "$RELEASE" = "y" ]; then
+	for ubuntu in $UBUNTU_VERSIONS; do
+		cat > debian/changelog <<EOF
+knossos ($VERSION-1~${UBUNTU_VERSION}1) $UBUNTU_VERSION; urgency=medium
+
+  * New upstream release
+
+ -- ngld <ngld@tproxy.de>  Sun, 19 Feb 2017 16:23:14 +0100
+EOF
+
+		dpkg-buildpackage -S -sa -k$UBUNTU_KEY
+		ll ../knossos_$VERSION*.changes
+	done
+else
+	cat > debian/changelog <<EOF
 knossos ($VERSION-1) $UBUNTU_VERSION; urgency=medium
 
   * New upstream release
@@ -34,8 +51,6 @@ knossos ($VERSION-1) $UBUNTU_VERSION; urgency=medium
  -- ngld <ngld@tproxy.de>  Sun, 19 Feb 2017 16:23:14 +0100
 EOF
 
-dpkg-buildpackage -us -uc
-# dpkg-buildpackage -S -sa -k<key>
-# dput ???
-
-cp ../knossos_*.deb /build/src/releng/ubuntu/dist
+	dpkg-buildpackage -us -uc
+	cp ../knossos_*.deb /build/src/releng/ubuntu/dist
+fi

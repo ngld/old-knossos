@@ -23,7 +23,7 @@ def icon_from_app(app_path):
 # .. Basics ....................................................................
 
 # Uncomment to override the output filename
-filename = 'dist/Knossos.dmg'
+#filename = 'dist/Knossos.dmg'
 
 # Uncomment to override the output volume name
 volume_name = 'Knossos'

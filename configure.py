@@ -73,6 +73,13 @@ SRC_FILES = [
     'knossos/windows.py'
 ]
 
+# Grab the current version
+with open('knossos/center.py', 'r', encoding='utf-8') as f:
+    m = re.search(r"VERSION = '([^']+)'", f.read())
+    if m:
+        version = m.group(1)
+    else:
+        version = 'XXX'
 
 info('Checking Python version...')
 if sys.hexversion < 0x20700 or (sys.hexversion > 0x30000 and sys.hexversion < 0x30200):
@@ -166,7 +173,7 @@ with open('build.ninja', 'w') as stream:
 
     n.comment('Scripts')
     n.rule('regen', py_script('configure.py', sys.argv[1:]), 'RECONFIGURE', generator=True)
-    n.build('build.ninja', 'regen', 'configure.py')
+    n.build('build.ninja', 'regen', ['configure.py', 'knossos/center.py'])
 
     setup_args = ['sdist']
     if check_module('wheel', required=False):
@@ -191,12 +198,11 @@ with open('build.ninja', 'w') as stream:
 
             nsis = find_program(['makensis', r'C:\Program Files (x86)\NSIS\makensis.exe', r'C:\Program Files\NSIS\makensis.exe'], 'NSIS', required=False)
             if nsis:
-                version = 'TODO'
                 n.rule('nsis', cmd2str([nsis, '/NOCD', r'/DKNOSSOS_ROOT=.\\', '/DKNOSSOS_VERSION=%s' % version, '$in']), 'NSIS $out')
-                n.build('releng/windows/dist/installer.exe', 'nsis', 'releng/windows/nsis/installer.nsi', implicit='pyi')
-                n.build('releng/windows/dist/updater.exe', 'nsis', 'releng/windows/nsis/updater.nsi', implicit='pyi')
+                n.build('releng/windows/dist/Knossos-%s.exe' % version, 'nsis', 'releng/windows/nsis/installer.nsi', implicit='pyi')
+                n.build('releng/windows/dist/update-%s.exe' % version, 'nsis', 'releng/windows/nsis/updater.nsi', implicit='pyi')
 
-                n.build('installer', 'phony', ['releng/windows/dist/installer.exe', 'releng/windows/dist/updater.exe'])
+                n.build('installer', 'phony', ['releng/windows/dist/Knossos-%s.exe' % version, 'releng/windows/dist/update-%s.exe' % version])
 
     if sys.platform == 'darwin':
         n.comment('macOS')
@@ -208,7 +214,9 @@ with open('build.ninja', 'w') as stream:
 
             dmgbuild = find_program(['dmgbuild'], 'dmgbuild', required=False)
             if dmgbuild:
-                n.rule('dmgbuild', 'cd releng/macos && ' + cmd2str([dmgbuild, '-s', 'dmgbuild_cfg.py', 'Knossos', 'Knossos.dmg']), 'DMG')
-                n.build('dmg', 'dmgbuild', 'releng/macos/dmgbuild_cfg.py', implicit='pyi')
+                n.rule('dmgbuild', 'cd releng/macos && ' + cmd2str([dmgbuild, '-s', 'dmgbuild_cfg.py', 'Knossos', 'dist/Knossos-%s.dmg' % version]), 'DMG')
+                n.build('releng/macos/dist/Knossos-%s.dmg' % version, 'dmgbuild', 'releng/macos/dmgbuild_cfg.py', implicit='pyi')
+
+                n.build('dmg', 'phony', 'releng/macos/dist/Knossos-%s.dmg' % version)
 
 info('\nDone! Use "ninja run" to start Knossos.\n')
