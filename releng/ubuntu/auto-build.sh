@@ -32,7 +32,7 @@ cp -a ../src/releng/ubuntu/debian .
 if [ "$RELEASE" = "y" ]; then
 	for ubuntu in $UBUNTU_VERSIONS; do
 		cat > debian/changelog <<EOF
-knossos ($VERSION-1~${UBUNTU_VERSION}1) $UBUNTU_VERSION; urgency=medium
+knossos ($VERSION-1~${ubuntu}1) $ubuntu; urgency=medium
 
   * New upstream release
 
@@ -40,8 +40,9 @@ knossos ($VERSION-1~${UBUNTU_VERSION}1) $UBUNTU_VERSION; urgency=medium
 EOF
 
 		dpkg-buildpackage -S -sa -k$UBUNTU_KEY
-		ll ../knossos_$VERSION*.changes
 	done
+
+	dput ppa:ngld/knossos ../knossos_$VERSION-1~*.changes
 else
 	cat > debian/changelog <<EOF
 knossos ($VERSION-1) $UBUNTU_VERSION; urgency=medium
