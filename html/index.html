@@ -157,6 +157,11 @@
                     <div class="info-page settings-page container-fluid" v-if="page === 'settings'">
                         <kn-settings-page></kn-settings-page>
                     </div>
+
+                    <div class="info-page" v-if="page === 'develop'">
+                        <!-- <kn-devel-page></kn-devel-page> -->
+                        Sorry, this tab hasn't been implemented, yet.
+                    </div>
                 </div>
 
                 <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>

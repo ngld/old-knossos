@@ -204,7 +204,7 @@ class HellWindow(Window):
     def search_mods(self):
         mods = None
 
-        if self._mod_filter == 'home':
+        if self._mod_filter in ('home', 'develop'):
             mods = center.installed.mods
         elif self._mod_filter == 'explore':
             mods = {}
@@ -255,7 +255,7 @@ class HellWindow(Window):
     def update_mod_list(self):
         result, filter_ = self.search_mods()
 
-        if filter_ in ('home', 'explore'):
+        if filter_ in ('home', 'explore', 'develop'):
             self.browser_ctrl.bridge.updateModlist.emit(result, filter_)
 
     def show_settings(self):

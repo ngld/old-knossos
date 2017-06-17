@@ -233,7 +233,7 @@ function init() {
             },
 
             showHelp() {
-                alert('Not yet implemented!');
+                alert('Not yet implemented! Sorry.');
             },
 
             updateList() {
@@ -346,7 +346,7 @@ function init() {
         }
 
         vm.mods = mods;
-        vm.page = 'modlist';
+        vm.page = type === 'develop' ? 'develop' : 'modlist';
         vm.tab = type;
     });
 
