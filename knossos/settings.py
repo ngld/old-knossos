@@ -18,6 +18,7 @@ import sys
 import os.path
 import json
 import logging
+from collections import OrderedDict
 
 from . import center, util, api, launcher, runner
 from .tasks import run_task, CheckTask
@@ -31,23 +32,22 @@ def get_settings():
     fso = {}
 
     base_path = center.settings['base_path']
-    fs2_bins = []
-    fred_bins = []
+    fs2_bins = OrderedDict()
+    fred_bins = OrderedDict()
 
-    if base_path is not None:
-        bin_path = os.path.join(base_path, 'bin')
+    for mid, mvs in center.installed.mods.items():
+        if mvs[0].mtype == 'engine':
+            for v in mvs:
+                for pkg in v.packages:
+                    for exe in pkg.executables:
+                        name = '%s - %s' % (v.title, exe['version'])
+                        if exe.get('debug'):
+                            name += ' (Debug)'
 
-        if os.path.isdir(bin_path):
-            for sub in os.listdir(bin_path):
-                subp = os.path.join(bin_path, sub)
-
-                if os.path.isdir(subp):
-                    for fn in os.listdir(subp):
-                        if os.path.isfile(os.path.join(subp, fn)):
-                            if 'fred' in fn:
-                                fred_bins.append(os.path.join(sub, fn))
-                            else:
-                                fs2_bins.append(os.path.join(sub, fn))
+                        if exe.get('fred'):
+                            fred_bins[name] = os.path.join(v.folder, exe['file'])
+                        else:
+                            fs2_bins[name] = os.path.join(v.folder, exe['file'])
 
     fso['fs2_bins'] = fs2_bins
     fso['fred_bins'] = fred_bins

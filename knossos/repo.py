@@ -400,7 +400,7 @@ class Mod(object):
         self.title = values['title']
         self.mtype = values.get('type', 'mod')  # Backwards compatibility
         self.version = semantic_version.Version(values['version'], partial=True)
-        self.parent = values.get('parent', 'FSO')
+        self.parent = values.get('parent', 'FS2')
         self.cmdline = values.get('cmdline', '')
         self.logo = values.get('logo', None)
         self.tile = values.get('tile', None)
@@ -840,7 +840,7 @@ class InstalledMod(Mod):
         # IMPORTANT: This code decides where newly installed mods are stored.
         base = center.settings['base_path']
         if data['type'] == 'engine':
-            data['folder'] = os.path.join(base, 'bin', data['id'])
+            data['folder'] = os.path.join(base, 'bin', data['id']) + '-' + data['version']
         elif data['type'] == 'tc':
             data['folder'] = os.path.join(base, data['id'])
         else:

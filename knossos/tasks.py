@@ -949,16 +949,45 @@ class GOGExtractTask(progress.Task):
             QtWidgets.QMessageBox.information(None, translate('tasks', 'Done'), self.tr(
                 'FS2 has been successfully installed.'))
 
-        fs2_path = results[0]
-        center.settings['fs2_path'] = fs2_path
-        center.settings['fs2_bin'] = None
+        center.main_win.check_fso()
 
-        for item in glob.glob(os.path.join(fs2_path, 'fs2_*.exe')):
-            if os.path.isfile(item):
-                center.settings['fs2_bin'] = os.path.basename(item)
-                break
 
-        api.save_settings()
+class GOGCopyTask(progress.Task):
+    can_abort = False
+
+    def __init__(self, gog_path, dest_path):
+        super(GOGCopyTask, self).__init__()
+
+        self.done.connect(self.finish)
+        self.add_work([(gog_path, dest_path)])
+        self.title = 'Copying retail files...'
+
+    def work(self, paths):
+        gog_path, dest_path = paths
+
+        progress.update(0, 'Copying files...')
+        self._makedirs(os.path.join(dest_path, 'data/players'))
+        self._makedirs(os.path.join(dest_path, 'data/movies'))
+
+        for item in glob.glob(os.path.join(gog_path, '*.vp')):
+            shutil.copyfile(item, os.path.join(dest_path, os.path.basename(item)))
+
+        for item in glob.glob(os.path.join(gog_path, 'data/players', '*.hcf')):
+            shutil.copyfile(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
+
+        for item in glob.glob(os.path.join(gog_path, 'data2', '*.mve')):
+            shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
+
+        for item in glob.glob(os.path.join(gog_path, 'data3', '*.mve')):
+            shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
+
+        self.post(dest_path)
+
+    def _makedirs(self, path):
+        if not os.path.isdir(path):
+            os.makedirs(path)
+
+    def finish(self):
         center.main_win.check_fso()
 
 

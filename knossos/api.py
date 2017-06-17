@@ -228,6 +228,8 @@ def check_retail_files():
         center.has_retail = has_retail
         run_task(CheckTask())
 
+    return has_retail
+
 
 ##############
 # Public API #

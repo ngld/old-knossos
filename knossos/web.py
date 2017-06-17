@@ -30,8 +30,8 @@ if not QtWebChannel:
 
 class WebBridge(QtCore.QObject):
     showWelcome = QtCore.Signal()
-    showLastPlayed = QtCore.Signal('QVariant')
     showDetailsPage = QtCore.Signal('QVariant')
+    showRetailPrompt = QtCore.Signal()
     updateModlist = QtCore.Signal('QVariantList', str)
     modProgress = QtCore.Signal(str, float, str)
 
@@ -221,7 +221,12 @@ class WebBridge(QtCore.QObject):
 
         if pkgs is None:
             pkgs = []
-        windows.ModInstallWindow(mod, pkgs)
+
+        if mod.parent == 'FS2' and not api.check_retail_files():
+            self.showRetailPrompt.emit()
+        else:
+            windows.ModInstallWindow(mod, pkgs)
+
         return 0
 
     @QtCore.Slot(str, str, 'QStringList', result=int)
@@ -378,6 +383,26 @@ class WebBridge(QtCore.QObject):
             return json.dumps(flags)
         except:
             logging.exception('Failed to encode FSO flags!')
+
+    @QtCore.Slot(result=str)
+    def searchRetailData(self):
+        for path in [r'C:\GOG Games\Freespace2']:
+            if os.path.isdir(path):
+                return path
+
+        return ''
+
+    @QtCore.Slot(str, result=bool)
+    def copyRetailData(self, path):
+        if os.path.isdir(path):
+            tasks.run_task(tasks.GOGCopyTask(path, os.path.join(center.settings['base_path'], 'FS2')))
+            return True
+        elif os.path.isfile(path) and path.endswith('.exe'):
+            tasks.run_task(tasks.GOGExtractTask(path, os.path.join(center.settings['base_path'], 'FS2')))
+            return True
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('WebBridge', 'The selected path is not a directory!'))
+            return False
 
 
 if QtWebChannel:

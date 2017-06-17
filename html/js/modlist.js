@@ -114,7 +114,6 @@ function init() {
                     if(!fso[key]) fso[key] = this.old_settings.fso[key];
                 }
 
-                console.log(fso);
                 fs2mod.saveFsoSettings(JSON.stringify(fso));
             }
         },
@@ -214,7 +213,12 @@ function init() {
             popup_visible: false,
             popup_title: 'Popup',
             popup_mode: '',
-            popup_content: null
+            popup_content: null,
+
+            // retail prompt
+            retail_searching: true,
+            retail_found: false,
+            retail_data_path: ''
         },
 
         watch: {
@@ -290,6 +294,32 @@ function init() {
                 vm.popup_title = 'Installation Details';
                 vm.popup_mode = 'mod_progress';
                 vm.popup_visible = true;
+            },
+
+            retailAutoDetect() {
+                vm.retail_searching = true;
+                vm.retail_found = false;
+
+                call(fs2mod.searchRetailData, (path) => {
+                    vm.retail_searching = false;
+
+                    if(path !== '') {
+                        vm.retail_found = true;
+                        vm.retail_data_path = path;
+                    }
+                });
+            },
+
+            selectRetailFolder() {
+                call(fs2mod.browseFolder, 'Please select your FS2 folder', this.retail_data_path, (path) => {
+                    if(path) this.retail_data_path = path;
+                });
+            },
+
+            finishRetailPrompt() {
+                call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
+                    if(result) vm.popup_visible = false;
+                });
             }
         }
     });
@@ -300,6 +330,14 @@ function init() {
     fs2mod.showDetailsPage.connect((mod) => {
         vm.mod = mod;
         vm.page = 'details';
+    });
+    fs2mod.showRetailPrompt.connect(() => {
+        vm.popup_mode = 'retail_prompt';
+        vm.popup_title = 'Retail data missing';
+        vm.popup_visible = true;
+
+        vm.retail_data_path = '';
+        vm.retailAutoDetect();
     });
     fs2mod.updateModlist.connect((mods, type) => {
         window.mt = mod_table = {};
