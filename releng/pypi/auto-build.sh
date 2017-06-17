@@ -17,9 +17,6 @@ echo "Installing Babel..."
 rm -rf node_modules
 npm i babel-cli babel-preset-env
 
-echo "Installing dependencies..."
-pip3 install twine wheel
-
 if [ -d dist ]; then
 	rm -rf dist/*
 fi

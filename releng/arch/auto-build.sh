@@ -12,8 +12,15 @@ install -Dm600 releng/config/aur_key ~/.ssh/id_rsa
 if [ "$RELEASE" = "y" ]; then
 	VERSION="$(python setup.py get_version | cut -d - -f 1)"
 
-	cd releng/arch/pkg
-	sed -i 's#^pkgver=.*#pkgver='"$VERSION"'#g' PKGBUILD
+	cd releng/arch
+	if [ -d pkg ]; then
+		rm -r pkg
+	fi
+
+	git clone aur@aur.archlinux.org:fs2-knossos.git pkg
+	cd pkg
+
+	sed -i -e 's#^pkgver=.*#pkgver='"$VERSION"'#' -e 's#^pkrel=.*#pkgrel=1#' PKGBUILD
 	updpkgsums
 	mksrcinfo
 

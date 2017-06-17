@@ -10,12 +10,14 @@ for fn in config/{config.sh,aur_key,signer.key}; do
 	fi
 done
 
+. config/config.sh
+
 if [ -z "$GPG_KEY_ID" ] || [ -z "$GITHUB_TOKEN" ]; then
 	echo "ERROR: The config.sh file is missing either GPG_KEY_ID or GITHUB_TOKEN!"
 	exit 1
-fi]
+fi
 
-if ! which githubrelease > /dev/null; then
+if ! which githubrelease > /dev/null 2>&1; then
 	echo "githubrelease is missing!"
 	exit 1
 fi
@@ -25,15 +27,16 @@ for plat in arch freebsd macos ubuntu windows; do
 	"./$plat/prepare.sh"
 done
 
-echo "==> Preparing release..."
-git checkout master
-git merge develop
+VERSION="$(cd ..; python setup.py get_version | cut -d - -f -1)"
+echo "==> Preparing release of $VERSION..."
 
-sed -Ei "s#VERSION = '([0-9\.]+)-dev'#VERSION = '\1'#" knossos/center.py
-VERSION="$(cd ..; python setup.py get_version)"
+git checkout master
+git merge --no-commit -X theirs develop
+
+sed -Ei "s#VERSION = '[^']+'#VERSION = '$VERSION'#" ../knossos/center.py
 
 git commit -am "Release $VERSION"
-git tag "v$VERSION"
+git tag -u "$GPG_KEY_ID" "v$VERSION"
 
 
 export RELEASE=y
@@ -45,8 +48,8 @@ echo "==> Building macOS..."
 
 
 echo "==> Pushing to GitHub..."
-#git push
-#git push --tags
+git push
+git push --tags
 
 echo "==> Building Ubuntu packages..."
 ./ubuntu/build.sh
@@ -58,7 +61,13 @@ echo "==> Building PyPi package..."
 ./pypi/build.sh
 
 echo "==> Uploading artifacts to GitHub..."
-mv windows/
 githubrelease release ngld/knossos create "v$VERSION" --name "Knossos $VERSION" --publish windows/dist/{Knossos,update}-"$VERSION".exe macos/dist/Knossos-"$VERSION".dmg
+
+echo "==> Killing VMs..."
+cd windows
+vagrant destroy
+
+cd ../macos
+vagrant destroy
 
 echo "==> Done."
