@@ -24,13 +24,13 @@ import glob
 from . import uhf
 uhf(__name__)
 
-from . import center, util, repo, launcher, integration
+from . import center, util, launcher, integration
 from .qt import QtCore, QtWidgets
 from .tasks import run_task, CheckUpdateTask, CheckTask, FetchTask, UninstallTask
 from .windows import ModSettingsWindow, ModInstallWindow
 from .repo import ModNotFound
 from .ipc import IPCComm
-from .runner import run_fs2, run_fs2_silent, run_mod
+from .runner import run_fs2_silent, run_mod
 
 # TODO: Split this file up into smaller parts and move them into the respective modules
 # (i.e. run_mod should be in runner).

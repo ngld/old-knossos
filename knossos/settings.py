@@ -31,7 +31,6 @@ tr = QtCore.QCoreApplication.translate
 def get_settings():
     fso = {}
 
-    base_path = center.settings['base_path']
     fs2_bins = OrderedDict()
     fred_bins = OrderedDict()
 

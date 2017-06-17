@@ -18,7 +18,6 @@ import sys
 import os
 import logging
 import json
-import re
 import shutil
 import hashlib
 import semantic_version
