@@ -10,6 +10,7 @@ if errorlevel 1 goto :error
 
 :build
 ninja debug
+if errorlevel 1 goto :error
 goto :eof
 
 :error
