@@ -16,7 +16,7 @@ UBUNTU_VERSION="xenial"
 
 echo "Installing Babel..."
 rm -rf node_modules
-npm i babel-cli babel-preset-env
+cp -r /build/node_modules .
 
 python3 configure.py
 ninja resources
@@ -30,6 +30,8 @@ tar -xzf ../"knossos_$VERSION.orig.tar.gz"
 cp -a ../src/releng/ubuntu/debian .
 
 if [ "$RELEASE" = "y" ]; then
+	gpg-agent --daemon
+
 	for ubuntu in $UBUNTU_VERSIONS; do
 		cat > debian/changelog <<EOF
 knossos ($VERSION-1~${ubuntu}1) $ubuntu; urgency=medium

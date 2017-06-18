@@ -22,22 +22,50 @@ if ! which githubrelease > /dev/null 2>&1; then
 	exit 1
 fi
 
+if [ -n "$1" ]; then
+	VERSION="$1"
+fi
+
 echo "==> Preparing platforms..."
 for plat in arch freebsd macos ubuntu windows; do
 	"./$plat/prepare.sh"
 done
 
-VERSION="$(cd ..; python setup.py get_version | cut -d - -f -1)"
-echo "==> Preparing release of $VERSION..."
+if [ "$(cat ../.git/HEAD)" = "ref: refs/heads/develop" ]; then
+	if [ -z "$VERSION" ]; then
+		VERSION="$(cd ..; python setup.py get_version | cut -d - -f -1)"
+	fi
+	echo "==> Preparing release of $VERSION..."
 
-git checkout master
-git merge --no-commit -X theirs develop
+	git checkout master
+	git merge --no-commit -X theirs develop
 
-sed -Ei "s#VERSION = '[^']+'#VERSION = '$VERSION'#" ../knossos/center.py
+	sed -Ei "s#VERSION = '[^']+'#VERSION = '$VERSION'#" ../knossos/center.py
+else
+	if [ -z "$VERSION" ]; then
+		VERSION="$(cd ..; python setup.py get_version)"
+	fi
+fi
+
+rel_text="$(mktemp)"
+cat > "$rel_text" <<EOF
+
+
+# Please enter your release notes above.
+# All lines starting with an # are ignored.
+EOF
+"$EDITOR" "$rel_text"
+
+grep -v '^#' "$rel_text" > "$rel_text.stripped"
+mv "$rel_text.stripped" "$rel_text"
 
 git commit -am "Release $VERSION"
-git tag -u "$GPG_KEY_ID" "v$VERSION"
+git tag -u "$GPG_KEY_ID" -m "$(cat "$rel_text")" "v$VERSION"
 
+cat >> "$rel_text" <<EOF
+
+[PPA](https://launchpad.net/~ngld/+archive/ubuntu/knossos) | [AUR](https://aur.archlinux.org/packages/fs2-knossos/) | [PyPI](https://pypi.python.org/pypi/knossos)
+EOF
 
 export RELEASE=y
 echo "==> Building Windows..."
@@ -61,7 +89,19 @@ echo "==> Building PyPi package..."
 ./pypi/build.sh
 
 echo "==> Uploading artifacts to GitHub..."
-githubrelease release ngld/knossos create "v$VERSION" --name "Knossos $VERSION" --publish windows/dist/{Knossos,update}-"$VERSION".exe macos/dist/Knossos-"$VERSION".dmg
+githubrelease release ngld/knossos create "v$VERSION" --name "Knossos $VERSION" --publish --prerelease \
+	windows/dist/{Knossos,update}-"$VERSION".exe macos/dist/Knossos-"$VERSION".dmg
+
+githubrelease release ngld/knossos edit "v$VERSION" --body "$(cat "$rel_text")" 
+
+rm "$rel_text"
+
+echo "==> Killing VMs..."
+cd windows
+vagrant destroy
+
+cd ../macos
+vagrant destroy
 
 echo "==> Killing VMs..."
 cd windows
