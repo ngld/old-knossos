@@ -15,10 +15,7 @@ VERSION="$(python3 setup.py get_version)"
 
 echo "Installing Babel..."
 rm -rf node_modules
-npm i babel-cli babel-preset-env
-
-echo "Installing dependencies..."
-pip3 install twine wheel
+cp -r /build/node_modules .
 
 if [ -d dist ]; then
 	rm -rf dist/*

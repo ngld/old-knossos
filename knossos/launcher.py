@@ -142,9 +142,6 @@ def load_settings():
         # Most recent settings version
         settings['s_version'] = 4
 
-    if '#default' not in settings['cmdlines']:
-        settings['cmdlines']['#default'] = api.read_fso_cmdline()
-
     if settings['hash_cache'] is not None:
         util.HASH_CACHE = settings['hash_cache']
 
@@ -177,7 +174,6 @@ def run_knossos():
 
     center.app = app
     center.installed = repo.InstalledRepo()
-    center.installed.pins = center.settings['pins']
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()

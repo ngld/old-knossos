@@ -335,9 +335,13 @@ def run_fs2_silent(params):
         env['LD_LIBRARY_PATH'] = ld_path
 
     try:
-        return util.call([fs2_bin] + params, cwd=base_path, env=env)
+        rc = util.call([fs2_bin] + params, cwd=base_path, env=env)
     except OSError:
         return -129
+
+    if rc == 3221225595:
+        # We're missing a DLL
+        return -127
 
 
 def run_mod(mod, fred=False, debug=False):

@@ -46,12 +46,6 @@ def save_settings():
         if os.path.exists(path):
             center.settings['hash_cache'][path] = info
 
-    for mod in center.settings['cmdlines'].copy():
-        if mod != '#default' and mod not in center.installed.mods:
-            del center.settings['cmdlines'][mod]
-
-    center.settings['pins'] = center.installed.pins
-
     with open(os.path.join(center.settings_path, 'settings.json'), 'w') as stream:
         json.dump(center.settings, stream)
 

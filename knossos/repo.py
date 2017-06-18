@@ -816,7 +816,7 @@ class InstalledMod(Mod):
 
             mod = InstalledMod(data)
             mod._path = path
-        elif path.endswith('.ini'):
+        elif path.lower().endswith('.ini'):
             mod = IniMod()
             mod.load(path)
         else:

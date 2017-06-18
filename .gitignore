@@ -12,6 +12,7 @@ build
 dist
 /knossos/ui/*
 /knossos/data/resources.rcc
+/knossos/data/resources.qrc
 /html/js/modlist_ts.js
 /tools/windows/support/*
 /knossos.egg-info/
@@ -26,10 +27,12 @@ dist
 # Ninja
 /build.ninja
 .ninja_*
+
+# Releng
 .vagrant
-/knossos/data/resources.qrc
 ssh_config
-releng/freebsd/packer/
-/node_modules/
-/html/js/modlist.*.js
 /releng/config/
+/releng/freebsd/packer/
+/releng/arch/pkg/
+/html/js/modlist.*.js
+/node_modules/
