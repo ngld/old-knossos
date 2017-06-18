@@ -142,7 +142,7 @@ class CheckTask(progress.MultistepTask):
         if mod_file:
             try:
                 mod = repo.InstalledMod.load(mod_file)
-                if base_mod:
+                if base_mod and mod:
                     mod.set_base(base_mod)
                 else:
                     base_mod = mod
@@ -424,8 +424,8 @@ class InstallTask(progress.MultistepTask):
                 info = None
 
             if info is not None and info['version'] != str(mod.version):
-                mod.folder += '_kv_' + str(mod.version)
-                modpath = mod.folder
+                # TODO: Remove old files
+                logging.info('Overwriting "%s" (%s) with version %s.' % (mod.mid, info['version'], mod.version))
 
         if os.path.isdir(modpath):
             for path, dirs, files in os.walk(modpath):
