@@ -1,295 +1,391 @@
-var tasks = {};
-var progress_visible = false;
-var last_mod = null;
-var tr_table = {};
-
-function render_row(mvs, type) {
-    var row = $('<div class="mod row">');
-    var mod;
-
-    if($.isArray(mvs)) {
-        mod = mvs[0];
-    } else {
-        mod = mvs;
-        mvs = [mod];
-    }
-
-    if(type == 'available') {
-        row.html($('#tpl-avail-mod').html());
-
-        row.find('.install-btn').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.install(mod.id, mod.version, []);
-        });
-
-        row.find('.info-btn').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.showInfo(mod.id, mod.version);
-        });
-    } else if(type == 'installed') {
-        row.html($('#tpl-installed-mod').html());
-
-        row.find('.run-btn').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.runMod(mod.id, mod.version);
-        });
-        row.find('.fred-btn').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.runFredMod(mod.id, mod.version);
-        });
-        row.find('.settings-btn').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.showSettings(mod.id, mod.version);
-        });
-        row.find('.del-btn').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.uninstall(mod.id, mod.version, []);
-        });
-    } else if(type == 'updates') {
-        row.html($('#tpl-update-mod').html());
-
-        row.find('.update-btn').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.updateMod(mod.id, mod.version);
-        });
-    }
-
-    var logo = row.find('.mod-logo');
-    if(logo.length > 0) {
-        if(mod.logo) {
-            logo.attr('src', 'file://' + mod.logo_path);
-        } else {
-            logo.replaceWith('<div class="no-logo">');
-        }
-    }
-
-    row.find('.title').text(mod.title);
-    return row;
-}
-
-function update_mods(mods, type) {
-    $('#loading').hide();
-    $('#mods').show();
-    $('.info-page').hide();
-
-    if(type == 'progress') {
-        progress_visible = true;
-        show_progress();
-        return;
-    } else {
-        progress_visible = false;
-    }
-
-    var names = [];
-    var mod_list = $('#mods').html('');
-
-    $.each(mods, function (mid, info) {
-        names.push([mid, info[0].title]);
-    });
-
-    names.sort(function (a, b) {
-        return a[1] > b[1] ? 1 : (a[1] < b[1] ? -1 : 0);
-    });
-
-    names.forEach(function (item) {
-        var mod = mods[item[0]];
-        console.log(mod);
-        mod_list.append(render_row(mod, type));
-    });
-}
-
-function display_last(mod) {
-    $('#loading, .info-page').hide();
-    $('#mods').hide();
-
-    var cont = $('#last-played');
-    if(!mod) {
-        $('#no-last-played').show();
-        return;
-    } else {
-        cont.show();
-    }
-
-    cont.find('.run-btn').data('modid', mod.id);
-    cont.find('.title').text(mod.title);
-
-    if(mod.logo_path) {
-        cont.find('.mod-logo').attr('src', 'file://' + mod.logo_path).show();
-    } else {
-        cont.find('.mod-logo').hide();
-    }
-
-    var desc = cont.find('.desc').text(mod.description);
-    // Fix linebreaks
-    desc.html(desc.html().replace(/\n/g, '<br>'));
-
-    cont.show();
-}
-
-function _render_task(id, info) {
-    var cont = $('<div class="mod">').html($('#tpl-dl-mod').html());
-    cont.attr('id', 'task-' + id);
-
-    cont.find('.abort-btn').click(function (e) {
-        e.preventDefault();
-
-        fs2mod.abortTask(id);
-    });
-
-    _update_task(cont, info);
-    return cont;
-}
-
-function _update_task(cont, info) {
-    var label = cont.find('.title');
-    var prg_bar = cont.find('.master-prg');
-    prg_bar.css('width', info.progress + '%');
-
-    label.text(info.title);
-    
-    var sub_well = cont.find('.well');
-    
-    $.each(info.subs, function (i, sub) {
-        var row = sub_well.find('.s-' + i);
-        if(row.length == 0) {
-            row = $('<div>').html('<span></span><br><div class="progress"><div class="progress-bar"></div></div>');
-            row.addClass('s-' + i);
-            sub_well.append(row);
-        }
-
-        if(sub[1] == 'Done' || sub[1] == 'Ready') {
-            row.hide();
-        } else {
-            row.show();
-            row.find('span').text(sub[1]);
-            row.find('.progress-bar').css('width', (sub[0] * 100) + '%');
-        }
-    });
-}
-
-function add_task(id, text) {
-    tasks[id] = { title: text, progress: 0, subs: [] };
-
-    if(progress_visible) {
-        $('#mods').append(_render_task(id, tasks[id]));
-    }
-}
-
-function update_progress(id, percent, info, text) {
-    tasks[id] = {
-        progress: percent,
-        subs: JSON.parse(info),
-        title: text
-    };
-
-    if(progress_visible) {
-        var task_cont = $('#task-' + id);
-        if(task_cont.length == 0) {
-            $('#mods').append(_render_task(id, tasks[id]));
-        } else {
-            _update_task(task_cont, tasks[id]);
-        }
-    }
-}
-
-function remove_task(id) {
-    delete tasks[id];
-    $('#task-' + id).remove();
-
-    console.log(['Remove', id]);
-}
-
-function show_progress() {
-    progress_visible = true;
-    $('.info-page').hide();
-    var modlist = $('#mods').empty().show();
-
-    $.each(tasks, function (id, obj) {
-        modlist.append(_render_task(id, obj));
-    });
-}
-
-function load_translations(cb) {
-    tr_table = {};
-    var keys = get_translation_source();
-
-    // Call fs2mod.tr() for each key
-    var next = 0;
-    function fetch() {
-        if(next < keys.length) {
-            var k = keys[next++];
-            fs2mod.tr('modlist_ts', k, function (res) {
-                tr_table[k] = res;
-                fetch();
-            });
-        } else {
-            cb();
-        }
-    }
-
-    fetch();
-}
-
-function show_welcome() {
-    $('.info-page, #mods, #loading').hide();
-    $('#welcome').show();
-}
-
 function init() {
-    $('.hide').removeClass('hide').hide();
+    let task_mod_map = {};
 
-    $('#last-played .run-btn').click(function (e) {
-        e.preventDefault();
+    function call(ref) {
+        let args = Array.prototype.slice.apply(arguments, [1]);
+        
+        if(window.qt) {
+            ref.apply(null, args);
+        } else {
+            let cb = args.pop();
+            cb(ref.apply(null, args));
+        }
+    }
 
-        fs2mod.runMod($(this).data('modid'), '');
+    Vue.component('kn-mod', {
+        template: '#kn-mod',
+        props: ['mod', 'tab'],
+
+        methods: {
+            play() {
+                fs2mod.runMod(this.mod.id, '');
+            },
+
+            update() {
+                fs2mod.updateMod(this.mod.id, '');
+            },
+
+            install() {
+                fs2mod.install(this.mod.id, '', []);
+            },
+
+            uninstall() {
+                fs2mod.uninstall(this.mod.id, '', []);
+            },
+
+            cancel() {
+                fs2mod.abortTask(task_mod_map[this.mod.id]);
+            },
+
+            showDetails() {
+                vm.mod = this.mod;
+                vm.page = 'details';
+            },
+
+            showErrors() {
+                vm.popup_content = this.mod;
+                vm.popup_title = 'Mod errors';
+                vm.popup_mode = 'mod_errors';
+                vm.popup_visible = true;
+            },
+
+            showProgress() {
+                vm.popup_content = this.mod;
+                vm.popup_title = 'Installation Details';
+                vm.popup_mode = 'mod_progress';
+                vm.popup_visible = true;
+            }
+        }
     });
 
-    load_translations(function () {
-        $('div[data-tr], span[data-tr]').each(function () {
-            var $this = $(this);
-            $this.html(tr_table[$this.html()]);
-        });
+    Vue.component('kn-drawer', {
+        template: '#kn-drawer',
+        props: ['label'],
 
-        $('#sel-fso').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.selFs2path();
-        });
-
-        $('#gog-install').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.runGogInstaller();
-        });
-
-        $('#tc-install').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.enterTcMode();
-        });
-
-        $('a[target="_blank"]').click(function (e) {
-            e.preventDefault();
-
-            fs2mod.openExternal($(this).attr('href'));
-        });
+        data: () => ({
+            open: false
+        })
     });
 
-    fs2mod.showWelcome.connect(show_welcome);
-    fs2mod.showLastPlayed.connect(display_last);
-    fs2mod.updateModlist.connect(update_mods);
-    fs2mod.taskStarted.connect(add_task);
-    fs2mod.taskProgress.connect(update_progress);
-    fs2mod.taskFinished.connect(remove_task);
+    Vue.component('kn-settings-page', {
+        template: '#kn-settings-page',
+        props: [],
 
-    fs2mod.finishInit();
+        data: () => ({
+            knossos: {},
+            fso: {},
+            old_settings: {},
+            default_fs2_bin: null,
+            default_fred_bin: null,
+            caps: null
+        }),
+
+        beforeMount() {
+            call(fs2mod.getSettings, (settings) => {
+                settings = JSON.parse(settings);
+
+                this.knossos = Object.assign({}, settings.knossos);
+                this.fso = Object.assign({}, settings.fso);
+                this.old_settings = settings;
+                this.default_fs2_bin = settings.knossos.fs2_bin;
+                this.default_fred_bin = settings.knossos.fred_bin;
+            });
+            call(fs2mod.getDefaultFsoCaps, (caps) => {
+                this.caps = JSON.parse(caps);
+            });
+        },
+
+        methods: {
+            changeBasePath() {
+                call(fs2mod.browseFolder, 'Please select a folder', this.base_path, (path) => {
+                    if(path) this.base_path = path;
+                });
+            },
+
+            save() {
+                for(let set of ['base_path', 'max_downloads', 'use_raven']) {
+                    if(this.knossos[set] != this.old_settings.knossos[set]) {
+                        fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
+                    }
+                }
+
+                let fso = Object.assign({}, this.fso);
+                for(let key of Object.keys(this.old_settings.fso)) {
+                    if(!fso[key]) fso[key] = this.old_settings.fso[key];
+                }
+
+                fs2mod.saveFsoSettings(JSON.stringify(fso));
+            }
+        },
+
+        watch: {
+            default_fs2_bin(new_bin) {
+                if(this.default_fs2_bin === null) return;
+
+                call(fs2mod.saveSetting, 'fs2_bin', JSON.stringify(new_bin), () => {
+                    call(fs2mod.getDefaultFsoCaps, (caps) => {
+                        this.caps = JSON.parse(caps);
+                    });
+                });
+            },
+
+            default_fred_bin(new_bin) {
+                if(this.default_fred_bin === null) return;
+
+                fs2mod.saveSetting('fred_bin', JSON.stringify(new_bin));
+            }
+        }
+    });
+
+    Vue.component('flag-editor', {
+        template: '#flag-editor',
+        props: ['caps', 'cmdline'],
+
+        data: () => ({
+            easy_flags: {},
+            flags: {},
+            selected_easy_flags: '',
+            custom_flags: '',
+            bool_flags: {},
+            list_type: 'Graphics'
+        }),
+
+        methods: {
+            processCmdline() {
+                console.log(this);
+                if(!this.caps) return;
+
+                const flags = {};
+                const custom = [];
+                for(let part of this.cmdline.split(' ')) {
+                    if(this.caps.flags[part]) {
+                        flags[part] = true;
+                    } else {
+                        custom.push(part);
+                    }
+                }
+
+                this.easy_flags = this.caps.easy_flags;
+                this.flags = this.caps.flags;
+                this.selected_easy_flags = '';
+                this.custom_flags = custom.join(' ');
+                this.bool_flags = flags;
+                this.list_type = 'Audio';
+            },
+
+            showFlagDoc(url) {
+                vm.popup_visible = true;
+                vm.popup_mode = 'frame';
+                vm.popup_title = 'Flag Documentation';
+                vm.popup_content = url;
+            }
+        },
+
+        watch: {
+            caps() {
+                this.processCmdline();
+            }
+        }
+    });
+
+    let vm = new Vue({
+        el: '#loading',
+        template: '#kn-page',
+        data: {
+            tabs: {
+                home: 'Home',
+                explore: 'Explore',
+                develop: 'Development'
+            },
+
+            search_text: '',
+            tab: 'home',
+            page: 'modlist',
+            show_filter: false,
+            mods: [],
+
+            // welcome page
+            data_path: '?',
+
+            // details page
+            mod: null,
+
+            popup_visible: false,
+            popup_title: 'Popup',
+            popup_mode: '',
+            popup_content: null,
+
+            // retail prompt
+            retail_searching: true,
+            retail_found: false,
+            retail_data_path: ''
+        },
+
+        watch: {
+            search_text(phrase) {
+                fs2mod.triggerSearch(phrase);
+            }
+        },
+
+        methods: {
+            openLink(url) {
+                fs2mod.openExternal(url);
+            },
+
+            showHelp() {
+                alert('Not yet implemented! Sorry.');
+            },
+
+            updateList() {
+                fs2mod.fetchModlist();
+            },
+
+            showSettings() {
+                this.page = 'settings';
+            },
+
+            showTab(tab) {
+                fs2mod.showTab(tab);
+            },
+
+            exitDetails() {
+                this.page = 'modlist';
+            },
+
+            selectFolder() {
+                call(fs2mod.browseFolder, 'Please select a folder', this.data_path, (path) => {
+                    if(path) this.data_path = path;
+                });
+            },
+
+            finishWelcome() {
+                fs2mod.setBasePath(this.data_path);
+            },
+
+            installMod() {
+                fs2mod.install(this.mod.id, '', []);
+            },
+
+            uninstallMod() {
+                fs2mod.uninstall(this.mod.id, '', []);
+            },
+
+            cancelMod() {
+                fs2mod.abortTask(task_mod_map[this.mod.id]);
+            },
+
+            playMod() {
+                fs2mod.runMod(this.mod.id, '');
+            },
+
+            updateMod() {
+                fs2mod.updateMod(this.mod.id, '');
+            },
+
+            showModErrors() {
+                vm.popup_content = this.mod;
+                vm.popup_title = 'Mod errors';
+                vm.popup_mode = 'mod_errors';
+                vm.popup_visible = true;
+            },
+
+            showModProgress() {
+                vm.popup_content = this.mod;
+                vm.popup_title = 'Installation Details';
+                vm.popup_mode = 'mod_progress';
+                vm.popup_visible = true;
+            },
+
+            retailAutoDetect() {
+                vm.retail_searching = true;
+                vm.retail_found = false;
+
+                call(fs2mod.searchRetailData, (path) => {
+                    vm.retail_searching = false;
+
+                    if(path !== '') {
+                        vm.retail_found = true;
+                        vm.retail_data_path = path;
+                    }
+                });
+            },
+
+            selectRetailFolder() {
+                call(fs2mod.browseFolder, 'Please select your FS2 folder', this.retail_data_path, (path) => {
+                    if(path) this.retail_data_path = path;
+                });
+            },
+
+            finishRetailPrompt() {
+                call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
+                    if(result) vm.popup_visible = false;
+                });
+            }
+        }
+    });
+    window.vm = vm;
+    let mod_table = null;
+
+    fs2mod.showWelcome.connect(() => vm.page = 'welcome');
+    fs2mod.showDetailsPage.connect((mod) => {
+        vm.mod = mod;
+        vm.page = 'details';
+    });
+    fs2mod.showRetailPrompt.connect(() => {
+        vm.popup_mode = 'retail_prompt';
+        vm.popup_title = 'Retail data missing';
+        vm.popup_visible = true;
+
+        vm.retail_data_path = '';
+        vm.retailAutoDetect();
+    });
+    fs2mod.updateModlist.connect((mods, type) => {
+        window.mt = mod_table = {};
+        for(let mod of mods) {
+            mod_table[mod.id] = mod;
+        }
+
+        vm.mods = mods;
+        vm.page = type === 'develop' ? 'develop' : 'modlist';
+        vm.tab = type;
+    });
+
+    let tasks = {};
+    fs2mod.taskStarted.connect((tid, title, mods) => {
+        tasks[tid] = { title, mods };
+
+        for(let mid of mods) {
+            if(mod_table[mid]) {
+                mod_table[mid].status = 'updating';
+                task_mod_map[mid] = tid;
+            }
+        }
+    });
+
+    fs2mod.taskProgress.connect((tid, progress, details) => {
+        details = JSON.parse(details);
+        for(let mid of tasks[tid].mods) {
+            if(mod_table[mid]) {
+                mod_table[mid].progress = progress;
+                mod_table[mid].progress_info = details;
+            }
+        }
+    });
+
+    fs2mod.taskFinished.connect((tid) => {
+        for(let mid of tasks[tid].mods) {
+            if(mod_table[mid]) {
+                mod_table[mid].progress = 0;
+                mod_table[mid].status = 'ready';
+            }
+
+            if(task_mod_map[mid]) delete task_mod_map[mid];
+        }
+
+        delete tasks[tid];
+    });
+
+    call(fs2mod.finishInit, get_translation_source(), (t) => vm.trans = t);
 }
 
 if(window.qt) {
@@ -298,5 +394,5 @@ if(window.qt) {
         init();
     });
 } else {
-    $(init);
+    window.addEventListener('load', init);
 }

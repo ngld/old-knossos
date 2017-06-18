@@ -1,26 +1,35 @@
+# misc
 .DS_Store
 *~
+
+# Python
 *.pyc
 *.pyo
+__pycache__
+
+# generated files
 build
 dist
 /knossos/ui/*
 /knossos/data/resources.rcc
-/resources.qrc
-/tools/common/pyinstaller/
-/tools/win/support/*.dll
-/tools/win/support/*.exe
-/tools/win/_w
-/tools/win/version
-/tools/mac/version
-/tools/mac/pyenv
-/tools/mac/buildenv
-/tools/mac/PyObjC
-/knossos.egg-info/
-*.sublime-*
-/ui/res.qrc
-/locale/_*.ts
 /html/js/modlist_ts.js
+/tools/windows/support/*
+/knossos.egg-info/
+
+# Sublime Text
+*.sublime-*
 
 # PyCharm / IntelliJ
 .idea
+.lock-*
+
+# Ninja
+/build.ninja
+.ninja_*
+.vagrant
+/knossos/data/resources.qrc
+ssh_config
+releng/freebsd/packer/
+/node_modules/
+/html/js/modlist.*.js
+/releng/config/

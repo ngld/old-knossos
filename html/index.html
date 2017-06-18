@@ -4,137 +4,591 @@
         <meta charset="utf8">
         <title>Welcome</title>
         <link rel="stylesheet" type="text/css" href="css/style.css">
-        <script type="text/javascript" src="js/jquery.min.js"></script>
+        <!-- Knossos automatically uses vue.min.js here unless it's running in DEBUG mode!! -->
+        <script type="text/javascript" src="js/vue.js"></script>
         <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
         <script type="text/javascript" src="js/modlist_ts.js"></script>
         <script type="text/javascript" src="js/modlist.js"></script>
     </head>
-    <body>
-        <div id="loading">
-            Loading...
-        </div>
+    <body class="body-container">
 
-        <div id="mods" class="container-fluid"></div>
+<!-------------------------------------------------------------------------------- Start the Top Menus ---------->
+        <script type="text/x-template" id="kn-page">
+            <div>
+                <div class="main-menus">
+                    <div class="pull-right">
+                        <a href="#" class="top-btn" v-on:click="showHelp"><span class="help-image"></span></a>
+                        <a href="#" class="top-btn" v-on:click="updateList"><span class="update-image"></span></a>
+                        <a href="#" class="top-btn" v-on:click="showSettings"><span class="settings-image"></span></a>
+                    </div>
+                    <div id="top-bar">
+                        <div class="mod-search">
+                            <input v-model="search_text" type="text" placeholder="Search">
+                        </div>
+                    </div>
+                </div>
+    <!-------------------------------------------------------------------------------- Start the Tab Menus ---------->
+                <div id="tab-bar" v-if="page !== 'details'">
+                    <a href="#" class="main-btn" v-for="(label, name) in tabs" v-bind:class="{ active: tab === name }" v-on:click="showTab(name)">
+                        <span :class="'icon ' + name + '-image'"></span>
+                        {{ label }}
+                    </a>
+                </div>
+    <!-------------------------------------------------------------------------------- Start the Filter Button ---------->
+                <div class="filter-container" v-if="page === 'modlist'">
+                    <button class="filterbtn" v-on:click="show_filter = true"></button>
+                    <div class="filter-content" v-show="show_filter" v-on:click="show_filter = false">
+                        <div class="filter-lines">
+                            <button class="filter-content-btn last-played-btn">Last Played</button>
+                        </div>
+                        <div class="filter-lines">
+                            <button class="filter-content-btn alphabetical-btn">Alphabetical</button>
+                        </div>
+                        <div class="filter-lines">
+                            <button class="filter-content-btn last-updated-log-btn">Last Updated</button>
+                        </div>
+                        <div class="filter-lines">
+                            <button class="filter-content-btn last-released-btn">Last Released</button>
+                        </div>
+                    </div>
+                </div>
 
-        <div data-tr id="welcome" class="hide info-page">
-            <h1>Welcome!</h1>
+    <!-------------------------------------------------------------------------------- Start the Details Menu ---------->
+                <div id="details-tab-bar" v-if="page === 'details'">
+                    <a href="#" class="main-btn" v-on:click="exitDetails"><i class="fa fa-chevron-left"></i> Back</a>
+                    <span class="main-btn active"><i class="fa fa-exclamation-circle"></i> Details</span>
+                </div>
 
-            <p>It looks like you started Knossos for the first time.</p>
-            <p>
-                You can tell me where your FS2 installation is, I could install FS2 using the GOG installer
-                or maybe you want to install a Total Conversion?
-            </p>
-            <hr>
+    <!-------------------------------------------------------------------------------- Build the Main View container ---------->
+                <div class="main-container scroll-style">
+                    <div class="container-fluid" v-if="page === 'modlist'">
+                        <kn-mod v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod>
+                        <div v-if="mods.length === 0" class="main-notice">No mods found.</div>
+                    </div>
 
-            <p>
-                <a class="btn btn-primary" id="sel-fso">Select FS2 directory</a>
-            </p>
-            <p>
-                <a class="btn btn-primary" id="gog-install">Install FS2 using the GOG installer</a>
-            </p>
-            <p>
-                <a class="btn btn-primary" id="tc-install">Install a TC</a>
-            </p>
+    <!-------------------------------------------------------------------------------- Start the Welcome page ---------->
+                    <div data-tr class="info-page" v-if="page === 'welcome'">
+                        <div class="container main-notice">
+                            <h1>Welcome!</h1>
+                            
+                            <p>It looks like you started Knossos for the first time.</p>
+                            <p>You need to select a directoy where Knossos will store the game data (models, textures, etc.).</p>
+                            
+                            <form class="form-horizontal">
+                                <div class="form-group">
+                                    <div class="col-xs-8">
+                                        <input type="text" class="form-control" v-model="data_path">
+                                    </div>
+                                    <div class="col-xs-4">
+                                        <button class="btn btn-default" v-on:click.prevent="selectFolder">Browse...</button>
+                                    </div>
+                                </div>
+                            </form>
+                            
+                            <p><button class="btn btn-primary" v-on:click="finishWelcome">Continue</button></p>
 
-            <p>
-                This launcher is still in development. Please visit
-                <a href="http://www.hard-light.net/forums/index.php?topic=93144.0" target="_blank">this HLP thread</a>
-                and let me know what you think, what didn't work and what you would like to change.
-            </p>
-            <p>-- ngld</p>
-        </div>
+                            <hr>
+                            <p>
+                                This launcher is still in development. Please visit
+                                <a v-on:click="openLink('http://www.hard-light.net/forums/index.php?topic=93144.0')">this HLP thread</a>
+                                and let me know what you think, what didn't work and what you would like to change.
+                            </p>
+                            <p>-- ngld</p>
+                        </div>
+                    </div>
 
-        <div id="last-played" class="hide info-page">
-            <button class="btn btn-success run-btn">
-                <span data-tr>Play</span>
-                <i class="fa fa-play"></i>
-            </button> <br>
+    <!-------------------------------------------------------------------------------- Start the Details page ---------->
+                    <div class="info-page" id="details-page" v-if="page === 'details'">
+                        <div class="img-frame">
+                            <div class="title-frame">
+                                <h1>{{ mod.title }}</h1>
+                                Version <span>{{ mod.version }}</span>
+                            </div>
+                        </div>
 
-            <h2 class="title"></h2>
-            <img class="mod-logo img-responsive">
-            <p class="desc"></p>
-        </div>
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <button class="mod-btn btn-green" v-if="tab === 'home' && (mod.status === 'ready' || mod.status === 'update')" v-on:click="playMod">
+                                    <span class="btn-text">PLAY</span>
+                                </button>
 
-        <div id="no-last-played" class="hide info-page">
-            <p class="lead"><span data-tr>You haven't played any mod, yet. (Or you uninstalled your last played mod.)</span></p>
-        </div>
+                                <button class="mod-btn btn-yellow" v-if="tab === 'home' && mod.status === 'update'" v-on:click="updateMod">
+                                    <span class="btn-text">UPDATE</span>
+                                </button>
 
-        <div class="mod hide row" id="tpl-avail-mod">
-            <div class="col-xs-6">
-                <img class="mod-logo img-responsive">
-            </div>
-            
-            <div class="col-xs-6">
-                <span class="title">Mod title</span>
-            </div>
+                                <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status === 'error'" v-on:click="showModErrors">
+                                    <span class="btn-text">ERROR</span>
+                                </button>
 
-            <div class="actions">
-                <button class="btn btn-success install-btn">
-                    <span data-tr>Install</span>
-                    <i class="fa fa-cloud-download"></i>
-                </button>
-                <button class="btn btn-info info-btn">
-                    <i class="fa fa-info-circle"></i>
-                </button>
-            </div>
-        </div>
+                                <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstallMod">
+                                    <span class="btn-text">UNINSTALL</span>
+                                </button>
 
-        <div class="mod hide row" id="tpl-installed-mod">
-            <div class="col-xs-6">
-                <img class="mod-logo img-responsive">
-            </div>
+                                <button class="mod-btn btn-blue" v-if="tab === 'explore'" v-on:click="installMod">
+                                    <span class="btn-text">INSTALL</span>
+                                </button>
 
-            <div class="col-xs-6">
-                <span class="title">Mod title</span>
-            </div>
+                                <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" v-on:click="showModProgress">
+                                    <span class="small-btn-text">
+                                        INSTALLING...<br>
+                                        {{ Math.round(mod.progress) }}%
+                                    </span>
+                                </button>
 
-            <div class="actions">
-                <button class="btn btn-success run-btn">
-                    <span data-tr>Play</span>
-                    <i class="fa fa-play"></i>
-                </button>
-                <button class="btn btn-default fred-btn">
-                    FRED
-                </button>
-                <button class="btn btn-default settings-btn">
-                    <i class="fa fa-cog"></i>
-                </button>
-                <button class="btn btn-danger del-btn">
-                    <i class="fa fa-times"></i>
-                </button>
-            </div>
-        </div>
+                                <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status === 'updating'" v-on:click="cancelMod">
+                                    <span class="btn-text">CANCEL</span>
+                                </button>
+                            </div>
 
-        <div class="mod hide" id="tpl-dl-mod">
-            <span class="title">Mod title</span>
-            <div class="pull-right">
-                <button class="btn btn-danger abort-btn">
-                    <i class="fa fa-times"></i>
-                </button>
-            </div>
+                            <div class="col-sm-6 short-frame">
+                                <button class="btn btn-danger" v-if="mod.release_thread" v-on:click="openLink(mod.release_thread)">FORUM</button>
+                                <button class="btn btn-primary" v-if="mod.videos.length > 0" v-on:click="showVideos(mod.videos)">VIDEOS</button>
 
-            <div class="progress">
-                <div class="progress-bar progress-bar-striped active master-prg" style="width: 0%;"></div>
-            </div>
-            <div class="well">
+                                <div class="date-frame pull-right">
+                                    <div v-if="mod.first_release">Release: {{ mod.first_release }}</div>
+                                    <div v-if="mod.last_update"><em>Last Updated: {{ mod.last_update }}</em></div>
+                                </div>
+                            </div>
+                        </div>
 
-            </div>
-        </div>
+                        <p v-html="mod.description"></p>
+                    </div>
 
-        <div class="mod hide row" id="tpl-update-mod">
-            <div class="col-xs-6">
-                <img class="mod-logo img-responsive">
-            </div>
-            
-            <div class="col-xs-6">
-                <span class="title">Mod title</span>
-                <div class="top-actions">
-                    <button class="btn btn-success update-btn">
-                        <span data-tr>Update</span>
-                        <i class="fa fa-cloud-download"></i>
-                    </button>
+                    <div class="info-page settings-page container-fluid" v-if="page === 'settings'">
+                        <kn-settings-page></kn-settings-page>
+                    </div>
+
+                    <div class="info-page" v-if="page === 'develop'">
+                        <!-- <kn-devel-page></kn-devel-page> -->
+                        Sorry, this tab hasn't been implemented, yet.
+                    </div>
+                </div>
+
+                <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>
+
+                <div class="popup" v-if="popup_visible">
+                    <div class="title clearfix">
+                        {{ popup_title }}
+
+                        <a href="" class="pull-right" @click.prevent="popup_visible = false">
+                            <i class="fa fa-times"></i>
+                        </a>
+                    </div>
+                    <div :class="{ content: true, 'scroll-style': true, iframe: popup_mode === 'frame' }">
+                        <div v-if="popup_mode === 'html'" v-html="popup_content"></div>
+                        <iframe v-if="popup_mode === 'frame'" :src="popup_content"></iframe>
+
+                        <div v-if="popup_mode === 'mod_errors'">
+                            <div v-for="pkg in popup_content.packages" v-if="pkg.check_notes && pkg.check_notes.length > 0">
+                                <strong>{{ pkg.name }}</strong><br>
+                                <ul>
+                                    <li v-for="msg in pkg.check_notes">{{ msg }}</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div v-if="popup_mode === 'mod_progress'">
+                            <div v-for="row in popup_content.progress_info" class="row">
+                                <div class="col-xs-4 mod-prog-label">{{ row[0] }}</div>
+                                <div class="col-xs-5">
+                                    <div :class="'mod-prog-bar' + (row[1] === 1 ? ' complete' : '')">
+                                        <div class="inner" :style="'width: ' + (row[1] * 100) + '%'"></div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-3 mod-prog-status">{{ row[2] }}</div>
+                            </div>
+                        </div>
+
+                        <div v-if="popup_mode === 'retail_prompt'">
+                            <p>
+                                You're trying to install an FS2 mod which requires retail files which you don't have.<br>
+                                Please select the folder of your FS2 installation or the FS2 installer from GOG (setup_freespace2_....exe).
+                            </p>
+                            <p>
+                                <strong v-if="retail_searching">Searching files...</strong>
+                                <strong v-else-if="retail_found">Folder found!</strong>
+                                <strong v-else>
+                                    Nothing found, please select the appropriate folder or install FS2 and
+                                    <a href="#" @click.prevent="retailAutoDetect">try again</a>.
+                                </strong>
+                            </p>
+                            <form class="form-horizontal">
+                                <div class="form-group">
+                                    <div class="col-xs-8">
+                                        <input type="text" class="form-control" v-model="retail_data_path" :disabled="retail_searching">
+                                    </div>
+                                    <div class="col-xs-4">
+                                        <button class="btn btn-default" v-on:click.prevent="selectRetailFolder">Browse...</button>
+                                    </div>
+                                </div>
+                            </form>
+                            
+                            <p><button class="btn btn-primary" v-on:click="finishRetailPrompt">Continue</button></p>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </script>
+
+    <!-------------------------------------------------------------------------------- Start the Home page ---------->
+        <script type="text/x-template" id="kn-mod">
+            <!--This begins the section that builds a single mod node. Javascript duplicates and appends this entire section once for each mod in the list.-->
+            <div class="mod row">
+                <div class="mod-node">
+                    <div class="mod-image">
+                        <img src="images/modstock.jpg" class="mod-stock">
+                        <div class="mod-logo-container">
+                            <img class="mod-logo-legacy img-responsive" v-if="mod.logo_path" :src="'file://' + mod.logo_path">
+                        </div>
+                    </div>
+                    <div class="mod-notifier" v-if="tab === 'home'">
+                        <img :src="'images/modnotify_' + mod.status + '.png'" class="notifier">
+                    </div>
+                    <div class="actions">
+                        <div class="btn-wrapper">
+                            <button class="mod-btn btn-green" v-if="tab === 'home' && (mod.status === 'ready' || mod.status === 'update')" v-on:click="play">
+                                <span class="btn-text">PLAY</span>
+                            </button>
+
+                            <button class="mod-btn btn-yellow" v-if="tab === 'home' && mod.status === 'update'" v-on:click="update">
+                                <span class="btn-text">UPDATE</span>
+                            </button>
+
+                            <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status === 'error'" v-on:click="showErrors">
+                                <span class="btn-text">ERROR</span>
+                            </button>
+
+                            <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstall">
+                                <span class="btn-text">UNINSTALL</span>
+                            </button>
+
+                            <button class="mod-btn btn-blue" v-if="tab === 'explore'" v-on:click="install">
+                                <span class="btn-text">INSTALL</span>
+                            </button>
+
+                            <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" v-on:click="showProgress">
+                                <span class="small-btn-text">
+                                    INSTALLING...<br>
+                                    {{ Math.round(mod.progress) }}%
+                                </span>
+                            </button>
+
+                            <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status === 'updating'" v-on:click="cancel">
+                                <span class="btn-text">CANCEL</span>
+                            </button>
+
+                            <button class="mod-btn btn-grey" v-on:click="showDetails">
+                                <span class="btn-text">DETAILS</span>
+                            </button>
+
+                            <div class="debug-dropdown" v-if="tab === 'home'">
+                                <button class="dropbtn"></button>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-lines">
+                                        <button class="drop-content-btn">Run Fast Debug</button>
+                                    </div>
+                                    <div class="dropdown-lines">
+                                        <button class="drop-content-btn">Run Debug</button>
+                                    </div>
+                                    <div class="dropdown-lines">
+                                        <button class="drop-content-btn">Upload Debug Log</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mod-progress"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>
+                    <div class="mod-title">{{ mod.title }}</div>
+                </div>
+            </div>
+        </script>
+
+        <script type="text/x-template" id="kn-drawer">
+            <div class="kn-drawer">
+                <div class="title" @click="open = !open">
+                    <div class="text">{{ label }}</div>
+                    <div class="line"></div>
+                    <i :class="{ fa: true, 'fa-chevron-down': !open, 'fa-chevron-up': open }"></i>
+                </div>
+                <div class="content-wrapper">
+                    <div :class="{ content: true, open: open }">
+                        <slot></slot>
+                    </div>
+                </div>
+            </div>
+        </script>
+
+        <script type="text/x-template" id="kn-settings-page">
+            <div class="row form-horizontal">
+                <div class="col-sm-6">
+                    <h2>
+                        Settings
+                        <small><button class="btn btn-success pull-right" @click="save">Save</button></small>
+                    </h2>
+
+                    <kn-drawer label="Knossos">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Data Path:</label>
+                            <div class="col-sm-8">
+                                <small>{{ knossos.base_path }}</small>
+                                <button @click.prevent="changeBasePath">Browse</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Max Downloads:</label>
+                            <div class="col-sm-8">
+                                <input type="number" style="width: 50px" v-model="knossos.max_downloads">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Send Error Reports:</label>
+                            <div class="col-sm-8">
+                                <input type="checkbox" v-model="knossos.use_raven">
+                            </div>
+                        </div>
+                    </kn-drawer>
+
+                    <kn-drawer label="Video">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Resolution:</label>
+                            <div class="col-sm-8">
+                                <select v-model="fso.active_mode">
+                                    <option v-for="res in fso.modes">{{ res }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Bit Depth:</label>
+                            <div class="col-sm-2">
+                                <select v-model="fso.depth">
+                                    <option value="16">16-bit</option>
+                                    <option value="32">32-bit</option>
+                                </select>
+                            </div>
+                            <label class="col-sm-3 control-label">Texture Filter:</label>
+                            <div class="col-sm-2">
+                                <select v-model="fso.texfilter">
+                                    <option value="0">Bilinear</option>
+                                    <option value="1">Trilinear</option>
+                                </select>
+                            </div>
+                        </div>
+                    </kn-drawer>
+
+                    <kn-drawer label="Audio">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Playback Device:</label>
+                            <div class="col-sm-8">
+                                <select v-model="fso.active_audio_dev">
+                                    <option v-for="dev in fso.audio_devs">{{ dev }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Capture Device:</label>
+                            <div class="col-sm-8">
+                                <select v-model="fso.active_cap_dev">
+                                    <option v-for="dev in fso.cap_devs">{{ dev }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Enable EFX:</label>
+                            <div class="col-sm-1"><input type="checkbox" v-model="fso.enable_efx"></div>
+
+                            <label class="col-sm-3 control-label">Sample Rate:</label>
+                            <div class="col-sm-4">
+                                <input type="number" v-model="fso.sample_rate">
+                            </div>
+                        </div>
+                    </kn-drawer>
+                </div>
+                <div class="col-sm-6">
+                    <kn-drawer label="Exec">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">FSO Exec:</label>
+                            <div class="col-sm-8">
+                                <select v-model="default_fs2_bin">
+                                    <option v-for="(bin, title) in fso.fs2_bins" :value="bin">{{ title }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">FRED Exec:</label>
+                            <div class="col-sm-8">
+                                <select v-model="default_fred_bin">
+                                    <option v-for="(bin, title) in fso.fred_bins" :value="bin">{{ title }}</option>
+                                </select>
+                            </div>
+                        </div>
+                    </kn-drawer>
+
+                    <kn-drawer label="Speech" v-if="fso.has_voice">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Voice:</label>
+                            <div class="col-sm-8">
+                                <select disabled></select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Volume:</label>
+                            <div class="col-sm-8">
+                                <input type="range" min="0" max="100" style="width: calc(100% - 80px); display: inline-block;" disabled>
+                                <button disabled>Test</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Use Speech In:</label>
+                            <div class="col-sm-4">
+                                Tech Room:
+                                <input type="checkbox" disabled>
+                            </div>
+                            <div class="col-sm-4">
+                                In-Game:
+                                <input type="checkbox" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-4 col-sm-offset-4">
+                                Briefings:
+                                <input type="checkbox" disabled>
+                            </div>
+                            <div class="col-sm-4">
+                                Multiplayer:
+                                <input type="checkbox" disabled>
+                            </div>
+                        </div>
+                    </kn-drawer>
+
+                    <kn-drawer label="Joystick">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Joystick:</label>
+                            <div class="col-sm-8">
+                                <select v-model="fso.joystick_id">
+                                    <option>No Joystick</option>
+                                    <option v-for="(joy, i) in fso.joysticks" :value="i">{{ joy }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="col-sm-8 col-sm-offset-5">
+                                <button disabled>Detect</button>
+                                <button disabled>Calibrate</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="col-sm-4 col-sm-offset-4">
+                                Force Feedback:
+                                <input type="checkbox" disabled>
+                            </div>
+                            <div class="col-sm-4">
+                                Directional Hit:
+                                <input type="checkbox" disabled>
+                            </div>
+                        </div>
+                    </kn-drawer>
+
+                    <!-- The positioning for this section is hard with the current grid system...
+                        Will be fixed later.
+                        --ngld
+
+                    <kn-drawer label="Network">
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Connection Type:</label>
+                            <div class="col-sm-3">
+                                <select>
+                                    <option>None</option>
+                                    <option>Dialup</option>
+                                    <option>Broadband/LAN</option>
+                                </select>
+                            </div>
+                            <label class="col-sm-2 control-label">Force Local Port:</label>
+                            <div class="col-sm-2">
+                                <input type="number" disabled>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">Connection Speed:</label>
+                            <div class="col-sm-3">
+                                <select disabled>
+                                    <option>None</option>
+                                    <option>28k modem</option>
+                                    <option>56k modem</option>
+                                    <option>ISDN</option>
+                                    <option>DSL</option>
+                                    <option>Cable/LAN</option>
+                                </select>
+                            </div>
+                            <label class="col-sm-3 control-label">Force IP Address:</label>
+                            <div class="col-sm-2">
+                                <input type="text" disabled>
+                            </div>
+                        </div>
+                    </kn-drawer>
+                    -->
+
+                    <kn-drawer label="Flag Defaults">
+                        <flag-editor :caps="caps" :cmdline="''" ref="flagEditor"></flag-editor>
+                    </kn-drawer>
+                </div>
+            </div>
+        </script>
+
+        <script type="text/x-template" id="flag-editor">
+            <div>
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Easy Setup:</label>
+                    <div class="col-sm-8">
+                        <select v-model="selected_easy_flags">
+                            <option value="">Select a group</option>
+                            <option v-for="(name, idx) in easy_flags" :value="idx">{{ name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Custom Flags:</label>
+                    <div class="col-sm-8">
+                        <input type="text" style="width: 100%" v-model="custom_flags">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">List Type:</label>
+                    <div class="col-sm-8">
+                        <select v-model="list_type">
+                            <option v-for="(flags, name) in flags">{{ name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-8 col-sm-offset-4">
+                        <div class="checklist">
+                            <label class="checkbox" v-for="flag in flags[list_type]">
+                                <input type="checkbox" v-model="bool_flags[flag.name]">
+                                {{ flag.desc === '' ? flag.name : flag.desc }}
+                                <a :href="flag.web_url" @click.prevent="showFlagDoc(flag.web_url)" v-if="flag.web_url" class="pull-right">?</a>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </script>
+
+        <div id="loading">
+            Loading...
         </div>
     </body>
 </html>

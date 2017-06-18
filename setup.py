@@ -13,6 +13,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+import sys
 from setuptools import setup
 from codecs import open  # To use a consistent encoding
 from os import path
@@ -25,12 +26,17 @@ with open(path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 # Grab the current version
-with open(path.join(here, 'knossos', 'center.py'), 'r') as f:
+with open(path.join(here, 'knossos', 'center.py'), 'r', encoding='utf-8') as f:
     m = re.search(r"VERSION = '([^']+)'", f.read())
     if m:
         version = m.group(1)
     else:
         version = 'XXX'
+
+if len(sys.argv) == 2 and sys.argv[1] == 'get_version':
+    print(version)
+    sys.exit(0)
+
 
 pkg_data = {
     'knossos': ['data/*']
@@ -38,7 +44,7 @@ pkg_data = {
 
 # Bundle the html files only for the dev versions
 if '-dev' in version:
-    pkg_data['knossos'].extend(['../html/*', '../html/css/*', '../html/fonts/*', '../html/js/*'])
+    pkg_data['knossos'].extend(['../html/*.html', '../html/css/*', '../html/fonts/*', '../html/js/*'])
 
 setup(
     name='knossos',

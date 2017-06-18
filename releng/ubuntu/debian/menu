@@ -1,0 +1,2 @@
+?package(knossos):needs="X11" section="Games/Tools"\
+  title="Knossos" command="/usr/bin/knossos"

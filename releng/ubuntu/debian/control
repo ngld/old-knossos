@@ -1,0 +1,24 @@
+Source: knossos
+Section: net
+Priority: optional
+Maintainer: ngld <ngld@tproxy.de>
+Build-Depends: debhelper (>= 9.0.0), python3 (>= 3.4), python3-setuptools, dh-python
+X-Python3-Version: >= 3.4
+Standards-Version: 3.9.7
+Homepage: https://github.com/ngld/knossos
+
+Package: knossos
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, libsdl2-2.0-0, libopenal1, p7zip-full, python3-pyqt5, python3-pyqt5.qtwebkit
+Description: Simple mod manager for FreeSpace 2 Open
+ The original idea and prototype were created by Hellzed.
+ ngld rewrote the manager in Python and extended it.
+ . 
+ After installing this package, you can launch Knossos by typing "knossos"
+ in a terminal or selecting it in your applications menu.
+ . 
+ Source Code:
+   https://github.com/ngld/knossos
+ .
+ Discussion on HLP:
+   http://www.hard-light.net/forums/index.php?topic=86364.new#lastPost

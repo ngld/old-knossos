@@ -19,6 +19,9 @@ import logging
 import threading
 import six
 
+from . import uhf
+uhf(__name__)
+
 from .qt import QtCore
 
 try:
@@ -211,6 +214,7 @@ class Task(QtCore.QObject):
     can_abort = True
     aborted = False
     title = None
+    mods = None
     done = QtCore.Signal()
     progress = QtCore.Signal(tuple)
 
@@ -229,6 +233,7 @@ class Task(QtCore.QObject):
         self._progress = dict()
         self._progress_lock = threading.Lock()
         self._threads = threads
+        self.mods = []
 
     def _get_work(self):
         with self._work_lock:

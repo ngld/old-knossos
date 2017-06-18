@@ -10,8 +10,13 @@
             "version": "...", // required, http://semver.org/
             "description": "...", // optional, should match the mod.ini's description
             "logo": "<path to image>", // optional, default: null, will be extracted from the archive if null
+            "tile": "<path to image>", // optional, default: null, Used in the library view. If null, the logo is used instead
+            "release_thread": "<link>", // optional, default: null, Will display a button in the launcher which opens the given link
+            "videos": ["<link>", "..."], // optional, default: [], A list of video links (the links will be loaded in an iframe to display the videos)
             "notes": "...", // optional, these will be displayed during the installation.
             "folder": "<mod folder>", // optional, This folder will be created in the FS2 directory. default: mod ID
+            "first_release": "YYYY-MM-DD, // optional, default: null, the first release formatted in ISO 8601
+            "last_update": "YYYY-MM-DD", // optional, default: null, the latest update formatted in ISO 8601
             "cmdline": "<flags>", // optional, allows the modder to specify a default cmdline for this mod
             /*
                 optional, default: mod
@@ -59,6 +64,7 @@
                             "version": "...", // required, http://semver.org
                             "file": "...", // required, path to the executable (*.exe file on Windows), relative to the mod folder
                             "debug": false // optional, default: true, Is this a debug build?
+                            "fred": false // optional, default: false, Is this FRED?
                         }
                     ],
                     "files": [ // optional

@@ -10,6 +10,7 @@
     "version": "...", // required, http://semver.org/
     "description": "...", // optional, should match the mod.ini's description
     "logo": "<path to image>", // optional, default: null, path should be relative to this file or a URL
+    "tile": "<path to image>", // optional, default: null, Used in the library view. If null, the logo is used instead
     "cmdline": "<flags>", // optional, allows the modder to specify a default cmdline for this mod
     "packages": [ // optional
         {

@@ -1,0 +1,11 @@
+GPG_KEY_ID=""
+export GITHUB_TOKEN=""
+
+UBUNTU_VERSIONS="trusty precise xenial"
+UBUNTU_KEY="$GPG_KEY_ID"
+
+import_key() {
+	if ! gpg -K | grep "$GPG_KEY_ID" > /dev/null; then
+		gpg --import releng/config/signer.key
+	fi
+}

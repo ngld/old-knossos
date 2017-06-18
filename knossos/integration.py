@@ -19,6 +19,9 @@ import os
 import logging
 import shlex
 
+from . import uhf
+uhf(__name__)
+
 from . import center, qt, launcher
 
 
@@ -217,7 +220,7 @@ def init():
                 if hasattr(gi, 'require_version'):
                     gi.require_version('Unity', '6.0')
             except:
-                logging.exception('Failed to specify Unity version.')
+                logging.warn('Failed to specify Unity version. Most likely Unity is not available.')
 
             from gi.repository import Unity
         except ImportError:

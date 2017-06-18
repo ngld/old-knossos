@@ -16,15 +16,17 @@ from __future__ import absolute_import, print_function
 
 import os
 import sys
+from . import uhf
+uhf(__name__)
+
 from .qt import QtCore
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.4.4'
+VERSION = '0.5.0'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
-NEB_API = 'https://fsnebula.org/api'
-DEBUG = os.environ.get('KN_DEBUG') == '1'
+DEBUG = os.getenv('KN_DEBUG', '0').strip() == '1'
 SENTRY_DSN = 'https://77179552b41946488346a9a2d2669d74:f7b896367bd94f0ea960b8f0ee8b7a88@sentry.gruenprint.de/9?timeout=5'
 
 LANGUAGES = {
@@ -33,7 +35,6 @@ LANGUAGES = {
 
 app = None
 main_win = None
-shared_files = {}
 fs2_watcher = None
 pmaster = None
 mods = None
@@ -46,27 +47,19 @@ raven_handler = None
 settings = {
     'fs2_bin': None,
     'fred_bin': None,
-    'fs2_path': None,
-    'pins': {},
-    'cmdlines': {},
+    'base_path': None,
+    'base_dirs': [],
     'hash_cache': None,
     'max_downloads': 3,
     'repos': [('https://fsnebula.org/repo/master.json', 'FSNebula')],
     'nebula_link': 'https://fsnebula.org/',
-    'update_channel': 'stable',
     'update_notify': True,
-    'keyboard_layout': 'default',
-    'keyboard_setxkbmap': False,
     'use_raven': True,
     'mod_settings': {},
-    'last_played': None,
     'sdl2_path': None,
     'openal_path': None,
     'language': None
 }
-
-if '-dev' in VERSION:
-    settings['update_channel'] = 'develop'
 
 if sys.platform.startswith('win'):
     settings_path = os.path.expandvars('$APPDATA/knossos')

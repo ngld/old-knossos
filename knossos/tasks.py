@@ -117,31 +117,41 @@ class CheckTask(progress.MultistepTask):
         self.title = 'Checking installed mods...'
 
     def init1(self):
-        if center.settings['fs2_path'] is None:
-            logging.error('A CheckTask was launched even though no FS2 path was set!')
+        if center.settings['base_path'] is None:
+            logging.error('A CheckTask was launched even though no base path was set!')
         else:
             center.installed.clear()
-            self.add_work(('',))
+            self.add_work(((center.settings['base_path'], None),))
+            self.add_work([(p, None) for p in center.settings['base_dirs']])
 
     def work1(self, p):
-        fs2path = center.settings['fs2_path']
         mods = center.installed
+        path, base_mod = p
 
-        for subdir in os.listdir(fs2path) + [fs2path]:
-            kfile = os.path.join(fs2path, subdir, 'mod.')
+        subs = []
+        mod_file = None
 
-            if os.path.isfile(kfile + 'json'):
-                kfile = kfile + 'json'
-            elif os.path.isfile(kfile + 'ini'):
-                kfile = kfile + 'ini'
-            else:
-                continue
+        for base in os.listdir(path):
+            sub = os.path.join(path, base)
 
+            if os.path.isdir(sub):
+                subs.append(sub)
+            elif base.lower() == 'mod.json' or (base.lower() == 'mod.ini' and not mod_file):
+                mod_file = sub
+
+        if mod_file:
             try:
-                mods.add_mod(repo.InstalledMod.load(kfile))
+                mod = repo.InstalledMod.load(mod_file)
+                if base_mod:
+                    mod.set_base(base_mod)
+                else:
+                    base_mod = mod
+
+                mods.add_mod(mod)
             except:
-                logging.exception('Failed to parse "%s"!', kfile)
-                continue
+                logging.exception('Failed to parse "%s"!', sub)
+
+        self.add_work([(p, base_mod) for p in subs])
 
     def init2(self):
         pkgs = []
@@ -157,9 +167,7 @@ class CheckTask(progress.MultistepTask):
         self.add_work(pkgs)
 
     def work2(self, pkg):
-        fs2path = center.settings['fs2_path']
         mod = pkg.get_mod()
-        modpath = os.path.join(fs2path, mod.folder)
         pkg_files = pkg.filelist
         count = float(len(pkg_files))
         success = 0
@@ -170,7 +178,7 @@ class CheckTask(progress.MultistepTask):
         msgs = []
 
         for info in pkg_files:
-            mypath = util.ipath(os.path.join(modpath, info['filename']))
+            mypath = util.ipath(os.path.join(mod.folder, info['filename']))
             fix = False
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
@@ -212,7 +220,7 @@ class CheckTask(progress.MultistepTask):
                     logging.warning('Package %s of mod %s (%s) is completely corrupted!!' % (pkg.name, mod.mid, mod.title))
 
             if pkg is not None:
-                pkg.check_notes = m
+                pkg.check_notes = msg
                 pkg.files_ok = s
                 pkg.files_checked = c
 
@@ -229,15 +237,11 @@ class CheckFilesTask(progress.MultistepTask):
         super(CheckFilesTask, self).__init__(threads=3)
 
         self.title = 'Checking "%s"...' % mod.title
-
-        if center.settings['fs2_path'] is None:
-            logging.error('A CheckFilesTask was launched even though no FS2 path was set!')
-            return
-
+        self.mods = [mod]
         self._mod = mod
 
     def init1(self):
-        modpath = os.path.join(center.settings['fs2_path'], self._mod.folder)
+        modpath = self._mod.folder
         pkgs = []
 
         for pkg in self._mod.packages:
@@ -282,7 +286,7 @@ class CheckFilesTask(progress.MultistepTask):
         self.add_work(('',))
 
     def work2(self, d):
-        modpath = os.path.join(center.settings['fs2_path'], self._mod.folder)
+        modpath = self._mod.folder
         fnames = set()
         loose = []
 
@@ -320,33 +324,50 @@ class InstallTask(progress.MultistepTask):
     _steps = 2
     _error = False
     _7z_lock = None
-    mod = None
+    _pkg_prog = None
     check_after = True
 
     def __init__(self, pkgs, mod=None, check_after=True):
+        super(InstallTask, self).__init__()
+
+        self._mods = set()
         self._pkgs = []
         self._pkg_names = []
+        self._pkg_prog = {}
+        self._local = threading.local()
         self.check_after = check_after
 
         if sys.platform == 'win32':
             self._7z_lock = threading.Lock()
 
-        rmods = center.mods
-
         if mod is not None:
-            self.mod = mod
+            self.mods = [mod]
 
-        # Make sure we have remote mods here!
         for pkg in pkgs:
-            mod = pkg.get_mod()
-            pkg = rmods.query(pkg)
-            self._pkgs.append(pkg)
-            self._pkg_names.append((mod.mid, pkg.name))
+            ins_pkg = center.installed.add_pkg(pkg)
+            pmod = ins_pkg.get_mod()
+            self._pkgs.append(ins_pkg)
+            self._mods.add(pmod)
+            self._pkg_names.append((pmod.mid, ins_pkg.name))
 
-        super(InstallTask, self).__init__()
+        for m in self._mods:
+            if m not in self.mods:
+                self.mods.append(m)
 
+        center.signals.repo_updated.emit()
         self.done.connect(self.finish)
         self.title = 'Installing mods...'
+
+    def _track_progress(self, prog, text):
+        with self._progress_lock:
+            if self._local.pkg:
+                self._pkg_prog[self._local.pkg] = (self._pkg_prog[self._local.pkg][0], prog, text)
+
+            total = 0
+            for label, prog, text in self._pkg_prog.values():
+                total += prog
+
+            self.progress.emit((total / max(1, len(self._pkg_prog)), self._pkg_prog, 'Installing mods...'))
 
     def abort(self):
         super(InstallTask, self).abort()
@@ -369,44 +390,26 @@ class InstallTask(progress.MultistepTask):
             )
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
         else:
-            mods = set()
-
-            # Register installed pkgs
-            for pkg in self._pkgs:
-                logo_path = pkg.get_mod().logo_path
-                pkg = center.installed.add_pkg(pkg)
-                mod = pkg.get_mod()
-                mod.logo_path = logo_path
-                mods.add(mod)
-
             # Generate mod.json files.
-            for mod in mods:
-                util.get(center.NEB_API + '/track/install/' + mod.mid)
-                mod.save()
-
-        # Revert all changes made to the mod object.
-        for mod in self._mods:
-            p = mod.folder.rfind('_kv_')
-            if p > -1:
-                mod.folder = mod.folder[:p]
+            for mod in self._mods:
+                try:
+                    mod.save()
+                    util.get(center.settings['nebula_link'] + 'api/track/install/' + mod.mid)
+                except:
+                    logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
         if self.check_after:
             run_task(CheckTask())
 
     def init1(self):
-        mods = set()
-        for pkg in self._pkgs:
-            mods.add(pkg.get_mod())
-
         self._threads = 3
-        self._mods = mods
-        self.add_work(mods)
+        self.add_work(self._mods)
 
     def work1(self, mod):
-        fs2_path = center.settings['fs2_path']
-        modpath = os.path.join(fs2_path, mod.folder)
+        modpath = mod.folder
         mfiles = mod.get_files()
         mnames = [f['filename'] for f in mfiles] + ['knossos.bmp', 'mod.json']
+        self._local.pkg = None
 
         archives = set()
         progress.update(0, 'Checking %s...' % mod.title)
@@ -422,15 +425,17 @@ class InstallTask(progress.MultistepTask):
 
             if info is not None and info['version'] != str(mod.version):
                 mod.folder += '_kv_' + str(mod.version)
-                modpath = os.path.join(fs2_path, mod.folder)
+                modpath = mod.folder
 
-        if mod.folder not in ('', '.') and os.path.isdir(modpath):
+        if os.path.isdir(modpath):
             for path, dirs, files in os.walk(modpath):
                 relpath = path[len(modpath):].lstrip('/\\')
                 for item in files:
                     itempath = util.pjoin(relpath, item)
                     if not itempath.startswith('__k_plibs') and itempath not in mnames:
                         logging.info('File "%s" is left over.', itempath)
+        else:
+            logging.debug('Folder %s for %s does not yet exist.', mod, modpath)
 
         amount = float(len(mfiles))
         for i, info in enumerate(mfiles):
@@ -442,6 +447,7 @@ class InstallTask(progress.MultistepTask):
             itempath = util.ipath(os.path.join(modpath, info['filename']))
             if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
                 archives.add((mod.mid, info['package'], info['archive']))
+                logging.debug('%s is missing for %s.', itempath, mod)
 
         self.post(archives)
 
@@ -461,6 +467,8 @@ class InstallTask(progress.MultistepTask):
                     item['pkg'] = pkg
                     downloads.append(item)
 
+                    self._pkg_prog[id(item)] = ('%s: %s' % (mod.title, item['filename']), 0, 'Checking...')
+
         if len(archives) == 0:
             logging.info('Nothing to do for this InstallTask!')
         elif len(downloads) == 0:
@@ -468,13 +476,15 @@ class InstallTask(progress.MultistepTask):
             self._error = True
 
         self._threads = 0
+        print(downloads)
         self.add_work(downloads)
 
     def work2(self, archive):
+        self._local.pkg = id(archive)
+
         with tempfile.TemporaryDirectory() as tpath:
             arpath = os.path.join(tpath, archive['filename'])
-            fs2path = center.settings['fs2_path']
-            modpath = os.path.join(fs2path, archive['mod'].folder)
+            modpath = archive['mod'].folder
 
             # TODO: Maybe this should be an option?
             retries = 3
@@ -532,6 +542,7 @@ class InstallTask(progress.MultistepTask):
                     self._7z_lock.acquire()
 
                 progress.update(0.98, 'Extracting %s...' % archive['filename'])
+                logging.debug('Extracting %s into %s', archive['filename'], modpath)
 
                 if util.extract_archive(arpath, cpath):
                     done = True
@@ -642,6 +653,8 @@ class InstallTask(progress.MultistepTask):
                                           arpath, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
                         self._error = True
 
+            progress.update(1, 'Done.')
+
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
 class UninstallTask(progress.MultistepTask):
@@ -668,11 +681,10 @@ class UninstallTask(progress.MultistepTask):
         self.add_work(self._pkgs)
 
     def work1(self, pkg):
-        fs2path = center.settings['fs2_path']
         mod = pkg.get_mod()
 
         for item in pkg.filelist:
-            path = util.ipath(os.path.join(fs2path, mod.folder, item['filename']))
+            path = util.ipath(os.path.join(mod.folder, item['filename']))
             if not os.path.isfile(path):
                 logging.warning('File "%s" for mod "%s" (%s) is missing during uninstall!', item['filename'], mod.title, mod.mid)
             else:
@@ -689,7 +701,7 @@ class UninstallTask(progress.MultistepTask):
         self.add_work(mods)
 
     def work2(self, mod):
-        modpath = os.path.join(center.settings['fs2_path'], mod.folder)
+        modpath = mod.folder
 
         try:
             if isinstance(mod, repo.IniMod):
@@ -761,9 +773,8 @@ class UpdateTask(InstallTask):
             run_task(next_task)
 
     def _finish2(self):
-        fs2path = center.settings['fs2_path']
-        modpath = os.path.join(fs2path, self._old_mod.folder)
-        temppath = os.path.join(fs2path, self._new_modpath)
+        modpath = self._old_mod.folder
+        temppath = self._new_modpath
 
         if '_kv_' not in modpath:
             # Move all files from the temporary directory to the new one.
@@ -938,16 +949,45 @@ class GOGExtractTask(progress.Task):
             QtWidgets.QMessageBox.information(None, translate('tasks', 'Done'), self.tr(
                 'FS2 has been successfully installed.'))
 
-        fs2_path = results[0]
-        center.settings['fs2_path'] = fs2_path
-        center.settings['fs2_bin'] = None
+        center.main_win.check_fso()
 
-        for item in glob.glob(os.path.join(fs2_path, 'fs2_*.exe')):
-            if os.path.isfile(item):
-                center.settings['fs2_bin'] = os.path.basename(item)
-                break
 
-        api.save_settings()
+class GOGCopyTask(progress.Task):
+    can_abort = False
+
+    def __init__(self, gog_path, dest_path):
+        super(GOGCopyTask, self).__init__()
+
+        self.done.connect(self.finish)
+        self.add_work([(gog_path, dest_path)])
+        self.title = 'Copying retail files...'
+
+    def work(self, paths):
+        gog_path, dest_path = paths
+
+        progress.update(0, 'Copying files...')
+        self._makedirs(os.path.join(dest_path, 'data/players'))
+        self._makedirs(os.path.join(dest_path, 'data/movies'))
+
+        for item in glob.glob(os.path.join(gog_path, '*.vp')):
+            shutil.copyfile(item, os.path.join(dest_path, os.path.basename(item)))
+
+        for item in glob.glob(os.path.join(gog_path, 'data/players', '*.hcf')):
+            shutil.copyfile(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
+
+        for item in glob.glob(os.path.join(gog_path, 'data2', '*.mve')):
+            shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
+
+        for item in glob.glob(os.path.join(gog_path, 'data3', '*.mve')):
+            shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
+
+        self.post(dest_path)
+
+    def _makedirs(self, path):
+        if not os.path.isdir(path):
+            os.makedirs(path)
+
+    def finish(self):
         center.main_win.check_fso()
 
 

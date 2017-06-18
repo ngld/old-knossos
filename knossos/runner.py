@@ -26,7 +26,7 @@ import stat
 import shutil
 import six
 
-from . import center, util, api
+from . import center, repo, api, util
 from .qt import QtCore, QtWidgets
 
 # TODO: What happens if a SONAME contains a space?
@@ -65,14 +65,10 @@ class Fs2Watcher(threading.Thread):
     _fred = False
     _key_layout = None
 
-    def __init__(self, params=None, fred=False):
+    def __init__(self, params, fred=False):
         super(Fs2Watcher, self).__init__()
 
-        if params is None:
-            self._params = []
-        else:
-            self._params = params
-
+        self._params = params
         self._fred = fred
         self.daemon = True
         self.start()
@@ -81,15 +77,8 @@ class Fs2Watcher(threading.Thread):
         global fs2_watcher
 
         old_path = None
-
-        if center.settings['keyboard_layout'] != 'default':
-            self._params.append('-keyboard_layout')
-            self._params.append(center.settings['keyboard_layout'])
-
-        if self._fred:
-            fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fred_bin'])
-        else:
-            fs2_bin = os.path.join(center.settings['fs2_path'], center.settings['fs2_bin'])
+        fs2_bin = self._params[0]
+        basepath = os.path.join(center.settings['base_path'], 'FSO')
 
         if not os.path.isfile(fs2_bin):
             self.fs2_missing_msg(fs2_bin)
@@ -112,22 +101,14 @@ class Fs2Watcher(threading.Thread):
         if center.settings['keyboard_setxkbmap']:
             self.set_us_layout()
 
-        if not self._check_profile_migration():
-            self.failed_msg(translate('runner', 'Failed to migrate your profile!'))
-
-        logging.debug('Launching FS2: %s', [fs2_bin] + self._params)
+        logging.debug('Launching FS2: %s', [fs2_bin] + self._params[1:])
 
         if sys.platform.startswith('win'):
-            if self._fred:
-                bin_path = center.settings['fred_bin']
-            else:
-                bin_path = center.settings['fs2_bin']
-
-            if os.path.basename(bin_path) != bin_path:
+            if os.path.basename(fs2_bin) != fs2_bin:
                 # On Windows, the FSO engine changes the CWD to the directory the EXE file is in.
                 # Since the fs2_bin is in a subdirectory we'll have to copy it!
                 old_path = fs2_bin
-                fs2_bin = os.path.join(center.settings['fs2_path'], '__tmp_' + os.path.basename(old_path))
+                fs2_bin = os.path.join(basepath, '__tmp_' + os.path.basename(old_path))
 
                 shutil.copy2(old_path, fs2_bin)
 
@@ -145,7 +126,7 @@ class Fs2Watcher(threading.Thread):
         rc = -999
         reason = '???'
         try:
-            p = subprocess.Popen([fs2_bin] + self._params, cwd=center.settings['fs2_path'], env=env)
+            p = subprocess.Popen([fs2_bin] + self._params[1:], cwd=basepath, env=env)
 
             time.sleep(0.3)
             if p.poll() is not None:
@@ -193,109 +174,6 @@ class Fs2Watcher(threading.Thread):
         self._key_layout = key_layout.splitlines()[2].split(':')[1].strip()
 
         util.call(['setxkbmap', '-layout', 'us'])
-
-    def _check_profile_migration(self):
-        if api.get_fso_flags().sdl:
-            old_path = api.get_old_fso_profile_path()
-            cur_path = api.get_fso_profile_path()
-
-            if cur_path == old_path:
-                # Need to migrate (https://github.com/scp-fs2open/wxLauncher/blob/56b50de7c22ffbea34fe2ccb7a8686b005ced50e/code/global/Compatibility.cpp#L86)
-                new_path = api.get_new_fso_profile_path()
-                if new_path == 'None':
-                    return False
-
-                logging.info('Copying pilots from old path to new path...')
-
-                try:
-                    shutil.copytree(os.path.join(old_path, 'data', 'players'), os.path.join(new_path, 'data', 'players'))
-                except:
-                    logging.exception('Failed to copy pilot files!')
-                    return False
-
-                if sys.platform == 'win32':
-                    # Read the registry and write the values to the new fs2_open.ini
-                    logging.info('Writing registry values to fs2_open.ini...')
-
-                    old_config = QtCore.QSettings(r'HKEY_LOCAL_MACHINE\Software\Volition\Freespace2', QtCore.QSettings.NativeFormat)
-                    new_config = QtCore.QSettings(os.path.join(new_path, 'fs2_open.ini'), QtCore.QSettings.IniFormat)
-
-                    new_config.beginGroup('Default')
-                    for k in old_config.childKeys():
-                        new_config.setValue(k, old_config.value(k))
-
-                    new_config.endGroup()
-
-                    for g in old_config.childGroups():
-                        new_config.beginGroup(g)
-                        old_config.beginGroup(g)
-
-                        for k in old_config.childKeys():
-                            new_config.setValue(k, old_config.value(k))
-
-                        new_config.endGroup()
-                        old_config.endGroup()
-                else:
-                    logging.info('Copying fs2_open.ini...')
-
-                    try:
-                        shutil.copyfile(os.path.join(old_path, 'fs2_open.ini'), os.path.join(new_path, 'fs2_open.ini'))
-                    except:
-                        logging.exception('Failed to copy config file!')
-                        return False
-
-            return True
-        else:
-            new_path = api.get_new_fso_profile_path()
-            cur_path = api.get_fso_profile_path()
-
-            if cur_path == new_path:
-                # Need to update the old path
-                logging.warning('Updating / creating old configuration because the selected build doesn\'t support ' +
-                    'the new location.')
-
-                old_path = api.get_old_fso_profile_path()
-                if old_path == 'None':
-                    return False
-
-                logging.info('Copying pilots from new path to old path...')
-                try:
-                    shutil.copytree(os.path.join(new_path, 'data', 'players'), os.path.join(old_path, 'data', 'players'))
-                except:
-                    logging.exception('Failed to copy pilot files!')
-                    return False
-
-                if sys.platform == 'win32':
-                    # Write the fs2_open.ini values to the registy
-                    logging.info('Writing fs2_open.ini values to registry...')
-
-                    old_config = QtCore.QSettings(r'HKEY_LOCAL_MACHINE\Software\Volition\Freespace2', QtCore.QSettings.NativeFormat)
-                    new_config = QtCore.QSettings(os.path.join(old_path, 'fs2_open.ini'), QtCore.QSettings.IniFormat)
-
-                    new_config.beginGroup('Default')
-                    for k in new_config.childKeys():
-                        old_config.setValue(k, new_config.value(k))
-
-                    new_config.endGroup()
-
-                    for g in new_config.childGroups():
-                        new_config.beginGroup(g)
-                        old_config.beginGroup(g)
-
-                        for k in new_config.childKeys():
-                            old_config.setValue(k, new_config.value(k))
-
-                        new_config.endGroup()
-                        old_config.endGroup()
-                else:
-                    logging.info('Copying fs2_open.ini from new path to old path...')
-                    try:
-                        shutil.copyfile(os.path.join(new_path, 'fs2_open.ini'), os.path.join(old_path, 'fs2_open.ini'))
-                    except:
-                        logging.exception('Failed to copy config file!')
-                        return False
-
-            return True
 
     def cleanup(self, fs2_bin, old_path=None):
         if self._key_layout is not None:
@@ -364,7 +242,7 @@ def get_lib_path(filename):
     return _LIB_CACHE.get(filename)
 
 
-def fix_missing_libs(fpath):
+def fix_missing_libs(fpath, augment_ldpath=True):
     base = os.path.dirname(fpath)
     patch_dir = os.path.join(base, '__k_plibs')
 
@@ -376,7 +254,10 @@ def fix_missing_libs(fpath):
 
     if len(missing) == 0:
         # Yay, nothing to do.
-        return '', missing
+        if augment_ldpath:
+            return os.environ.get('LD_LIBRARY_PATH', ''), missing
+        else:
+            return '', missing
 
     for lib in missing[:]:
         p_name = os.path.join(patch_dir, lib)
@@ -392,6 +273,11 @@ def fix_missing_libs(fpath):
 
                     os.symlink(fixed_name, p_name)
                     missing.remove(lib)
+
+    if augment_ldpath:
+        ld_path = os.environ.get('LD_LIBRARY_PATH', '')
+        if ld_path != '':
+            patch_dir += ':' + ld_path
 
     return patch_dir, missing
 
@@ -429,8 +315,8 @@ def run_fred(params=None):
 
 
 def run_fs2_silent(params):
-    fs2_path = center.settings['fs2_path']
-    fs2_bin = os.path.join(fs2_path, center.settings['fs2_bin'])
+    base_path = center.settings['base_path']
+    fs2_bin = os.path.join(base_path, 'bin', center.settings['fs2_bin'])
 
     if not os.path.isfile(fs2_bin):
         return -128
@@ -449,9 +335,82 @@ def run_fs2_silent(params):
         env['LD_LIBRARY_PATH'] = ld_path
 
     try:
-        return util.call([fs2_bin] + params, cwd=fs2_path, env=env)
+        return util.call([fs2_bin] + params, cwd=base_path, env=env)
     except OSError:
         return -129
+
+
+def run_mod(mod, fred=False, debug=False):
+    global installed
+
+    if mod is None:
+        mod = repo.Mod()
+
+    mods = []
+
+    try:
+        inst_mod = center.installed.query(mod)
+    except repo.ModNotFound:
+        inst_mod = None
+
+    if not inst_mod:
+        QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
+            translate('runner', 'The mod "%s" could not be found!') % mod)
+        return
+
+    try:
+        mods = mod.get_mod_flag()
+    except repo.ModNotFound as exc:
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('runner', 'Sorry, I can\'t start this mod because its dependency "%s" is missing!') % exc.mid)
+        return
+
+    if mods is None:
+        return
+
+    try:
+        exes = mod.get_executables()
+    except Exception:
+        logging.exception('Failed to retrieve binaries for "%s"!' % mod.mid)
+        QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
+            translate('runner', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!'))
+        return
+
+    binpath = None
+    for item in exes:
+        if item.get('fred', False) == fred and item['debug'] == debug:
+            binpath = item['file']
+            break
+
+    if not binpath:
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('runner', 'No matching executable was found!'))
+        return
+
+    # Look for the cmdline path.
+    path = os.path.join(api.get_fso_profile_path(), 'data/cmdline_fso.cfg')
+    cmdline = mod.cmdline
+
+    if len(mods) > 0 and '-mod' not in cmdline:
+        cmdline.append('-mod')
+        cmdline.append(','.join(mods))
+
+    if not os.path.isfile(path):
+        basep = os.path.dirname(path)
+        if not os.path.isdir(basep):
+            os.makedirs(basep)
+
+    try:
+        with open(path, 'w') as stream:
+            stream.write(stringify_cmdline(cmdline))
+    except:
+        logging.exception('Failed to modify "%s". Not starting FS2!!', path)
+
+        QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
+            translate('runner', 'Failed to edit "%s"! I can\'t change the current mod!') % path)
+    else:
+        logging.info('Starting mod "%s" with cmdline "%s".', mod.title, cmdline)
+        run_fs2([binpath])
 
 
 def stringify_cmdline(line):

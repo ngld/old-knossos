@@ -18,11 +18,16 @@ import sys
 import os
 import logging
 import json
-import re
 import shutil
 import hashlib
 import semantic_version
 import six
+from datetime import datetime
+from semantic_version import SpecItem
+
+from . import uhf
+uhf(__name__)
+
 from . import center, util
 
 # You have to fill this using https://github.com/workhorsy/py-cpuinfo .
@@ -167,6 +172,26 @@ class Repo(object):
 
         mod._repo = self
 
+    def remove_mod(self, mod):
+        mid = mod.mid
+
+        if mid not in self.mods:
+            raise ModNotFound('Mod "%s" (%s) could not be removed from %s!' % (mid, mod.version, self.base))
+
+        idx = None
+        for i, item in enumerate(self.mods[mid]):
+            if item.version == mod.version:
+                idx = i
+                break
+
+        if not idx:
+            raise ModNotFound('Mod "%s" (%s) could not be removed from %s because the exact version was missing!' % (mid, mod.version, self.base))
+
+        del self.mods[mid][idx]
+
+        if len(self.mods[mid]) == 0:
+            del self.mods[mid]
+
     def merge(self, repo):
         for mvs in repo.mods.values():
             for mod in mvs:
@@ -263,11 +288,7 @@ class Repo(object):
             return False
 
     def get_tree(self):
-        submod_ids = []
-        for mid, mod in self.mods.items():
-            submod_ids.extend(mod[0].submods)
-
-        roots = set(self.mods.keys()) - set(submod_ids)
+        roots = set(self.mods.keys())
         return [self.mods[mid][0] for mid in roots]
 
     def get_list(self):
@@ -341,21 +362,28 @@ class Mod(object):
     title = ''
     mtype = 'mod'
     version = None
-    folder = None
+    parent = None
     cmdline = ''
     logo = None
     logo_path = None
+    tile = None
+    tile_path = None
     description = ''
     notes = ''
-    submods = None
+    release_thread = None
+    videos = None
+    first_release = None
+    last_update = None
     actions = None
     packages = None
 
-    __fields__ = ('mid', 'title', 'type', 'version', 'folder', 'cmdline', 'logo', 'description', 'notes', 'submods', 'actions', 'packages')
+    __fields__ = ('mid', 'title', 'type', 'version', 'parent', 'cmdline', 'logo', 'tile',
+        'description', 'notes', 'actions', 'packages')
 
     def __init__(self, values=None, repo=None):
         self.actions = []
         self.packages = []
+        self.videos = []
 
         if repo is not None:
             self._repo = repo
@@ -371,26 +399,42 @@ class Mod(object):
         self.title = values['title']
         self.mtype = values.get('type', 'mod')  # Backwards compatibility
         self.version = semantic_version.Version(values['version'], partial=True)
-        self.folder = values.get('folder', self.mid).strip('/')  # make sure we have a relative path
+        self.parent = values.get('parent', 'FS2')
         self.cmdline = values.get('cmdline', '')
         self.logo = values.get('logo', None)
+        self.tile = values.get('tile', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
-        self.submods = values.get('submods', [])
+        self.release_thread = values.get('release_thread', None)
+        self.videos = values.get('videos', [])
+        self.first_release = values.get('first_release', None)
+        self.last_update = values.get('last_update', None)
         self.actions = values.get('actions', [])
 
         self.packages = []
-        if self.mtype != 'mod' or center.has_retail:
-            for pkg in values.get('packages', []):
-                pkg = Package(pkg, self)
-                if pkg.check_env():
-                    self.packages.append(pkg)
+        for pkg in values.get('packages', []):
+            pkg = Package(pkg, self)
+            if pkg.check_env():
+                self.packages.append(pkg)
 
-        if self._repo is not None and self._repo.base is not None and self.logo is not None:
-            if '://' in self._repo.base:
-                self.logo = util.url_join(self._repo.base, self.logo)
-            else:
-                self.logo = os.path.abspath(os.path.join(self._repo.base, self.logo))
+        if self._repo is not None and self._repo.base is not None:
+            if self.logo is not None:
+                if '://' in self._repo.base:
+                    self.logo = util.url_join(self._repo.base, self.logo)
+                else:
+                    self.logo = os.path.abspath(os.path.join(self._repo.base, self.logo))
+
+            if self.tile is not None:
+                if '://' in self._repo.base:
+                    self.tile = util.url_join(self._repo.base, self.tile)
+                else:
+                    self.tile = os.path.abspath(os.path.join(self._repo.base, self.tile))
+
+        if self.first_release:
+            self.first_release = datetime.strptime(self.first_release, '%Y-%m-%d')
+
+        if self.last_update:
+            self.last_update = datetime.strptime(self.last_update, '%Y-%m-%d')
 
         # Enforce relative paths
         for act in self.actions:
@@ -406,22 +450,24 @@ class Mod(object):
             'title': self.title,
             'type': self.mtype,
             'version': str(self.version),
-            'folder': self.folder,
+            'parent': self.parent,
             'cmdline': self.cmdline,
             'logo': self.logo,
             'logo_path': self.logo,
+            'tile': self.tile,
+            'tile_path': self.tile,
             'description': self.description,
             'notes': self.notes,
-            'submods': self.submods,
+            'release_thread': self.release_thread,
+            'videos': self.videos,
+            'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
+            'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
             'actions': self.actions,
             'packages': [pkg.get() for pkg in self.packages]
         }
 
     def copy(self):
         return Mod(self.get(), self._repo)
-
-    def get_submods(self):
-        return [self._repo.query(mid) for mid in self.submods]
 
     def get_files(self):
         files = []
@@ -442,21 +488,33 @@ class Mod(object):
         return self._repo.process_pkg_selection(pkgs)
 
     def save_logo(self, dest):
-        if self.logo is None:
-            return
+        if self.logo is not None:
+            suffix = '.' + self.logo.split('.')[-1]
+            path = os.path.join(dest, 'logo_' + hashlib.md5(self.logo.encode('utf8')).hexdigest() + suffix)
 
-        suffix = '.' + self.logo.split('.')[-1]
-        path = os.path.join(dest, 'logo_' + hashlib.md5(self.logo.encode('utf8')).hexdigest() + suffix)
+            if not os.path.isfile(path):
+                if '://' in self.logo:
+                    # That's a URL
+                    with open(path, 'wb') as fobj:
+                        util.download(self.logo, fobj)
+                else:
+                    shutil.copyfile(self.logo, path)
 
-        if not os.path.isfile(path):
-            if '://' in self.logo:
-                # That's a URL
-                with open(path, 'wb') as fobj:
-                    util.download(self.logo, fobj)
-            else:
-                shutil.copyfile(self.logo, path)
+            self.logo_path = self.logo = os.path.abspath(path)
 
-        self.logo = os.path.abspath(path)
+        if self.tile is not None:
+            suffix = '.' + self.tile.split('.')[-1]
+            path = os.path.join(dest, 'tile_' + hashlib.md5(self.tile.encode('utf8')).hexdigest() + suffix)
+
+            if not os.path.isfile(path):
+                if '://' in self.tile:
+                    # That's a URL
+                    with open(path, 'wb') as fobj:
+                        util.download(self.tile, fobj)
+                else:
+                    shutil.copyfile(self.tile, path)
+
+            self.tile_path = self.tile = os.path.abspath(path)
 
 
 class Package(object):
@@ -555,7 +613,7 @@ class Package(object):
         result = []
         for dep in self.dependencies:
             version = dep['version']
-            if re.match('\d.*', version):
+            if version != '*' and not SpecItem.re_spec.match(version):
                 # Make a spec out of this version
                 version = '==' + version
 
@@ -596,7 +654,6 @@ class Package(object):
                     return False
 
             elif c_type == 'cpu_feature':
-                # return CPU_INFO is None or value in CPU_INFO['flags']
                 if CPU_INFO is None:
                     # We don't have any information on the current CPU so we just ignore this check.
                     return True
@@ -748,6 +805,7 @@ class InstalledRepo(Repo):
 
 class InstalledMod(Mod):
     check_notes = ''
+    folder = None
     _path = None
 
     @staticmethod
@@ -764,9 +822,12 @@ class InstalledMod(Mod):
         else:
             return None
 
-        mod.folder = os.path.dirname(path)[len(center.settings['fs2_path']):].lstrip('/\\')
+        mod.folder = os.path.dirname(path)
         if mod.logo is not None and '://' not in mod.logo:
             mod.logo_path = os.path.join(os.path.dirname(path), mod.logo)
+
+        if mod.tile is not None and '://' not in mod.tile:
+            mod.tile_path = os.path.join(os.path.dirname(path), mod.tile)
 
         return mod
 
@@ -775,7 +836,18 @@ class InstalledMod(Mod):
         data = mod.get()
         data['packages'] = []
 
-        return InstalledMod(data)
+        # IMPORTANT: This code decides where newly installed mods are stored.
+        base = center.settings['base_path']
+        if data['type'] == 'engine':
+            data['folder'] = os.path.join(base, 'bin', data['id']) + '-' + data['version']
+        elif data['type'] == 'tc':
+            data['folder'] = os.path.join(base, data['id'])
+        else:
+            data['folder'] = os.path.join(base, data['parent'], data['id'])
+
+        nmod = InstalledMod(data)
+        nmod.logo_path = mod.logo_path
+        return nmod
 
     def __init__(self, values=None):
         super(InstalledMod, self).__init__(values)
@@ -786,6 +858,9 @@ class InstalledMod(Mod):
         values['packages'] = []
 
         super(InstalledMod, self).set(values)
+        
+        if 'folder' in values:
+            self.folder = values['folder']
 
         self.check_notes = values.get('check_notes', '')
         for pkg in pkgs:
@@ -793,15 +868,27 @@ class InstalledMod(Mod):
 
     def get(self):
         return {
+            'installed': True,
             'id': self.mid,
             'title': self.title,
+            'type': self.mtype,
+            'parent': self.parent,
             'version': str(self.version),
             'description': self.description,
             'logo': self.logo,
             'logo_path': self.logo_path,
+            'tile': self.tile,
+            'tile_path': self.tile_path,
+            'release_thread': self.release_thread,
+            'videos': self.videos,
+            'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
+            'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
             'cmdline': self.cmdline,
             'packages': [pkg.get() for pkg in self.packages]
         }
+
+    def set_base(self, base):
+        pass
 
     def add_pkg(self, pkg):
         pkg = InstalledPackage.convert(pkg, self)
@@ -825,13 +912,13 @@ class InstalledMod(Mod):
                 break
 
     def save(self):
-        modpath = os.path.join(center.settings['fs2_path'], self.folder)
+        modpath = self.folder
         im_path = util.ipath(modpath)
 
         # Correct the casing of our folder if neccessary.
-        if self.folder not in ('', '.') and im_path != modpath:
+        if im_path != modpath:
             modpath = im_path
-            self.folder = modpath[len(center.settings['fs2_path']):].lstrip('/\\')
+            self.folder = modpath
 
         path = os.path.join(modpath, 'mod.json')
         info = self.get()
@@ -849,28 +936,43 @@ class InstalledMod(Mod):
             json.dump(info, stream)
 
     def get_mod_flag(self):
-        mods = [self.folder]
+        return []
 
-        if center.settings['mod_settings'].get(self.mid, {}).get('parse_mod_ini', False):
-            ini = IniMod()
-            ini.load(os.path.join(os.path.dirname(self._path), 'mod.ini'))
-            return ini.get_mod_flag()
+    def get_executables(self):
+        deps = self.resolve_deps(True)
+        skipped = set()
+        exes = []
 
-        try:
-            for dep in self.resolve_deps():
-                folder = dep.get_mod().folder
-                if folder not in mods:
-                    mods.append(folder)
-        except ModNotFound:
-            logging.exception('A dependency for an installed mod is missing!')
-            raise
+        for pkg in deps:
+            mod = pkg.get_mod()
+            if mod.mid in skipped:
+                continue
 
-        m = []
-        for item in mods:
-            if item.strip() != '':
-                m.append(os.path.basename(util.ipath(os.path.join(center.settings['fs2_path'], item))))
+            if mod.mtype != 'engine':
+                skipped.add(mod.mid)
+                continue
 
-        return m
+            for exe in pkg.executables:
+                exe = exe.copy()
+                exe['file'] = os.path.join(mod.folder, exe['file'])
+                exes.append(exe)
+
+        if not exes:
+            # I'll enable this part once all mods are migrated (i.e. have FSO or another engine added to their dependencies).
+            # raise Exception('No engine found for "%s"!' % self.title)
+            
+            # For now we just use FSO.
+            mod = center.installed.query('FSO')
+            if not mod:
+                raise Exception('No engine found for "%s"!' % self.title)
+
+            for pkg in mod.packages:
+                for exe in pkg.executables:
+                    exe = exe.copy()
+                    exe['file'] = os.path.join(mod.folder, exe['file'])
+                    exes.append(exe)
+
+        return exes
 
 
 class IniMod(InstalledMod):
@@ -895,6 +997,10 @@ class IniMod(InstalledMod):
                 name = line[0].strip()
                 value = line[1].strip(' \r\n\t;')
 
+                # Skip empty values
+                if value == '':
+                    continue
+
                 if name == 'modname':
                     self.title = value + ' (ini)'
                 elif name == 'infotext':
@@ -902,11 +1008,9 @@ class IniMod(InstalledMod):
                 elif name.startswith('image'):
                     self.logo = value
                 elif name == 'primarylist':
-                    if value != '':
-                        self._pr_list = value.split(',')
+                    self._pr_list = value.split(',')
                 elif name in ('secondarylist', 'secondrylist'):
-                    if value != '':
-                        self._sc_list = value.split(',')
+                    self._sc_list = value.split(',')
 
         self.folder = os.path.basename(os.path.dirname(path))
         if self.title == '':

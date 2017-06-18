@@ -1,0 +1,11 @@
+Vagrant.configure("2") do |config|
+  config.vm.define "knossos-builder"
+  config.vm.box = "packer/builds/FreeBSD-11.0-RELEASE-amd64.box"
+
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+  config.vm.synced_folder "../..", "/opt/knossos", type: "rsync",
+    rsync__args: ["--verbose", "--rsync-path='sudo rsync'", "--archive", "-z", "--copy-links"],
+    rsync__exclude: ["dist", "build", "packer", ".vagrant"]
+
+  config.vm.provision :shell, inline: "sh /opt/knossos/releng/freebsd/provision.sh"
+end

@@ -185,6 +185,16 @@ class FlagsReader(object):
     def sdl(self):
         return self.build_caps & (1 << 3)
 
+    def to_dict(self):
+        return {
+            'easy_flags': self.easy_flags,
+            'flags': self.flags,
+            'openal': self.openal,
+            'no_d3d': self.no_d3d,
+            'new_snd': self.new_snd,
+            'sdl': self.sdl
+        }
+
 
 class ResizableSemaphore(object):
     _capacity = 0
@@ -442,12 +452,12 @@ def download(link, dest, headers=None, random_ua=False):
                         by_done = dest.tell() - start
                         speed = sc.get_speed()
                         p = by_done / size
-                        text = ', ' + format_bytes(speed) + '/s, '
+                        text = format_bytes(speed) + '/s, '
                         text += time.strftime('%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
                     else:
                         p = 0
                         text = ''
-                    progress.update(p, os.path.basename(link) + text)
+                    progress.update(p, text)
 
                 if _DL_CANCEL.is_set():
                     return False
@@ -485,7 +495,7 @@ def normpath(path):
 
 # Try to map a case insensitive path to an existing one.
 def ipath(path):
-    if os.path.exists(path):
+    if os.path.exists(path) or path == '':
         return path
 
     parent, item = os.path.split(path)
