@@ -33,6 +33,17 @@ with open(path.join(here, 'knossos', 'center.py'), 'r', encoding='utf-8') as f:
     else:
         version = 'XXX'
 
+    if '-dev' in version:
+        if not path.exists(path.join(here, '.git')):
+            sys.stderr.write('WARNING: No .git directory found while building a devbuild!\n')
+        else:
+            with open(path.join(here, '.git/HEAD')) as stream:
+                ref = stream.read().strip().split(':')
+                assert ref[0] == 'ref'
+
+            with open(path.join(here, '.git/' + ref[1].strip())) as stream:
+                version += '+' + stream.read()[:7]
+
 if len(sys.argv) == 2 and sys.argv[1] == 'get_version':
     print(version)
     sys.exit(0)
