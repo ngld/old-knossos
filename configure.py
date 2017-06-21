@@ -129,7 +129,7 @@ out += '<qresource>'
 for path in RCC_FILES:
     if os.path.basename(path) == 'hlp.png':
         out += '<file alias="hlp.png">%s</file>' % os.path.abspath(path)
-    elif path.endswith(('.min.js', '.es5.js')):
+    elif path.endswith(('.min.js', '.out.js')):
         out += '<file alias="%s">%s</file>' % (path[:-7] + '.js', os.path.abspath(path))
     else:
         out += '<file alias="%s">%s</file>' % (path, os.path.abspath(path))
