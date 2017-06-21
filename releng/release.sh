@@ -96,11 +96,4 @@ githubrelease release ngld/knossos edit "v$VERSION" --body "$(cat "$rel_text")"
 
 rm "$rel_text"
 
-echo "==> Killing VMs..."
-for plat in windows macos; do
-	cd "$plat"
-	vagrant destroy
-	cd ..
-done
-
 echo "==> Done."
