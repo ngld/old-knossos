@@ -34,6 +34,7 @@ class WebBridge(QtCore.QObject):
     showRetailPrompt = QtCore.Signal()
     updateModlist = QtCore.Signal('QVariantList', str)
     modProgress = QtCore.Signal(str, float, str)
+    settingsArrived = QtCore.Signal(str)
 
     taskStarted = QtCore.Signal(float, str, list)
     taskProgress = QtCore.Signal(float, float, str)
@@ -351,9 +352,12 @@ class WebBridge(QtCore.QObject):
             tasks.run_task(tasks.FetchTask())
             center.main_win.check_fso()
 
-    @QtCore.Slot(result=str)
+    @QtCore.Slot()
     def getSettings(self):
-        return json.dumps(settings.get_settings())
+        def cb(res):
+            self.settingsArrived.emit(json.dumps(res))
+
+        settings.get_settings(cb)
 
     @QtCore.Slot(str, str)
     def saveSetting(self, key, value):

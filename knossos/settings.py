@@ -19,6 +19,7 @@ import os.path
 import json
 import logging
 from collections import OrderedDict
+from threading import Thread
 
 from . import center, util, api, launcher, runner
 from .tasks import run_task, CheckTask
@@ -28,7 +29,18 @@ from .qt import QtCore, QtWidgets, QtGui
 tr = QtCore.QCoreApplication.translate
 
 
-def get_settings():
+def get_settings(cb):
+    t = Thread(target=get_settings_p2, args=(cb,))
+    t.start()
+
+
+def get_settings_p2(cb):
+    dev_info = get_deviceinfo()
+
+    if not dev_info:
+        cb(None)
+        return
+
     fso = {}
 
     fs2_bins = OrderedDict()
@@ -50,8 +62,6 @@ def get_settings():
 
     fso['fs2_bins'] = fs2_bins
     fso['fred_bins'] = fred_bins
-
-    dev_info = get_deviceinfo()
 
     # ---Read fs2_open.ini or the registry---
     # Be careful with any change, the keys are all case sensitive.
@@ -192,12 +202,12 @@ def get_settings():
 
     fso['has_voice'] = sys.platform == 'win32'
 
-    return {
+    cb({
         'knossos': kn_settings,
         'languages': center.LANGUAGES,
         'has_log': launcher.log_path is not None,
         'fso': fso
-    }
+    })
 
 
 def save_fso_settings(new_settings):

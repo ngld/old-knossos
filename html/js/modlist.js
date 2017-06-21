@@ -12,6 +12,14 @@ function init() {
         }
     }
 
+    function connectOnce(sig, cb) {
+        let wrapper = function () {
+            sig.disconnect(wrapper);
+            return cb.apply(this, arguments);
+        };
+        sig.connect(wrapper);
+    }
+
     Vue.component('kn-mod', {
         template: '#kn-mod',
         props: ['mod', 'tab'],
@@ -81,7 +89,7 @@ function init() {
         }),
 
         beforeMount() {
-            call(fs2mod.getSettings, (settings) => {
+            connectOnce(fs2mod.settingsArrived, (settings) => {
                 settings = JSON.parse(settings);
 
                 this.knossos = Object.assign({}, settings.knossos);
@@ -90,6 +98,7 @@ function init() {
                 this.default_fs2_bin = settings.knossos.fs2_bin;
                 this.default_fred_bin = settings.knossos.fred_bin;
             });
+            fs2mod.getSettings();
             call(fs2mod.getDefaultFsoCaps, (caps) => {
                 this.caps = JSON.parse(caps);
             });
