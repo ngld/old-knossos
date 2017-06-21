@@ -14,6 +14,8 @@
 
 import sys
 import os.path
+import subprocess
+from codecs import open
 
 os.chdir(os.path.abspath(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.abspath('tools/common'))
@@ -74,12 +76,7 @@ SRC_FILES = [
 ]
 
 # Grab the current version
-with open('knossos/center.py', 'r', encoding='utf-8') as f:
-    m = re.search(r"VERSION = '([^']+)'", f.read())
-    if m:
-        version = m.group(1)
-    else:
-        version = 'XXX'
+version = subprocess.check_output([sys.executable, 'setup.py', 'get_version']).decode('utf8').strip()
 
 info('Checking Python version...')
 if sys.hexversion < 0x20700 or (sys.hexversion > 0x30000 and sys.hexversion < 0x30200):
@@ -129,7 +126,7 @@ out += '<qresource>'
 for path in RCC_FILES:
     if os.path.basename(path) == 'hlp.png':
         out += '<file alias="hlp.png">%s</file>' % os.path.abspath(path)
-    elif path.endswith(('.min.js', '.es5.js')):
+    elif path.endswith(('.min.js', '.out.js')):
         out += '<file alias="%s">%s</file>' % (path[:-7] + '.js', os.path.abspath(path))
     else:
         out += '<file alias="%s">%s</file>' % (path, os.path.abspath(path))
@@ -192,7 +189,7 @@ with open('build.ninja', 'w') as stream:
         n.comment('Win32')
         
         if check_module('PyInstaller', required=False):
-            pyinstaller = 'cmd /C "cd releng\\windows" && ' + cmd2str([sys.executable, '-OO', '-mPyInstaller', '-d', '--distpath=.\\dist', '--workpath=.\\build', 'Knossos.spec', '-y'])
+            pyinstaller = 'cmd /C "cd releng\\windows && %s"' % cmd2str([sys.executable, '-OO', '-mPyInstaller', '-d', '--distpath=.\\dist', '--workpath=.\\build', 'Knossos.spec', '-y'])
             n.rule('pyinstaller', pyinstaller, 'PACKAGE', pool='console')
             n.build('pyi', 'pyinstaller', ['resources'] + SRC_FILES)
 

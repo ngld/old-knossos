@@ -125,6 +125,12 @@ def init_sdl():
         SDL_INIT_JOYSTICK = 0x00000200
 
         # SDL.h
+        sdl.SDL_SetMainReady.argtypes = []
+        sdl.SDL_SetMainReady.restype = None
+
+        sdl.SDL_Init.argtypes = [ctypes.c_uint32]
+        sdl.SDL_Init.restype = ctypes.c_int
+
         sdl.SDL_InitSubSystem.argtypes = [ctypes.c_uint32]
         sdl.SDL_InitSubSystem.restype = ctypes.c_int
 
@@ -189,6 +195,11 @@ def init_sdl():
         sdl.SDL_JoystickName.restype = ctypes.c_char_p
 
     if SDL2:
+        sdl.SDL_SetMainReady()
+        if sdl.SDL_Init(0) != 0:
+            logging.error('Failed to init SDL!')
+            logging.error(sdl.SDL_GetError())
+
         def get_modes():
             if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0 or sdl.SDL_VideoInit(None) < 0:
                 logging.error('Failed to init SDL\'s video subsystem!')

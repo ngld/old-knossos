@@ -1003,7 +1003,7 @@ class CheckUpdateTask(progress.Task):
     def work(self, item):
         progress.update(0, 'Checking for updates...')
 
-        update_base = util.pjoin(center.UPDATE_LINK, center.settings['update_channel'])
+        update_base = util.pjoin(center.UPDATE_LINK, 'stable')
         version = util.get(update_base + '/version?me=' + center.VERSION)
 
         if version is None:

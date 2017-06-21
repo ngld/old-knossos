@@ -17,6 +17,7 @@ import sys
 import os.path
 import re
 import logging
+import subprocess
 import ctypes.util
 from shutil import which, copytree
 
@@ -52,24 +53,11 @@ if not os.path.dirname(sdl2_path).endswith('.framework'):
         'download the .dmg file and install it according to the contained README.')
     sys.exit(1)
 
-with open('../../knossos/center.py') as stream:
-    match = re.search(r"VERSION = '([^']+)'", stream.read())
+version = subprocess.check_output([sys.executable, '../../setup.py', 'get_version']).decode('utf-8')
 
-if not match:
+if not version:
     print('ERROR: Could not determine version!')
     sys.exit(1)
-
-version = match.group(1)
-if '-dev' in version:
-    if not os.path.exists('../../.git'):
-        print('\nWARNING: No .git directory found while building a devbuild!\n')
-    else:
-        with open('../../.git/HEAD') as stream:
-            ref = stream.read().strip().split(':')
-            assert ref[0] == 'ref'
-
-        with open('../../.git/' + ref[1].strip()) as stream:
-            version += '+' + stream.read()[:7]
 
 with open('version', 'w') as stream:
     stream.write(version)

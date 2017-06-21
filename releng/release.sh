@@ -89,24 +89,11 @@ echo "==> Building PyPi package..."
 ./pypi/build.sh
 
 echo "==> Uploading artifacts to GitHub..."
-githubrelease release ngld/knossos create "v$VERSION" --name "Knossos $VERSION" --body "$(cat "$rel_text")" \
-	--publish --prerelease \
+githubrelease release ngld/knossos create "v$VERSION" --name "Knossos $VERSION" --publish --prerelease \
 	windows/dist/{Knossos,update}-"$VERSION".exe macos/dist/Knossos-"$VERSION".dmg
 
+githubrelease release ngld/knossos edit "v$VERSION" --body "$(cat "$rel_text")" 
+
 rm "$rel_text"
-
-echo "==> Killing VMs..."
-cd windows
-vagrant destroy
-
-cd ../macos
-vagrant destroy
-
-echo "==> Killing VMs..."
-cd windows
-vagrant destroy
-
-cd ../macos
-vagrant destroy
 
 echo "==> Done."

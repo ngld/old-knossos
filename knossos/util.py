@@ -30,7 +30,7 @@ import glob
 import semantic_version
 import requests
 from collections import OrderedDict
-from threading import Condition, Event
+from threading import Condition, Event, Thread
 from collections import deque
 
 from . import center, progress
@@ -293,14 +293,9 @@ class SpeedCalc(object):
 def call(*args, **kwargs):
     if sys.platform.startswith('win') and not center.DEBUG:
         # Provide the called program with proper I/O on Windows.
-        if 'stdin' not in kwargs:
-            kwargs['stdin'] = subprocess.DEVNULL
-
-        if 'stdout' not in kwargs:
-            kwargs['stdout'] = subprocess.DEVNULL
-
-        if 'stderr' not in kwargs:
-            kwargs['stderr'] = subprocess.DEVNULL
+        kwargs.setdefault('stdin', subprocess.DEVNULL)
+        kwargs.setdefault('stdout', subprocess.DEVNULL)
+        kwargs.setdefault('stderr', subprocess.DEVNULL)
 
         si = subprocess.STARTUPINFO()
         si.dwFlags = subprocess.STARTF_USESHOWWINDOW
@@ -315,11 +310,8 @@ def call(*args, **kwargs):
 def check_output(*args, **kwargs):
     if sys.platform.startswith('win'):
         # Provide the called program with proper I/O on Windows.
-        if 'stdin' not in kwargs:
-            kwargs['stdin'] = subprocess.DEVNULL
-
-        if 'stderr' not in kwargs:
-            kwargs['stderr'] = subprocess.DEVNULL
+        kwargs.setdefault('stdin', subprocess.DEVNULL)
+        kwargs.setdefault('stderr', subprocess.DEVNULL)
 
         si = subprocess.STARTUPINFO()
         si.dwFlags = subprocess.STARTF_USESHOWWINDOW
@@ -327,8 +319,7 @@ def check_output(*args, **kwargs):
 
         kwargs['startupinfo'] = si
 
-    if 'universal_newlines' not in kwargs:
-        kwargs['universal_newlines'] = True
+    kwargs.setdefault('universal_newlines', True)
 
     logging.debug('Running %s', args[0])
     return subprocess.check_output(*args, **kwargs)
