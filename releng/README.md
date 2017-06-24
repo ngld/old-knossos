@@ -9,7 +9,7 @@ The detailed requirements are:
 * FreeBSD: [Vagrant][vg] and [Packer][pack]; The `prepare.sh` script uses Packer to build the FreeBSD VM image using a script from GitHub.
 * macOS: [Vagrant][vg]; The VM image is downloaded from Atlas.
 * Ubuntu: [Docker][dock]; The container is downloaded from Docker Hub.
-* Windows: [Vagrant][vg] and [Packer][pack]; You have to clone https://github.com/ngld/packer-windows and build the `windows_10.json` file with Packer. Afterwards add it to Vagrant using `vagrant box add --name=windows_10 <path to your .box file>`.
+* Windows: [Vagrant][vg] and [Packer][pack]; You have to clone https://github.com/ngld/packer-windows and build the `windows_7.json` file with Packer. Afterwards add it to Vagrant using `vagrant box add --name=windows_10 <path to your .box file>`.
 
 [vg]: https://www.vagrantup.com/
 [pack]: https://www.packer.io/

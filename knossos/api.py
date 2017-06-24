@@ -393,8 +393,13 @@ def enable_raven():
     from raven.handlers.logging import SentryHandler
 
     if hasattr(sys, 'frozen'):
+        if sys.platform == 'darwin':
+            cacert_path = os.path.join(sys._MEIPASS, '..', 'Resources', 'certifi', 'cacert.pem')
+        else:
+            cacert_path = os.path.join(sys._MEIPASS, 'requests', 'cacert.pem')
+
         from six.moves.urllib.parse import quote as urlquote
-        center.SENTRY_DSN += '&ca_certs=' + urlquote(os.path.join(sys._MEIPASS, 'requests', 'cacert.pem'))
+        center.SENTRY_DSN += '&ca_certs=' + urlquote(cacert_path)
 
     center.raven = Client(
         center.SENTRY_DSN,

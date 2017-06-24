@@ -15,11 +15,11 @@
 
 import sys
 import os.path
-import re
 import logging
 import subprocess
 import ctypes.util
 from shutil import which, copytree
+import PyQt5
 
 him = []
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
@@ -62,16 +62,34 @@ if not version:
 with open('version', 'w') as stream:
     stream.write(version)
 
+
+qt_path = os.path.join(os.path.dirname(PyQt5.__file__), 'Qt', 'lib')
+resources_dir = os.path.join(qt_path, 'QtWebEngineCore.framework', 'Resources')
 a = Analysis(['../../knossos/__main__.py'],
             pathex=['../..'],
             hiddenimports=him,
             hookspath=['../../tools/common'],
             runtime_hooks=rthooks,
+            binaries=[
+                # Add QtWebEngine stuff because PyInstaller's hook doesn't do anything without qmake (which PyQt5 doesn't include).
+                (os.path.join(qt_path, 'QtWebEngineCore.framework', 'Helpers', 'QtWebEngineProcess.app',
+                    'Contents', 'MacOS', 'QtWebEngineProcess'),
+                os.path.join('QtWebEngineProcess.app', 'Contents', 'MacOS'))
+            ],
             datas=[
-                (p7zip_path, '7z'),
+                (p7zip_path, '.'),
                 ('version', '.'),
-                ('../../knossos/data/resources.rcc', 'data')
-            ])
+                ('../../knossos/data/resources.rcc', 'data'),
+
+                # Add QtWebEngine stuff because PyInstaller's hook doesn't do anything without qmake (which PyQt5 doesn't include).
+                (os.path.join(resources_dir, 'icudtl.dat'), ''),
+                (os.path.join(resources_dir, 'qtwebengine_resources.pak'), ''),
+                
+                # The distributed Info.plist has LSUIElement set to true, which prevents the
+                # icon from appearing in the dock.
+                (os.path.join(qt_path, 'QtWebEngineCore.framework', 'Helpers', 'QtWebEngineProcess.app', 'Contents', 'Info.plist'),
+                    os.path.join('QtWebEngineProcess.app', 'Contents'))
+])
 
 # Exclude everything we don't need.
 idx = []
@@ -96,13 +114,14 @@ exe = EXE(pyz,
 
 # Build the .app folder
 app = BUNDLE(exe,
-             a.binaries,
-             a.zipfiles,
-             a.datas,
-             name='Knossos.app',
-             icon='../../knossos/data/hlp.icns',
-             info_plist={
-                'CFBundleShortVersionString': version
-             })
+            a.binaries,
+            a.zipfiles,
+            a.datas,
+            bundle_identifier='org.qt-project.Qt.QtWebEngineCore',  # see PyInstaller.hooks.hook-PyQt5.QtWebEngineWidgets
+            name='Knossos.app',
+            icon='../../knossos/data/hlp.icns',
+            info_plist={
+              'CFBundleShortVersionString': version
+            })
 
 copytree(os.path.dirname(sdl2_path), os.path.join(DISTPATH, 'Knossos.app/Contents/Frameworks/SDL2.framework'))

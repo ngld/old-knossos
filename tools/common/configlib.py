@@ -22,6 +22,10 @@ from fnmatch import translate as fntranslate
 
 DEVNULL = os.open(os.devnull, os.O_RDWR)
 
+if not hasattr(__builtins__, 'FileNotFoundError'):
+    class FileNotFoundError(Exception):
+        pass
+
 
 def silent_check(*args, **kwargs):
     kwargs['stdout'] = DEVNULL
