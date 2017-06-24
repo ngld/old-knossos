@@ -26,11 +26,15 @@ if [ -n "$1" ]; then
 	VERSION="$1"
 fi
 
+echo "==> Stashing local changes to protect them"
+git stash
+
 echo "==> Preparing platforms..."
-for plat in arch freebsd macos ubuntu windows; do
+for plat in arch macos ubuntu windows; do
 	"./$plat/prepare.sh"
 done
 
+switched=no
 if [ "$(cat ../.git/HEAD)" = "ref: refs/heads/develop" ]; then
 	if [ -z "$VERSION" ]; then
 		VERSION="$(cd ..; python setup.py get_version | cut -d - -f -1)"
@@ -39,8 +43,10 @@ if [ "$(cat ../.git/HEAD)" = "ref: refs/heads/develop" ]; then
 
 	git checkout master
 	git merge --no-commit -X theirs develop
+	switched=yes
 
 	sed -Ei "s#VERSION = '[^']+'#VERSION = '$VERSION'#" ../knossos/center.py
+	git add ../knossos/center.py
 else
 	if [ -z "$VERSION" ]; then
 		VERSION="$(cd ..; python setup.py get_version)"
@@ -59,7 +65,7 @@ EOF
 grep -v '^#' "$rel_text" > "$rel_text.stripped"
 mv "$rel_text.stripped" "$rel_text"
 
-git commit -am "Release $VERSION"
+git commit -m "Release $VERSION"
 git tag -u "$GPG_KEY_ID" -m "$(cat "$rel_text")" "v$VERSION"
 
 cat >> "$rel_text" <<EOF
@@ -68,31 +74,66 @@ cat >> "$rel_text" <<EOF
 EOF
 
 export RELEASE=y
+error=no
+failed=()
+
 echo "==> Building Windows..."
-./windows/build.sh
+if ! ./windows/build.sh; then
+	error=yes
+	failed+=(Windows)
+fi
 
 echo "==> Building macOS..."
-./macos/build.sh
+if ! ./macos/build.sh; then
+	error=yes
+	failed+=(macOS)
+fi
 
+if [ "$error" = "yes" ]; then
+	echo "!!> Aborting build since one or more platforms failed!"
+
+	if [ "$switched" = "yes" ]; then
+		git reset --hard origin/master
+		git checkout develop
+	fi
+
+	echo "${failed[@]} failed"
+	exit 1
+fi
+
+# Point of no return
 
 echo "==> Pushing to GitHub..."
 git push
 git push --tags
 
 echo "==> Building Ubuntu packages..."
-./ubuntu/build.sh
+if ! ./ubuntu/build.sh; then
+	failed+=(Ubuntu)
+fi
 
 echo "==> Building ArchLinux package..."
-./arch/build.sh
+if ! ./arch/build.sh; then
+	failed+=(Arch)
+fi
 
 echo "==> Building PyPi package..."
-./pypi/build.sh
+if ! ./pypi/build.sh; then
+	failed+=(PyPI)
+fi
 
 echo "==> Uploading artifacts to GitHub..."
 githubrelease release ngld/knossos create "v$VERSION" --name "Knossos $VERSION" --publish --prerelease \
 	windows/dist/{Knossos,update}-"$VERSION".exe macos/dist/Knossos-"$VERSION".dmg
 
 githubrelease release ngld/knossos edit "v$VERSION" --body "$(cat "$rel_text")" 
+
+echo "==> Announcing update..."
+curl "https://dev.tproxy.de/knossos/stable/update_version.php"
+
+if [ "${#failed[@]}" -gt 0 ]; then
+	echo "WARNING: ${failed[@]} failed!"
+fi
 
 rm "$rel_text"
 
