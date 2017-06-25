@@ -387,10 +387,21 @@
     overflow-y: auto;
     background-image: url(../images/BG.png);
     background-repeat: repeat;
+
+}
+
+#main-shadow-effect {
+    position: fixed;
+    top: 72px;
+    bottom: 7px;
+    left: 7px;
+	right: 32px;
     box-shadow: inset 0px 13px 15px -10px rgba(0,0,0,1),
-                inset 0px -13px 15px -10px rgba(0,0,0,1),
-                inset 13px 0px 15px -10px rgba(0,0,0,1),
-                inset -13px 0px 15px -10px rgba(0,0,0,1);
+				inset 0px -13px 15px -10px rgba(0,0,0,1),
+				inset 13px 0px 15px -10px rgba(0,0,0,1),
+				inset -13px 0px 15px -10px rgba(0,0,0,1);
+	pointer-events: none;
+	z-index: 10;
 }
 
 .main-notice {
@@ -406,7 +417,6 @@
 
 .scroll-style::-webkit-scrollbar {
     width: 25px;
-    box-shadow: -6px 0px 15px 0px rgba(0,0,0,1);
 }
 .scroll-style::-webkit-scrollbar-track {
     background-color: #1c1c1c;    
