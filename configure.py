@@ -49,6 +49,7 @@ RCC_FILES = [
     'html/index.html'
 ] + \
     build_file_list('html/images') + \
+    build_file_list('html/templates') + \
     build_file_list('ui', ('*.png', '*.jpg', '*.css'))
 
 SRC_FILES = [
@@ -120,21 +121,21 @@ check_ctypes_lib(['libopenal.so.1.15.1', 'openal', 'OpenAL'], 'OpenAL')
 
 info('Writing knossos/data/resources.qrc...\n')
 
-out = '<!DOCTYPE RCC><RCC version="1.0">'
-out += '<qresource>'
-
-for path in RCC_FILES:
-    if os.path.basename(path) == 'hlp.png':
-        out += '<file alias="hlp.png">%s</file>' % os.path.abspath(path)
-    elif path.endswith(('.min.js', '.out.js')):
-        out += '<file alias="%s">%s</file>' % (path[:-7] + '.js', os.path.abspath(path))
-    else:
-        out += '<file alias="%s">%s</file>' % (path, os.path.abspath(path))
-
-out += '</qresource>'
-out += '</RCC>'
 with open('knossos/data/resources.qrc', 'w') as stream:
-    stream.write(out)
+    stream.write('<!DOCTYPE RCC><RCC version="1.0">\n')
+    stream.write('<qresource>\n')
+
+    for path in RCC_FILES:
+        name = path
+        if os.path.basename(path) == 'hlp.png':
+            name = 'hlp.png'
+        elif path.endswith('.out.js'):
+            name = path[:-7] + '.js'
+
+        stream.write('  <file alias="%s">%s</file>\n' % (name, os.path.abspath(path)))
+
+    stream.write('</qresource>\n')
+    stream.write('</RCC>')
 
 info('Writing build.ninja...\n')
 

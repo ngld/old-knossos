@@ -196,8 +196,10 @@ if variant == 'headless':
 
 def read_file(path):
     fd = QtCore.QFile(path)
-    fd.open(QtCore.QIODevice.ReadOnly)
-    data = str(fd.readAll())
+    if not fd.open(QtCore.QIODevice.ReadOnly):
+        return None
+
+    data = fd.readAll().data().decode('utf-8')
     fd.close()
 
     return data

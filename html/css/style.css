@@ -1,34 +1,17 @@
 @import url(./bootstrap.min.css);
 @import url(./font-awesome.min.css);
 
-/* -------------------------- Stuff that existed before MJN, probably won't be used long term. ----------------------------------*/
+/* -------------------------- Basic stuff -----------------------------------------------------*/
 
-.info-page {
-    padding: 15px;
-    color: #fff;
-}
-
-#last-played .run-btn {
+select {
     width: 100%;
+    color: #000;
 }
 
-#last-played .mod-logo {
-    margin: auto;
+input {
+    max-width: 100%;
 }
 
-.mod .top-actions {
-    position: absolute;
-    top: 0;
-    right: 0;
-
-    padding: 0 10px;
-}
-
-.progress-bar.simple {
-    -webkit-transition: width 0s;
-         -o-transition: width 0s;
-            transition: width 0s;
-}
 /* -------------------------- Settings for container elements ----------------------------------*/
 
 .body-container {
@@ -43,6 +26,10 @@
     color: #fff;
 }
 
+.info-page {
+    padding: 15px;
+    color: #fff;
+}
 
 /* -------------------------- Settings for top bar elements ----------------------------------*/
 
@@ -369,7 +356,7 @@
     background-image: url(../images/iconbtn-develop-h.png);
 }
 
-.main-btn:active .develop-image {
+.main-btn.active .develop-image {
     background-image: url(../images/iconbtn-develop-a.png);
 }
 
@@ -403,6 +390,10 @@
 }
 
 /* -------------------------- Settings for the scroll bar style ----------------------------------*/
+
+.scroll-style {
+    overflow-y: auto;
+}
 
 .scroll-style::-webkit-scrollbar {
     width: 25px;
@@ -933,15 +924,6 @@
     visibility: visible;
 }
 
-.settings-page select {
-    width: 100%;
-    color: #000;
-}
-
-.settings-page input {
-    max-width: 100%;
-}
-
 .checklist {
     background: white;
     padding: 5px 5px 5px 25px;
@@ -949,4 +931,55 @@
     overflow: auto;
 
     color: #000;
+}
+
+.devel-page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.devel-page .mlist {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 300px;
+
+    background: #2e2e2e;
+    padding: 10px;
+
+    box-shadow: inset 0px 13px 15px -10px rgba(0,0,0,1),
+                inset 0px -13px 15px -10px rgba(0,0,0,1),
+                inset 13px 0px 15px -10px rgba(0,0,0,1),
+                inset -13px 0px 15px -10px rgba(0,0,0,1);
+}
+
+.devel-page .content-pane {
+    position: absolute;
+    top: 0;
+    left: 300px;
+    width: calc(100% - 300px);
+    height: 100%;
+}
+
+.devel-page .logo-box {
+    position: absolute;
+    top: 0;
+    left: 0px;
+    width: 200px;
+
+    padding: 5px;
+}
+
+.devel-page .form-box {
+    position: absolute;
+    top: 0;
+    left: 200px;
+
+    width: calc(100% - 200px);
+
+    padding: 5px;
 }

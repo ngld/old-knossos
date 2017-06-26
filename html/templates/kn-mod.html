@@ -1,0 +1,69 @@
+<!-------------------------------------------------------------------------------- Start the Home page ---------->
+<div class="mod row">
+    <div class="mod-node">
+        <div class="mod-image">
+            <img src="images/modstock.jpg" class="mod-stock">
+            <div class="mod-logo-container">
+                <img class="mod-logo-legacy img-responsive" v-if="mod.logo_path" :src="'file://' + mod.logo_path">
+            </div>
+        </div>
+        <div class="mod-notifier" v-if="tab === 'home'">
+            <img :src="'images/modnotify_' + mod.status + '.png'" class="notifier">
+        </div>
+        <div class="actions">
+            <div class="btn-wrapper">
+                <button class="mod-btn btn-green" v-if="tab === 'home' && (mod.status === 'ready' || mod.status === 'update')" v-on:click="play">
+                    <span class="btn-text">PLAY</span>
+                </button>
+
+                <button class="mod-btn btn-yellow" v-if="tab === 'home' && mod.status === 'update'" v-on:click="update">
+                    <span class="btn-text">UPDATE</span>
+                </button>
+
+                <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status === 'error'" v-on:click="showErrors">
+                    <span class="btn-text">ERROR</span>
+                </button>
+
+                <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstall">
+                    <span class="btn-text">UNINSTALL</span>
+                </button>
+
+                <button class="mod-btn btn-blue" v-if="tab === 'explore'" v-on:click="install">
+                    <span class="btn-text">INSTALL</span>
+                </button>
+
+                <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" v-on:click="showProgress">
+                    <span class="small-btn-text">
+                        INSTALLING...<br>
+                        {{ Math.round(mod.progress) }}%
+                    </span>
+                </button>
+
+                <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status === 'updating'" v-on:click="cancel">
+                    <span class="btn-text">CANCEL</span>
+                </button>
+
+                <button class="mod-btn btn-grey" v-on:click="showDetails">
+                    <span class="btn-text">DETAILS</span>
+                </button>
+
+                <div class="debug-dropdown" v-if="tab === 'home'">
+                    <button class="dropbtn"></button>
+                    <div class="dropdown-content">
+                        <div class="dropdown-lines">
+                            <button class="drop-content-btn">Run Fast Debug</button>
+                        </div>
+                        <div class="dropdown-lines">
+                            <button class="drop-content-btn">Run Debug</button>
+                        </div>
+                        <div class="dropdown-lines">
+                            <button class="drop-content-btn">Upload Debug Log</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mod-progress"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>
+        <div class="mod-title">{{ mod.title }}</div>
+    </div>
+</div>

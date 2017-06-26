@@ -21,7 +21,7 @@ import re
 import json
 import semantic_version
 
-from .qt import QtCore, QtGui, QtWidgets, QtWebChannel
+from .qt import read_file, QtCore, QtGui, QtWidgets, QtWebChannel
 from . import center, api, runner, repo, windows, tasks, util, settings
 
 if not QtWebChannel:
@@ -29,10 +29,12 @@ if not QtWebChannel:
 
 
 class WebBridge(QtCore.QObject):
+    _path = None
+
     showWelcome = QtCore.Signal()
     showDetailsPage = QtCore.Signal('QVariant')
     showRetailPrompt = QtCore.Signal()
-    updateModlist = QtCore.Signal('QVariantList', str)
+    updateModlist = QtCore.Signal(str, str)
     modProgress = QtCore.Signal(str, float, str)
     settingsArrived = QtCore.Signal(str)
 
@@ -52,7 +54,7 @@ class WebBridge(QtCore.QObject):
             channel.registerObject('fs2mod', self)
 
             if center.DEBUG and os.path.isdir('../html') and os.environ.get('KN_BABEL') != 'True':
-                link = os.path.abspath('../html/index.html')
+                link = os.path.abspath('../html/index_debug.html')
                 if sys.platform == 'win32':
                     link = '/' + link.replace('\\', '/')
 
@@ -60,16 +62,43 @@ class WebBridge(QtCore.QObject):
             else:
                 link = 'qrc:///html/index.html'
 
+            self._path = os.path.dirname(link).replace('qrc:///', ':/')
             webView.load(QtCore.QUrl(link))
+        else:
+            self._path = ':/html'
+
+    @QtCore.Slot(str, result=str)
+    def loadTemplate(self, name):
+        path = os.path.join(self._path, 'templates', os.path.basename(name) + '.html')
+
+        try:
+            if path.startswith(':/'):
+                data = read_file(path)
+                if data:
+                    return data
+                else:
+                    raise Exception('Qt failed to read "%s"!' % path)
+            elif path.startswith('file:///'):
+                with open(path[7:], 'r') as stream:
+                    return stream.read()
+            else:
+                raise Exception('Unkown URL "%s"!' % path)
+        except Exception:
+            logging.exception('Failed to load template %s!' % name)
+
+            if not center.DEBUG:
+                # These messages can get annoying. Don't display them in DEBUG mode since then they'd show up in the log.
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('WebBridge', 'Failed to load template "%s". The UI might be broken.') % name)
+
+            return ''
 
     @QtCore.Slot('QVariantList', result='QVariantMap')
     def finishInit(self, tr_keys):
-        center.main_win.finish_init()
-
         trs = {}
         for k in tr_keys:
             trs[k] = QtCore.QCoreApplication.translate('modlist_ts', k)
 
+        center.main_win.finish_init()
         return trs
 
     @QtCore.Slot(str, str, result=str)
@@ -166,7 +195,10 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(str)
     def showTab(self, name):
-        center.main_win.update_mod_buttons(name)
+        try:
+            center.main_win.update_mod_buttons(name)
+        except Exception:
+            logging.exception('Failed to switch tabs!')
 
     @QtCore.Slot(str)
     def triggerSearch(self, term):

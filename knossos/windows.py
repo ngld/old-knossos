@@ -177,7 +177,8 @@ class HellWindow(Window):
         # super(HellWindow, self)._del()
 
     def finish_init(self):
-        self.check_fso()
+        # The delay is neccessary to make sure that QtWebkit doesn't swallow the resulting event.
+        QtCore.QTimer.singleShot(300, self.check_fso)
         api.init_self()
 
     def check_fso(self):
@@ -254,9 +255,9 @@ class HellWindow(Window):
 
     def update_mod_list(self):
         result, filter_ = self.search_mods()
-
+        
         if filter_ in ('home', 'explore', 'develop'):
-            self.browser_ctrl.bridge.updateModlist.emit(result, filter_)
+            self.browser_ctrl.bridge.updateModlist.emit(json.dumps(result), filter_)
 
     def show_settings(self):
         pass

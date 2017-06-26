@@ -20,8 +20,20 @@ function init() {
         sig.connect(wrapper);
     }
 
-    Vue.component('kn-mod', {
-        template: '#kn-mod',
+    // Make sure we never reach load_left <= 0 until load_cb is declared.
+    let load_left = 1;
+    function registerComp(name, options) {
+        load_left++;
+        call(fs2mod.loadTemplate, name, (res) => {
+            options.template = res;
+            Vue.component(name, options);
+
+            load_left--;
+            if(load_left <= 0) load_cb();
+        });
+    }
+
+    registerComp('kn-mod', {
         props: ['mod', 'tab'],
 
         methods: {
@@ -66,8 +78,7 @@ function init() {
         }
     });
 
-    Vue.component('kn-drawer', {
-        template: '#kn-drawer',
+    registerComp('kn-drawer', {
         props: ['label'],
 
         data: () => ({
@@ -75,8 +86,7 @@ function init() {
         })
     });
 
-    Vue.component('kn-settings-page', {
-        template: '#kn-settings-page',
+    registerComp('kn-settings-page', {
         props: [],
 
         data: () => ({
@@ -146,8 +156,7 @@ function init() {
         }
     });
 
-    Vue.component('flag-editor', {
-        template: '#flag-editor',
+    registerComp('flag-editor', {
         props: ['caps', 'cmdline'],
 
         data: () => ({
@@ -197,145 +206,163 @@ function init() {
         }
     });
 
-    let vm = new Vue({
-        el: '#loading',
-        template: '#kn-page',
-        data: {
-            tabs: {
-                home: 'Home',
-                explore: 'Explore',
-                develop: 'Development'
-            },
-
-            search_text: '',
-            tab: 'home',
-            page: 'modlist',
-            show_filter: false,
-            mods: [],
-
-            // welcome page
-            data_path: '?',
-
-            // details page
-            mod: null,
-
-            popup_visible: false,
-            popup_title: 'Popup',
-            popup_mode: '',
-            popup_content: null,
-
-            // retail prompt
-            retail_searching: true,
-            retail_found: false,
-            retail_data_path: ''
-        },
-
-        watch: {
-            search_text(phrase) {
-                fs2mod.triggerSearch(phrase);
-            }
-        },
-
-        methods: {
-            openLink(url) {
-                fs2mod.openExternal(url);
-            },
-
-            showHelp() {
-                alert('Not yet implemented! Sorry.');
-            },
-
-            updateList() {
-                fs2mod.fetchModlist();
-            },
-
-            showSettings() {
-                this.page = 'settings';
-            },
-
-            showTab(tab) {
-                fs2mod.showTab(tab);
-            },
-
-            exitDetails() {
-                this.page = 'modlist';
-            },
-
-            selectFolder() {
-                call(fs2mod.browseFolder, 'Please select a folder', this.data_path, (path) => {
-                    if(path) this.data_path = path;
-                });
-            },
-
-            finishWelcome() {
-                fs2mod.setBasePath(this.data_path);
-            },
-
-            installMod() {
-                fs2mod.install(this.mod.id, '', []);
-            },
-
-            uninstallMod() {
-                fs2mod.uninstall(this.mod.id, '', []);
-            },
-
-            cancelMod() {
-                fs2mod.abortTask(task_mod_map[this.mod.id]);
-            },
-
-            playMod() {
-                fs2mod.runMod(this.mod.id, '');
-            },
-
-            updateMod() {
-                fs2mod.updateMod(this.mod.id, '');
-            },
-
-            showModErrors() {
-                vm.popup_content = this.mod;
-                vm.popup_title = 'Mod errors';
-                vm.popup_mode = 'mod_errors';
-                vm.popup_visible = true;
-            },
-
-            showModProgress() {
-                vm.popup_content = this.mod;
-                vm.popup_title = 'Installation Details';
-                vm.popup_mode = 'mod_progress';
-                vm.popup_visible = true;
-            },
-
-            retailAutoDetect() {
-                vm.retail_searching = true;
-                vm.retail_found = false;
-
-                call(fs2mod.searchRetailData, (path) => {
-                    vm.retail_searching = false;
-
-                    if(path !== '') {
-                        vm.retail_found = true;
-                        vm.retail_data_path = path;
-                    }
-                });
-            },
-
-            selectRetailFolder() {
-                call(fs2mod.browseFolder, 'Please select your FS2 folder', this.retail_data_path, (path) => {
-                    if(path) this.retail_data_path = path;
-                });
-            },
-
-            finishRetailPrompt() {
-                call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
-                    if(result) vm.popup_visible = false;
-                });
-            }
-        }
+    registerComp('kn-devel-page', {
+        
     });
-    window.vm = vm;
+
+    let vm;
+    function load_cb() {
+        call(fs2mod.loadTemplate, 'kn-page', (tpl) => {
+            window.vm = vm = new Vue({
+                el: '#loading',
+                template: tpl,
+
+                data: {
+                    tabs: {
+                        home: 'Home',
+                        explore: 'Explore',
+                        develop: 'Development'
+                    },
+
+                    search_text: '',
+                    tab: 'home',
+                    page: 'modlist',
+                    show_filter: false,
+                    mods: [],
+
+                    // welcome page
+                    data_path: '?',
+
+                    // details page
+                    mod: null,
+
+                    popup_visible: false,
+                    popup_title: 'Popup',
+                    popup_mode: '',
+                    popup_content: null,
+
+                    // retail prompt
+                    retail_searching: true,
+                    retail_found: false,
+                    retail_data_path: ''
+                },
+
+                watch: {
+                    search_text(phrase) {
+                        fs2mod.triggerSearch(phrase);
+                    }
+                },
+
+                methods: {
+                    openLink(url) {
+                        fs2mod.openExternal(url);
+                    },
+
+                    showHelp() {
+                        alert('Not yet implemented! Sorry.');
+                    },
+
+                    updateList() {
+                        fs2mod.fetchModlist();
+                    },
+
+                    showSettings() {
+                        this.page = 'settings';
+                    },
+
+                    showTab(tab) {
+                        fs2mod.showTab(tab);
+                    },
+
+                    exitDetails() {
+                        this.page = 'modlist';
+                    },
+
+                    selectFolder() {
+                        call(fs2mod.browseFolder, 'Please select a folder', this.data_path, (path) => {
+                            if(path) this.data_path = path;
+                        });
+                    },
+
+                    finishWelcome() {
+                        fs2mod.setBasePath(this.data_path);
+                    },
+
+                    installMod() {
+                        fs2mod.install(this.mod.id, '', []);
+                    },
+
+                    uninstallMod() {
+                        fs2mod.uninstall(this.mod.id, '', []);
+                    },
+
+                    cancelMod() {
+                        fs2mod.abortTask(task_mod_map[this.mod.id]);
+                    },
+
+                    playMod() {
+                        fs2mod.runMod(this.mod.id, '');
+                    },
+
+                    updateMod() {
+                        fs2mod.updateMod(this.mod.id, '');
+                    },
+
+                    showModErrors() {
+                        vm.popup_content = this.mod;
+                        vm.popup_title = 'Mod errors';
+                        vm.popup_mode = 'mod_errors';
+                        vm.popup_visible = true;
+                    },
+
+                    showModProgress() {
+                        vm.popup_content = this.mod;
+                        vm.popup_title = 'Installation Details';
+                        vm.popup_mode = 'mod_progress';
+                        vm.popup_visible = true;
+                    },
+
+                    retailAutoDetect() {
+                        vm.retail_searching = true;
+                        vm.retail_found = false;
+
+                        call(fs2mod.searchRetailData, (path) => {
+                            vm.retail_searching = false;
+
+                            if(path !== '') {
+                                vm.retail_found = true;
+                                vm.retail_data_path = path;
+                            }
+                        });
+                    },
+
+                    selectRetailFolder() {
+                        call(fs2mod.browseFolder, 'Please select your FS2 folder', this.retail_data_path, (path) => {
+                            if(path) this.retail_data_path = path;
+                        });
+                    },
+
+                    finishRetailPrompt() {
+                        call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
+                            if(result) vm.popup_visible = false;
+                        });
+                    }
+                }
+            });
+
+            call(fs2mod.finishInit, get_translation_source(), (t) => vm.trans = t);
+        });
+    }
     let mod_table = null;
 
-    fs2mod.showWelcome.connect(() => vm.page = 'welcome');
+    // Now that load_cb() is declared, we can subtract one from load_left thus making load_left <= 0 possible.
+    load_left--;
+    if(load_left == 0) {
+        // All pending load requests are finished which means we can call load_cb() immediately.
+        load_cb();
+    }
+
+    fs2mod.showWelcome.connect(() => { vm.page = 'welcome'; });
     fs2mod.showDetailsPage.connect((mod) => {
         vm.mod = mod;
         vm.page = 'details';
@@ -350,6 +377,7 @@ function init() {
     });
     fs2mod.updateModlist.connect((mods, type) => {
         window.mt = mod_table = {};
+        mods = JSON.parse(mods);
         for(let mod of mods) {
             mod_table[mod.id] = mod;
         }
@@ -393,8 +421,6 @@ function init() {
 
         delete tasks[tid];
     });
-
-    call(fs2mod.finishInit, get_translation_source(), (t) => vm.trans = t);
 }
 
 if(window.qt) {

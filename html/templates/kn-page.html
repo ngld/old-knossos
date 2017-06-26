@@ -1,0 +1,213 @@
+<div>
+    <div class="main-menus">
+        <div class="pull-right">
+            <a href="#" class="top-btn" v-on:click="showHelp"><span class="help-image"></span></a>
+            <a href="#" class="top-btn" v-on:click="updateList"><span class="update-image"></span></a>
+            <a href="#" class="top-btn" v-on:click="showSettings"><span class="settings-image"></span></a>
+        </div>
+        <div id="top-bar">
+            <div class="mod-search">
+                <input v-model="search_text" type="text" placeholder="Search">
+            </div>
+        </div>
+    </div>
+<!-------------------------------------------------------------------------------- Start the Tab Menus ---------->
+    <div id="tab-bar" v-if="page !== 'details'">
+        <a href="#" class="main-btn" v-for="(label, name) in tabs" v-bind:class="{ active: tab === name }" v-on:click="showTab(name)">
+            <span :class="'icon ' + name + '-image'"></span>
+            {{ label }}
+        </a>
+    </div>
+<!-------------------------------------------------------------------------------- Start the Filter Button ---------->
+    <div class="filter-container" v-if="page === 'modlist'">
+        <button class="filterbtn" v-on:click="show_filter = true"></button>
+        <div class="filter-content" v-show="show_filter" v-on:click="show_filter = false">
+            <div class="filter-lines">
+                <button class="filter-content-btn last-played-btn">Last Played</button>
+            </div>
+            <div class="filter-lines">
+                <button class="filter-content-btn alphabetical-btn">Alphabetical</button>
+            </div>
+            <div class="filter-lines">
+                <button class="filter-content-btn last-updated-log-btn">Last Updated</button>
+            </div>
+            <div class="filter-lines">
+                <button class="filter-content-btn last-released-btn">Last Released</button>
+            </div>
+        </div>
+    </div>
+
+<!-------------------------------------------------------------------------------- Start the Details Menu ---------->
+    <div id="details-tab-bar" v-if="page === 'details'">
+        <a href="#" class="main-btn" v-on:click="exitDetails"><i class="fa fa-chevron-left"></i> Back</a>
+        <span class="main-btn active"><i class="fa fa-exclamation-circle"></i> Details</span>
+    </div>
+
+<!-------------------------------------------------------------------------------- Build the Main View container ---------->
+    <div class="main-container scroll-style">
+        <div class="container-fluid" v-if="page === 'modlist'">
+            <kn-mod v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod>
+            <div v-if="mods.length === 0" class="main-notice">No mods found.</div>
+        </div>
+
+<!-------------------------------------------------------------------------------- Start the Welcome page ---------->
+        <div data-tr class="info-page" v-if="page === 'welcome'">
+            <div class="container main-notice">
+                <h1>Welcome!</h1>
+                
+                <p>It looks like you started Knossos for the first time.</p>
+                <p>You need to select a directoy where Knossos will store the game data (models, textures, etc.).</p>
+                
+                <form class="form-horizontal">
+                    <div class="form-group">
+                        <div class="col-xs-8">
+                            <input type="text" class="form-control" v-model="data_path">
+                        </div>
+                        <div class="col-xs-4">
+                            <button class="btn btn-default" v-on:click.prevent="selectFolder">Browse...</button>
+                        </div>
+                    </div>
+                </form>
+                
+                <p><button class="btn btn-primary" v-on:click="finishWelcome">Continue</button></p>
+
+                <hr>
+                <p>
+                    This launcher is still in development. Please visit
+                    <a href="#" @click="openLink('http://www.hard-light.net/forums/index.php?topic=93144.0')">this HLP thread</a>
+                    and let me know what you think, what didn't work and what you would like to change.
+                </p>
+                <p>-- ngld</p>
+            </div>
+        </div>
+
+<!-------------------------------------------------------------------------------- Start the Details page ---------->
+        <div class="info-page" id="details-page" v-if="page === 'details'">
+            <div class="img-frame">
+                <div class="title-frame">
+                    <h1>{{ mod.title }}</h1>
+                    Version <span>{{ mod.version }}</span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-sm-6">
+                    <button class="mod-btn btn-green" v-if="tab === 'home' && (mod.status === 'ready' || mod.status === 'update')" v-on:click="playMod">
+                        <span class="btn-text">PLAY</span>
+                    </button>
+
+                    <button class="mod-btn btn-yellow" v-if="tab === 'home' && mod.status === 'update'" v-on:click="updateMod">
+                        <span class="btn-text">UPDATE</span>
+                    </button>
+
+                    <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status === 'error'" v-on:click="showModErrors">
+                        <span class="btn-text">ERROR</span>
+                    </button>
+
+                    <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstallMod">
+                        <span class="btn-text">UNINSTALL</span>
+                    </button>
+
+                    <button class="mod-btn btn-blue" v-if="tab === 'explore'" v-on:click="installMod">
+                        <span class="btn-text">INSTALL</span>
+                    </button>
+
+                    <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" v-on:click="showModProgress">
+                        <span class="small-btn-text">
+                            INSTALLING...<br>
+                            {{ Math.round(mod.progress) }}%
+                        </span>
+                    </button>
+
+                    <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status === 'updating'" v-on:click="cancelMod">
+                        <span class="btn-text">CANCEL</span>
+                    </button>
+                </div>
+
+                <div class="col-sm-6 short-frame">
+                    <button class="btn btn-danger" v-if="mod.release_thread" v-on:click="openLink(mod.release_thread)">FORUM</button>
+                    <button class="btn btn-primary" v-if="mod.videos.length > 0" v-on:click="showVideos(mod.videos)">VIDEOS</button>
+
+                    <div class="date-frame pull-right">
+                        <div v-if="mod.first_release">Release: {{ mod.first_release }}</div>
+                        <div v-if="mod.last_update"><em>Last Updated: {{ mod.last_update }}</em></div>
+                    </div>
+                </div>
+            </div>
+
+            <p v-html="mod.description"></p>
+        </div>
+
+        <div class="info-page settings-page container-fluid" v-if="page === 'settings'">
+            <kn-settings-page></kn-settings-page>
+        </div>
+
+        <div class="info-page devel-page" v-if="page === 'develop'">
+            <kn-devel-page></kn-devel-page>
+        </div>
+    </div>
+
+    <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>
+
+    <div class="popup" v-if="popup_visible">
+        <div class="title clearfix">
+            {{ popup_title }}
+
+            <a href="" class="pull-right" @click.prevent="popup_visible = false">
+                <i class="fa fa-times"></i>
+            </a>
+        </div>
+        <div :class="{ content: true, 'scroll-style': true, iframe: popup_mode === 'frame' }">
+            <div v-if="popup_mode === 'html'" v-html="popup_content"></div>
+            <iframe v-if="popup_mode === 'frame'" :src="popup_content"></iframe>
+
+            <div v-if="popup_mode === 'mod_errors'">
+                <div v-for="pkg in popup_content.packages" v-if="pkg.check_notes && pkg.check_notes.length > 0">
+                    <strong>{{ pkg.name }}</strong><br>
+                    <ul>
+                        <li v-for="msg in pkg.check_notes">{{ msg }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div v-if="popup_mode === 'mod_progress'">
+                <div v-for="row in popup_content.progress_info" class="row">
+                    <div class="col-xs-4 mod-prog-label">{{ row[0] }}</div>
+                    <div class="col-xs-5">
+                        <div :class="'mod-prog-bar' + (row[1] === 1 ? ' complete' : '')">
+                            <div class="inner" :style="'width: ' + (row[1] * 100) + '%'"></div>
+                        </div>
+                    </div>
+                    <div class="col-xs-3 mod-prog-status">{{ row[2] }}</div>
+                </div>
+            </div>
+
+            <div v-if="popup_mode === 'retail_prompt'">
+                <p>
+                    You're trying to install an FS2 mod which requires retail files which you don't have.<br>
+                    Please select the folder of your FS2 installation or the FS2 installer from GOG (setup_freespace2_....exe).
+                </p>
+                <p>
+                    <strong v-if="retail_searching">Searching files...</strong>
+                    <strong v-else-if="retail_found">Folder found!</strong>
+                    <strong v-else>
+                        Nothing found, please select the appropriate folder or install FS2 and
+                        <a href="#" @click.prevent="retailAutoDetect">try again</a>.
+                    </strong>
+                </p>
+                <form class="form-horizontal">
+                    <div class="form-group">
+                        <div class="col-xs-8">
+                            <input type="text" class="form-control" v-model="retail_data_path" :disabled="retail_searching">
+                        </div>
+                        <div class="col-xs-4">
+                            <button class="btn btn-default" v-on:click.prevent="selectRetailFolder">Browse...</button>
+                        </div>
+                    </div>
+                </form>
+                
+                <p><button class="btn btn-primary" v-on:click="finishRetailPrompt">Continue</button></p>
+            </div>
+        </div>
+    </div>
+</div>

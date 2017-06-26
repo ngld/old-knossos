@@ -1,0 +1,39 @@
+<div>
+    <div class="form-group">
+        <label class="col-sm-4 control-label">Easy Setup:</label>
+        <div class="col-sm-8">
+            <select v-model="selected_easy_flags">
+                <option value="">Select a group</option>
+                <option v-for="(name, idx) in easy_flags" :value="idx">{{ name }}</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="col-sm-4 control-label">Custom Flags:</label>
+        <div class="col-sm-8">
+            <input type="text" style="width: 100%" v-model="custom_flags">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="col-sm-4 control-label">List Type:</label>
+        <div class="col-sm-8">
+            <select v-model="list_type">
+                <option v-for="(flags, name) in flags">{{ name }}</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-sm-8 col-sm-offset-4">
+            <div class="checklist">
+                <label class="checkbox" v-for="flag in flags[list_type]">
+                    <input type="checkbox" v-model="bool_flags[flag.name]">
+                    {{ flag.desc === '' ? flag.name : flag.desc }}
+                    <a :href="flag.web_url" @click.prevent="showFlagDoc(flag.web_url)" v-if="flag.web_url" class="pull-right">?</a>
+                </label>
+            </div>
+        </div>
+    </div>
+</div>
