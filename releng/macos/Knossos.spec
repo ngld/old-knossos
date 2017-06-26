@@ -24,7 +24,7 @@ import PyQt5
 him = []
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 
-rthooks = []
+rthooks = ['version-rthook.py']
 if debug:
     rthooks.append('../../tools/common/debug-rthook.py')
 
@@ -59,8 +59,8 @@ if not version:
     print('ERROR: Could not determine version!')
     sys.exit(1)
 
-with open('version', 'w') as stream:
-    stream.write(version)
+with open('version-rthook.py', 'w') as stream:
+    stream.write('import os;os.environ["KN_VERSION"] = %s' % repr(version))
 
 
 qt_path = os.path.join(os.path.dirname(PyQt5.__file__), 'Qt', 'lib')
@@ -68,7 +68,7 @@ resources_dir = os.path.join(qt_path, 'QtWebEngineCore.framework', 'Resources')
 a = Analysis(['../../knossos/__main__.py'],
             pathex=['../..'],
             hiddenimports=him,
-            hookspath=['../../tools/common'],
+            hookspath=[],
             runtime_hooks=rthooks,
             binaries=[
                 # Add QtWebEngine stuff because PyInstaller's hook doesn't do anything without qmake (which PyQt5 doesn't include).
@@ -78,7 +78,6 @@ a = Analysis(['../../knossos/__main__.py'],
             ],
             datas=[
                 (p7zip_path, '.'),
-                ('version', '.'),
                 ('../../knossos/data/resources.rcc', 'data'),
 
                 # Add QtWebEngine stuff because PyInstaller's hook doesn't do anything without qmake (which PyQt5 doesn't include).

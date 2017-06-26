@@ -396,7 +396,7 @@ def enable_raven():
         if sys.platform == 'darwin':
             cacert_path = os.path.join(sys._MEIPASS, '..', 'Resources', 'certifi', 'cacert.pem')
         else:
-            cacert_path = os.path.join(sys._MEIPASS, 'requests', 'cacert.pem')
+            cacert_path = os.path.join(sys._MEIPASS, 'certifi', 'cacert.pem')
 
         from six.moves.urllib.parse import quote as urlquote
         center.SENTRY_DSN += '&ca_certs=' + urlquote(cacert_path)

@@ -38,7 +38,7 @@ except:
     import logging
     logging.exception('Failed to generate comtypes.gen.TaskbarLib!')
 
-rthooks = []
+rthooks = ['version-rthook.py']
 if debug:
     rthooks.append('../../tools/common/debug-rthook.py')
 
@@ -51,16 +51,15 @@ if not version:
     print('ERROR: Could not determine version!')
     sys.exit(1)
 
-with open('version', 'w') as stream:
-    stream.write(version)
+with open('version-rthook.py', 'w') as stream:
+    stream.write('import os;os.environ["KN_VERSION"] = %s' % repr(version))
 
 a = Analysis(['../../knossos/__main__.py'],
             pathex=['../..', 'py-env/lib/site-packages/PyQt5/qt/bin'],
             hiddenimports=him,
-            hookspath=['../../tools/common'],
+            hookspath=[],
             runtime_hooks=rthooks,
             datas=[
-                ('version', '.'),
                 ('../../knossos/data/hlp.ico', 'data'),
                 ('../../knossos/data/resources.rcc', 'data'),
                 (os.path.join(qt_path, 'qt', 'resources'), '.')

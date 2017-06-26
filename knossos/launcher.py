@@ -262,17 +262,21 @@ def main():
     sys.excepthook = my_excepthook
 
     # The version file is only read in dev builds.
-    if center.VERSION.endswith('-dev') and os.path.isfile('version'):
-        with open('version', 'r') as data:
-            version = data.read().strip()
+    if center.VERSION.endswith('-dev'):
+        if 'KN_VERSION' in os.environ:
+            center.VERSION = os.environ['KN_VERSION'].strip()
+        else:
+            try:
+                with open('../.git/HEAD') as stream:
+                    ref = stream.read().strip().split(':')
+                    assert ref[0] == 'ref'
 
-            if version != center.VERSION:
-                if version.startswith(center.VERSION):
-                    center.VERSION = version
-                else:
-                    logging.error('Found invalid version file! The file contains %s but I\'m %s.', version, center.VERSION)
+                with open('../.git/' + ref[1].strip()) as stream:
+                    center.VERSION += '+' + stream.read()[:7]
+            except Exception:
+                pass
 
-    logging.info('Running Knossos %s on %s.', center.VERSION, qt_variant)
+    logging.info('Running Knossos %s on %s and Python %s.', center.VERSION, qt_variant, sys.version)
     app = QtWidgets.QApplication([])
 
     res_path = get_file_path('resources.rcc')
