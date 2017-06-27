@@ -875,6 +875,7 @@ class InstalledMod(Mod):
             'parent': self.parent,
             'version': str(self.version),
             'description': self.description,
+            'folder': self.folder,
             'logo': self.logo,
             'logo_path': self.logo_path,
             'tile': self.tile,

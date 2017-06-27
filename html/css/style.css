@@ -946,10 +946,10 @@ input {
     top: 0;
     left: 0;
     height: 100%;
-    width: 300px;
+    width: 200px;
 
     background: #2e2e2e;
-    padding: 10px;
+    padding: 10px 0;
 
     box-shadow: inset 0px 13px 15px -10px rgba(0,0,0,1),
                 inset 0px -13px 15px -10px rgba(0,0,0,1),
@@ -957,11 +957,31 @@ input {
                 inset -13px 0px 15px -10px rgba(0,0,0,1);
 }
 
+.devel-page .mlist > a {
+    display: block;
+    padding: 3px 8px;
+    text-decoration: none;
+
+    color: #eee;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.devel-page .mlist > a:hover {
+    color: #fff;
+}
+
+.devel-page .mlist > a.active {
+    color: #fff;
+    background: rgb(110, 130, 200);
+}
+
 .devel-page .content-pane {
     position: absolute;
     top: 0;
-    left: 300px;
-    width: calc(100% - 300px);
+    left: 200px;
+    width: calc(100% - 200px);
     height: 100%;
 }
 
@@ -972,6 +992,10 @@ input {
     width: 200px;
 
     padding: 5px;
+}
+
+.devel-page .mod-value {
+    margin-left: 10px;
 }
 
 .devel-page .form-box {

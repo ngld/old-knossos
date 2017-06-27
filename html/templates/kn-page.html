@@ -92,36 +92,7 @@
 
             <div class="row">
                 <div class="col-sm-6">
-                    <button class="mod-btn btn-green" v-if="tab === 'home' && (mod.status === 'ready' || mod.status === 'update')" v-on:click="playMod">
-                        <span class="btn-text">PLAY</span>
-                    </button>
-
-                    <button class="mod-btn btn-yellow" v-if="tab === 'home' && mod.status === 'update'" v-on:click="updateMod">
-                        <span class="btn-text">UPDATE</span>
-                    </button>
-
-                    <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status === 'error'" v-on:click="showModErrors">
-                        <span class="btn-text">ERROR</span>
-                    </button>
-
-                    <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstallMod">
-                        <span class="btn-text">UNINSTALL</span>
-                    </button>
-
-                    <button class="mod-btn btn-blue" v-if="tab === 'explore'" v-on:click="installMod">
-                        <span class="btn-text">INSTALL</span>
-                    </button>
-
-                    <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" v-on:click="showModProgress">
-                        <span class="small-btn-text">
-                            INSTALLING...<br>
-                            {{ Math.round(mod.progress) }}%
-                        </span>
-                    </button>
-
-                    <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status === 'updating'" v-on:click="cancelMod">
-                        <span class="btn-text">CANCEL</span>
-                    </button>
+                    <kn-mod-buttons :tab="tab" :mod="mod"></kn-mod-buttons>
                 </div>
 
                 <div class="col-sm-6 short-frame">
@@ -143,7 +114,7 @@
         </div>
 
         <div class="info-page devel-page" v-if="page === 'develop'">
-            <kn-devel-page></kn-devel-page>
+            <kn-devel-page :mods="mods"></kn-devel-page>
         </div>
     </div>
 

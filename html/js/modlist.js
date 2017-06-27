@@ -1,3 +1,7 @@
+/**
+ * The fs2mod object is defined through python. The methods are implemented in knossos/web.py.
+ */
+
 function init() {
     let task_mod_map = {};
 
@@ -37,6 +41,17 @@ function init() {
         props: ['mod', 'tab'],
 
         methods: {
+            showDetails() {
+                vm.mod = this.mod;
+                vm.page = 'details';
+            }
+        }
+    });
+
+    registerComp('kn-mod-buttons', {
+        props: ['mod', 'tab'],
+
+        methods: {
             play() {
                 fs2mod.runMod(this.mod.id, '');
             },
@@ -55,11 +70,6 @@ function init() {
 
             cancel() {
                 fs2mod.abortTask(task_mod_map[this.mod.id]);
-            },
-
-            showDetails() {
-                vm.mod = this.mod;
-                vm.page = 'details';
             },
 
             showErrors() {
@@ -207,7 +217,17 @@ function init() {
     });
 
     registerComp('kn-devel-page', {
-        
+        props: ['mods'],
+
+        data: () => ({
+            selected_mod: null
+        }),
+
+        methods: {
+            openModFolder() {
+                fs2mod.openExternal('file://' + this.selected_mod.folder);
+            }
+        }
     });
 
     let vm;
@@ -362,7 +382,7 @@ function init() {
         load_cb();
     }
 
-    fs2mod.showWelcome.connect(() => { vm.page = 'welcome'; });
+    fs2mod.showWelcome.connect(() => vm.page = 'welcome');
     fs2mod.showDetailsPage.connect((mod) => {
         vm.mod = mod;
         vm.page = 'details';

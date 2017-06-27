@@ -1,14 +1,22 @@
 <div>
     <div class="scroll-style mlist">
-        List
+        <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod === mod }" @click="selected_mod = mod">{{ mod.title }}</a>
     </div>
     <div class="content-pane">
-        <div class="logo-box">
-            Logo / Buttons
+        <div class="logo-box" v-if="selected_mod">
+            <kn-mod :mod="selected_mod" tab="develop"></kn-mod>
+
+            Mod Path: <button @click.prevent="openModFolder">Browse</button>
+            <br>
+            <div class="mod-value">{{ selected_mod.folder }}</div>
+
+            <br>
+            Mod Dependencies:
+            <div class="mod-value">TODO</div>
         </div>
         <div class="form-box row">
             <form class="form-horizontal">
-                Form
+                
 
                 <flag-editor></flag-editor>
             </form>

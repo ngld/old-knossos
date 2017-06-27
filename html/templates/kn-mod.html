@@ -1,4 +1,3 @@
-<!-------------------------------------------------------------------------------- Start the Home page ---------->
 <div class="mod row">
     <div class="mod-node">
         <div class="mod-image">
@@ -12,38 +11,9 @@
         </div>
         <div class="actions">
             <div class="btn-wrapper">
-                <button class="mod-btn btn-green" v-if="tab === 'home' && (mod.status === 'ready' || mod.status === 'update')" v-on:click="play">
-                    <span class="btn-text">PLAY</span>
-                </button>
+                <kn-mod-buttons :tab="tab" :mod="mod"></kn-mod-buttons>
 
-                <button class="mod-btn btn-yellow" v-if="tab === 'home' && mod.status === 'update'" v-on:click="update">
-                    <span class="btn-text">UPDATE</span>
-                </button>
-
-                <button class="mod-btn btn-red" v-if="tab === 'home' && mod.status === 'error'" v-on:click="showErrors">
-                    <span class="btn-text">ERROR</span>
-                </button>
-
-                <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status !== 'updating'" v-on:click="uninstall">
-                    <span class="btn-text">UNINSTALL</span>
-                </button>
-
-                <button class="mod-btn btn-blue" v-if="tab === 'explore'" v-on:click="install">
-                    <span class="btn-text">INSTALL</span>
-                </button>
-
-                <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" v-on:click="showProgress">
-                    <span class="small-btn-text">
-                        INSTALLING...<br>
-                        {{ Math.round(mod.progress) }}%
-                    </span>
-                </button>
-
-                <button class="mod-btn btn-orange" v-if="tab === 'home' && mod.status === 'updating'" v-on:click="cancel">
-                    <span class="btn-text">CANCEL</span>
-                </button>
-
-                <button class="mod-btn btn-grey" v-on:click="showDetails">
+                <button class="mod-btn btn-grey" v-if="tab !== 'develop'" v-on:click="showDetails">
                     <span class="btn-text">DETAILS</span>
                 </button>
 
