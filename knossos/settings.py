@@ -36,11 +36,6 @@ def get_settings(cb):
 
 def get_settings_p2(cb):
     dev_info = get_deviceinfo()
-
-    if not dev_info:
-        cb(None)
-        return
-
     fso = {}
 
     fs2_bins = OrderedDict()
@@ -359,10 +354,6 @@ def get_deviceinfo():
         info = json.loads(util.check_output(launcher.get_cmd(['--deviceinfo'])).strip())
     except:
         logging.exception('Failed to retrieve device info!')
-
-        QtWidgets.QMessageBox.critical(None, 'Knossos', tr('SettingsWindow',
-            'There was an error trying to retrieve your device info (screen resolution, joysticks and audio' +
-            ' devices). Please try again or report this error on the HLP thread.'))
         return None
 
     return info
