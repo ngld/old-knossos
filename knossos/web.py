@@ -59,10 +59,11 @@ class WebBridge(QtCore.QObject):
                     link = '/' + link.replace('\\', '/')
 
                 link = 'file://' + link
+                self._path = os.path.abspath('../html')
             else:
                 link = 'qrc:///html/index.html'
+                self._path = ':/html'
 
-            self._path = os.path.dirname(link).replace('qrc:///', ':/')
             webView.load(QtCore.QUrl(link))
         else:
             self._path = ':/html'
@@ -78,11 +79,9 @@ class WebBridge(QtCore.QObject):
                     return data
                 else:
                     raise Exception('Qt failed to read "%s"!' % path)
-            elif path.startswith('file:///'):
-                with open(path[7:], 'r') as stream:
-                    return stream.read()
             else:
-                raise Exception('Unkown URL "%s"!' % path)
+                with open(path, 'r') as stream:
+                    return stream.read()
         except Exception:
             logging.exception('Failed to load template %s!' % name)
 
