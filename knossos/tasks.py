@@ -1032,7 +1032,7 @@ class WindowsUpdateTask(progress.Task):
 
     def work(self, item):
         # Download it.
-        update_base = util.pjoin(center.UPDATE_LINK, center.settings['update_channel'])
+        update_base = util.pjoin(center.UPDATE_LINK, 'stable')
 
         dir_name = tempfile.mkdtemp()
         updater = os.path.join(dir_name, 'knossos_updater.exe')
