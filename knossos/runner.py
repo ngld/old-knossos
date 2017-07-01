@@ -350,8 +350,6 @@ def run_mod(mod, fred=False, debug=False):
     if mod is None:
         mod = repo.Mod()
 
-    mods = []
-
     try:
         inst_mod = center.installed.query(mod)
     except repo.ModNotFound:
@@ -360,16 +358,6 @@ def run_mod(mod, fred=False, debug=False):
     if not inst_mod:
         QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
             translate('runner', 'The mod "%s" could not be found!') % mod)
-        return
-
-    try:
-        mods = mod.get_mod_flag()
-    except repo.ModNotFound as exc:
-        QtWidgets.QMessageBox.critical(None, 'Knossos',
-            translate('runner', 'Sorry, I can\'t start this mod because its dependency "%s" is missing!') % exc.mid)
-        return
-
-    if mods is None:
         return
 
     try:
@@ -394,10 +382,6 @@ def run_mod(mod, fred=False, debug=False):
     # Look for the cmdline path.
     path = os.path.join(api.get_fso_profile_path(), 'data/cmdline_fso.cfg')
     cmdline = mod.cmdline
-
-    if len(mods) > 0 and '-mod' not in cmdline:
-        cmdline.append('-mod')
-        cmdline.append(','.join(mods))
 
     if not os.path.isfile(path):
         basep = os.path.dirname(path)
