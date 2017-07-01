@@ -343,6 +343,8 @@ def run_fs2_silent(params):
         # We're missing a DLL
         return -127
 
+    return rc
+
 
 def run_mod(mod, fred=False, debug=False):
     global installed
