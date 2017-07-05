@@ -54,7 +54,7 @@ if len(sys.argv) > 1 and sys.argv[1] == '--cpuinfo':
         # Try dmesg
         if not info:
             info = cpuinfo.get_cpu_info_from_dmesg()
-    except:
+    except Exception:
         from knossos.launcher import logging
         logging.exception('Failed to retrieve CPU info.')
 
@@ -98,12 +98,12 @@ elif len(sys.argv) > 1 and sys.argv[1] == '--lib-paths':
 
     try:
         clibs.init_sdl()
-    except:
+    except Exception:
         clibs.sdl = None
 
     try:
         clibs.init_openal()
-    except:
+    except Exception:
         clibs.acl = None
 
     if center.settings['sdl2_path'] and clibs.sdl:

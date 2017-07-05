@@ -99,7 +99,7 @@ def init_sdl():
         try:
             sdl = load_lib(center.settings['sdl2_path'])
             SDL2 = True
-        except:
+        except Exception:
             logging.exception('Failed to load user-supplied SDL2!')
 
     if not sdl:
@@ -108,13 +108,13 @@ def init_sdl():
             try:
                 sdl = load_lib('../Frameworks/SDL2.framework/SDL2')
                 SDL2 = True
-            except:
+            except Exception:
                 logging.exception('Failed to load bundled SDL2!')
 
         try:
             sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
             SDL2 = True
-        except:
+        except Exception:
             # Try SDL 1.2
             sdl = load_lib('libSDL-1.2.so.0', 'SDL', 'SDL.dll', 'libSDL.dylib')
             SDL2 = False
@@ -255,7 +255,7 @@ def init_sdl():
 
                 sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
                 return my_modes
-            except:
+            except Exception:
                 logging.exception('Failed to call SDL_ListModes()!')
                 return []
 
@@ -272,7 +272,7 @@ def init_sdl():
 
                 sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
                 return joys
-            except:
+            except Exception:
                 logging.exception('Failed to ask SDL for joysticks!')
                 return []
 
@@ -294,13 +294,13 @@ def init_openal():
     if center.settings['openal_path']:
         try:
             alc = load_lib(center.settings['openal_path'])
-        except:
+        except Exception:
             logging.exception('Failed to load user-supplied OpenAL!')
 
     if not alc:
         try:
             alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL')
-        except:
+        except Exception:
             logging.exception('Failed to load OpenAL!')
 
     if alc:
@@ -325,7 +325,7 @@ def init_gtk():
     try:
         gtk = load_lib('libgtk-x11-2.0.so.0', 'gtk-x11-2.0')
         gobject = load_lib('libgobject-2.0.so.0', 'gobject-2.0')
-    except:
+    except Exception:
         logging.exception('Failed to load GTK!')
 
         # Maybe GTK isn't used.

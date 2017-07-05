@@ -16,6 +16,7 @@ from __future__ import absolute_import, print_function
 
 import os
 import sys
+import json
 from . import uhf
 uhf(__name__)
 
@@ -82,3 +83,17 @@ class _SignalContainer(QtCore.QObject):
 
 
 signals = _SignalContainer()
+
+
+def save_settings():
+    settings['hash_cache'] = dict()
+    for path, info in util.HASH_CACHE.items():
+        # Skip deleted files
+        if os.path.exists(path):
+            settings['hash_cache'][path] = info
+
+    with open(os.path.join(settings_path, 'settings.json'), 'w') as stream:
+        json.dump(settings, stream)
+
+
+from . import util

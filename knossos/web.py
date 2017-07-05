@@ -22,7 +22,7 @@ import json
 import semantic_version
 
 from .qt import read_file, QtCore, QtGui, QtWidgets, QtWebChannel
-from . import center, api, runner, repo, windows, tasks, util, settings
+from . import center, runner, repo, windows, tasks, util, settings
 
 if not QtWebChannel:
     from .qt import QtWebKit
@@ -87,7 +87,7 @@ class WebBridge(QtCore.QObject):
 
             if not center.DEBUG:
                 # These messages can get annoying. Don't display them in DEBUG mode since then they'd show up in the log.
-                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('WebBridge', 'Failed to load template "%s". The UI might be broken.') % name)
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to load template "%s". The UI might be broken.') % name)
 
             return ''
 
@@ -100,21 +100,9 @@ class WebBridge(QtCore.QObject):
         center.main_win.finish_init()
         return trs
 
-    @QtCore.Slot(str, str, result=str)
-    def tr(self, context, msg):
-        return QtCore.QCoreApplication.translate(context, msg)
-
     @QtCore.Slot(result=str)
     def getVersion(self):
         return center.VERSION
-
-    @QtCore.Slot(result=bool)
-    def isFsoInstalled(self):
-        return api.is_fso_installed()
-
-    @QtCore.Slot()
-    def runGogInstaller(self):
-        windows.GogExtractWindow()
 
     @QtCore.Slot(result='QVariantList')
     def getMods(self):
@@ -158,18 +146,18 @@ class WebBridge(QtCore.QObject):
 
                 try:
                     spec = util.Spec(spec)
-                except:
+                except Exception:
                     logging.exception('Invalid spec "%s" passed to query()!', spec)
                     return -2
 
         try:
             return center.mods.query(mid, spec).get()
-        except:
+        except Exception:
             return None
 
     @QtCore.Slot()
     def fetchModlist(self):
-        api.fetch_list()
+        tasks.run_task(tasks.FetchTask())
 
     @QtCore.Slot(bool, result='QVariantList')
     def requestModlist(self, async=False):
@@ -178,19 +166,6 @@ class WebBridge(QtCore.QObject):
             return [None]
         else:
             return list(center.main_win.search_mods())
-
-    @QtCore.Slot(str, str)
-    def addRepo(self, repo_url, repo_name):
-        repos = center.settings['repos']
-        repos.append((repo_url, repo_name))
-
-        api.save_settings()
-        if center.main_win is not None:
-            center.main_win.update_repo_list()
-
-    @QtCore.Slot(result='QVariantList')
-    def getRepos(self):
-        return list(center.settings['repos'])
 
     @QtCore.Slot(str)
     def showTab(self, name):
@@ -213,7 +188,7 @@ class WebBridge(QtCore.QObject):
 
                 try:
                     spec = util.Spec(spec)
-                except:
+                except Exception:
                     logging.exception('Invalid spec "%s" passed to a web API function!', spec)
                     return -2
 
@@ -254,11 +229,22 @@ class WebBridge(QtCore.QObject):
         if pkgs is None:
             pkgs = []
 
-        if mod.parent == 'FS2' and not api.check_retail_files():
-            self.showRetailPrompt.emit()
-        else:
-            windows.ModInstallWindow(mod, pkgs)
+        if mod.parent == 'FS2':
+            has_retail = False
+            if center.settings['base_path'] is not None:
+                fs2_path = os.path.join(center.settings['base_path'], 'FS2')
+                
+                if os.path.isdir(fs2_path):
+                    for item in os.listdir(fs2_path):
+                        if item.lower() == 'root_fs2.vp':
+                            has_retail = True
+                            break
 
+            if not has_retail:
+                self.showRetailPrompt.emit()
+                return 0
+        
+        windows.ModInstallWindow(mod, pkgs)
         return 0
 
     @QtCore.Slot(str, str, 'QStringList', result=int)
@@ -283,7 +269,21 @@ class WebBridge(QtCore.QObject):
                 logging.warning('Missing packages %s.', ', '.join(pmissing))
                 return -2
 
-        return api.uninstall_pkgs(plist, name=mod.title)
+        titles = [pkg.name for pkg in plist if center.installed.is_installed(pkg)]
+        # FIXME: Check if any other mod dependes on this mod before uninstalling it to avoid broken dependencies.
+
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Question)
+        msg.setText(self.tr('Do you really want to uninstall %s?') % (mod.title,))
+        msg.setInformativeText(self.tr('%s will be removed.') % (', '.join(titles)))
+        msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        msg.setDefaultButton(QtWidgets.QMessageBox.No)
+
+        if msg.exec_() == QtWidgets.QMessageBox.Yes:
+            tasks.run_task(tasks.UninstallTask(plist))
+            return True
+        else:
+            return False
 
     @QtCore.Slot(str, str, result=int)
     def updateMod(self, mid, spec=None):
@@ -331,35 +331,11 @@ class WebBridge(QtCore.QObject):
         return 0
 
     @QtCore.Slot(str, str, result=int)
-    def showSettings(self, mid=None, spec=None):
-        if mid is None or mid == '':
-            windows.SettingsWindow()
-            return 1
-        else:
-            mod = self._get_mod(mid, spec)
-            if mod in (-1, -2):
-                return mod
-
-            windows.ModSettingsWindow(mod)
-            return 1
-
-    @QtCore.Slot(str, str, result=int)
-    def showPackageList(self, mid=None, spec=None):
-        mod = self._get_mod(mid, spec)
-        if mod in (-1, -2):
-            return mod
-
-        win = windows.ModSettingsWindow(mod)
-        win.show_pkg_tab()
-
-        return 1
-
-    @QtCore.Slot(str, str, result=int)
     def vercmp(self, a, b):
         try:
             a = semantic_version.Version(a)
             b = semantic_version.Version(b)
-        except:
+        except Exception:
             # logging.exception('Someone passed an invalid version to vercmp()!')
             return 0
 
@@ -376,10 +352,10 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str)
     def setBasePath(self, path):
         if not os.path.isdir(path):
-            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('WebBridge', 'The selected path is not a directory!'))
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path is not a directory!'))
         else:
             center.settings['base_path'] = os.path.abspath(path)
-            api.save_settings()
+            center.save_settings()
             tasks.run_task(tasks.FetchTask())
             center.main_win.check_fso()
 
@@ -394,7 +370,7 @@ class WebBridge(QtCore.QObject):
     def saveSetting(self, key, value):
         try:
             value = json.loads(value)
-        except:
+        except Exception:
             logging.exception('Failed to decode new value for setting "%s"! (%s)' % (key, value))
         else:
             settings.save_setting(key, value)
@@ -403,24 +379,32 @@ class WebBridge(QtCore.QObject):
     def saveFsoSettings(self, data):
         try:
             data = json.loads(data)
-        except:
+        except Exception:
             logging.exception('Failed to decode new FSO settings! (%s)' % data)
         else:
             settings.save_fso_settings(data)
 
     @QtCore.Slot(result=str)
     def getDefaultFsoCaps(self):
-        try:
-            flags = api.get_fso_flags()
-            if flags:
-                flags = flags.to_dict()
+        flags = None
 
+        if center.settings['fs2_bin']:
+            try:
+                flags = settings.get_fso_flags(center.settings['fs2_bin'])
+                
+                if flags:
+                    flags = flags.to_dict()
+            except Exception:
+                logging.exception('Failed to fetch FSO flags!')
+
+        try:
             return json.dumps(flags)
-        except:
+        except Exception:
             logging.exception('Failed to encode FSO flags!')
 
     @QtCore.Slot(result=str)
     def searchRetailData(self):
+        # TODO: Add Steam path
         for path in [r'C:\GOG Games\Freespace2']:
             if os.path.isdir(path):
                 return path
@@ -436,8 +420,25 @@ class WebBridge(QtCore.QObject):
             tasks.run_task(tasks.GOGExtractTask(path, os.path.join(center.settings['base_path'], 'FS2')))
             return True
         else:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('WebBridge', 'The selected path is not a directory!'))
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path is not a directory!'))
             return False
+
+    @QtCore.Slot(result=str)
+    def getRunningTasks(self):
+        tasks = center.main_win.get_tasks()
+        res = {}
+
+        for t, task in tasks.items():
+            res[t] = {
+                'title': task.title,
+                'mods': task.mods
+            }
+
+        try:
+            return json.dumps(res)
+        except Exception:
+            logging.exception('Failed to encoding running tasks!')
+            return 'null'
 
 
 if QtWebChannel:

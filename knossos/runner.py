@@ -26,7 +26,7 @@ import stat
 import shutil
 import six
 
-from . import center, repo, api, util
+from . import center, repo, util
 from .qt import QtCore, QtWidgets
 
 # TODO: What happens if a SONAME contains a space?
@@ -78,6 +78,8 @@ class Fs2Watcher(threading.Thread):
 
         old_path = None
         fs2_bin = self._params[0]
+
+        # TODO: Support TCs by using the appropriate subfolder
         basepath = os.path.join(center.settings['base_path'], 'FSO')
 
         if not os.path.isfile(fs2_bin):
@@ -98,29 +100,26 @@ class Fs2Watcher(threading.Thread):
 
             env['LD_LIBRARY_PATH'] = ld_path
 
-        if center.settings['keyboard_setxkbmap']:
-            self.set_us_layout()
+        logging.debug('Launching FS2: %s in %s', repr([fs2_bin] + self._params[1:]), basepath)
 
-        logging.debug('Launching FS2: %s', [fs2_bin] + self._params[1:])
+        if sys.platform == 'win32':
+            # On Windows, the FSO engine changes the CWD to the directory the EXE file is in.
+            # Since the fs2_bin is in a subdirectory we'll have to copy it!
+            # TODO: Confirm with the SCP and possibly find a better workaround (maybe a flag like -nocd ?)
+            old_path = fs2_bin
+            fs2_bin = os.path.join(basepath, '__tmp_' + os.path.basename(old_path))
 
-        if sys.platform.startswith('win'):
-            if os.path.basename(fs2_bin) != fs2_bin:
-                # On Windows, the FSO engine changes the CWD to the directory the EXE file is in.
-                # Since the fs2_bin is in a subdirectory we'll have to copy it!
-                old_path = fs2_bin
-                fs2_bin = os.path.join(basepath, '__tmp_' + os.path.basename(old_path))
+            shutil.copy2(old_path, fs2_bin)
 
-                shutil.copy2(old_path, fs2_bin)
+            # Make sure FSO still finds any DLL files located in the original EXE's folder.
+            old_parent = os.path.abspath(os.path.dirname(old_path))
+            if 'PATH' in env:
+                env['PATH'] = old_parent + os.pathsep + env['PATH']
+            else:
+                env['PATH'] = old_parent
 
-                # Make sure FSO still finds any DLL files located in the original EXE's folder.
-                old_parent = os.path.abspath(os.path.dirname(old_path))
-                if 'PATH' in env:
-                    env['PATH'] = old_parent + os.pathsep + env['PATH']
-                else:
-                    env['PATH'] = old_parent
-
-                if six.PY2:
-                    env['PATH'] = env['PATH'].encode('utf8')
+            if six.PY2:
+                env['PATH'] = env['PATH'].encode('utf8')
 
         fail = False
         rc = -999
@@ -141,7 +140,7 @@ class Fs2Watcher(threading.Thread):
         if fail:
             self.cleanup(fs2_bin, old_path)
             center.signals.fs2_failed.emit(rc)
-            self.failed_msg(reason)
+            self.failed_msg(reason, fs2_bin)
             return
 
         center.signals.fs2_launched.emit()
@@ -150,10 +149,9 @@ class Fs2Watcher(threading.Thread):
         center.signals.fs2_quit.emit()
 
     @run_in_qt
-    def failed_msg(self, reason):
-        msg = translate('runner', 'Starting FS2 Open (%s) failed! (%s)') % (
-            os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)
-        QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('runner', 'Failed'), msg)
+    def failed_msg(self, reason, fs2_bin):
+        msg = translate('runner', 'Starting FS2 Open (%s) failed! (%s)') % (fs2_bin, reason)
+        QtWidgets.QMessageBox.critical(None, translate('runner', 'Failed'), msg)
 
     @run_in_qt
     def fs2_missing_msg(self, fs2_bin):
@@ -169,24 +167,15 @@ class Fs2Watcher(threading.Thread):
 
         QtWidgets.QMessageBox.critical(None, 'Knossos', msg % util.human_list(missing))
 
-    def set_us_layout(self):
-        key_layout = util.check_output(['setxkbmap', '-query'])
-        self._key_layout = key_layout.splitlines()[2].split(':')[1].strip()
-
-        util.call(['setxkbmap', '-layout', 'us'])
-
     def cleanup(self, fs2_bin, old_path=None):
-        if self._key_layout is not None:
-            util.call(['setxkbmap', '-layout', self._key_layout])
-
-        if sys.platform.startswith('win') and old_path is not None:
+        if sys.platform == 'win32' and old_path is not None:
             # Cleanup
             retries = 3
 
             while retries > 0:
                 try:
                     os.unlink(fs2_bin)
-                except:
+                except Exception:
                     logging.exception('Failed to delete FSO file "%s"!', fs2_bin)
 
                 if os.path.isfile(fs2_bin):
@@ -316,7 +305,7 @@ def run_fred(params=None):
 
 def run_fs2_silent(params):
     base_path = center.settings['base_path']
-    fs2_bin = os.path.join(base_path, 'bin', center.settings['fs2_bin'])
+    fs2_bin = params[0]
 
     if not os.path.isfile(fs2_bin):
         return -128
@@ -335,7 +324,7 @@ def run_fs2_silent(params):
         env['LD_LIBRARY_PATH'] = ld_path
 
     try:
-        rc = util.call([fs2_bin] + params, cwd=base_path, env=env)
+        rc = util.call(params, cwd=base_path, env=env)
     except OSError:
         return -129
 
@@ -382,7 +371,7 @@ def run_mod(mod, fred=False, debug=False):
         return
 
     # Look for the cmdline path.
-    path = os.path.join(api.get_fso_profile_path(), 'data/cmdline_fso.cfg')
+    path = os.path.join(settings.get_fso_profile_path(), 'data/cmdline_fso.cfg')
     cmdline = mod.cmdline
 
     if not os.path.isfile(path):
@@ -393,7 +382,7 @@ def run_mod(mod, fred=False, debug=False):
     try:
         with open(path, 'w') as stream:
             stream.write(stringify_cmdline(cmdline))
-    except:
+    except Exception:
         logging.exception('Failed to modify "%s". Not starting FS2!!', path)
 
         QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),

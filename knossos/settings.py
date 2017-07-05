@@ -17,16 +17,101 @@ from __future__ import absolute_import, print_function
 import sys
 import os.path
 import json
+import struct
 import logging
 from collections import OrderedDict
 from threading import Thread
 
-from . import center, util, api, launcher, runner
+from . import center, util, launcher, runner
 from .tasks import run_task, CheckTask
 from .qt import QtCore, QtWidgets, QtGui
 
 
 tr = QtCore.QCoreApplication.translate
+
+
+# See code/cmdline/cmdline.cpp (in the SCP source) for details on the data structure.
+class FlagsReader(object):
+    _stream = None
+    easy_flags = None
+    flags = None
+    build_caps = None
+
+    def __init__(self, stream):
+        self._stream = stream
+        self.read()
+
+    def unpack(self, fmt):
+        if isinstance(fmt, struct.Struct):
+            return fmt.unpack(self._stream.read(fmt.size))
+        else:
+            return struct.unpack(fmt, self._stream.read(struct.calcsize(fmt)))
+
+    def read(self):
+        # Explanation of unpack() and Struct() parameters: http://docs.python.org/3/library/struct.html#format-characters
+        self.easy_flags = OrderedDict()
+        self.flags = OrderedDict()
+
+        easy_size, flag_size = self.unpack('2i')
+
+        easy_struct = struct.Struct('32s')
+        flag_struct = struct.Struct('20s40s?ii16s256s')
+
+        if easy_size != easy_struct.size:
+            logging.error('EasyFlags size is %d but I expected %d!', easy_size, easy_struct.size)
+            return
+
+        if flag_size != flag_struct.size:
+            logging.error('Flag size is %d but I expected %d!', flag_size, flag_struct.size)
+            return
+
+        for i in range(self.unpack('i')[0]):
+            self.easy_flags[1 << i] = self.unpack(easy_struct)[0].decode('utf8').strip('\x00')
+
+        for i in range(self.unpack('i')[0]):
+            flag = self.unpack(flag_struct)
+            flag = {
+                'name': flag[0].decode('utf8').strip('\x00'),
+                'desc': flag[1].decode('utf8').strip('\x00'),
+                'fso_only': flag[2],
+                'on_flags': flag[3],
+                'off_flags': flag[4],
+                'type': flag[5].decode('utf8').strip('\x00'),
+                'web_url': flag[6].decode('utf8').strip('\x00')
+            }
+
+            if flag['type'] not in self.flags:
+                self.flags[flag['type']] = []
+
+            self.flags[flag['type']].append(flag)
+
+        self.build_caps = self.unpack('b')[0]
+
+    @property
+    def openal(self):
+        return self.build_caps & 1
+
+    @property
+    def no_d3d(self):
+        return self.build_caps & (1 << 1)
+
+    @property
+    def new_snd(self):
+        return self.build_caps & (1 << 2)
+
+    @property
+    def sdl(self):
+        return self.build_caps & (1 << 3)
+
+    def to_dict(self):
+        return {
+            'easy_flags': self.easy_flags,
+            'flags': self.flags,
+            'openal': self.openal,
+            'no_d3d': self.no_d3d,
+            'new_snd': self.new_snd,
+            'sdl': self.sdl
+        }
 
 
 def get_settings(cb):
@@ -280,7 +365,7 @@ def save_fso_settings(new_settings):
 
         # Save the new configuration.
         write_fso_config(config)
-    except:
+    except Exception:
         logging.exception('Failed to save the configuration!')
         QtWidgets.QMessageBox.critical(None, 'Knossos', tr('SettingsWindow', 'Failed to save the configuration!'))
 
@@ -306,7 +391,7 @@ def get_ratio(w, h):
 
 
 def parse_fso_config():
-    config_file = os.path.join(api.get_fso_profile_path(), 'fs2_open.ini')
+    config_file = os.path.join(get_fso_profile_path(), 'fs2_open.ini')
     if not os.path.isfile(config_file):
         return {}
 
@@ -337,7 +422,7 @@ def parse_fso_config():
 
 
 def write_fso_config(sections):
-    config_file = os.path.join(api.get_fso_profile_path(), 'fs2_open.ini')
+    config_file = os.path.join(get_fso_profile_path(), 'fs2_open.ini')
 
     with open(config_file, 'w') as stream:
         for name, pairs in sections.items():
@@ -352,11 +437,53 @@ def write_fso_config(sections):
 def get_deviceinfo():
     try:
         info = json.loads(util.check_output(launcher.get_cmd(['--deviceinfo'])).strip())
-    except:
+    except Exception:
         logging.exception('Failed to retrieve device info!')
         return None
 
     return info
+
+
+def get_fso_flags(fs2_bin):
+    global fso_flags
+
+    if center.fso_flags is not None and center.fso_flags[0] == fs2_bin:
+        return center.fso_flags[1]
+
+    if not os.path.isfile(fs2_bin):
+        return None
+
+    flags_path = os.path.join(center.settings['base_path'], 'flags.lch')
+    rc = runner.run_fs2_silent([fs2_bin, '-get_flags', '-parse_cmdline_only'])
+
+    flags = None
+
+    if rc != 1 and rc != 0:
+        logging.error('Failed to run FSO! (Exit code was %d)', rc)
+    elif not os.path.isfile(flags_path):
+        logging.error('Could not find the flags file "%s"!', flags_path)
+    else:
+        with open(flags_path, 'rb') as stream:
+            flags = FlagsReader(stream)
+
+    center.fso_flags = (center.settings['fs2_bin'], flags)
+    return flags
+
+
+_profile_path = None
+def get_fso_profile_path():
+    global _profile_path
+
+    if _profile_path is None:
+        try:
+            _profile_path = util.check_output(launcher.get_cmd(['--fso-config-path'])).strip()
+        except Exception:
+            logging.exception('Failed to retrieve FSO profile path from SDL!')
+            _profile_path = None
+        else:
+            logging.info('Using profile path "%s".', _profile_path)
+
+    return _profile_path
 
 
 def test_libs():
@@ -365,7 +492,7 @@ def test_libs():
 
     try:
         info = json.loads(util.check_output(launcher.get_cmd(['--lib-paths', sdl_path, oal_path])).strip())
-    except:
+    except Exception:
         QtWidgets.QMessageBox.critical(None, 'Knossos',
             tr('SettingsWindow', 'An unknown error (a crash?) occurred while trying to load the libraries!'))
     else:
@@ -400,7 +527,7 @@ def save_setting(name, value):
         old_bin = center.settings['fs2_bin']
         center.settings['fs2_bin'] = value
 
-        if not api.get_fso_flags():
+        if not get_fso_flags(value):
             # We failed to run FSO but why?
             rc = runner.run_fs2_silent(['-help'])
             if rc == -128:
@@ -425,16 +552,16 @@ def save_setting(name, value):
             return
     elif name == 'use_raven':
         if value:
-            api.enable_raven()
+            util.enable_raven()
         else:
-            api.disable_raven()
+            util.disable_raven()
 
     center.settings[name] = value
-    api.save_settings()
+    center.save_settings()
 
 
 def get_fso_log(self):
-    logpath = os.path.join(api.get_fso_profile_path(), 'data/fs2_open.log')
+    logpath = os.path.join(get_fso_profile_path(), 'data/fs2_open.log')
 
     if not os.path.isfile(logpath):
         QtWidgets.QMessageBox.warning(None, 'Knossos',
@@ -450,7 +577,7 @@ def get_knossos_log(self):
 
 
 def show_fso_cfg_folder(self):
-    path = api.get_fso_profile_path()
+    path = get_fso_profile_path()
     QtGui.QDesktopServices.openUrl(QtCore.QUrl('file://' + path))
 
 

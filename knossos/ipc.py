@@ -16,13 +16,21 @@ from __future__ import absolute_import, print_function
 
 import os
 import uuid
+import json
 import logging
 import functools
 
 from . import uhf
 uhf(__name__)
 
-from .qt import QtCore, QtNetwork
+from .qt import QtCore, QtNetwork, QtWidgets
+from .runner import run_mod
+from .repo import ModNotFound
+from .windows import ModInstallWindow
+from . import center
+
+tr = QtCore.QCoreApplication.translate
+conn = None
 
 
 class IPCComm(QtCore.QObject):
@@ -135,3 +143,87 @@ class IPCComm(QtCore.QObject):
 
     def _sock_error(self):
         logging.warning(self._socket.errorString())
+
+
+def setup():
+    global conn
+
+    conn = IPCComm(center.settings_path)
+    conn.messageReceived.connect(handle_message)
+    conn.listen()
+
+
+def shutdown():
+    global conn
+
+    if conn:
+        conn.close()
+
+
+def get_mod(mid, version=None):
+    try:
+        return center.mods.query(mid, version)
+    except ModNotFound:
+        QtWidgets.QMessageBox.critical(None, 'Knossos', tr('ipc', 'Mod "%s" could not be found!') % mid)
+        return None
+    except Exception:
+        logging.exception('Failed to load mod "%s"!' % mid)
+        QtWidgets.QMessageBox.critical(None, 'Knossos', tr('ipc', 'The mod "%s" could not be found due to an internal error!') % mid)
+        return None
+
+
+def handle_message(msg):
+    msg = msg.data().decode('utf8', 'ignore').strip()
+
+    try:
+        msg = json.loads(msg)
+    except Exception:
+        logging.exception('Failed to parse IPC message %s.', msg)
+        return
+
+    if msg[0] == 'focus':
+        center.main_win.win.activateWindow()
+        center.main_win.win.raise_()
+    elif msg[0] == 'run':
+        if len(msg) < 1:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                tr('ipc.handle_message', 'The fso://run/<mod id> link is missing a parameter!'))
+        else:
+            mod = get_mod(msg[1])
+
+            if mod is not None:
+                run_mod(mod)
+            else:
+                QtWidgets.QMessageBox.critical(None, 'Knossos',
+                    tr('ipc.handle_message', 'The mod "%s" was not found!') % msg[1])
+    elif msg[0] == 'install':
+        if len(msg) < 2:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                tr('ipc.handle_message', 'The fso://install/<mod id> link is missing a parameter!'))
+            return
+
+        mod = get_mod(msg[1])
+        pkgs = []
+
+        if not mod:
+            # TODO: Maybe we should update the mod DB here?
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                tr('ipc.handle_message', 'The mod "%s" was not found!') % msg[1])
+            return
+
+        if len(msg) > 2:
+            for pname in msg[2:]:
+                for pkg in mod.packages:
+                    if pkg.name == pname:
+                        pkgs.append(pkg)
+
+        center.main_win.win.activateWindow()
+
+        if mod.mid not in center.installed.mods:
+            ModInstallWindow(mod, pkgs)
+        else:
+            QtWidgets.QMessageBox.information(None, 'Knossos',
+                tr('ipc.handle_message', 'Mod "%s" is already installed!') % (mod.title))
+    else:
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            tr('ipc.handle_message', 'The action "%s" is unknown!') % (msg[0]))

@@ -28,7 +28,7 @@ import random
 import time
 import semantic_version
 
-from . import center, util, progress, repo, api
+from . import center, util, progress, repo
 from .repo import Repo
 from .qt import QtCore, QtWidgets
 
@@ -76,7 +76,7 @@ class FetchTask(progress.Task):
                 data.is_link = True
                 data.base = os.path.dirname(raw_data.url)
                 data.parse(raw_data.text)
-            except:
+            except Exception:
                 logging.exception('Failed to decode "%s"!', link)
                 return
 
@@ -101,7 +101,7 @@ class FetchTask(progress.Task):
                 modlist.merge(part[1])
 
             modlist.save_json(os.path.join(center.settings_path, 'mods.json'))
-            api.save_settings()
+            center.save_settings()
 
         run_task(CheckTask())
 
@@ -148,7 +148,7 @@ class CheckTask(progress.MultistepTask):
                     base_mod = mod
 
                 mods.add_mod(mod)
-            except:
+            except Exception:
                 logging.exception('Failed to parse "%s"!', sub)
 
         self.add_work([(p, base_mod) for p in subs])
@@ -204,7 +204,7 @@ class CheckTask(progress.MultistepTask):
         results = self.get_results()
 
         # Make sure that the calculated checksums are saved.
-        api.save_settings()
+        center.save_settings()
 
         for pkg, archives, s, m, c, msg in results:
             mod = pkg.get_mod()
@@ -381,7 +381,7 @@ class InstallTask(progress.MultistepTask):
                 for ar in self.get_results():
                     try:
                         shutil.rmtree(ar['tpath'])
-                    except:
+                    except Exception:
                         logging.exception('Failed to remove "%s"!' % ar['tpath'])
         elif self._error:
             msg = self.tr(
@@ -395,7 +395,7 @@ class InstallTask(progress.MultistepTask):
                 try:
                     mod.save()
                     util.get(center.settings['nebula_link'] + 'api/track/install/' + mod.mid)
-                except:
+                except Exception:
                     logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
         if self.check_after:
@@ -419,7 +419,7 @@ class InstallTask(progress.MultistepTask):
             try:
                 with open(kpath, 'r') as stream:
                     info = json.load(stream)
-            except:
+            except Exception:
                 logging.exception('Failed to parse mod.json!')
                 info = None
 
@@ -476,7 +476,6 @@ class InstallTask(progress.MultistepTask):
             self._error = True
 
         self._threads = 0
-        print(downloads)
         self.add_work(downloads)
 
     def work2(self, archive):
@@ -595,7 +594,7 @@ class InstallTask(progress.MultistepTask):
                                     raise
                                 else:
                                     time.sleep(1)
-                    except:
+                    except Exception:
                         logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
                                           src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
                         self._error = True
@@ -648,7 +647,7 @@ class InstallTask(progress.MultistepTask):
                                     raise
                                 else:
                                     time.sleep(1)
-                    except:
+                    except Exception:
                         logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
                                           arpath, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
                         self._error = True
@@ -663,6 +662,8 @@ class UninstallTask(progress.MultistepTask):
     check_after = True
 
     def __init__(self, pkgs, check_after=True):
+        super(UninstallTask, self).__init__()
+
         self._pkgs = []
         self.check_after = check_after
 
@@ -671,8 +672,6 @@ class UninstallTask(progress.MultistepTask):
                 self._pkgs.append(center.installed.query(pkg))
             except repo.ModNotFound:
                 logging.exception('Someone tried to uninstall a non-existant package (%s, %s)! Skipping it...', pkg.get_mod().mid, pkg.name)
-
-        super(UninstallTask, self).__init__()
 
         self.done.connect(self.finish)
         self.title = 'Uninstalling mods...'
@@ -727,7 +726,7 @@ class UninstallTask(progress.MultistepTask):
                 center.installed.del_mod(mod)
             else:
                 mod.save()
-        except:
+        except Exception:
             logging.exception('Failed to uninstall mod from "%s"!' % modpath)
             self._error = True
 
@@ -784,7 +783,7 @@ class UpdateTask(InstallTask):
 
                 for item in os.listdir(temppath):
                     shutil.move(os.path.join(temppath, item), os.path.join(modpath, item))
-            except:
+            except Exception:
                 logging.exception('Failed to move a file!')
                 QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr(
                     'Failed to replace the old mod files with the updated files!'))
@@ -796,7 +795,7 @@ class UpdateTask(InstallTask):
             try:
                 # Remove the now empty temporary folder
                 os.rmdir(temppath)
-            except:
+            except Exception:
                 logging.warning('Failed to remove supposedly empty folder "%s"!', temppath, exc_info=True)
 
         if self.__check_after:
@@ -821,7 +820,7 @@ class GOGExtractTask(progress.Task):
 
         try:
             data = json.loads(data)
-        except:
+        except Exception:
             logging.exception('Failed to read JSON data!')
             return
 
@@ -894,7 +893,7 @@ class GOGExtractTask(progress.Task):
                         percent = float(line.split('%')[0]) / 100
 
                         progress.update(percent, line)
-                    except:
+                    except Exception:
                         logging.exception('Failed to process InnoExtract output!')
                 else:
                     if line.strip() == 'not a supported Inno Setup installer':
@@ -902,7 +901,7 @@ class GOGExtractTask(progress.Task):
                         return
 
                     logging.info('InnoExtract: %s', line)
-        except:
+        except Exception:
             logging.exception('InnoExtract failed!')
             return
 
@@ -1012,7 +1011,7 @@ class CheckUpdateTask(progress.Task):
 
         try:
             version = semantic_version.Version(version)
-        except:
+        except Exception:
             logging.exception('Failed to parse remote version!')
             return
 
@@ -1047,7 +1046,7 @@ class WindowsUpdateTask(progress.Task):
         try:
             import win32api
             win32api.ShellExecute(0, 'open', updater, '/D=' + os.getcwd(), os.path.dirname(updater), 1)
-        except:
+        except Exception:
             logging.exception('Failed to launch updater!')
             self.post(False)
         else:

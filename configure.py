@@ -58,7 +58,6 @@ SRC_FILES = [
     'knossos/ui/__init__.py',
     'knossos/__init__.py',
     'knossos/__main__.py',
-    'knossos/api.py',
     'knossos/center.py',
     'knossos/clibs.py',
     'knossos/integration.py',

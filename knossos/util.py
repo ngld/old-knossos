@@ -112,90 +112,6 @@ _DL_CANCEL.clear()
 translate = QtCore.QCoreApplication.translate
 
 
-# See code/cmdline/cmdline.cpp (in the SCP source) for details on the data structure.
-class FlagsReader(object):
-    _stream = None
-    easy_flags = None
-    flags = None
-    build_caps = None
-
-    def __init__(self, stream):
-        self._stream = stream
-        self.read()
-
-    def unpack(self, fmt):
-        if isinstance(fmt, struct.Struct):
-            return fmt.unpack(self._stream.read(fmt.size))
-        else:
-            return struct.unpack(fmt, self._stream.read(struct.calcsize(fmt)))
-
-    def read(self):
-        # Explanation of unpack() and Struct() parameters: http://docs.python.org/3/library/struct.html#format-characters
-        self.easy_flags = OrderedDict()
-        self.flags = OrderedDict()
-
-        easy_size, flag_size = self.unpack('2i')
-
-        easy_struct = struct.Struct('32s')
-        flag_struct = struct.Struct('20s40s?ii16s256s')
-
-        if easy_size != easy_struct.size:
-            logging.error('EasyFlags size is %d but I expected %d!', easy_size, easy_struct.size)
-            return
-
-        if flag_size != flag_struct.size:
-            logging.error('Flag size is %d but I expected %d!', flag_size, flag_struct.size)
-            return
-
-        for i in range(self.unpack('i')[0]):
-            self.easy_flags[1 << i] = self.unpack(easy_struct)[0].decode('utf8').strip('\x00')
-
-        for i in range(self.unpack('i')[0]):
-            flag = self.unpack(flag_struct)
-            flag = {
-                'name': flag[0].decode('utf8').strip('\x00'),
-                'desc': flag[1].decode('utf8').strip('\x00'),
-                'fso_only': flag[2],
-                'on_flags': flag[3],
-                'off_flags': flag[4],
-                'type': flag[5].decode('utf8').strip('\x00'),
-                'web_url': flag[6].decode('utf8').strip('\x00')
-            }
-
-            if flag['type'] not in self.flags:
-                self.flags[flag['type']] = []
-
-            self.flags[flag['type']].append(flag)
-
-        self.build_caps = self.unpack('b')[0]
-
-    @property
-    def openal(self):
-        return self.build_caps & 1
-
-    @property
-    def no_d3d(self):
-        return self.build_caps & (1 << 1)
-
-    @property
-    def new_snd(self):
-        return self.build_caps & (1 << 2)
-
-    @property
-    def sdl(self):
-        return self.build_caps & (1 << 3)
-
-    def to_dict(self):
-        return {
-            'easy_flags': self.easy_flags,
-            'flags': self.flags,
-            'openal': self.openal,
-            'no_d3d': self.no_d3d,
-            'new_snd': self.new_snd,
-            'sdl': self.sdl
-        }
-
-
 class ResizableSemaphore(object):
     _capacity = 0
     _free = 0
@@ -359,7 +275,7 @@ def get(link, headers=None, random_ua=False, raw=False):
             return 304
         elif result.status_code != 200:
             result.raise_for_status()
-    except:
+    except Exception:
         if result is None:
             logging.exception('Failed to load "%s"!', link)
         else:
@@ -386,7 +302,7 @@ def post(link, data, headers=None, random_ua=False):
         result = HTTP_SESSION.post(link, data=data, headers=headers)
         if result.status_code != 200:
             result.raise_for_status()
-    except:
+    except Exception:
         if result is None:
             logging.exception('Failed to load "%s"!', link)
         else:
@@ -428,7 +344,7 @@ def download(link, dest, headers=None, random_ua=False):
 
         try:
             size = float(result.headers.get('content-length', 0))
-        except:
+        except Exception:
             logging.exception('Failed to parse Content-Length header!')
             size = 1024 ** 4  # = 1 TB
 
@@ -452,7 +368,7 @@ def download(link, dest, headers=None, random_ua=False):
 
                 if _DL_CANCEL.is_set():
                     return False
-        except:
+        except Exception:
             logging.exception('Download of "%s" was interrupted!', link)
             return False
 
@@ -578,7 +494,7 @@ def test_7z():
 
     try:
         return call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL) == 0
-    except:
+    except Exception:
         logging.exception('Call to 7z failed!')
 
         if SEVEN_PATH == '7za':
@@ -590,7 +506,7 @@ def test_7z():
                 return True
             else:
                 return False
-        except:
+        except Exception:
             return False
 
 
@@ -748,7 +664,7 @@ def get_cpuinfo():
     except subprocess.CalledProcessError:
         info = None
         logging.exception('The CPUID method failed!')
-    except:
+    except Exception:
         info = None
         logging.exception('Failed to process my CPUID output.')
 
@@ -757,7 +673,7 @@ def get_cpuinfo():
 
         try:
             info = cpuinfo.get_cpu_info()
-        except:
+        except Exception:
             logging.exception('Exception in the cpuinfo module!')
             info = None
 
@@ -798,6 +714,48 @@ def connect(sig, cb, *args):
 
     sig._pyl.append(cb)
     sig.connect(cb)
+
+
+def enable_raven():
+    try:
+        from raven import Client
+    except ImportError:
+        logging.exception('Failed to import raven!')
+        return False
+
+    from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
+    from raven.handlers.logging import SentryHandler
+
+    if hasattr(sys, 'frozen'):
+        if sys.platform == 'darwin':
+            cacert_path = os.path.join(sys._MEIPASS, '..', 'Resources', 'certifi', 'cacert.pem')
+        else:
+            cacert_path = os.path.join(sys._MEIPASS, 'certifi', 'cacert.pem')
+
+        from six.moves.urllib.parse import quote as urlquote
+        center.SENTRY_DSN += '&ca_certs=' + urlquote(cacert_path)
+
+    center.raven = Client(
+        center.SENTRY_DSN,
+        release=center.VERSION,
+        environment='debug' if center.DEBUG else 'production',
+        transport=ThreadedRequestsHTTPTransport
+    )
+    center.raven.tags_context({
+        'os': sys.platform
+    })
+    center.raven_handler = SentryHandler(center.raven, level=logging.ERROR)
+    logging.getLogger().addHandler(center.raven_handler)
+
+    return True
+
+
+def disable_raven():
+    if center.raven_handler:
+        logging.getLogger().removeHandler(center.raven_handler)
+
+    center.raven = None
+    center.raven_handler = None
 
 
 class Spec(semantic_version.Spec):

@@ -26,10 +26,6 @@ if variant not in ('PyQt5', 'headless', default_variant):
     logging.warning('Unknown QT_API "%s"! Using default...', variant)
     variant = default_variant
 
-if variant != 'headless':
-    # Make sure we initialize Xlib before we load Qt.
-    from . import clibs
-
 if variant in ('PyQt5', 'auto'):
     try:
         from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork

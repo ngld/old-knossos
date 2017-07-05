@@ -25,6 +25,9 @@ uhf(__name__)
 from . import center, qt, launcher
 
 
+tr = qt.QtCore.QCoreApplication.translate
+
+
 class Integration(object):
 
     def shutdown(self):
@@ -101,7 +104,7 @@ class UnityIntegration(LinuxIntegration):
     def __init__(self, Unity):
         try:
             self.launcher = Unity.LauncherEntry.get_for_desktop_id('knossos.desktop')
-        except:
+        except Exception:
             self.launcher = None
             logging.exception('Failed to initialize LauncherEntry for Unity.')
 
@@ -110,21 +113,21 @@ class UnityIntegration(LinuxIntegration):
             try:
                 self.launcher.set_property('progress_visible', True)
                 self.set_progress(value)
-            except:
+            except Exception:
                 logging.exception('Setting progress_visible for Unity failed!')
 
     def set_progress(self, value):
         if self.launcher:
             try:
                 self.launcher.set_property('progress', value)
-            except:
+            except Exception:
                 logging.exception('Setting progress for Unity failed!')
 
     def hide_progress(self):
         if self.launcher:
             try:
                 self.launcher.set_property('progress_visible', False)
-            except:
+            except Exception:
                 logging.exception('Setting progress_visible for Unity failed!')
 
     def annoy_user(self, activate=True):
@@ -133,7 +136,7 @@ class UnityIntegration(LinuxIntegration):
         if self.launcher:
             try:
                 self.launcher.set_property('urgent', activate)
-            except:
+            except Exception:
                 logging.exception('Setting urgent for Unity failed!')
 
 
@@ -201,13 +204,13 @@ current = None
 def init():
     global current
 
-    if sys.platform.startswith('win'):
+    if sys.platform == 'win32':
         try:
             import comtypes.client as cc
 
-            tbl = cc.GetModule('taskbar.tlb')
-            taskbar = cc.CreateObject('{56FDF344-FD6D-11d0-958A-006097C9A090}', interface=tbl.ITaskbarList3)
-        except:
+            tlb = cc.GetModule('taskbar.tlb')
+            taskbar = cc.CreateObject('{56FDF344-FD6D-11d0-958A-006097C9A090}', interface=tlb.ITaskbarList3)
+        except Exception:
             logging.exception('Failed to load ITaskbarList3! Disabling Windows integration.')
         else:
             logging.info('Activating Windows integration...')
@@ -219,7 +222,7 @@ def init():
             try:
                 if hasattr(gi, 'require_version'):
                     gi.require_version('Unity', '6.0')
-            except:
+            except Exception:
                 logging.warn('Failed to specify Unity version. Most likely Unity is not available.')
 
             from gi.repository import Unity
@@ -237,3 +240,19 @@ def init():
 
     logging.warning('No desktop integration active.')
     current = Integration()
+
+
+def install_scheme_handler(interactive=True):
+    logging.info('Installing scheme handler...')
+
+    try:
+        if current.install_scheme_handler():
+            if interactive:
+                qt.QtWidgets.QMessageBox.information(None, 'Knossos', tr('integration', 'Done!'))
+
+            return
+    except Exception:
+        logging.exception('Failed to install the scheme handler!')
+
+    qt.QtWidgets.QMessageBox.critical(None, 'Knossos',
+        tr('integration', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.'))

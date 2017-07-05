@@ -126,8 +126,8 @@ function init() {
 
         methods: {
             changeBasePath() {
-                call(fs2mod.browseFolder, 'Please select a folder', this.base_path, (path) => {
-                    if(path) this.base_path = path;
+                call(fs2mod.browseFolder, 'Please select a folder', this.knossos.base_path || '', (path) => {
+                    if(path) this.knossos.base_path = path;
                 });
             },
 
@@ -407,8 +407,14 @@ function init() {
         vm.tab = type;
     });
 
-    let tasks = {};
+    let tasks = null;
+    call(fs2mod.getRunningTasks, (tasks) => {
+        tasks = JSON.parse(tasks);
+    });
+
     fs2mod.taskStarted.connect((tid, title, mods) => {
+        if(!tasks) return;
+
         tasks[tid] = { title, mods };
 
         for(let mid of mods) {
@@ -420,6 +426,8 @@ function init() {
     });
 
     fs2mod.taskProgress.connect((tid, progress, details) => {
+        if(!tasks) return;
+
         details = JSON.parse(details);
         for(let mid of tasks[tid].mods) {
             if(mod_table[mid]) {
@@ -430,6 +438,8 @@ function init() {
     });
 
     fs2mod.taskFinished.connect((tid) => {
+        if(!tasks) return;
+
         for(let mid of tasks[tid].mods) {
             if(mod_table[mid]) {
                 mod_table[mid].progress = 0;

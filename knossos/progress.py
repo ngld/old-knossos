@@ -114,7 +114,7 @@ class Worker(threading.Thread):
                 task[0].work(*task[1])
             except SystemExit:
                 return
-            except:
+            except Exception:
                 logging.exception('Exception in Thread!')
 
             task[0]._deinit()
@@ -575,5 +575,5 @@ def init_curses(cb, log=None):
         attr = termios.tcgetattr(sys.stdout)
         attr[1] = attr[1] | termios.ONLCR
         termios.tcsetattr(sys.stdout, termios.TCSAFLUSH, attr)
-    except:
+    except Exception:
         pass
