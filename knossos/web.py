@@ -275,12 +275,15 @@ class WebBridge(QtCore.QObject):
         msg = QtWidgets.QMessageBox()
         msg.setIcon(QtWidgets.QMessageBox.Question)
         msg.setText(self.tr('Do you really want to uninstall %s?') % (mod.title,))
-        msg.setInformativeText(self.tr('%s will be removed.') % (', '.join(titles)))
+
+        if len(titles) > 0:
+            msg.setInformativeText(self.tr('%s will be removed.') % (', '.join(titles)))
+
         msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         msg.setDefaultButton(QtWidgets.QMessageBox.No)
 
         if msg.exec_() == QtWidgets.QMessageBox.Yes:
-            tasks.run_task(tasks.UninstallTask(plist))
+            tasks.run_task(tasks.UninstallTask(plist, mods=[mod]))
             return True
         else:
             return False

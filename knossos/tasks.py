@@ -658,13 +658,15 @@ class InstallTask(progress.MultistepTask):
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
 class UninstallTask(progress.MultistepTask):
     _pkgs = None
+    _mods = None
     _steps = 2
     check_after = True
 
-    def __init__(self, pkgs, check_after=True):
+    def __init__(self, pkgs, check_after=True, mods=[]):
         super(UninstallTask, self).__init__()
 
         self._pkgs = []
+        self._mods = mods
         self.check_after = check_after
 
         for pkg in pkgs:
@@ -690,7 +692,7 @@ class UninstallTask(progress.MultistepTask):
                 os.unlink(path)
 
     def init2(self):
-        mods = set()
+        mods = set(self._mods)
 
         # Unregister uninstalled pkgs.
         for pkg in self._pkgs:
