@@ -144,7 +144,7 @@ class Repo(object):
     def add_mod(self, mod):
         mid = mod.mid
 
-        if len(mod.packages) == 0:
+        if len(mod.packages) == 0 and not isinstance(mod, InstalledMod):
             logging.warning('Mod %s is empty, ignoring it!', mod)
             return
 
@@ -836,17 +836,9 @@ class InstalledMod(Mod):
         data = mod.get()
         data['packages'] = []
 
-        # IMPORTANT: This code decides where newly installed mods are stored.
-        base = center.settings['base_path']
-        if data['type'] == 'engine':
-            data['folder'] = os.path.join(base, 'bin', data['id']) + '-' + data['version']
-        elif data['type'] == 'tc':
-            data['folder'] = os.path.join(base, data['id'])
-        else:
-            data['folder'] = os.path.join(base, data['parent'], data['id'])
-
         nmod = InstalledMod(data)
         nmod.logo_path = mod.logo_path
+        nmod.generate_folder()
         return nmod
 
     def __init__(self, values=None):
@@ -888,8 +880,16 @@ class InstalledMod(Mod):
             'packages': [pkg.get() for pkg in self.packages]
         }
 
-    def set_base(self, base):
-        pass
+    def generate_folder(self):
+        # IMPORTANT: This code decides where newly installed mods are stored.
+        base = center.settings['base_path']
+
+        if self.mtype in ('engine', 'tool'):
+            self.folder = os.path.join(base, 'bin', self.mid) + '-' + str(self.version)
+        elif self.mtype == 'tc':
+            self.folder = os.path.join(base, self.mid)
+        else:
+            self.folder = os.path.join(base, self.parent, self.mid)
 
     def add_pkg(self, pkg):
         pkg = InstalledPackage.convert(pkg, self)

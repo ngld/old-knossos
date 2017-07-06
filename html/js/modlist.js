@@ -226,6 +226,12 @@ function init() {
         methods: {
             openModFolder() {
                 fs2mod.openExternal('file://' + this.selected_mod.folder);
+            },
+
+            openCreatePopup() {
+                vm.popup_mode = 'create_mod';
+                vm.popup_title = 'Create mod';
+                vm.popup_visible = true;
             }
         }
     });
@@ -260,6 +266,12 @@ function init() {
                     popup_title: 'Popup',
                     popup_mode: '',
                     popup_content: null,
+
+                    popup_mod_name: '',
+                    popup_mod_id: '',
+                    popup_mod_version: '1.0',
+                    popup_mod_type: 'mod',
+                    popup_mod_parent: 'FS2',
 
                     // retail prompt
                     retail_searching: true,
@@ -326,6 +338,14 @@ function init() {
 
                     updateMod() {
                         fs2mod.updateMod(this.mod.id, '');
+                    },
+
+                    createMod() {
+                        call(fs2mod.createMod, this.popup_mod_name, this.popup_mod_id, this.popup_mod_version, this.popup_mod_type, this.popup_mod_parent, (result) => {
+                            if(result) {
+                                this.popup_visible = false;
+                            }
+                        });
                     },
 
                     showModErrors() {

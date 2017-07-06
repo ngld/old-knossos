@@ -440,6 +440,43 @@ class WebBridge(QtCore.QObject):
             logging.exception('Failed to encoding running tasks!')
             return 'null'
 
+    @QtCore.Slot(str, str, str, str, str, result=bool)
+    def createMod(self, name, mid, version, mtype, parent):
+        if mtype in ('mod', 'ext'):
+            if parent != 'FS2':
+                parent = self._get_mod(parent)
+
+                if parent == -1:
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected parent TC is not valid!'))
+                    return False
+        else:
+            parent = None
+
+        mod = repo.InstalledMod({
+            'title': name,
+            'id': mid,
+            'version': version,
+            'type': mtype,
+            'parent': parent
+        })
+        mod.generate_folder()
+
+        if os.path.isdir(mod.folder):
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('There already exists a mod with the chosen ID!'))
+            return False
+
+        if not os.path.isdir(os.path.dirname(mod.folder)):
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The chosen parent does not exist! Something went very wrong here!!'))
+            return False
+
+        os.mkdir(mod.folder)
+        mod.save()
+
+        center.installed.add_mod(mod)
+        center.main_win.update_mod_list()
+
+        return True
+
 
 if QtWebChannel:
     BrowserCtrl = WebBridge

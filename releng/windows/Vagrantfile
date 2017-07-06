@@ -9,7 +9,7 @@ Vagrant.configure("2") do |config|
 
 	config.vm.synced_folder ".", "/vagrant", disabled: true
     config.vm.synced_folder "../..", "/cygdrive/c/knossos", type: "rsync",
-    	rsync__args: ["--verbose", "--archive", "-z", "--copy-links"],
+    	rsync__args: ["--verbose", "-z", "-r", "--copy-links"],
     	rsync__exclude: ["dist", "build", "packer", ".vagrant"]
 
     config.vm.provision :shell, inline: "cd /knossos/releng/windows; cmd /C provision.bat"

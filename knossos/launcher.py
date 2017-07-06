@@ -82,6 +82,15 @@ def my_excepthook(type, value, tb):
     except Exception:
         logging.error('UNCAUGHT EXCEPTION!\n%s%s: %s' % (''.join(traceback.format_tb(tb)), type.__name__, value))
 
+    msg = translate('launcher', 'A critical error occurred! Knossos might not work correctly until you restart it.')
+    if center.raven:
+        msg += '\n' + translate('launcher', 'The error has been reported and will hopefully be fixed soon.')
+
+    try:
+        QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
+    except Exception:
+        pass
+
 
 def get_cmd(args=[]):
     if hasattr(sys, 'frozen'):

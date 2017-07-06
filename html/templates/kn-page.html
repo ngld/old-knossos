@@ -179,6 +179,88 @@
                 
                 <p><button class="btn btn-primary" v-on:click="finishRetailPrompt">Continue</button></p>
             </div>
+
+            <div v-if="popup_mode === 'create_mod'">
+                <form class="form-horizontal">
+                    <div class="form-group">
+                        <label class="col-xs-3 control-label">Name</label>
+                        <div class="col-xs-9">
+                            <input type="text" class="form-control" v-model="popup_mod_name">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-xs-3 control-label">ID</label>
+                        <div class="col-xs-9">
+                            <input type="text" class="form-control" v-model="popup_mod_id" pattern="^[a-zA-Z0-9_]+$">
+
+                            <span class="help-block">Only characters (a-z, A-Z), numbers (0-9) and underscores are allowed.</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-xs-3 control-label">Version</label>
+                        <div class="col-xs-9">
+                            <input type="text" class="form-control" v-model="popup_mod_version" pattern="^([0-9]+\.){0-2}[0-9]+(\-.*)?$">
+
+                            <span class="help-block">
+                                TODO: Version explanation. The versioning scheme is still pending. See the forum thread for details.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-xs-3 control-label">Type</label>
+                        <div class="col-xs-9">
+                            <select class="form-control" v-model="popup_mod_type">
+                                <option value="mod">Mod</option>
+                                <option value="tc">Total Conversion</option>
+                                <option value="engine">FSO build</option>
+                                <option value="tool">Tool</option>
+                                <option value="ext">Extension</option>
+                            </select>
+
+                            <span class="help-block" v-if="popup_mod_type === 'mod'">
+                                This type is the default and covers most cases. Normally you'll want to use this type.
+                            </span>
+
+                            <span class="help-block" v-if="popup_mod_type === 'tc'">
+                                Use this type if your mod doesn't depend on other mods or retail files.<br>
+                                (Mods for TCs should still use the "Mod" type.)
+                            </span>
+
+                            <span class="help-block" v-if="popup_mod_type === 'engine'">
+                                This should only be used for builds FSO builds (fs2_open*.exe, fs2_open*.AppImage, etc.).
+                            </span>
+
+                            <span class="help-block" v-if="popup_mod_type === 'tool'">
+                                This is used for all executables which aren't FSO like FRED or PCS2.
+                            </span>
+
+                            <span class="help-block" v-if="popup_mod_type === 'ext'">
+                                This mod type is meant for overrides like custom HUD tables.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="form-group" v-if="popup_mod_type === 'mod' || popup_mod_type === 'ext'">
+                        <label class="col-xs-3 control-label">Parent mod</label>
+                        <div class="col-xs-9">
+                            <select class="form-control" v-model="popup_mod_parent">
+                                <!-- TODO Generate a list of installed TCs here -->
+                                <option>FS2</option>
+                            </select>
+
+                            <span class="help-block">
+                                Please select your parent TC here. If this doesn't apply to a TC, select FS2.
+                            </span>
+                        </div>
+                    </div>
+
+                    <button class="mod-btn btn-green" v-on:click.prevent="createMod">CREATE</button>
+                    <button class="mod-btn btn-red pull-right" v-on:click.prevent="popup_visible = false">CANCEL</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>

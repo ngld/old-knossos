@@ -1,5 +1,7 @@
 <div>
     <div class="scroll-style mlist">
+        <button class="mod-btn btn-orange" v-on:click.prevent="openCreatePopup">CREATE</button>
+
         <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod === mod }" @click="selected_mod = mod">{{ mod.title }}</a>
     </div>
     <div class="content-pane">
