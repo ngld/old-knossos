@@ -565,23 +565,10 @@ class Package(object):
         else:
             logging.warning('"%s"\'s file list has an unknown type.', self.name)
 
-        has_mod_dep = False
-        mid = self._mod.mid
-
-        if mid == '':
-            raise Exception('Package "%s" initialized with Mod %s which has no ID!' % (self.name, self._mod.title))
-
-        for info in self.dependencies:
-            if info['id'] == mid:
-                has_mod_dep = True
-                break
-
-        if not has_mod_dep:
-            self.dependencies.append({
-                'id': self.get_mod().mid,
-                'version': '==' + str(self.get_mod().version),
-                'packages': []
-            })
+        if self._mod:
+            mid = self._mod.mid
+            if mid == '':
+                raise Exception('Package "%s" initialized with Mod %s which has no ID!' % (self.name, self._mod.title))
 
     def get(self):
         return {

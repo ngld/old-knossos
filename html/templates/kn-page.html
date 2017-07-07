@@ -261,6 +261,29 @@
                     <button class="mod-btn btn-red pull-right" v-on:click.prevent="popup_visible = false">CANCEL</button>
                 </form>
             </div>
+
+            <div v-if="popup_mode === 'add_pkg'">
+                <form class="form-horizontal">
+                    <div class="form-group">
+                        <label class="col-xs-3 control-label">Name</label>
+                        <div class="col-xs-9">
+                            <input type="text" class="form-control" v-model="popup_pkg_name">
+                        </div>
+                    </div>
+
+                    <button class="mod-btn btn-green" v-on:click.prevent="addPackage">ADD</button>
+                    <button class="mod-btn btn-red pull-right" v-on:click.prevent="popup_visible = false">CANCEL</button>
+                </form>
+            </div>
+
+            <div v-if="popup_mode == 'are_you_sure'">
+                <p>
+                    {{ popup_sure_question }}
+                </p>
+
+                <button class="mod-btn btn-green" v-on:click.prevent="sureCallback">YES</button>
+                <button class="mod-btn btn-red pull-right" v-on:click.prevent="popup_visible = false">NO</button>
+            </div>
         </div>
     </div>
 </div>

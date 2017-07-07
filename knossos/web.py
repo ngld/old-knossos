@@ -480,6 +480,34 @@ class WebBridge(QtCore.QObject):
 
         return True
 
+    @QtCore.Slot(str, str, str, result=int)
+    def addPackage(self, mid, version, pkg_name):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return mod
+
+        mod.add_pkg(repo.Package({'name': pkg_name}))
+        mod.save()
+        center.main_win.update_mod_list()
+
+        return len(mod.packages) - 1
+
+    @QtCore.Slot(str, str, int, result=bool)
+    def deletePackage(self, mid, version, idx):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return False
+
+        if idx < 0 or idx >= len(mod.packages):
+            logging.error('Invalid index passed to deletePackage()!')
+            return False
+
+        del mod.packages[idx]
+        mod.save()
+        center.main_win.update_mod_list()
+
+        return True
+
 
 if QtWebChannel:
     BrowserCtrl = WebBridge

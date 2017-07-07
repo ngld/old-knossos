@@ -227,6 +227,32 @@ function init() {
             caps: null
         }),
 
+        created() {
+            window.dp = this;
+        },
+
+        watch: {
+            mods(new_list) {
+                // Update the references when the list is updated.
+
+                if(this.selected_mod) {
+                    for(let mod of new_list) {
+                        if(mod.id === this.selected_mod.id && mod.version === this.selected_mod.version) {
+                            this.selected_mod = mod;
+                            break;
+                        }
+                    }
+
+                    for(let pkg of this.selected_mod.packages) {
+                        if(pkg.name === this.selected_pkg.name) {
+                            this.selected_pkg = pkg;
+                            break;
+                        }
+                    }
+                }
+            }
+        },
+
         methods: {
             openModFolder() {
                 fs2mod.openExternal('file://' + this.selected_mod.folder);
@@ -235,6 +261,11 @@ function init() {
             openCreatePopup() {
                 vm.popup_mode = 'create_mod';
                 vm.popup_title = 'Create mod';
+                vm.popup_mod_name = '';
+                vm.popup_mod_id = '';
+                vm.popup_mod_version = '1.0';
+                vm.popup_mod_type = 'mod';
+                vm.popup_mod_parent = 'FS2';
                 vm.popup_visible = true;
             },
 
@@ -247,11 +278,27 @@ function init() {
             },
 
             addPackage() {
-                alert('Not yet implemented!');
+                vm.popup_mode = 'add_pkg';
+                vm.popup_title = 'Add Package';
+                vm.popup_mod_id = this.selected_mod.id;
+                vm.popup_mod_version = this.selected_mod.version;
+                vm.popup_visible = true;
             },
 
             deletePackage() {
-                alert('Not yet implemented!');
+                vm.popup_mode = 'are_you_sure';
+                vm.popup_title = 'Confirmation';
+                vm.popup_sure_question = 'Are you sure you want to delete ' + this.selected_pkg.name + '?';
+                vm.sureCallback = () => {
+                    let pidx = this.selected_mod.packages.indexOf(this.selected_pkg);
+                    call(fs2mod.deletePackage, this.selected_mod.id, this.selected_mod.version, pidx, (result) => {
+                        if(result) {
+                            vm.popup_visible = false;
+                            this.selected_pkg = null;
+                        }
+                    });
+                };
+                vm.popup_visible = true;
             },
 
             changeLogo() {
@@ -300,6 +347,11 @@ function init() {
                     popup_mod_version: '1.0',
                     popup_mod_type: 'mod',
                     popup_mod_parent: 'FS2',
+
+                    popup_pkg_name: '',
+
+                    popup_sure_question: '',
+                    sureCallback: null,
 
                     // retail prompt
                     retail_searching: true,
@@ -371,6 +423,15 @@ function init() {
                     createMod() {
                         call(fs2mod.createMod, this.popup_mod_name, this.popup_mod_id, this.popup_mod_version, this.popup_mod_type, this.popup_mod_parent, (result) => {
                             if(result) {
+                                this.popup_visible = false;
+                            }
+                        });
+                    },
+
+                    addPackage() {
+                        call(fs2mod.addPackage, this.popup_mod_id, this.popup_mod_version, this.popup_pkg_name, (result) => {
+                            if(result > -1) {
+                                dp.selected_pkg = dp.selected_mod.packages[result];
                                 this.popup_visible = false;
                             }
                         });
