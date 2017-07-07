@@ -31,29 +31,7 @@ if len(sys.argv) > 1 and sys.argv[1] == '--cpuinfo':
     info = None
 
     try:
-        # Try querying the CPU cpuid register
-        if not info and '--safe' not in sys.argv:
-            info = cpuinfo.get_cpu_info_from_cpuid()
-
-        # Try the Windows registry
-        if not info:
-            info = cpuinfo.get_cpu_info_from_registry()
-
-        # Try /proc/cpuinfo
-        if not info:
-            info = cpuinfo.get_cpu_info_from_proc_cpuinfo()
-
-        # Try sysctl
-        if not info:
-            info = cpuinfo.get_cpu_info_from_sysctl()
-
-        # Try solaris
-        if not info:
-            info = cpuinfo.get_cpu_info_from_solaris()
-
-        # Try dmesg
-        if not info:
-            info = cpuinfo.get_cpu_info_from_dmesg()
+        info = cpuinfo.get_cpu_info()
     except Exception:
         from knossos.launcher import logging
         logging.exception('Failed to retrieve CPU info.')
