@@ -989,21 +989,24 @@ input {
     position: absolute;
     top: 0;
     left: 0px;
-    width: 200px;
+    width: 300px;
 
     padding: 5px;
 }
 
 .devel-page .mod-value {
     margin-left: 10px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .devel-page .form-box {
     position: absolute;
     top: 0;
-    left: 200px;
+    left: 300px;
 
-    width: calc(100% - 200px);
+    width: calc(100% - 300px);
 
     padding: 5px;
 }

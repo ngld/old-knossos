@@ -220,7 +220,11 @@ function init() {
         props: ['mods'],
 
         data: () => ({
-            selected_mod: null
+            page: 'fso',
+            selected_mod: null,
+            selected_pkg: null,
+            video_urls: '',
+            caps: null
         }),
 
         methods: {
@@ -232,6 +236,30 @@ function init() {
                 vm.popup_mode = 'create_mod';
                 vm.popup_title = 'Create mod';
                 vm.popup_visible = true;
+            },
+
+            saveDetails() {
+                alert('Not yet implemented!');
+            },
+
+            savePackage() {
+                alert('Not yet implemented!');
+            },
+
+            addPackage() {
+                alert('Not yet implemented!');
+            },
+
+            deletePackage() {
+                alert('Not yet implemented!');
+            },
+
+            changeLogo() {
+                alert('Not yet implemented!');
+            },
+
+            changeTile() {
+                alert('Not yet implemented!');
             }
         }
     });
