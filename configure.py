@@ -92,7 +92,7 @@ if sys.platform == 'win32':
     check_module('comtypes')
 
 babel = False
-if not check_module('PyQt5.QtWebChannel', required=False):
+if not check_module('PyQt5.QtWebEngine', required=False):
     check_module('PyQt5.QtWebKit')
 
     nodejs = find_program(['node', 'nodejs'], 'node')
@@ -105,7 +105,9 @@ if not check_module('PyQt5.QtWebChannel', required=False):
         RCC_FILES.remove('html/js/modlist.js')
         RCC_FILES.append('html/js/modlist.out.js')
     else:
-        fail(' not found!\nPlease install babel with "npm i babel-cli babel-preset-env babel-polyfill".')
+        fail(' not found!\nPlease install QtWebEngine or babel with "npm i babel-cli babel-preset-env babel-polyfill".')
+else:
+    check_module('PyQt5.QtWebChannel')
 
 pyuic = try_program([[sys.executable, '-mPyQt5.uic.pyuic'], ['pyuic5'], ['pyuic']], 'pyuic')
 pylupdate = try_program([[sys.executable, '-mPyQt5.pylupdate_main'], ['pylupdate5'], ['pylupdate']], 'pylupdate', test_param='-version')

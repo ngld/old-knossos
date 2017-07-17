@@ -71,6 +71,8 @@ class FetchTask(progress.Task):
 
             try:
                 raw_data = util.get(link, raw=True)
+                if not raw_data:
+                    return
 
                 data = Repo()
                 data.is_link = True
@@ -121,37 +123,34 @@ class CheckTask(progress.MultistepTask):
             logging.error('A CheckTask was launched even though no base path was set!')
         else:
             center.installed.clear()
-            self.add_work(((center.settings['base_path'], None),))
-            self.add_work([(p, None) for p in center.settings['base_dirs']])
+            self.add_work((center.settings['base_path'],))
+            self.add_work(center.settings['base_dirs'])
 
-    def work1(self, p):
+    def work1(self, path):
         mods = center.installed
-        path, base_mod = p
 
         subs = []
         mod_file = None
 
-        for base in os.listdir(path):
-            sub = os.path.join(path, base)
+        try:
+            for base in os.listdir(path):
+                sub = os.path.join(path, base)
 
-            if os.path.isdir(sub):
-                subs.append(sub)
-            elif base.lower() == 'mod.json' or (base.lower() == 'mod.ini' and not mod_file):
-                mod_file = sub
+                if os.path.isdir(sub):
+                    subs.append(sub)
+                elif base.lower() == 'mod.json' or (base.lower() == 'mod.ini' and not mod_file):
+                    mod_file = sub
+        except FileNotFoundError:
+            logging.warn('The directory "%s" does not exist anymore!' % path)
 
         if mod_file:
             try:
                 mod = repo.InstalledMod.load(mod_file)
-                if base_mod and mod:
-                    mod.set_base(base_mod)
-                else:
-                    base_mod = mod
-
                 mods.add_mod(mod)
             except Exception:
                 logging.exception('Failed to parse "%s"!', sub)
 
-        self.add_work([(p, base_mod) for p in subs])
+        self.add_work(subs)
 
     def init2(self):
         pkgs = []
