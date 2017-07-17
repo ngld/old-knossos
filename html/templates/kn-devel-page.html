@@ -111,7 +111,13 @@
                         <div class="col-xs-9">
                             <img :src="selected_mod.logo_path" v-if="selected_mod.logo_path"><br>
 
+                            <p class="help-block">
+                                This image should be about 255&times;112 pixels large. Please only use this for existing logos.
+                                If you create a new logo, please use the next setting.
+                            </p>
+
                             <button class="btn btn-small btn-default" @click.prevent="changeLogo">Select Image</button>
+                            <button class="btn btn-small btn-default" @click.prevent="selected_mod.logo_path = null" v-if="selected_mod.logo_path">Remove Image</button>
                         </div>
                     </div>
 
@@ -120,7 +126,12 @@
                         <div class="col-xs-9">
                             <img :src="selected_mod.tile_path" v-if="selected_mod.tile_path"><br>
 
+                            <p class="help-block">
+                                This image should be 150&times;225 pixels large.
+                            </p>
+
                             <button class="btn btn-small btn-default" @click.prevent="changeTile">Select Image</button>
+                            <button class="btn btn-small btn-default" @click.prevent="selected_mod.tile_path = null" v-if="selected_mod.tile_path">Remove Image</button>
                         </div>
                     </div>
 
@@ -194,6 +205,13 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="col-xs-3 control-label">Folder</label>
+                        <div class="col-xs-9">
+                            {{ selected_pkg.folder }}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <label class="col-xs-3 control-label">Description</label>
                         <div class="col-xs-9">
                             <textarea class="form-control" v-model="selected_pkg.notes"></textarea>
@@ -227,13 +245,6 @@
 
                     <div class="form-group" v-if="selected_mod.type === 'engine' || selected_mod.type === 'tool'">
                         <label class="col-xs-3 control-label">Executables</label>
-                        <div class="col-xs-9">
-                            TODO
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="col-xs-3 control-label">Files / Archives</label>
                         <div class="col-xs-9">
                             TODO
                         </div>

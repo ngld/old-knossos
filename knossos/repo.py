@@ -1023,6 +1023,7 @@ class IniMod(InstalledMod):
 
 
 class InstalledPackage(Package):
+    folder = None
     check_notes = ''
     files_ok = -1
     files_checked = -1
@@ -1035,8 +1036,10 @@ class InstalledPackage(Package):
         super(InstalledPackage, self).set(values.copy())
 
         self.check_notes = values.get('check_notes', '')
+        self.folder = values.get('folder', None)
 
     def get(self):
         data = super(InstalledPackage, self).get()
         data['check_notes'] = self.check_notes
+        data['folder'] = self.folder
         return data

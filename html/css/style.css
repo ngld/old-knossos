@@ -472,6 +472,15 @@ input {
     height: 225px;
 }
 
+.mod-node .mod-image img {
+    max-width: 150px;
+    max-height: 225px;
+}
+
+.mod-node .mod-image .mod-logo-legacy {
+    max-height: 100px;
+}
+
 .mod-node .mod-logo-container { /* Make sure any drop shadows for legacy mod images stays within the portrait node */
     position: absolute;
     top: 25px;
@@ -942,9 +951,10 @@ input {
 }
 
 .devel-page .mlist {
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: fixed;
+    top: 80px;
+    left: 8px;
+    bottom: 8px;
     height: 100%;
     width: 200px;
 
@@ -1009,4 +1019,5 @@ input {
     width: calc(100% - 300px);
 
     padding: 5px;
+    overflow: hidden;
 }

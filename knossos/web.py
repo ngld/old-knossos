@@ -480,13 +480,19 @@ class WebBridge(QtCore.QObject):
 
         return True
 
-    @QtCore.Slot(str, str, str, result=int)
-    def addPackage(self, mid, version, pkg_name):
+    @QtCore.Slot(str, str, str, str, result=int)
+    def addPackage(self, mid, version, pkg_name, pkg_folder):
         mod = self._get_mod(mid, version)
         if mod in (-1, -2):
             return mod
 
-        mod.add_pkg(repo.Package({'name': pkg_name}))
+        pkg = mod.add_pkg(repo.Package({'name': pkg_name}))
+        pkg.folder = pkg_folder
+
+        pkg_path = os.path.join(mod.folder, pkg_folder)
+        if not os.path.isdir(pkg_path):
+            os.mkdir(pkg_path)
+
         mod.save()
         center.main_win.update_mod_list()
 
@@ -502,11 +508,27 @@ class WebBridge(QtCore.QObject):
             logging.error('Invalid index passed to deletePackage()!')
             return False
 
+        # TODO: Delete the package folder?
         del mod.packages[idx]
         mod.save()
         center.main_win.update_mod_list()
 
         return True
+
+    @QtCore.Slot(str, result=str)
+    def selectImage(self, old_path):
+        if old_path == '':
+            old_dir = None
+        else:
+            old_dir = os.path.dirname(old_path)
+
+        new_path, used_filter = QtWidgets.QFileDialog.getOpenFileName(None, self.tr('Please select an image'), old_dir,
+                                                                      self.tr('Image (*.png *.jpg *.jpeg *.gif *.bmp)'))
+
+        if new_path:
+            return new_path
+        else:
+            return old_path
 
 
 if QtWebChannel:

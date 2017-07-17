@@ -243,10 +243,12 @@ function init() {
                         }
                     }
 
-                    for(let pkg of this.selected_mod.packages) {
-                        if(pkg.name === this.selected_pkg.name) {
-                            this.selected_pkg = pkg;
-                            break;
+                    if(this.selected_pkg) {
+                        for(let pkg of this.selected_mod.packages) {
+                            if(pkg.name === this.selected_pkg.name) {
+                                this.selected_pkg = pkg;
+                                break;
+                            }
                         }
                     }
                 }
@@ -282,6 +284,8 @@ function init() {
                 vm.popup_title = 'Add Package';
                 vm.popup_mod_id = this.selected_mod.id;
                 vm.popup_mod_version = this.selected_mod.version;
+                vm.popup_pkg_name = '';
+                vm.popup_pkg_folder = '';
                 vm.popup_visible = true;
             },
 
@@ -302,11 +306,15 @@ function init() {
             },
 
             changeLogo() {
-                alert('Not yet implemented!');
+                call(fs2mod.selectImage, this.selected_mod.logo_path || '', (new_path) => {
+                    this.selected_mod.logo_path = new_path;
+                });
             },
 
             changeTile() {
-                alert('Not yet implemented!');
+                call(fs2mod.selectImage, this.selected_mod.tile_path || '', (new_path) => {
+                    this.selected_mod.tile_path = new_path;
+                });
             }
         }
     });
@@ -349,6 +357,7 @@ function init() {
                     popup_mod_parent: 'FS2',
 
                     popup_pkg_name: '',
+                    popup_pkg_folder: '',
 
                     popup_sure_question: '',
                     sureCallback: null,
@@ -429,7 +438,7 @@ function init() {
                     },
 
                     addPackage() {
-                        call(fs2mod.addPackage, this.popup_mod_id, this.popup_mod_version, this.popup_pkg_name, (result) => {
+                        call(fs2mod.addPackage, this.popup_mod_id, this.popup_mod_version, this.popup_pkg_name, this.popup_pkg_folder, (result) => {
                             if(result > -1) {
                                 dp.selected_pkg = dp.selected_mod.packages[result];
                                 this.popup_visible = false;
