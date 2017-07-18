@@ -220,19 +220,37 @@ function init() {
         props: ['mods'],
 
         data: () => ({
+            mod_map: {},
+
             page: 'fso',
             selected_mod: null,
             selected_pkg: null,
             video_urls: '',
-            caps: null
+            caps: null,
+
+            edit_dep: false,
+            edit_dep_idx: -1,
+            edit_dep_mod: null,
+            edit_dep_pkgs: null,
+            edit_dep_pkg_sel: null
         }),
 
         created() {
             window.dp = this;
+
+            this.mod_map = {};
+            for(let mod of this.mods) {
+                this.mod_map[mod.id] = mod;
+            }
         },
 
         watch: {
             mods(new_list) {
+                this.mod_map = {};
+                for(let mod of new_list) {
+                    this.mod_map[mod.id] = mod;
+                }
+
                 // Update the references when the list is updated.
 
                 if(this.selected_mod) {
@@ -250,6 +268,32 @@ function init() {
                                 break;
                             }
                         }
+                    }
+                }
+            },
+
+            page(sel_page) {
+                this.selected_pkg = null;
+            },
+
+            selected_mod(sel_mod) {
+                this.selected_pkg = null;
+            },
+
+            selected_pkg(sel_pkg) {
+                this.edit_dep = false;
+            },
+
+            edit_dep_mod(sel_mod) {
+                let mod = this.mod_map[sel_mod];
+
+                this.edit_dep_pkgs = [];
+                this.edit_dep_pkg_sel = {};
+
+                if(mod && mod.packages) {
+                    for(let pkg of mod.packages) {
+                        this.edit_dep_pkgs.push(pkg);
+                        this.edit_dep_pkg_sel[pkg.name] = pkg.status !== 'optional';
                     }
                 }
             }
@@ -315,6 +359,56 @@ function init() {
                 call(fs2mod.selectImage, this.selected_mod.tile_path || '', (new_path) => {
                     this.selected_mod.tile_path = new_path;
                 });
+            },
+
+            addDep() {
+                this.edit_dep_idx = -1;
+                this.edit_dep_mod = null;
+                this.edit_dep_pkgs = [];
+                this.edit_dep_pkg_sel = {};
+                this.edit_dep = true;
+            },
+
+            editDep(idx, dep) {
+                this.edit_dep_idx = idx;
+                this.edit_dep_mod = dep.id;
+                this.edit_dep_pkg_sel = {};
+                this.edit_dep = true;
+
+                if(dep.packages) {
+                    for(let pkg of dep.packages) {
+                        this.edit_dep_pkg_sel[pkg] = true;
+                    }
+                }
+            },
+
+            deleteDep() {
+                if(this.edit_dep_idx !== -1) {
+                    this.selected_pkg.dependencies.splice(this.edit_dep_idx, 1);
+                }
+
+                this.edit_dep = false;
+            },
+
+            saveDep() {
+                let dep = {
+                    id: this.edit_dep_mod,
+                    packages: []
+                };
+
+                for(let pkg of this.edit_dep_pkgs) {
+                    if(this.edit_dep_pkg_sel[pkg.name]) {
+                        dep.packages.push(pkg.name);
+                    }
+                }
+
+                if(this.edit_dep_idx === -1) {
+                    this.selected_pkg.dependencies.push(dep);
+                } else {
+                    this.selected_pkg.dependencies[this.edit_dep_idx] = dep;
+                }
+
+                this.edit_dep = false;
             }
         }
     });
@@ -430,6 +524,17 @@ function init() {
                     },
 
                     createMod() {
+                        if(this.popup_mod_id === '') {
+                            alert('You need to enter a mod ID!');
+                            return;
+                        }
+
+
+                        if(this.popup_mod_name === '') {
+                            alert('You need to enter a mod name!');
+                            return;
+                        }
+
                         call(fs2mod.createMod, this.popup_mod_name, this.popup_mod_id, this.popup_mod_version, this.popup_mod_type, this.popup_mod_parent, (result) => {
                             if(result) {
                                 this.popup_visible = false;
@@ -438,6 +543,16 @@ function init() {
                     },
 
                     addPackage() {
+                        if(this.popup_pkg_name === '') {
+                            alert('You need to enter a package name!');
+                            return;
+                        }
+
+                        if(this.popup_pkg_folder === '') {
+                            alert('You need to enter a folder name!');
+                            return;
+                        }
+
                         call(fs2mod.addPackage, this.popup_mod_id, this.popup_mod_version, this.popup_pkg_name, this.popup_pkg_folder, (result) => {
                             if(result > -1) {
                                 dp.selected_pkg = dp.selected_mod.packages[result];

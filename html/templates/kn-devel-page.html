@@ -3,15 +3,15 @@
         <button class="mod-btn btn-orange" @click.prevent="openCreatePopup">CREATE</button>
 
         <!-- TODO This should probably list *all* available versions -->
-        <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod === mod }" @click="selected_mod = mod; selected_pkg = null;">{{ mod.title }}</a>
+        <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod === mod }" @click="selected_mod = mod">{{ mod.title }}</a>
     </div>
     <div class="content-pane">
         <div class="logo-box" v-if="selected_mod">
             <kn-mod :mod="selected_mod" tab="develop"></kn-mod>
 
             <p>
-                <button @click.prevent="selected_pkg = null; page = 'details'" class="btn btn-default">Edit Mod Details</button><br>
-                <button @click.prevent="selected_pkg = null; page = 'fso'" class="btn btn-default">Edit FSO Settings</button>
+                <button @click.prevent="page = 'details'" class="btn btn-default">Edit Mod Details</button><br>
+                <button @click.prevent="page = 'fso'" class="btn btn-default">Edit FSO Settings</button>
             </p>
 
             Mod Path: <button @click.prevent="openModFolder">Browse</button>
@@ -232,7 +232,44 @@
                     <div class="form-group">
                         <label class="col-xs-3 control-label">Dependencies</label>
                         <div class="col-xs-9">
-                            TODO
+                            <div v-for="(dep, i) in selected_pkg.dependencies">
+                                <a href="#" @click.prevent="editDep(i, dep)">{{ mod_map[dep.id].title }}</a>
+                                <span v-if="dep.packages && dep.packages.length > 0">({{ dep.packages.join(', ') }})</span>
+                            </div>
+
+                            <a href="#" @click.prevent="addDep()">Add a dependency</a>
+
+                            <div v-if="edit_dep">
+                                <br>
+                                <div class="form-group">
+                                    <label class="col-xs-4 control-label">Mod</label>
+                                    <div class="col-xs-8">
+                                        <select class="form-control" v-model="edit_dep_mod">
+                                            <option v-for="mod in mods" :value="mod.id" :key="mod.id">{{ mod.title }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="col-xs-4 control-label">Packages</label>
+                                    <div class="col-xs-8">
+                                        <span v-if="!edit_dep_pkgs" class="help-block">Please select a mod above.</span>
+
+                                        <div v-if="edit_dep_pkgs">
+                                            <label class="checkbox" v-for="pkg in edit_dep_pkgs">
+                                                <input type="checkbox" :key="pkg.name" v-model="edit_dep_pkg_sel[pkg.name]" v-if="pkg.status !== 'required'">
+                                                <input type="checkbox" :key="pkg.name" disabled checked="true" v-if="pkg.status === 'required'">
+                                                {{ pkg.name }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-small" @click.prevent="saveDep">Save</button>
+
+                                <button class="btn btn-small" @click.prevent="edit_dep = false">Cancel</button>
+                                <button class="btn btn-small pull-right" v-if="edit_dep_idx !== -1" @click.prevent="deleteDep">Delete</button>
+                            </div>
                         </div>
                     </div>
 
