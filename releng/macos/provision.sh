@@ -5,8 +5,8 @@ set -eo pipefail
 echo "==> Installing build tools"
 brew update
 brew install python p7zip ninja qt5
-pip install -U pip
-pip install dmgbuild
+pip2 install -U pip
+pip2 install dmgbuild
 
 mkdir /tmp/prov
 cd /tmp/prov

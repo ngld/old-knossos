@@ -233,6 +233,9 @@
                         <label class="col-xs-3 control-label">Dependencies</label>
                         <div class="col-xs-9">
                             <div v-for="(dep, i) in selected_pkg.dependencies">
+                                <a href="#" @click.prevent="swapDep(i, -1)"><i class="fa fa-chevron-up"></i></a>
+                                <a href="#" @click.prevent="swapDep(i, 1)"><i class="fa fa-chevron-down"></i></a>
+
                                 <a href="#" @click.prevent="editDep(i, dep)">{{ mod_map[dep.id].title }}</a>
                                 <span v-if="dep.packages && dep.packages.length > 0">({{ dep.packages.join(', ') }})</span>
                             </div>

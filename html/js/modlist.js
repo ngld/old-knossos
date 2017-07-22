@@ -409,6 +409,27 @@ function init() {
                 }
 
                 this.edit_dep = false;
+            },
+
+            swapDep(idx, dir) {
+                let other = idx + dir;
+                let deps = this.selected_pkg.dependencies;
+
+                if(other < 0) return;
+                if(other >= deps.length) return;
+
+                // We have to create a new copy of the array and can't simply swap these in-place otherwise Vue.js gets confused
+                // and can't detect the change.
+                let new_deps = deps.slice(0, Math.min(other, idx));
+                if(dir === -1) {
+                    new_deps.push(deps[idx]);
+                    new_deps.push(deps[other]);
+                } else {
+                    new_deps.push(deps[other]);
+                    new_deps.push(deps[idx]);
+                }
+                
+                this.selected_pkg.dependencies = new_deps.concat(deps.slice(Math.max(other, idx) + 1));
             }
         }
     });
