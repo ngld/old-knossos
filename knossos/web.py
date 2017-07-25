@@ -580,7 +580,7 @@ class WebBridge(QtCore.QObject):
     def findPkgExes(self, folder):
         result = []
 
-        for path, files, dirs in os.walk(folder):
+        for path, dirs, files in os.walk(folder):
             for fn in files:
                 fn = os.path.join(path, fn)
 
@@ -591,6 +591,84 @@ class WebBridge(QtCore.QObject):
                     result.append(fn)
 
         return [os.path.relpath(item, folder) for item in result]
+
+    @QtCore.Slot(str)
+    def saveModDetails(self, data):
+        try:
+            data = json.loads(data)
+        except Exception:
+            logging.exception('Failed to decode mod details!')
+            QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Internal data inconsistency. Please try again.'))
+            return
+
+        mod = self._get_mod(data['id'], data['version'])
+        if mod == -1:
+            logging.error('Failed find mod "%s" during save!' % data['id'])
+            QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
+            return
+
+        mod.description = data['description']
+
+        if data['logo_path'] != mod.logo_path:
+            mod.logo_path = data['logo_path']
+            mod.logo = os.path.relpath(mod.folder, data['logo_path'])
+
+        if data['tile_path'] != mod.tile_path:
+            mod.tile_path = data['tile_path']
+            mod.tile = os.path.relpath(mod.folder, data['tile_path'])
+
+        mod.release_thread = data['release_thread']
+        mod.videos = []
+        for line in data['video_urls'].split('\n'):
+            line = line.strip()
+            if line != '':
+                mod.videos.append(line)
+
+        mod.first_release = data['first_release']
+        mod.last_update = data['last_update']
+
+        mod.save()
+        center.main_win.update_mod_list()
+
+    @QtCore.Slot(str, str, str, str)
+    def savePackage(self, mid, version, pkg_name, data):
+        try:
+            data = json.loads(data)
+        except Exception:
+            logging.exception('Failed to decode mod details!')
+            QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Internal data inconsistency. Please try again.'))
+            return
+
+        mod = self._get_mod(mid, version)
+        if mod == -1:
+            logging.error('Failed find mod "%s" during save!' % mid)
+            QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
+            return
+
+        pkg = None
+        for item in mod.packages:
+            if item.name == pkg_name:
+                pkg = item
+                break
+
+        if not pkg:
+            logging.error('Failed to find package "%s" for mod "%s"!' % (pkg_name, mid))
+            QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the package! Weird...'))
+            return
+
+        pkg.notes = data['notes']
+        pkg.status = data['status']
+        pkg.dependencies = data['dependencies']
+
+        if mod.mtype in ('engine', 'tool'):
+            pkg.environment = data['environment']
+            pkg.executables = data['executables']
+        else:
+            pkg.environment = None
+            pkg.executables = []
+
+        mod.save()
+        center.main_win.update_mod_list()
 
 
 if QtWebChannel:

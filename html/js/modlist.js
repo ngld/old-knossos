@@ -254,9 +254,11 @@ function init() {
                 // Update the references when the list is updated.
 
                 if(this.selected_mod) {
+                    // TODO: Warn about unsaved changes?
+
                     for(let mod of new_list) {
                         if(mod.id === this.selected_mod.id && mod.version === this.selected_mod.version) {
-                            this.selected_mod = mod;
+                            this.selected_mod = Object.assign({}, mod);
                             break;
                         }
                     }
@@ -316,12 +318,34 @@ function init() {
                 vm.popup_visible = true;
             },
 
+            selectMod(mod) {
+                // TODO: Warn about unsaved changes?
+                this.selected_mod = Object.assign({}, mod);
+            },
+
+            selectPkg(pkg) {
+                // TODO: Warn about unsaved changes?
+                this.selected_pkg = pkg;
+            },
+
             saveDetails() {
+                let mod = Object.assign({}, this.selected_mod);
+                delete mod.packages;
+                delete mod.cmdline;
+
+                fs2mod.saveModDetails(JSON.stringify(mod));
+            },
+
+            saveFsoSettings() {
                 alert('Not yet implemented!');
             },
 
             savePackage() {
-                alert('Not yet implemented!');
+                let pkg = Object.assign({}, this.selected_pkg);
+                let mod = this.selected_mod;
+
+                console.log(this.selected_pkg);
+                fs2mod.savePackage(mod.id, mod.version, pkg.name, JSON.stringify(pkg));
             },
 
             addPackage() {

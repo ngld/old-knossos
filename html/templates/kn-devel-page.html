@@ -3,7 +3,7 @@
         <button class="mod-btn btn-orange" @click.prevent="openCreatePopup">CREATE</button>
 
         <!-- TODO This should probably list *all* available versions -->
-        <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod === mod }" @click="selected_mod = mod">{{ mod.title }}</a>
+        <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>
     </div>
     <div class="content-pane">
         <div class="logo-box" v-if="selected_mod">
@@ -24,7 +24,7 @@
                 <button class="mod-btn btn-green" @click.prevent="addPackage">ADD</button>
                 <br>
                 <div v-for="pkg in selected_mod.packages">
-                    <a href="#" @click.prevent="selected_pkg = pkg">{{ pkg.name }}</a>
+                    <a href="#" @click.prevent="selectPkg(pkg)">{{ pkg.name }}</a>
                 </div>
             </div>
         </div>
@@ -50,11 +50,15 @@
                     <div class="form-group">
                         <label class="col-xs-3 control-label">Version</label>
                         <div class="col-xs-9">
-                            <input type="text" class="form-control" v-model="selected_mod.version" pattern="^([0-9]+\.){0-2}[0-9]+(\-.*)?$">
+                            <input type="text" class="form-control" :value="selected_mod.version" disabled>
 
-                            <span class="help-block">
+                            <p class="help-block">
                                 TODO: Version explanation. The versioning scheme is still pending. See the forum thread for details.
-                            </span>
+                            </p>
+
+                            <p class="help-block">
+                                TODO: Allow version change through popup. (Important: Allow to choose whether to copy or rename the mod folder.)
+                            </p>
                         </div>
                     </div>
 
@@ -200,7 +204,7 @@
                     <div class="form-group">
                         <label class="col-xs-3 control-label">Name</label>
                         <div class="col-xs-9">
-                            <input type="text" class="form-control" v-model="selected_pkg.name">
+                            {{ selected_pkg.name }}
                         </div>
                     </div>
 
