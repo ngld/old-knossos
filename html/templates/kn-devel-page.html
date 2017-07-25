@@ -279,14 +279,42 @@
                     <div class="form-group" v-if="selected_mod.type === 'engine' || selected_mod.type === 'tool'">
                         <label class="col-xs-3 control-label">Conditions</label>
                         <div class="col-xs-9">
-                            TODO (environment)
+                            <textarea class="form-control" rows="5" v-model="selected_pkg.environment"></textarea>
+
+                            <span class="help-block">
+                                This field determines on which CPUs and OS this
+                                {{ selected_mod.type === 'engine' ? 'build' : 'tool' }}
+                                is available. It can contain an expression like "x86_64 &amp;&amp; sse2 &amp;&amp; windows"
+                            </span>
+
+                            <p class="help-block">
+                                TODO: Add a list of available variables.
+                            </p>
                         </div>
                     </div>
 
                     <div class="form-group" v-if="selected_mod.type === 'engine' || selected_mod.type === 'tool'">
                         <label class="col-xs-3 control-label">Executables</label>
                         <div class="col-xs-9">
-                            TODO
+                            <table class="table">
+                                <tr v-for="(exe, i) in selected_pkg.executables">
+                                    <td>
+                                        <input type="text" class="form-control" v-model="exe.file">
+                                    </td>
+                                    <td>
+                                        <label>
+                                            <input type="checkbox" v-model="exe.debug">
+                                            Debug
+                                        </label>
+                                        <button type="button" class="btn btn-small btn-danger" @click.prevent="deleteExe(i)">
+                                            <i class="fa fa-times"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <button type="button" class="btn btn-small" @click.prevent="addExe">Add</button>
+                            <button type="button" class="btn btn-small" @click.prevent="autoAddExes">Auto Add</button>
                         </div>
                     </div>
 

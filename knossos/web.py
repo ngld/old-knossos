@@ -19,6 +19,7 @@ import os.path
 import logging
 import re
 import json
+import stat
 import semantic_version
 
 from .qt import read_file, QtCore, QtGui, QtWidgets, QtWebChannel
@@ -352,6 +353,14 @@ class WebBridge(QtCore.QObject):
     def browseFolder(self, title, path):
         return QtWidgets.QFileDialog.getExistingDirectory(None, title, path)
 
+    @QtCore.Slot(str, str, str, result=list)
+    def browseFiles(self, title, path, filter_):
+        res = QtWidgets.QFileDialog.getOpenFileNames(None, title, path, filter_)
+        if res:
+            return res[0]
+        else:
+            return []
+
     @QtCore.Slot(str)
     def setBasePath(self, path):
         if not os.path.isdir(path):
@@ -394,7 +403,7 @@ class WebBridge(QtCore.QObject):
         if center.settings['fs2_bin']:
             try:
                 flags = settings.get_fso_flags(center.settings['fs2_bin'])
-                
+
                 if flags:
                     flags = flags.to_dict()
             except Exception:
@@ -452,6 +461,8 @@ class WebBridge(QtCore.QObject):
                 if parent == -1:
                     QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected parent TC is not valid!'))
                     return False
+                else:
+                    parent = parent.mid
         else:
             parent = None
 
@@ -465,14 +476,34 @@ class WebBridge(QtCore.QObject):
         mod.generate_folder()
 
         if os.path.isdir(mod.folder):
+            # TODO: Check online, too?
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('There already exists a mod with the chosen ID!'))
             return False
 
-        if not os.path.isdir(os.path.dirname(mod.folder)):
-            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The chosen parent does not exist! Something went very wrong here!!'))
-            return False
+        upper_folder = os.path.dirname(mod.folder)
+        if not os.path.isdir(upper_folder):
+            if mod.mtype in ('tool', 'engine') and upper_folder.endswith('bin'):
+                try:
+                    os.mkdir(upper_folder)
+                except Exception:
+                    logging.exception('Failed to create binary folder! (%s)' % upper_folder)
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('I could not create the folder for binaries!'))
+                    return False
+            else:
+                logging.error('%s did not exist during mod creation! (parent = %s)' % (mod.folder, mod.parent))
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The chosen parent does not exist! Something went very wrong here!!'))
+                return False
+
+        pkg = repo.InstalledPackage({
+            'name': 'Content',
+            'folder': 'content'
+        })
+
+        if mtype in ('tool', 'engine'):
+            pkg.folder = '.'
 
         os.mkdir(mod.folder)
+        mod.add_pkg(pkg)
         mod.save()
 
         center.installed.add_mod(mod)
@@ -529,6 +560,37 @@ class WebBridge(QtCore.QObject):
             return new_path
         else:
             return old_path
+
+    @QtCore.Slot(str, result=list)
+    def addPkgExe(self, folder):
+        if sys.platform == 'win32':
+            filter_ = self.tr('Executables (*.exe)')
+        else:
+            filter_ = '*'
+
+        res = QtWidgets.QFileDialog.getOpenFileNames(None, self.tr('Please select one or more executables'),
+            folder, filter_)
+
+        if not res:
+            return []
+        else:
+            return [os.path.relpath(item, folder) for item in res[0]]
+
+    @QtCore.Slot(str, result=list)
+    def findPkgExes(self, folder):
+        result = []
+
+        for path, files, dirs in os.walk(folder):
+            for fn in files:
+                fn = os.path.join(path, fn)
+
+                if sys.platform == 'win32':
+                    if fn.endswith('.exe'):
+                        result.append(fn)
+                elif '.so' not in fn and os.stat(fn).st_mode & stat.S_IXUSR == stat.S_IXUSR:
+                    result.append(fn)
+
+        return [os.path.relpath(item, folder) for item in result]
 
 
 if QtWebChannel:

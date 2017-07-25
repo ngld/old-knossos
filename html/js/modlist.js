@@ -311,7 +311,8 @@ function init() {
                 vm.popup_mod_id = '';
                 vm.popup_mod_version = '1.0';
                 vm.popup_mod_type = 'mod';
-                vm.popup_mod_parent = 'FS2';
+                vm.popup_mod_tcs = this.mods.filter((mod) => mod.type === 'tc');
+                vm.popup_mod_parent = vm.popup_mod_tcs.indexOf('FS2') > -1 ? 'FS2' : '';
                 vm.popup_visible = true;
             },
 
@@ -430,6 +431,32 @@ function init() {
                 }
                 
                 this.selected_pkg.dependencies = new_deps.concat(deps.slice(Math.max(other, idx) + 1));
+            },
+
+            addExe() {
+                call(fs2mod.addPkgExe, this.selected_mod.folder, (files) => {
+                    for(let path of files) {
+                        this.selected_pkg.executables.push({
+                            'file': path,
+                            'debug': false
+                        });
+                    }
+                });
+            },
+
+            autoAddExes() {
+                call(fs2mod.findPkgExes, this.selected_mod.folder, (files) => {
+                    for(let path of files) {
+                        this.selected_pkg.executables.push({
+                            'file': path,
+                            'debug': false
+                        });
+                    }
+                });
+            },
+
+            deleteExe(i) {
+                this.selected_pkg.executables = this.selected_pkg.executables.splice(i, 1);
             }
         }
     });
@@ -470,6 +497,7 @@ function init() {
                     popup_mod_version: '1.0',
                     popup_mod_type: 'mod',
                     popup_mod_parent: 'FS2',
+                    popup_mod_tcs: [],
 
                     popup_pkg_name: '',
                     popup_pkg_folder: '',

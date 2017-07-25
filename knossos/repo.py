@@ -545,7 +545,7 @@ class Package(object):
         self.notes = values.get('notes', '')
         self.status = values.get('status', 'recommended').lower()
         self.dependencies = values.get('dependencies', [])
-        self.environment = values.get('environment', [])
+        self.environment = values.get('environment', '')
         self.files = {}
         self.filelist = values.get('filelist', [])
         self.executables = values.get('executables', [])
@@ -621,70 +621,38 @@ class Package(object):
         return result
 
     def check_env(self):
-        bvars = None
+        from bool_parser import eval_string
 
-        for check in self.environment:
-            value = check['value'].lower()
-            c_type = check['type'].lower()
+        if self.environment == '':
+            return True
 
-            if c_type == 'os':
-                if value == 'windows':
-                    if sys.platform not in ('win32', 'cygwin'):
-                        return False
-                elif value == 'linux':
-                    if not sys.platform.startswith('linux'):
-                        return False
-                elif value == 'macos':
-                    if sys.platform != 'darwin':
-                        return False
-                else:
-                    return False
+        if not isinstance(self.environment, str):
+            logging.warn('Invalid value for environment check in mod %s (%s)!' % (self.mid, self.version))
+            return True
 
-            elif c_type == 'cpu_feature':
-                if CPU_INFO is None:
-                    # We don't have any information on the current CPU so we just ignore this check.
-                    return True
+        bvars = {}
+        bvars[CPU_INFO['arch']] = True  # this is either X86_32 or X86_64
 
-                if value in CPU_INFO['flags']:
-                    return True
-
-                if value.upper() == CPU_INFO['arch']:
-                    return True
-
-                return False
-            elif c_type == 'bool':
-                if bvars is None:
-                    bvars = {}
-                    bvars[CPU_INFO['arch']] = True  # this is either X86_32 or X86_64
-
-                    if sys.platform in ('win32', 'cygwin'):
-                        bvars['windows'] = True
-                    elif sys.platform.startswith('linux'):
-                        bvars['linux'] = True
-                    elif sys.platform == 'darwin':
-                        bvars['macosx'] = True
-                    else:
-                        logging.error('You are using an unrecognized OS! (%s)' % sys.platform)
-
-                    for flag in CPU_INFO['flags']:
-                        bvars[flag] = True
-
-                return self._solve_bool(value, bvars)
-
-        return True
-
-    @classmethod
-    def _solve_bool(cls, expr, vars):
-        if expr[0] == 'var':
-            return vars.get(expr[1])
-        elif expr[0] == 'not':
-            return not cls._solve_bool(expr[1], vars)
-        elif expr[0] == 'and':
-            return cls._solve_bool(expr[1], vars) and cls._solve_bool(expr[2], vars)
-        elif expr[0] == 'or':
-            return cls._solve_bool(expr[1], vars) or cls._solve_bool(expr[2], vars)
+        if sys.platform in ('win32', 'cygwin'):
+            bvars['windows'] = True
+        elif sys.platform.startswith('linux'):
+            bvars['linux'] = True
+        elif sys.platform == 'darwin':
+            bvars['macosx'] = True
         else:
-            raise Exception('Unknown operation %s! (%s)' % (expr[0], expr))
+            logging.error('You are using an unrecognized OS! (%s)' % sys.platform)
+
+        for flag in CPU_INFO['flags']:
+            bvars[flag] = True
+
+        try:
+            return eval_string(self.environment, bvars)
+        except Exception:
+            logging.exception('Failed to evaluate expression "%s"!' % self.environment)
+
+            # Since we can't perform this check, just assume that it returns True as otherwise this mod would be
+            # inaccessible.
+            return True
 
 
 # Keeps track of installed mods
@@ -837,7 +805,7 @@ class InstalledMod(Mod):
         values['packages'] = []
 
         super(InstalledMod, self).set(values)
-        
+
         if 'folder' in values:
             self.folder = values['folder']
 

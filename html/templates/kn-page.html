@@ -247,8 +247,7 @@
                         <label class="col-xs-3 control-label">Parent mod</label>
                         <div class="col-xs-9">
                             <select class="form-control" v-model="popup_mod_parent">
-                                <!-- TODO Generate a list of installed TCs here -->
-                                <option>FS2</option>
+                                <option v-for="mod in popup_mod_tcs" :value="mod.id" :key="mod.id">{{ mod.title }}</option>
                             </select>
 
                             <span class="help-block">
