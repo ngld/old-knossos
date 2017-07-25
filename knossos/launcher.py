@@ -250,7 +250,7 @@ def scheme_handler(link):
         handle_ipc_error()
         return False
 
-    if not ipc:
+    if not ipc_conn:
         return False
 
     ipc_conn.send_message(json.dumps(link[2:]))

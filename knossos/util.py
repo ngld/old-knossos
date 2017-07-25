@@ -494,8 +494,8 @@ def test_7z():
 
     try:
         return call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL) == 0
-    except Exception:
-        logging.exception('Call to 7z failed!')
+    except Exception as exc:
+        logging.error('Call to 7z failed! (%s)' % exc)
 
         if SEVEN_PATH == '7za':
             return False
@@ -530,7 +530,7 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
         if _HAS_TAR:
             cmd = ['tar', '-xf', archive, '-C', outpath]
 
-            if archive.endswith('.gz'):
+            if archive.endswith(('.gz', '.tgz')):
                 cmd.append('-z')
             elif archive.endswith('.xz'):
                 cmd.append('-J')
