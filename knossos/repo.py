@@ -623,11 +623,11 @@ class Package(object):
     def check_env(self):
         from bool_parser import eval_string
 
-        if self.environment == '':
+        if self.environment in ('', None):
             return True
 
         if not isinstance(self.environment, str):
-            logging.warn('Invalid value for environment check in mod %s (%s)!' % (self.mid, self.version))
+            logging.warn('Invalid value for environment check in mod %s (%s)!' % (self._mod.mid, self._mod.version))
             return True
 
         bvars = {}

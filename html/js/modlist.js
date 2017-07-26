@@ -180,7 +180,6 @@ function init() {
 
         methods: {
             processCmdline() {
-                console.log(this);
                 if(!this.caps) return;
 
                 const flags = {};
@@ -280,6 +279,12 @@ function init() {
 
             selected_mod(sel_mod) {
                 this.selected_pkg = null;
+
+                if(sel_mod.type === 'mod' || sel_mod.type === 'tc') {
+                    this.page = 'fso';
+                } else {
+                    this.page = 'details';
+                }
             },
 
             selected_pkg(sel_pkg) {
@@ -344,7 +349,6 @@ function init() {
                 let pkg = Object.assign({}, this.selected_pkg);
                 let mod = this.selected_mod;
 
-                console.log(this.selected_pkg);
                 fs2mod.savePackage(mod.id, mod.version, pkg.name, JSON.stringify(pkg));
             },
 
@@ -469,18 +473,22 @@ function init() {
             },
 
             autoAddExes() {
+                let exes = this.selected_pkg.executables.map((item) => item.file);
+
                 call(fs2mod.findPkgExes, this.selected_mod.folder, (files) => {
                     for(let path of files) {
-                        this.selected_pkg.executables.push({
-                            'file': path,
-                            'debug': false
-                        });
+                        if(exes.indexOf(path) === -1) {
+                            this.selected_pkg.executables.push({
+                                'file': path,
+                                'debug': false
+                            });
+                        }
                     }
                 });
             },
 
             deleteExe(i) {
-                this.selected_pkg.executables = this.selected_pkg.executables.splice(i, 1);
+                this.selected_pkg.executables.splice(i, 1);
             }
         }
     });
