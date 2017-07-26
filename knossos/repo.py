@@ -516,6 +516,12 @@ class Mod(object):
 
             self.tile_path = self.tile = os.path.abspath(path)
 
+    def get_parent(self):
+        if self.parent:
+            return self._repo.query(self.parent)
+        else:
+            return None
+
 
 class Package(object):
     _mod = None
@@ -599,7 +605,7 @@ class Package(object):
     def resolve_deps(self):
         result = []
         for dep in self.dependencies:
-            version = dep['version']
+            version = dep.get('version', '*')
             if version != '*' and not SpecItem.re_spec.match(version):
                 # Make a spec out of this version
                 version = '==' + version
@@ -895,7 +901,13 @@ class InstalledMod(Mod):
         return []
 
     def get_executables(self):
-        deps = self.resolve_deps(True)
+        if self.mtype in ('engine', 'tool'):
+            deps = self.packages
+        else:
+            deps = self.resolve_deps(True)
+            if not deps:
+                deps = self.resolve_deps()
+
         skipped = set()
         exes = []
 
@@ -914,19 +926,7 @@ class InstalledMod(Mod):
                 exes.append(exe)
 
         if not exes:
-            # I'll enable this part once all mods are migrated (i.e. have FSO or another engine added to their dependencies).
-            # raise Exception('No engine found for "%s"!' % self.title)
-            
-            # For now we just use FSO.
-            mod = center.installed.query('FSO')
-            if not mod:
-                raise Exception('No engine found for "%s"!' % self.title)
-
-            for pkg in mod.packages:
-                for exe in pkg.executables:
-                    exe = exe.copy()
-                    exe['file'] = os.path.join(mod.folder, exe['file'])
-                    exes.append(exe)
+            raise Exception('No engine found for "%s"!' % self.title)
 
         return exes
 

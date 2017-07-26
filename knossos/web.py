@@ -496,6 +496,7 @@ class WebBridge(QtCore.QObject):
 
         pkg = repo.InstalledPackage({
             'name': 'Content',
+            'status': 'required',
             'folder': 'content'
         })
 

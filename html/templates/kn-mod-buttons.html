@@ -1,5 +1,5 @@
 <div>
-    <button class="mod-btn btn-green" v-if="mod.installed && (mod.status === 'ready' || mod.status === 'update')" v-on:click="play">
+    <button class="mod-btn btn-green" v-if="mod.installed && (mod.status === 'ready' || mod.status === 'update') && (mod.type === 'mod' || mod.type == 'tc')" v-on:click="play">
         <span class="btn-text">PLAY</span>
     </button>
 
