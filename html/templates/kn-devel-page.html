@@ -1,6 +1,7 @@
 <div>
     <div class="scroll-style mlist">
         <button class="mod-btn btn-orange" @click.prevent="openCreatePopup">CREATE</button>
+        <button class="btn btn-default btn-small" @click.prevent="showRetailPrompt">INSTALL RETAIL</button>
 
         <!-- TODO This should probably list *all* available versions -->
         <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>

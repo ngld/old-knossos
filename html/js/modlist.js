@@ -254,12 +254,19 @@ function init() {
 
                 if(this.selected_mod) {
                     // TODO: Warn about unsaved changes?
+                    let found = false;
 
                     for(let mod of new_list) {
                         if(mod.id === this.selected_mod.id && mod.version === this.selected_mod.version) {
                             this.selected_mod = Object.assign({}, mod);
+                            found = true;
                             break;
                         }
+                    }
+
+                    if(!found) {
+                        this.selected_mod = null;
+                        this.selected_pkg = null;
                     }
 
                     if(this.selected_pkg) {
@@ -307,6 +314,10 @@ function init() {
         },
 
         methods: {
+            showRetailPrompt() {
+                vm.showRetailPrompt();
+            },
+
             openModFolder() {
                 fs2mod.openExternal('file://' + this.selected_mod.folder);
             },
@@ -656,6 +667,15 @@ function init() {
                         vm.popup_visible = true;
                     },
 
+                    showRetailPrompt() {
+                        vm.popup_mode = 'retail_prompt';
+                        vm.popup_title = 'Retail data missing';
+                        vm.popup_visible = true;
+
+                        vm.retail_data_path = '';
+                        vm.retailAutoDetect();
+                    },
+
                     retailAutoDetect() {
                         vm.retail_searching = true;
                         vm.retail_found = false;
@@ -673,6 +693,14 @@ function init() {
                     selectRetailFolder() {
                         call(fs2mod.browseFolder, 'Please select your FS2 folder', this.retail_data_path, (path) => {
                             if(path) this.retail_data_path = path;
+                        });
+                    },
+
+                    selectRetailFile() {
+                        call(fs2mod.browseFiles, 'Please select your setup_freespace2_...exe', this.retail_data_path, '*.exe', (files) => {
+                            if(files.length > 0) {
+                                this.retail_data_path = files[0];
+                            }
                         });
                     },
 
@@ -702,12 +730,7 @@ function init() {
         vm.page = 'details';
     });
     fs2mod.showRetailPrompt.connect(() => {
-        vm.popup_mode = 'retail_prompt';
-        vm.popup_title = 'Retail data missing';
-        vm.popup_visible = true;
-
-        vm.retail_data_path = '';
-        vm.retailAutoDetect();
+        vm.showRetailPrompt();
     });
     fs2mod.updateModlist.connect((mods, type) => {
         window.mt = mod_table = {};

@@ -829,12 +829,15 @@ class GOGExtractTask(progress.Task):
         path = None
         for plat, info in data.items():
             if sys.platform.startswith(plat):
-                link, path = info
+                link, path = info[:2]
                 break
 
         if link is None:
             logging.error('Couldn\'t find an innoextract download for "%s"!', sys.platform)
             return
+
+        if not os.path.exists(dest_path):
+            os.makedirs(dest_path)
 
         inno = os.path.join(dest_path, os.path.basename(path))
         with tempfile.TemporaryDirectory() as tempdir:
@@ -929,6 +932,26 @@ class GOGExtractTask(progress.Task):
         shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
         shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
 
+        mod = repo.InstalledMod({
+            'title': 'FS2',
+            'id': 'FS2',
+            'version': '1.0',
+            'type': 'tc',
+            'folder': dest_path
+        })
+        mod.add_pkg(repo.InstalledPackage({
+            'name': 'Content',
+            'status': 'required',
+            'folder': '.',
+            'dependencies': [{
+                'id': 'FSO',
+                'version': '>=3.8.0-RC3'
+            }]
+        }))
+
+        center.installed.add_mod(mod)
+        mod.save()
+
         self.post(dest_path)
 
     def _makedirs(self, path):
@@ -949,7 +972,7 @@ class GOGExtractTask(progress.Task):
             QtWidgets.QMessageBox.information(None, translate('tasks', 'Done'), self.tr(
                 'FS2 has been successfully installed.'))
 
-        center.main_win.check_fso()
+            center.main_win.update_mod_list()
 
 
 class GOGCopyTask(progress.Task):

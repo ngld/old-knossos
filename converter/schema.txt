@@ -15,15 +15,15 @@
             "videos": ["<link>", "..."], // optional, default: [], A list of video links (the links will be loaded in an iframe to display the videos)
             "notes": "...", // optional, these will be displayed during the installation.
             "folder": "<mod folder>", // optional, This folder will be created in the FS2 directory. default: mod ID
-            "first_release": "YYYY-MM-DD, // optional, default: null, the first release formatted in ISO 8601
+            "first_release": "YYYY-MM-DD", // optional, default: null, the first release formatted in ISO 8601
             "last_update": "YYYY-MM-DD", // optional, default: null, the latest update formatted in ISO 8601
             "cmdline": "<flags>", // optional, allows the modder to specify a default cmdline for this mod
             /*
                 optional, default: mod
-                Tells the client if this mod depends on retail files (mod), contains executables (engine) or is a
-                Total Conversion (tc).
+                Tells the client if this mod depends on retail files (mod), contains executables (engine / tool) or is a
+                Total Conversion (tc). ext is not yet finished.
             */
-            "type": "<mod|tc|engine>",
+            "type": "<mod|tc|engine|tool|ext>",
             "packages": [ // optional
                 {
                     "name": "...", // required
@@ -44,27 +44,11 @@
                         },
                         ...
                     ],
-                    "environment": [ // optional
-                        {
-                            "type": "cpu_feature", // required
-                            "value": "<SSE|SSE2|AVX|...>", // required
-                            "not": false // optional, default: false, this value negates the requirement
-                            //              (The package isn't installed if the user's processor has this feature.)
-                        },
-                        {
-                            "type": "os", // required
-                            "value": "<windows|linux|macos>", // required
-                            "not": false, // optional, default: false, this value negates the requirement
-                            //              (The package isn't installed if the user uses the given OS.)
-                        },
-                        ...
-                    ],
+                    "environment": "", // optional, boolean expression like "X86_64 && (sse || sse2)"
                     "executables": [ // optional
                         {
-                            "version": "...", // required, http://semver.org
                             "file": "...", // required, path to the executable (*.exe file on Windows), relative to the mod folder
                             "debug": false // optional, default: true, Is this a debug build?
-                            "fred": false // optional, default: false, Is this FRED?
                         }
                     ],
                     "files": [ // optional
