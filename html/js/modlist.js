@@ -320,6 +320,7 @@ function init() {
 
                 if(sel_mod) {
                     this.fso_build = null;
+                    this.video_urls = sel_mod.videos.join("\n");
 
                     if(sel_mod.type === 'mod' || sel_mod.type === 'tc') {
                         this.page = 'fso';
@@ -405,6 +406,7 @@ function init() {
                 delete mod.packages;
                 delete mod.cmdline;
 
+                mod.video_urls = this.video_urls;
                 fs2mod.saveModDetails(JSON.stringify(mod));
             },
 
