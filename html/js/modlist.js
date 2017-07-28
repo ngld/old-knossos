@@ -315,10 +315,6 @@ function init() {
                 }
             },
 
-            page(sel_page) {
-                this.selected_pkg = null;
-            },
-
             selected_mod(sel_mod) {
                 this.selected_pkg = null;
 
@@ -393,9 +389,15 @@ function init() {
                 this.selected_mod = Object.assign({}, mod);
             },
 
+            switchPage(page) {
+                this.selected_pkg = null;
+                this.page = page;
+            },
+
             selectPkg(pkg) {
                 // TODO: Warn about unsaved changes?
                 this.selected_pkg = pkg;
+                this.page = 'pkg';
             },
 
             saveDetails() {

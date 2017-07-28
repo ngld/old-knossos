@@ -11,8 +11,8 @@
             <kn-mod :mod="selected_mod" tab="develop"></kn-mod>
 
             <p>
-                <button @click.prevent="page = 'details'" class="btn btn-default">Edit Mod Details</button><br>
-                <button @click.prevent="page = 'fso'" class="btn btn-default" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button>
+                <button @click.prevent="switchPage('details')" class="btn btn-default">Edit Mod Details</button><br>
+                <button @click.prevent="switchPage('fso')" class="btn btn-default" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button>
             </p>
 
             Mod Path: <button @click.prevent="openModFolder">Browse</button>
