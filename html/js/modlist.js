@@ -166,7 +166,7 @@ function init() {
         }
     });
 
-    registerComp('flag-editor', {
+    registerComp('kn-flag-editor', {
         props: ['caps', 'cmdline'],
 
         data: () => ({
@@ -182,11 +182,21 @@ function init() {
             processCmdline() {
                 if(!this.caps) return;
 
-                const flags = {};
+                this.bool_flags = {};
                 const custom = [];
+                const flags = [];
+
+                for(let list_type of Object.keys(this.caps.flags)) {
+                    for(let flag of this.caps.flags[list_type]) {
+                        flags.push(flag.name);
+                    }
+                }
+
                 for(let part of this.cmdline.split(' ')) {
-                    if(this.caps.flags[part]) {
-                        flags[part] = true;
+                    if(part === '') continue;
+
+                    if(flags.indexOf(part) > -1) {
+                        this.bool_flags[part] = true;
                     } else {
                         custom.push(part);
                     }
@@ -196,7 +206,6 @@ function init() {
                 this.flags = this.caps.flags;
                 this.selected_easy_flags = '';
                 this.custom_flags = custom.join(' ');
-                this.bool_flags = flags;
                 this.list_type = 'Audio';
             },
 
@@ -205,12 +214,36 @@ function init() {
                 vm.popup_mode = 'frame';
                 vm.popup_title = 'Flag Documentation';
                 vm.popup_content = url;
+            },
+
+            updateFlags() {
+                let cmdline = '';
+                for(let name of Object.keys(this.bool_flags)) {
+                    if(this.bool_flags[name]) {
+                        cmdline += name + ' ';
+                    }
+                }
+
+                cmdline += this.custom_flags;
+                this.$emit('update:cmdline', cmdline);
             }
         },
 
         watch: {
             caps() {
                 this.processCmdline();
+            },
+
+            custom_flags() {
+                this.updateFlags();
+            },
+
+            selected_easy_flags(idx) {
+                let group = this.easy_flags[idx];
+                if(!group) return;
+
+                // TODO
+                console.log(group);
             }
         }
     });
@@ -225,6 +258,8 @@ function init() {
             selected_mod: null,
             selected_pkg: null,
             video_urls: '',
+
+            fso_build: null,
             caps: null,
 
             edit_dep: false,
@@ -287,15 +322,34 @@ function init() {
             selected_mod(sel_mod) {
                 this.selected_pkg = null;
 
-                if(sel_mod.type === 'mod' || sel_mod.type === 'tc') {
-                    this.page = 'fso';
-                } else {
-                    this.page = 'details';
+                if(sel_mod) {
+                    this.fso_build = null;
+
+                    if(sel_mod.type === 'mod' || sel_mod.type === 'tc') {
+                        this.page = 'fso';
+
+                        call(fs2mod.getFsoBuild, sel_mod.id, sel_mod.version, (result) => {
+                            this.fso_build = result;
+                        });
+                    } else {
+                        this.page = 'details';
+                    }
                 }
             },
 
             selected_pkg(sel_pkg) {
                 this.edit_dep = false;
+            },
+
+            fso_build(sel_build) {
+                if(sel_build) {
+                    sel_build = sel_build.split('#');
+                    call(fs2mod.getFsoCaps, sel_build[0], sel_build[1], (caps) => {
+                        this.caps = JSON.parse(caps);
+                    });
+                } else {
+                    this.caps = null;
+                }
             },
 
             edit_dep_mod(sel_mod) {
@@ -353,7 +407,9 @@ function init() {
             },
 
             saveFsoSettings() {
-                alert('Not yet implemented!');
+                let mod = this.selected_mod;
+
+                fs2mod.saveModFsoDetails(mod.id, mod.version, this.fso_build, mod.cmdline);
             },
 
             savePackage() {

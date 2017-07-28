@@ -671,6 +671,97 @@ class WebBridge(QtCore.QObject):
         mod.save()
         center.main_win.update_mod_list()
 
+    @QtCore.Slot(str, str, str, str)
+    def saveModFsoDetails(self, mid, version, build, cmdline):
+        mod = self._get_mod(mid, version)
+        if mod == -1:
+            logging.error('Failed find mod "%s" during save!' % mid)
+            QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
+            return
+
+        build = build.split('#')
+        if len(build) != 2:
+            logging.error('saveModFsoDetails(): build is not correctly formatted! (%s)' % build)
+        else:
+            try:
+                exes = mod.get_executables()
+            except repo.NoExecutablesFound:
+                done = False
+                for pkg in mod.packages:
+                    if pkg.status == 'required':
+                        pkg.dependencies.append({
+                            'id': build[0],
+                            'version': build[1]
+                        })
+                        done = True
+                        break
+
+                if not done:
+                    QtWidgets.QMessageBox.critical(None, 'Error',
+                        self.tr('Failed to save the selected FSO build. Make sure that you have at least one required' +
+                        ' package!'))
+            else:
+                old_build = exes[0]['mod']
+                done = False
+
+                for pkg in mod.packages:
+                    for dep in pkg.dependencies:
+                        if dep['id'] == old_build.mid:
+                            dep['id'] = build[0]
+                            dep['version'] = '>=' + build[1]
+                            done = True
+                            break
+
+                    if done:
+                        break
+
+                if not done:
+                    logging.error('Failed to update build dependency for "%s"! WHY?!?! (old_build = %s, new_build = %s)'
+                        % (mod, old_build, build[0]))
+
+        mod.cmdline = cmdline
+        mod.save()
+
+        center.main_win.update_mod_list()
+
+    @QtCore.Slot(str, str, result=str)
+    def getFsoBuild(self, mid, version):
+        mod = self._get_mod(mid, version)
+
+        try:
+            for item in mod.get_executables():
+                print(item)
+                if not item['debug']:
+                    mod = item['mod']
+                    print(mod)
+                    return mod.mid + '#' + str(mod.version)
+        except repo.NoExecutablesFound:
+            return ''
+        except Exception:
+            logging.exception('Failed to fetch executables!')
+
+        return ''
+
+    @QtCore.Slot(str, str, result=str)
+    def getFsoCaps(self, mid, version):
+        flags = None
+        mod = self._get_mod(mid, version)
+
+        try:
+            flags = settings.get_fso_flags(mod.get_executables()[0]['file'])
+
+            if flags:
+                flags = flags.to_dict()
+        except repo.NoExecutablesFound:
+            return 'null'
+        except Exception:
+            logging.exception('Failed to fetch FSO flags!')
+
+        try:
+            return json.dumps(flags)
+        except Exception:
+            logging.exception('Failed to encode FSO flags!')
+
 
 if QtWebChannel:
     BrowserCtrl = WebBridge

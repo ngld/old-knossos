@@ -54,6 +54,10 @@ class PackageNotFound(ModNotFound):
         self.package = package
 
 
+class NoExecutablesFound(Exception):
+    pass
+
+
 class Repo(object):
     base = None
     is_link = False
@@ -846,11 +850,13 @@ class InstalledMod(Mod):
         base = center.settings['base_path']
 
         if self.mtype in ('engine', 'tool'):
-            self.folder = os.path.join(base, 'bin', self.mid) + '-' + str(self.version)
+            self.folder = os.path.join(base, 'bin', self.mid)
         elif self.mtype == 'tc':
             self.folder = os.path.join(base, self.mid)
         else:
             self.folder = os.path.join(base, self.parent, self.mid)
+
+        self.folder += '-' + str(self.version)
 
     def add_pkg(self, pkg):
         pkg = InstalledPackage.convert(pkg, self)
@@ -923,10 +929,11 @@ class InstalledMod(Mod):
             for exe in pkg.executables:
                 exe = exe.copy()
                 exe['file'] = os.path.join(mod.folder, exe['file'])
+                exe['mod'] = mod
                 exes.append(exe)
 
         if not exes:
-            raise Exception('No engine found for "%s"!' % self.title)
+            raise NoExecutablesFound('No engine found for "%s"!' % self.title)
 
         return exes
 

@@ -184,13 +184,15 @@
                     <div class="form-group">
                         <label class="col-xs-3 control-label">FSO build</label>
                         <div class="col-xs-9">
-                            <select class="form-control">
-                                <option>TODO</option>
+                            <select class="form-control" v-model="fso_build">
+                                <option v-for="mod in mods" v-if="mod.type === 'engine'" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
+                                    {{ mod.title }} {{ mod.version }}
+                                </option>
                             </select>
                         </div>
                     </div>
 
-                    <flag-editor :caps="caps" :cmdline="selected_mod.cmdline"></flag-editor>
+                    <kn-flag-editor :caps="caps" :cmdline.sync="selected_mod.cmdline"></kn-flag-editor>
 
                     <div class="form-group">
                         <div class="col-xs-9 col-xs-offset-3">
