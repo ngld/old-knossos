@@ -35,6 +35,14 @@ input {
     max-width: 98%;
 }
 
+.dev-instructions {
+    margin:0 auto;
+    margin-top: 10%;
+    width: 80%;
+    text-align: center;
+    color: grey;
+}
+
 /* -------------------------- Settings for top bar elements ----------------------------------*/
 
 #top-bar {
