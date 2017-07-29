@@ -112,22 +112,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="col-xs-3 control-label">Logo</label>
-                        <div class="col-xs-9">
-                            <img :src="selected_mod.logo_path" v-if="selected_mod.logo_path"><br>
-
-                            <p class="help-block">
-                                This image should be about 255&times;112 pixels large. Please only use this for existing logos.
-                                If you create a new logo, please use the next setting.
-                            </p>
-
-                            <button class="btn btn-small btn-default" @click.prevent="changeLogo">Select Image</button>
-                            <button class="btn btn-small btn-default" @click.prevent="selected_mod.logo_path = null" v-if="selected_mod.logo_path">Remove Image</button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="col-xs-3 control-label">Tile Image</label>
+                        <label class="col-xs-3 control-label">Title Image</label>
                         <div class="col-xs-9">
                             <img :src="selected_mod.tile_path" v-if="selected_mod.tile_path"><br>
 
@@ -137,6 +122,21 @@
 
                             <button class="btn btn-small btn-default" @click.prevent="changeTile">Select Image</button>
                             <button class="btn btn-small btn-default" @click.prevent="selected_mod.tile_path = null" v-if="selected_mod.tile_path">Remove Image</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-xs-3 control-label">Legacy Logo</label>
+                        <div class="col-xs-9">
+                            <img :src="selected_mod.logo_path" v-if="selected_mod.logo_path"><br>
+
+                            <p class="help-block">
+                                This image should be about 255&times;112 pixels large. Please only use this for legacy logos and mod images from mods predating the Knossos installer.
+                                If you create a new mod logo or image, please use the above setting.
+                            </p>
+
+                            <button class="btn btn-small btn-default" @click.prevent="changeLogo">Select Image</button>
+                            <button class="btn btn-small btn-default" @click.prevent="selected_mod.logo_path = null" v-if="selected_mod.logo_path">Remove Image</button>
                         </div>
                     </div>
 
