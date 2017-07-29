@@ -707,6 +707,33 @@ input {
     box-shadow: 4px 4px 3px #000000;
 }
 
+.btn-text {
+    color: white;
+}
+
+.link-btn {
+    display: inline-block;
+    padding: 6px 12px;
+    margin: 5px; /* Buttons need their space. They're shy. */
+    margin-bottom: 0px;
+    font-weight: 400;
+    line-height: 1.42857143;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    width: 100px;
+    font-family: Arial, Tahoma, Verdana, FreeSans, sans-serif;
+    font-size: 14px;
+    color: white;
+    border: 0;
+
+    background: 3px 5px no-repeat;
+    background-position: center;
+    height: 43px;
+}
+
 .mod-btn {
     display: inline-block;
     padding: 6px 12px;
@@ -819,6 +846,30 @@ input {
 
 .btn-yellow:active {
     background-image: url(../images/btn-yellow-a.png);
+}
+
+.btn-link-red {
+    background-image: url(../images/btn-link-red.png);
+}
+
+.btn-link-red:hover {
+    background-image: url(../images/btn-link-red-h.png);
+}
+
+.btn-link-red:active {
+    background-image: url(../images/btn-link-red-a.png);
+}
+
+.btn-link-blue {
+    background-image: url(../images/btn-link-blue.png);
+}
+
+.btn-link-blue:hover {
+    background-image: url(../images/btn-link-blue-h.png);
+}
+
+.btn-link-blue:active {
+    background-image: url(../images/btn-link-blue-a.png);
 }
 
 

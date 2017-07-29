@@ -1,6 +1,6 @@
 <div>
     <div class="scroll-style mlist">
-        <button class="mod-btn btn-orange" @click.prevent="openCreatePopup">CREATE</button>
+        <button class="mod-btn btn-orange" @click.prevent="openCreatePopup"><span class="btn-text">CREATE</span></button>
         <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL RETAIL</button>
 
         <!-- TODO This should probably list *all* available versions -->
@@ -22,7 +22,7 @@
             <br>
             Mod Packages:
             <div class="mod-value">
-                <button class="mod-btn btn-green" @click.prevent="addPackage">ADD</button>
+                <button class="mod-btn btn-green" @click.prevent="addPackage"><span class="btn-text">ADD</span></button>
                 <br>
                 <div v-for="pkg in selected_mod.packages">
                     <a href="#" @click.prevent="selectPkg(pkg)">{{ pkg.name }}</a>
@@ -173,7 +173,7 @@
 
                     <div class="form-group">
                         <div class="col-xs-9 col-xs-offset-3">
-                            <button class="mod-btn btn-green" @click.prevent="saveDetails">SAVE</button>
+                            <button class="mod-btn btn-green" @click.prevent="saveDetails"><span class="btn-text">SAVE</span></button>
                         </div>
                     </div>
                 </div>
@@ -196,7 +196,7 @@
 
                     <div class="form-group">
                         <div class="col-xs-9 col-xs-offset-3">
-                            <button class="mod-btn btn-green" @click.prevent="saveFsoSettings">SAVE</button>
+                            <button class="mod-btn btn-green" @click.prevent="saveFsoSettings"><span class="btn-text">SAVE</span></button>
                         </div>
                     </div>
                 </div>
@@ -327,7 +327,7 @@
 
                     <div class="form-group">
                         <div class="col-xs-9 col-xs-offset-3">
-                            <button class="mod-btn btn-green" @click.prevent="savePackage">SAVE</button>
+                            <button class="mod-btn btn-green" @click.prevent="savePackage"><span class="btn-text">SAVE</span></button>
 
                             <button class="mod-btn btn-red" @click.prevent="deletePackage">DELETE</button>
                         </div>
