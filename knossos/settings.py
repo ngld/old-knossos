@@ -131,7 +131,7 @@ def get_settings_p2(cb):
             for v in mvs:
                 for pkg in v.packages:
                     for exe in pkg.executables:
-                        name = '%s - %s' % (v.title, exe['version'])
+                        name = '%s - %s' % (v.title, v.version)
                         if exe.get('debug'):
                             name += ' (Debug)'
 

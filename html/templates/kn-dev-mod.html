@@ -1,0 +1,17 @@
+<div class="mod row">
+    <div class="mod-node">
+        <div class="mod-image">
+            <img :src="mod.tile_path || 'images/modstock.jpg'" class="mod-stock">
+            <div class="mod-logo-container">
+                <img class="mod-logo-legacy img-responsive" v-if="mod.logo_path" :src="'file://' + mod.logo_path">
+            </div>
+        </div>
+        <div class="actions">
+            <div class="btn-wrapper">
+                <kn-mod-buttons tab="develop" :mod="mod"></kn-mod-buttons>
+            </div>
+        </div>
+        <div class="mod-progress"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>
+        <div class="mod-title">{{ mod.title }}</div>
+    </div>
+</div>

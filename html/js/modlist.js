@@ -37,8 +37,50 @@ function init() {
         });
     }
 
+    registerComp('kn-drawer', {
+        props: ['label'],
+
+        data: () => ({
+            open: false
+        })
+    });
+
+    registerComp('kn-dropdown', {
+        data: () => ({
+            active: false
+        }),
+
+        watch: {
+            active(val) {
+                if(val) {
+                    this.$emit('open');
+
+                    // The delay is necessary, otherwise it would trigger on the click that opened the dropdown.
+                    setTimeout(() => window.addEventListener('click', this._closeHandler), 100);
+                } else {
+                    this.$emit('close');
+
+                    window.removeEventListener('click', this._closeHandler);
+                }
+
+                this.$emit('change', val);
+            }
+        },
+
+        methods: {
+            _closeHandler() {
+                this.active = false;
+            }
+        }
+    });
+
     registerComp('kn-mod', {
         props: ['mod', 'tab'],
+
+        data: () => ({
+            dropdown_active: false,
+            force_active: false
+        }),
 
         methods: {
             showDetails() {
@@ -46,6 +88,10 @@ function init() {
                 vm.page = 'details';
             }
         }
+    });
+
+    registerComp('kn-dev-mod', {
+        props: ['mod']
     });
 
     registerComp('kn-mod-buttons', {
@@ -86,14 +132,6 @@ function init() {
                 vm.popup_visible = true;
             }
         }
-    });
-
-    registerComp('kn-drawer', {
-        props: ['label'],
-
-        data: () => ({
-            open: false
-        })
     });
 
     registerComp('kn-settings-page', {
@@ -634,6 +672,7 @@ function init() {
                     },
 
                     showSettings() {
+                        this.tab = null;
                         this.page = 'settings';
                     },
 

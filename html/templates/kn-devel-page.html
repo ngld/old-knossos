@@ -8,7 +8,7 @@
     </div>
     <div class="content-pane">
         <div class="logo-box" v-if="selected_mod">
-            <kn-mod :mod="selected_mod" tab="develop"></kn-mod>
+            <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
 
             <p>
                 <button @click.prevent="switchPage('details')" class="btn btn-default">Edit Mod Details</button><br>

@@ -1,5 +1,5 @@
 <div class="mod row">
-    <div class="mod-node">
+    <div :class="{ 'mod-node': true, 'active': force_active }">
         <div class="mod-image">
             <img :src="mod.tile_path || 'images/modstock.jpg'" class="mod-stock">
             <div class="mod-logo-container">
@@ -17,20 +17,11 @@
                     <span class="btn-text">DETAILS</span>
                 </button>
 
-                <div class="debug-dropdown" v-if="tab === 'home'">
-                    <button class="dropbtn"></button>
-                    <div class="dropdown-content">
-                        <div class="dropdown-lines">
-                            <button class="drop-content-btn">Run Fast Debug</button>
-                        </div>
-                        <div class="dropdown-lines">
-                            <button class="drop-content-btn">Run Debug</button>
-                        </div>
-                        <div class="dropdown-lines">
-                            <button class="drop-content-btn">Upload Debug Log</button>
-                        </div>
-                    </div>
-                </div>
+                <kn-dropdown v-if="tab === 'home'" @change="val => force_active = val">
+                    <button>Run Fast Debug</button>
+                    <button>Run Debug</button>
+                    <button>Upload Debug Log</button>
+                </kn-dropdown>
             </div>
         </div>
         <div class="mod-progress"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>

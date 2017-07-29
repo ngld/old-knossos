@@ -1,0 +1,6 @@
+<div class="dropdown">
+    <button class="dropbtn" @click="active = !active"></button>
+    <div class="dropdown-content" v-if="active">
+        <slot>No menu items!</slot>
+    </div>
+</div>

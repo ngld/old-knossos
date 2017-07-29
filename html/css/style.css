@@ -76,7 +76,7 @@ input {
     text-decoration: none;
 }
 
-.top-btn:active {
+.top-btn.active {
     outline: none;
     text-decoration: none;
 }
@@ -96,12 +96,8 @@ input {
     content: url(../images/icon-help-h.png);
 }
 
-.top-btn:active .help-image {
+.top-btn.active .help-image {
     content: url(../images/icon-help-a.png);
-}
-
-.top-btn:focus .help-image {
-    content: url(../images/icon-help.png);
 }
 
 .update-image {
@@ -115,12 +111,8 @@ input {
     content: url(../images/icon-update-h.png);
 }
 
-.top-btn:active .update-image {
+.top-btn.active .update-image {
     content: url(../images/icon-update-a.png);
-}
-
-.top-btn:focus .update-image {
-    content: url(../images/icon-update.png);
 }
 
 .settings-image {
@@ -134,12 +126,8 @@ input {
     content: url(../images/icon-settings-h.png);
 }
 
-.top-btn:active .settings-image {
+.top-btn.active .settings-image {
     content: url(../images/icon-settings-a.png);
-}
-
-.top-btn:focus .settings-image {
-    content: url(../images/icon-settings.png);
 }
 
 /* ----------------------------- This is the filter rollout button section. ------------------------------- */
@@ -537,11 +525,11 @@ input {
     cursor: pointer;
 }
 
-.mod-node .actions:hover { /* Display the buttons on mouseover */
+.mod-node .actions:hover, .mod-node.active .actions { /* Display the buttons on mouseover */
     opacity: 1;
 }
 
-.mod-node .actions:hover ~ .mod-title { /* Let's also lighten the red box around the mod title on mouseover */
+.mod-node .actions:hover ~ .mod-title, .mod-node.active .actions ~ .mod-title { /* Let's also lighten the red box around the mod title on mouseover */
     background-color: #856d6d;
     transition: all 0.3s ease-in-out;
 }
@@ -552,7 +540,7 @@ input {
     transition: all 0.3s ease-in-out;
 }
 
-.mod-node .actions:hover ~ .mod-progress { /* Let's also lighten the red box for the progress area */
+.mod-node .actions:hover ~ .mod-progress, .mod-node.active .actions ~ .mod-progress { /* Let's also lighten the red box for the progress area */
     background-color: #856d6d;
     transition: all 0.3s ease-in-out;
 }
@@ -590,7 +578,7 @@ input {
     outline: none;
 }
 
-.debug-dropdown {
+.dropdown {
     position: absolute;
     bottom: 0;
     right: 10px;
@@ -600,7 +588,6 @@ input {
 }
 
 .dropdown-content {
-    display: none;
     padding: 5px;
     position: absolute;
     background-color: #131313;
@@ -611,11 +598,7 @@ input {
     top: 20px;
 }
 
-.dropbtn:focus ~ .dropdown-content {
-    display: block;
-}
-
-.drop-content-btn {
+.dropdown-content button {
     background-color: transparent;
     color: #828282;
     padding: 3px;
@@ -623,25 +606,17 @@ input {
     border: none;
     cursor: pointer;
     width: 150px;
-    height: 19px;
     outline: none;
     text-align: left;
 }
 
-.drop-content-btn:active {
+.dropdown-content button:active {
     color: white;
 }
 
-.dropdown-lines {
-    width: 150px;
-}
-
-.dropdown-lines:hover {
+.dropdown-content button:hover {
     background-color: rgba(117,169,210,0.3);
     box-shadow: inset 0px 0px 16px 1px rgba(117,170,210,1);
-}
-
-.dropdown-lines:hover * {
     color: rgb(220, 220, 220);
 }
 

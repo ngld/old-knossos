@@ -1,9 +1,9 @@
 <div>
     <div class="main-menus">
         <div class="pull-right">
-            <a href="#" class="top-btn" v-on:click="showHelp"><span class="help-image"></span></a>
-            <a href="#" class="top-btn" v-on:click="updateList"><span class="update-image"></span></a>
-            <a href="#" class="top-btn" v-on:click="showSettings"><span class="settings-image"></span></a>
+            <a href="#" class="top-btn" @click="showHelp"><span class="help-image"></span></a>
+            <a href="#" class="top-btn" @click="updateList"><span class="update-image"></span></a>
+            <a href="#" :class="{ 'top-btn': true, active: page === 'settings' }" @click="showSettings"><span class="settings-image"></span></a>
         </div>
         <div id="top-bar">
             <div class="mod-search">
@@ -13,15 +13,15 @@
     </div>
 <!-------------------------------------------------------------------------------- Start the Tab Menus ---------->
     <div id="tab-bar" v-if="page !== 'details'">
-        <a href="#" class="main-btn" v-for="(label, name) in tabs" v-bind:class="{ active: tab === name }" v-on:click="showTab(name)">
+        <a href="#" class="main-btn" v-for="(label, name) in tabs" :class="{ active: tab === name }" @click="showTab(name)">
             <span :class="'icon ' + name + '-image'"></span>
             {{ label }}
         </a>
     </div>
 <!-------------------------------------------------------------------------------- Start the Filter Button ---------->
     <div class="filter-container" v-if="page === 'modlist'">
-        <button class="filterbtn" v-on:click="show_filter = true"></button>
-        <div class="filter-content" v-show="show_filter" v-on:click="show_filter = false">
+        <button class="filterbtn" @click="show_filter = true"></button>
+        <div class="filter-content" v-show="show_filter" @click="show_filter = false">
             <div class="filter-lines">
                 <button class="filter-content-btn last-played-btn">Last Played</button>
             </div>
@@ -39,7 +39,7 @@
 
 <!-------------------------------------------------------------------------------- Start the Details Menu ---------->
     <div id="details-tab-bar" v-if="page === 'details'">
-        <a href="#" class="main-btn" v-on:click="exitDetails"><i class="fa fa-chevron-left"></i> Back</a>
+        <a href="#" class="main-btn" @click="exitDetails"><i class="fa fa-chevron-left"></i> Back</a>
         <span class="main-btn active"><i class="fa fa-exclamation-circle"></i> Details</span>
     </div>
 
@@ -64,12 +64,12 @@
                             <input type="text" class="form-control" v-model="data_path">
                         </div>
                         <div class="col-xs-4">
-                            <button class="btn btn-default" v-on:click.prevent="selectFolder">Browse...</button>
+                            <button class="btn btn-default" @click.prevent="selectFolder">Browse...</button>
                         </div>
                     </div>
                 </form>
                 
-                <p><button class="btn btn-primary" v-on:click="finishWelcome">Continue</button></p>
+                <p><button class="btn btn-primary" @click="finishWelcome">Continue</button></p>
 
                 <hr>
                 <p>
@@ -96,8 +96,8 @@
                 </div>
 
                 <div class="col-sm-6 short-frame">
-                    <button class="btn btn-danger" v-if="mod.release_thread" v-on:click="openLink(mod.release_thread)">FORUM</button>
-                    <button class="btn btn-primary" v-if="mod.videos.length > 0" v-on:click="showVideos(mod.videos)">VIDEOS</button>
+                    <button class="btn btn-danger" v-if="mod.release_thread" @click="openLink(mod.release_thread)">FORUM</button>
+                    <button class="btn btn-primary" v-if="mod.videos.length > 0" @click="showVideos(mod.videos)">VIDEOS</button>
 
                     <div class="date-frame pull-right">
                         <div v-if="mod.first_release">Release: {{ mod.first_release }}</div>
@@ -172,13 +172,13 @@
                             <input type="text" class="form-control" v-model="retail_data_path" :disabled="retail_searching">
                         </div>
                         <div class="col-xs-4">
-                            <button class="btn btn-default" v-on:click.prevent="selectRetailFolder">Browse...</button>
-                            <button class="btn btn-default" v-on:click.prevent="selectRetailFile">Select .exe</button>
+                            <button class="btn btn-default" @click.prevent="selectRetailFolder">Browse...</button>
+                            <button class="btn btn-default" @click.prevent="selectRetailFile">Select .exe</button>
                         </div>
                     </div>
                 </form>
                 
-                <p><button class="btn btn-primary" v-on:click="finishRetailPrompt">Continue</button></p>
+                <p><button class="btn btn-primary" @click="finishRetailPrompt">Continue</button></p>
             </div>
 
             <div v-if="popup_mode === 'create_mod'">
@@ -257,8 +257,8 @@
                         </div>
                     </div>
 
-                    <button class="mod-btn btn-green" v-on:click.prevent="createMod">CREATE</button>
-                    <button class="mod-btn btn-red pull-right" v-on:click.prevent="popup_visible = false">CANCEL</button>
+                    <button class="mod-btn btn-green" @click.prevent="createMod">CREATE</button>
+                    <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">CANCEL</button>
                 </form>
             </div>
 
@@ -278,8 +278,8 @@
                         </div>
                     </div>
 
-                    <button class="mod-btn btn-green" v-on:click.prevent="addPackage">ADD</button>
-                    <button class="mod-btn btn-red pull-right" v-on:click.prevent="popup_visible = false">CANCEL</button>
+                    <button class="mod-btn btn-green" @click.prevent="addPackage">ADD</button>
+                    <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">CANCEL</button>
                 </form>
             </div>
 
@@ -288,8 +288,8 @@
                     {{ popup_sure_question }}
                 </p>
 
-                <button class="mod-btn btn-green" v-on:click.prevent="sureCallback">YES</button>
-                <button class="mod-btn btn-red pull-right" v-on:click.prevent="popup_visible = false">NO</button>
+                <button class="mod-btn btn-green" @click.prevent="sureCallback">YES</button>
+                <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">NO</button>
             </div>
         </div>
     </div>
