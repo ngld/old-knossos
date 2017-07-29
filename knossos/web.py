@@ -416,9 +416,28 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(result=str)
     def searchRetailData(self):
-        # TODO: Add Steam path
-        for path in [r'C:\GOG Games\Freespace2']:
-            if os.path.isdir(path):
+        folders = [r'C:\GOG Games\Freespace2']
+
+        reg = QtCore.QSettings(r'HKEY_CURRENT_USER\Software\Valve\Steam', QtCore.QSettings.NativeFormat)
+        reg.setFallbacksEnabled(False)
+
+        steam_path = reg.value('SteamPath')
+
+        if not steam_path:
+            logging.info('No SteamPath detected!')
+        else:
+            steam_config = os.path.join(steam_path, 'config/config.vdf')
+            if not os.path.isfile(steam_config):
+                logging.warn('config.vdf is not where I expected it!')
+            else:
+                folders.append(os.path.join(steam_config, 'steamapps', 'common', 'Freespace 2'))
+
+                with open(steam_config, 'r') as stream:
+                    for m in re.finditer(r'"BaseInstallFolder_[0-9]+"\s+"([^"]+)"', stream.read()):
+                        folders.append(os.path.join(m.group(1), 'Freespace 2'))
+
+        for path in folders:
+            if os.path.exists(os.path.join(path, 'root_fs2.vp')):
                 return path
 
         return ''
