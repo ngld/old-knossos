@@ -444,14 +444,17 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(str, result=bool)
     def copyRetailData(self, path):
-        if os.path.isdir(path):
+        if os.path.isfile(os.path.join(path, 'root_fs2.vp')):
             tasks.run_task(tasks.GOGCopyTask(path, os.path.join(center.settings['base_path'], 'FS2')))
             return True
         elif os.path.isfile(path) and path.endswith('.exe'):
             tasks.run_task(tasks.GOGExtractTask(path, os.path.join(center.settings['base_path'], 'FS2')))
             return True
+        elif os.path.isfile(path):
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path is not a directory and not an installer!'))
+            return False
         else:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path is not a directory!'))
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path does not contain the retail files!'))
             return False
 
     @QtCore.Slot(result=str)

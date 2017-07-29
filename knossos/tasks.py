@@ -1009,6 +1009,31 @@ class GOGCopyTask(progress.Task):
         for item in glob.glob(os.path.join(gog_path, 'data3', '*.mve')):
             shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
+        with open(os.path.join(dest_path, 'kn_tile.png'), 'wb') as stream:
+            stream.write(read_file(':/html/images/mod-retail.png', decode=False))
+
+        mod = repo.InstalledMod({
+            'title': 'Retail FS2',
+            'id': 'FS2',
+            'version': '1.0',
+            'type': 'tc',
+            'folder': dest_path,
+            'tile': 'kn_tile.png',
+            'tile_path': os.path.join(dest_path, 'kn_tile.png')
+        })
+        mod.add_pkg(repo.InstalledPackage({
+            'name': 'Content',
+            'status': 'required',
+            'folder': '.',
+            'dependencies': [{
+                'id': 'FSO',
+                'version': '>=3.8.0-RC3'
+            }]
+        }))
+
+        center.installed.add_mod(mod)
+        mod.save()
+
         self.post(dest_path)
 
     def _makedirs(self, path):
@@ -1016,7 +1041,7 @@ class GOGCopyTask(progress.Task):
             os.makedirs(path)
 
     def finish(self):
-        center.main_win.check_fso()
+        center.main_win.update_mod_list()
 
 
 class CheckUpdateTask(progress.Task):
