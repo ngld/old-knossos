@@ -96,8 +96,8 @@
                 </div>
 
                 <div class="col-sm-6 short-frame">
-                    <button class="btn btn-danger" v-if="mod.release_thread" @click="openLink(mod.release_thread)">FORUM</button>
-                    <button class="btn btn-primary" v-if="mod.videos.length > 0" @click="showVideos(mod.videos)">VIDEOS</button>
+                    <button class="link-btn btn-link-red" v-if="mod.release_thread" @click="openLink(mod.release_thread)"><span class="btn-text">FORUM</span></button>
+                    <button class="link-btn btn-link-blue" v-if="mod.videos.length > 0" @click="showVideos(mod.videos)"><span class="btn-text">VIDEOS</span></button>
 
                     <div class="date-frame pull-right">
                         <div v-if="mod.first_release">Release: {{ mod.first_release }}</div>
@@ -128,7 +128,7 @@
                 <i class="fa fa-times"></i>
             </a>
         </div>
-        <div :class="{ content: true, 'scroll-style': true, iframe: popup_mode === 'frame' }">
+        <div :class="{ content: true, 'gen-scroll-style': true, iframe: popup_mode === 'frame' }">
             <div v-if="popup_mode === 'html'" v-html="popup_content"></div>
             <iframe v-if="popup_mode === 'frame'" :src="popup_content"></iframe>
 

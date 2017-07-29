@@ -1,7 +1,7 @@
 <div>
     <div class="scroll-style mlist">
-        <button class="mod-btn btn-orange" @click.prevent="openCreatePopup">CREATE</button>
-        <button class="btn btn-default btn-small" @click.prevent="showRetailPrompt">INSTALL RETAIL</button>
+        <button class="mod-btn btn-orange" @click.prevent="openCreatePopup"><span class="btn-text">CREATE</span></button>
+        <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL RETAIL</button>
 
         <!-- TODO This should probably list *all* available versions -->
         <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>
@@ -11,8 +11,8 @@
             <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
 
             <p>
-                <button @click.prevent="switchPage('details')" class="btn btn-default">Edit Mod Details</button><br>
-                <button @click.prevent="switchPage('fso')" class="btn btn-default" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button>
+                <button @click.prevent="switchPage('details')" class="btn btn-default dev-btn">Edit Mod Details</button><br>
+                <button @click.prevent="switchPage('fso')" class="btn btn-default dev-btn" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button>
             </p>
 
             Mod Path: <button @click.prevent="openModFolder">Browse</button>
@@ -22,12 +22,15 @@
             <br>
             Mod Packages:
             <div class="mod-value">
-                <button class="mod-btn btn-green" @click.prevent="addPackage">ADD</button>
+                <button class="mod-btn btn-green" @click.prevent="addPackage"><span class="btn-text">ADD</span></button>
                 <br>
                 <div v-for="pkg in selected_mod.packages">
                     <a href="#" @click.prevent="selectPkg(pkg)">{{ pkg.name }}</a>
                 </div>
             </div>
+        </div>
+        <div class="dev-instructions" v-else>
+            This is the Development tab. Here you can create new mods or edit currently installed mods. This is also where you can apply experimental mod settings, work with the Freespace Mission Editor, and alter the mod flags and commandline options. </br></br>Consider this an advanced section of Knossos but also a great place to get started if you wish to learn the ins and outs of modding with Freespace 2 Open.
         </div>
         <div class="form-box row">
             <form class="form-horizontal" v-if="selected_mod">
@@ -112,22 +115,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="col-xs-3 control-label">Logo</label>
-                        <div class="col-xs-9">
-                            <img :src="selected_mod.logo_path" v-if="selected_mod.logo_path"><br>
-
-                            <p class="help-block">
-                                This image should be about 255&times;112 pixels large. Please only use this for existing logos.
-                                If you create a new logo, please use the next setting.
-                            </p>
-
-                            <button class="btn btn-small btn-default" @click.prevent="changeLogo">Select Image</button>
-                            <button class="btn btn-small btn-default" @click.prevent="selected_mod.logo_path = null" v-if="selected_mod.logo_path">Remove Image</button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="col-xs-3 control-label">Tile Image</label>
+                        <label class="col-xs-3 control-label">Title Image</label>
                         <div class="col-xs-9">
                             <img :src="selected_mod.tile_path" v-if="selected_mod.tile_path"><br>
 
@@ -137,6 +125,21 @@
 
                             <button class="btn btn-small btn-default" @click.prevent="changeTile">Select Image</button>
                             <button class="btn btn-small btn-default" @click.prevent="selected_mod.tile_path = null" v-if="selected_mod.tile_path">Remove Image</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-xs-3 control-label">Legacy Logo</label>
+                        <div class="col-xs-9">
+                            <img :src="selected_mod.logo_path" v-if="selected_mod.logo_path"><br>
+
+                            <p class="help-block">
+                                This image should be about 255&times;112 pixels large. Please only use this for legacy logos and mod images from mods predating the Knossos installer.
+                                If you create a new mod logo or image, please use the above setting.
+                            </p>
+
+                            <button class="btn btn-small btn-default" @click.prevent="changeLogo">Select Image</button>
+                            <button class="btn btn-small btn-default" @click.prevent="selected_mod.logo_path = null" v-if="selected_mod.logo_path">Remove Image</button>
                         </div>
                     </div>
 
@@ -173,7 +176,7 @@
 
                     <div class="form-group">
                         <div class="col-xs-9 col-xs-offset-3">
-                            <button class="mod-btn btn-green" @click.prevent="saveDetails">SAVE</button>
+                            <button class="mod-btn btn-green" @click.prevent="saveDetails"><span class="btn-text">SAVE</span></button>
                         </div>
                     </div>
                 </div>
@@ -196,7 +199,7 @@
 
                     <div class="form-group">
                         <div class="col-xs-9 col-xs-offset-3">
-                            <button class="mod-btn btn-green" @click.prevent="saveFsoSettings">SAVE</button>
+                            <button class="mod-btn btn-green" @click.prevent="saveFsoSettings"><span class="btn-text">SAVE</span></button>
                         </div>
                     </div>
                 </div>
@@ -327,7 +330,7 @@
 
                     <div class="form-group">
                         <div class="col-xs-9 col-xs-offset-3">
-                            <button class="mod-btn btn-green" @click.prevent="savePackage">SAVE</button>
+                            <button class="mod-btn btn-green" @click.prevent="savePackage"><span class="btn-text">SAVE</span></button>
 
                             <button class="mod-btn btn-red" @click.prevent="deletePackage">DELETE</button>
                         </div>
