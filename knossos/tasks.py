@@ -30,7 +30,7 @@ import semantic_version
 
 from . import center, util, progress, repo
 from .repo import Repo
-from .qt import QtCore, QtWidgets
+from .qt import QtCore, QtWidgets, read_file
 
 
 translate = QtCore.QCoreApplication.translate
@@ -932,12 +932,17 @@ class GOGExtractTask(progress.Task):
         shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
         shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
 
+        with open(os.path.join(dest_path, 'kn_tile.png'), 'wb') as stream:
+            stream.write(read_file(':/html/images/mod-retail.png', decode=False))
+
         mod = repo.InstalledMod({
-            'title': 'FS2',
+            'title': 'Retail FS2',
             'id': 'FS2',
             'version': '1.0',
             'type': 'tc',
-            'folder': dest_path
+            'folder': dest_path,
+            'tile': 'kn_tile.png',
+            'tile_path': os.path.join(dest_path, 'kn_tile.png')
         })
         mod.add_pkg(repo.InstalledPackage({
             'name': 'Content',

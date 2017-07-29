@@ -190,15 +190,18 @@ if variant == 'headless':
     QtWebEngineWidgets = None
 
 
-def read_file(path):
+def read_file(path, decode=True):
     fd = QtCore.QFile(path)
     if not fd.open(QtCore.QIODevice.ReadOnly):
         return None
 
-    data = fd.readAll().data().decode('utf-8')
+    data = fd.readAll().data()
     fd.close()
 
-    return data
+    if decode:
+        return data.decode('utf-8')
+    else:
+        return data
 
 
 def load_styles(*names):
