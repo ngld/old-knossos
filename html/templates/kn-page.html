@@ -128,7 +128,7 @@
                 <i class="fa fa-times"></i>
             </a>
         </div>
-        <div :class="{ content: true, 'scroll-style': true, iframe: popup_mode === 'frame' }">
+        <div :class="{ content: true, 'gen-scroll-style': true, iframe: popup_mode === 'frame' }">
             <div v-if="popup_mode === 'html'" v-html="popup_content"></div>
             <iframe v-if="popup_mode === 'frame'" :src="popup_content"></iframe>
 

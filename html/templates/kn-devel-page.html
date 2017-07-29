@@ -1,7 +1,7 @@
 <div>
     <div class="scroll-style mlist">
         <button class="mod-btn btn-orange" @click.prevent="openCreatePopup">CREATE</button>
-        <button class="btn btn-default btn-small" @click.prevent="showRetailPrompt">INSTALL RETAIL</button>
+        <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL RETAIL</button>
 
         <!-- TODO This should probably list *all* available versions -->
         <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>
@@ -11,8 +11,8 @@
             <kn-mod :mod="selected_mod" tab="develop"></kn-mod>
 
             <p>
-                <button @click.prevent="switchPage('details')" class="btn btn-default">Edit Mod Details</button><br>
-                <button @click.prevent="switchPage('fso')" class="btn btn-default" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button>
+                <button @click.prevent="switchPage('details')" class="btn btn-default dev-btn">Edit Mod Details</button><br>
+                <button @click.prevent="switchPage('fso')" class="btn btn-default dev-btn" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button>
             </p>
 
             Mod Path: <button @click.prevent="openModFolder">Browse</button>

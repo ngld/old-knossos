@@ -31,6 +31,10 @@ input {
     color: #fff;
 }
 
+.settings-container {
+    max-width: 98%;
+}
+
 /* -------------------------- Settings for top bar elements ----------------------------------*/
 
 #top-bar {
@@ -389,7 +393,7 @@ input {
     color: #000;
 }
 
-/* -------------------------- Settings for the scroll bar style ----------------------------------*/
+/* -------------------------- Settings for the main container scroll bar style ----------------------------------*/
 
 .scroll-style {
     overflow-y: auto;
@@ -434,6 +438,53 @@ input {
     background-image: url(../images/scrollbtn-up-h.png);
 }
 .scroll-style::-webkit-scrollbar-button:vertical:decrement:active {
+    background-image: url(../images/scrollbtn-up-a.png);
+}
+
+/* -------------------------- Settings for the general scroll bar style ----------------------------------*/
+
+.gen-scroll-style {
+    overflow-y: auto;
+}
+
+.gen-scroll-style::-webkit-scrollbar {
+    width: 25px;
+}
+.gen-scroll-style::-webkit-scrollbar-track {
+    background-color: #1c1c1c;    
+}
+.gen-scroll-style::-webkit-scrollbar-thumb {
+    background-color: #515151;
+    border: 9px solid transparent;
+    border-radius: 18px;
+    background-clip: content-box;
+}
+.gen-scroll-style::-webkit-scrollbar-thumb:hover {
+    background-color: #7c7c7c;
+}
+.gen-scroll-style::-webkit-scrollbar-thumb:active {
+    background-color: #a6a6a6;
+}
+.gen-scroll-style::-webkit-scrollbar-button {
+    background: #1c1c1c center no-repeat;
+    height: 15px;
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:increment {
+    background-image: url(../images/scrollbtn-down.png);
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:increment:hover {
+    background-image: url(../images/scrollbtn-down-h.png);
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:increment:active {
+    background-image: url(../images/scrollbtn-down-a.png);
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:decrement {
+    background-image: url(../images/scrollbtn-up.png);
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:decrement:hover {
+    background-image: url(../images/scrollbtn-up-h.png);
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:decrement:active {
     background-image: url(../images/scrollbtn-up-a.png);
 }
 
@@ -650,6 +701,11 @@ input {
 }
 
 /* ----------------------------- Here there be BUTTONS. Let's make them pretty. ------------------------------- */
+
+.dev-btn {
+    margin: 8px;
+    box-shadow: 4px 4px 3px #000000;
+}
 
 .mod-btn {
     display: inline-block;
