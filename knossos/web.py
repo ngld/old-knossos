@@ -20,6 +20,7 @@ import logging
 import re
 import json
 import stat
+import sqlite3
 import semantic_version
 
 from .qt import QtCore, QtGui, QtWidgets, QtWebChannel
@@ -390,6 +391,9 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(result=str)
     def searchRetailData(self):
+        # Huge thanks go to jr2 for discovering everything implemented here to detect possible FS2 retail installs.
+        # --ngld
+
         folders = [r'C:\GOG Games\Freespace2']
 
         reg = QtCore.QSettings(r'HKEY_CURRENT_USER\Software\Valve\Steam', QtCore.QSettings.NativeFormat)
@@ -409,6 +413,25 @@ class WebBridge(QtCore.QObject):
                 with open(steam_config, 'r') as stream:
                     for m in re.finditer(r'"BaseInstallFolder_[0-9]+"\s+"([^"]+)"', stream.read()):
                         folders.append(os.path.join(m.group(1), 'Freespace 2'))
+
+        for path in (r'HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\GOG.com\GOGFREESPACE2', r'HKEY_LOCAL_MACHINE\SOFTWARE\GOG.com\GOGFREESPACE2'):
+            reg = QtCore.QSettings(path, QtCore.QSettings.NativeFormat)
+            reg.setFallbacksEnabled(False)
+            gog_path = reg.value('PATH')
+
+            if gog_path:
+                folders.append(gog_path)
+
+        gog_db = os.path.expandvars(r'%ProgramData%\GOG.com\Galaxy\storage\index.db')
+        if os.path.isfile(gog_db):
+            try:
+                db = sqlite3.connect(gog_db)
+                db.execute('SELECT localpath FROM Products WHERE productId = 5')
+                row = db.fetchone()
+                if row:
+                    folders.append(row[0])
+            except Exception:
+                logging.exception('Failed to read GOG Galaxy DB!')
 
         for path in folders:
             if os.path.exists(os.path.join(path, 'root_fs2.vp')):
