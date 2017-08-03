@@ -656,26 +656,13 @@ def merge_dicts(a, b):
 
 
 def get_cpuinfo():
-    from .launcher import get_cmd
+    from .third_party import cpuinfo
 
-    # Try the cpuid method first but do so in a seperate process in case it segfaults.
     try:
-        info = json.loads(check_output(get_cmd(['--cpuinfo'])).strip())
-    except subprocess.CalledProcessError:
-        info = None
-        logging.exception('The CPUID method failed!')
+        info = cpuinfo.get_cpu_info()
     except Exception:
+        logging.exception('Exception in the cpuinfo module!')
         info = None
-        logging.exception('Failed to process my CPUID output.')
-
-    if info is None:
-        from .third_party import cpuinfo
-
-        try:
-            info = cpuinfo.get_cpu_info()
-        except Exception:
-            logging.exception('Exception in the cpuinfo module!')
-            info = None
 
     return info
 

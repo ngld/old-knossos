@@ -23,8 +23,6 @@ sys.path.insert(0, os.path.abspath('tools/common'))
 from ninja_syntax import Writer
 from configlib import *
 
-info('Collecting files...\n')
-
 UI_FILES = [
     'ui/flags.ui',
     'ui/gogextract.ui',
@@ -36,6 +34,21 @@ UI_FILES = [
     'ui/select_list.ui'
 ]
 
+JS_FILES = [
+    'html/templates/kn-dev-mod.vue',
+    'html/templates/kn-devel-page.vue',
+    'html/templates/kn-drawer.vue',
+    'html/templates/kn-dropdown.vue',
+    'html/templates/kn-flag-editor.vue',
+    'html/templates/kn-mod-buttons.vue',
+    'html/templates/kn-mod.vue',
+    'html/templates/kn-page.vue',
+    'html/templates/kn-settings-page.vue',
+    'html/js/translations.js',
+    'html/js/main.js',
+    'webpack.config.js'
+]
+
 RCC_FILES = [
     'knossos/data/hlp.png',
     'html/css/bootstrap.min.css',
@@ -43,14 +56,70 @@ RCC_FILES = [
     'html/css/style.css',
     'html/fonts/fontawesome-webfont.woff',
     'html/fonts/fontawesome-webfont.ttf',
-    'html/js/vue.min.js',
-    'html/js/modlist_ts.js',
-    'html/js/modlist.js',
-    'html/index.html'
-] + \
-    build_file_list('html/images') + \
-    build_file_list('html/templates') + \
-    build_file_list('ui', ('*.png', '*.jpg', '*.css'))
+    'html/dist/bundle.js',
+    'html/index.html',
+    'html/images/dropdown-h.png',
+    'html/images/modnotify_updating.png',
+    'html/images/btn-blue-a.png',
+    'html/images/icon-filter-a.png',
+    'html/images/iconbtn-develop-h.png',
+    'html/images/icon-update.png',
+    'html/images/mod-retail.png',
+    'html/images/icon-filter-h.png',
+    'html/images/btn-green-h.png',
+    'html/images/iconbtn-home-a.png',
+    'html/images/btn-blue.png',
+    'html/images/icon-settings.png',
+    'html/images/modnotify_error.png',
+    'html/images/scrollbtn-down-a.png',
+    'html/images/btn-yellow.png',
+    'html/images/scrollbtn-up-h.png',
+    'html/images/modnotify_update.png',
+    'html/images/btn-red-a.png',
+    'html/images/scrollbtn-up.png',
+    'html/images/btn-orange-a.png',
+    'html/images/btn-red-h.png',
+    'html/images/iconbtn-explore-h.png',
+    'html/images/modnotify_ready.png',
+    'html/images/iconbtn-explore-a.png',
+    'html/images/scrollbtn-down.png',
+    'html/images/btn-grey-a.png',
+    'html/images/icon-settings-h.png',
+    'html/images/btn-orange.png',
+    'html/images/btn-link-red.png',
+    'html/images/icon-help-h.png',
+    'html/images/scrollbtn-down-h.png',
+    'html/images/btn-link-blue-a.png',
+    'html/images/icon-update-a.png',
+    'html/images/iconbtn-home-h.png',
+    'html/images/icon-filter.png',
+    'html/images/btn-orange-h.png',
+    'html/images/iconbtn-home.png',
+    'html/images/iconbtn-develop.png',
+    'html/images/modstock.jpg',
+    'html/images/btn-link-red-a.png',
+    'html/images/icon-settings-a.png',
+    'html/images/icon-help.png',
+    'html/images/btn-link-blue-h.png',
+    'html/images/BG.png',
+    'html/images/btn-link-blue.png',
+    'html/images/icon-update-h.png',
+    'html/images/iconbtn-develop-a.png',
+    'html/images/dropdown.png',
+    'html/images/btn-red.png',
+    'html/images/dropdown-a.png',
+    'html/images/btn-grey.png',
+    'html/images/btn-link-red-h.png',
+    'html/images/btn-blue-h.png',
+    'html/images/btn-grey-h.png',
+    'html/images/btn-yellow-h.png',
+    'html/images/icon-help-a.png',
+    'html/images/btn-green.png',
+    'html/images/iconbtn-explore.png',
+    'html/images/btn-green-a.png',
+    'html/images/scrollbtn-up-a.png',
+    'html/images/btn-yellow-a.png'
+]
 
 SRC_FILES = [
     'knossos/third_party/__init__.py',
@@ -58,6 +127,7 @@ SRC_FILES = [
     'knossos/ui/__init__.py',
     'knossos/__init__.py',
     'knossos/__main__.py',
+    'knossos/bool_parser.py',
     'knossos/center.py',
     'knossos/clibs.py',
     'knossos/integration.py',
@@ -75,15 +145,14 @@ SRC_FILES = [
     'knossos/windows.py'
 ]
 
-# Grab the current version
-version = subprocess.check_output([sys.executable, 'setup.py', 'get_version']).decode('utf8').strip()
-
 info('Checking Python version...')
 if sys.hexversion < 0x20700 or (sys.hexversion > 0x30000 and sys.hexversion < 0x30200):
     fail('Need at least 2.7.0 or 3.2.0!')
 else:
     info(' ok\n')
 
+# Check if all required modules are available
+check_module('setuptools')
 check_module('PyQt5')
 check_module('semantic_version')
 check_module('six')
@@ -91,24 +160,17 @@ check_module('requests')
 if sys.platform == 'win32':
     check_module('comtypes')
 
-babel = False
+# We want to use the more modern QtWebEngine by default so we check for that first.
+webkit = False
 if not check_module('PyQt5.QtWebEngine', required=False):
+    # If it's not available, we use QtWebKit as a fallback.
     check_module('PyQt5.QtWebKit')
-
-    nodejs = find_program(['node', 'nodejs'], 'node')
-
-    info('Checking babel...')
-    if os.path.isfile('node_modules/.bin/babel'):
-        info(' ok\n')
-        babel = True
-
-        RCC_FILES.remove('html/js/modlist.js')
-        RCC_FILES.append('html/js/modlist.out.js')
-    else:
-        fail(' not found!\nPlease install QtWebEngine or babel with "npm i babel-cli babel-preset-env babel-polyfill".')
+    webkit = True
 else:
+    # We need QtWebChannel to communicate with the web page inside QtWebEngine.
     check_module('PyQt5.QtWebChannel')
 
+# Look for the various programs we need.
 pyuic = try_program([[sys.executable, '-mPyQt5.uic.pyuic'], ['pyuic5'], ['pyuic']], 'pyuic')
 pylupdate = try_program([[sys.executable, '-mPyQt5.pylupdate_main'], ['pylupdate5'], ['pylupdate']], 'pylupdate', test_param='-version')
 
@@ -117,8 +179,14 @@ lupdate = find_program(['lupdate-qt5', 'lupdate'], 'lupdate')
 rcc = find_program(['rcc-qt5', 'rcc'], 'rcc')
 find_program(['7z', '7za'], '7zip')
 
+node = find_program(['node', 'nodejs'], 'nodejs')
+npm = find_program(['npm'], 'npm')
+
 check_ctypes_lib(['libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib'], 'SDL2')
-check_ctypes_lib(['libopenal.so.1.15.1', 'openal', 'OpenAL'], 'OpenAL')
+check_ctypes_lib(['libopenal.so.1.15.1', 'openal', 'OpenAL', 'OpenAL32'], 'OpenAL')
+
+info('Reading version...\n')
+version = subprocess.check_output([sys.executable, 'setup.py', 'get_version']).decode('utf8').strip()
 
 info('Writing knossos/data/resources.qrc...\n')
 
@@ -149,9 +217,9 @@ with open('build.ninja', 'w') as stream:
     n.rule('js_lupdate', py_script('tools/common/js_lupdate.py', ['-o', '$out', '$in']), 'JS-LUPDATE $out')
     n.rule('pylupdate', cmd2str(pylupdate + ['$in', '-ts', '$out']), 'PY-LUPDATE $out')
     n.rule('lupdate', cmd2str([lupdate, '$in', '-ts', '$out']), 'LUPDATE $out')
+    n.rule('webpack', cmdenv([node, 'node_modules/webpack/bin/webpack.js'], {'USE_WEBKIT': webkit}), 'WEBPACK $out')
 
-    if babel:
-        n.rule('babel', cmd2str([nodejs, 'node_modules/.bin/babel', '--presets=env', '$in', '--out-file', '$out']), 'BABEL $out')
+    n.rule('npm', cmd2str([npm, 'install']), 'NPM', pool='console')
 
     if sys.platform.startswith('linux'):
         n.rule('cat', 'cat $in > $out', 'CAT $out')
@@ -159,16 +227,23 @@ with open('build.ninja', 'w') as stream:
     n.comment('Files')
     ui_targets = build_targets(n, UI_FILES, 'uic', new_ext='py', new_path='knossos/ui')
     n.build('knossos/data/resources.rcc', 'rcc', 'knossos/data/resources.qrc', implicit=RCC_FILES)
-    n.build('html/js/modlist_ts.js', 'js_lupdate', ['html/js/modlist.js', 'html/index.html'])
+    n.build('html/js/translations.js', 'js_lupdate', ['html/js/main.js'])
     n.build('locale/_py.ts', 'pylupdate', SRC_FILES)
-    n.build('locale/_ui.ts', 'lupdate', ['locale/_py.ts', 'html/js/modlist_ts.js'] + UI_FILES)
+    n.build('locale/_ui.ts', 'lupdate', ['locale/_py.ts', 'html/js/translations.js'] + UI_FILES)
 
-    if babel:
-        n.build('html/js/modlist.es5.js', 'babel', 'html/js/modlist.js')
-        n.build('html/js/modlist.out.js', 'cat', ['node_modules/babel-polyfill/dist/polyfill.js', 'html/js/modlist.es5.js'])
+    if webkit:
+        n.comment('Install es6-shim for QtWebKit compatibility')
+        n.rule('npm_es6', cmd2str([npm, 'install', 'es6-shim']), 'NPM es6-shim', pool='console')
+        n.build('node_modules/es6-shim/package.json', 'npm_es6')
+
+        JS_FILES.append('node_modules/es6-shim/package.json')
+
+    n.comment("Install Webpack if it's missing")
+    n.build('node_modules/webpack/bin/webpack.js', 'npm', implicit=['package.json', 'package-lock.json'])
+    n.build('html/dist/bundle.js', 'webpack', JS_FILES, implicit=['node_modules/webpack/bin/webpack.js'])
 
     n.comment('Shortcuts')
-    n.build('resources', 'phony', ui_targets + ['knossos/data/resources.rcc', 'html/js/modlist_ts.js'])
+    n.build('resources', 'phony', ui_targets + ['knossos/data/resources.rcc', 'html/js/translations.js'])
 
     n.comment('Scripts')
     n.rule('regen', py_script('configure.py', sys.argv[1:]), 'RECONFIGURE', generator=True)
@@ -184,12 +259,12 @@ with open('build.ninja', 'w') as stream:
     n.rule('run', py_script('knossos/__main__.py'), 'RUN', pool='console')
     n.build('run', 'run', 'resources')
 
-    n.rule('debug', cmdenv(py_script('knossos/__main__.py'), {'KN_DEBUG': 1, 'KN_BABEL': babel, 'QTWEBENGINE_REMOTE_DEBUGGING': 4006}), 'DEBUG', pool='console')
+    n.rule('debug', cmdenv(py_script('knossos/__main__.py'), {'KN_DEBUG': 1, 'QTWEBENGINE_REMOTE_DEBUGGING': 4006}), 'DEBUG', pool='console')
     n.build('debug', 'debug', 'resources')
 
     if sys.platform == 'win32':
         n.comment('Win32')
-        
+
         if check_module('PyInstaller', required=False):
             pyinstaller = 'cmd /C "cd releng\\windows && %s"' % cmd2str([sys.executable, '-OO', '-mPyInstaller', '-d', '--distpath=.\\dist', '--workpath=.\\build', 'Knossos.spec', '-y'])
             n.rule('pyinstaller', pyinstaller, 'PACKAGE', pool='console')
@@ -197,7 +272,7 @@ with open('build.ninja', 'w') as stream:
 
             nsis = find_program(['makensis', r'C:\Program Files (x86)\NSIS\makensis.exe', r'C:\Program Files\NSIS\makensis.exe'], 'NSIS', required=False)
             if nsis:
-                n.rule('nsis', cmd2str([nsis, '/NOCD', r'/DKNOSSOS_ROOT=.\\', '/DKNOSSOS_VERSION=%s' % version, '$in']), 'NSIS $out')
+                n.rule('nsis', cmd2str([nsis, '/NOCD', '/DKNOSSOS_ROOT=.\\', '/DKNOSSOS_VERSION=%s' % version, '$in']), 'NSIS $out')
                 n.build('releng/windows/dist/Knossos-%s.exe' % version, 'nsis', 'releng/windows/nsis/installer.nsi', implicit='pyi')
                 n.build('releng/windows/dist/update-%s.exe' % version, 'nsis', 'releng/windows/nsis/updater.nsi', implicit='pyi')
 

@@ -1,8 +1,7 @@
 Knossos
 =======
 
-The original idea and prototype were created by Hellzed.
-ngld rewrote the manager in Python and extended it.
+A modern mod manager and launcher for FreeSpace Open.
 
 After installing this package, you can launch Knossos with ``python -m knossos``.
 

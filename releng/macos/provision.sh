@@ -4,15 +4,24 @@ set -eo pipefail
 
 echo "==> Installing build tools"
 brew update
-brew install python p7zip ninja qt5
-pip2 install -U pip
-pip2 install dmgbuild
+brew upgrade
+brew install node p7zip ninja qt5
 
 mkdir /tmp/prov
 cd /tmp/prov
 
+# We need Python 2.x for dmgbuild. Installing it through Homebrew without compiling requires the
+# developer tools which apparently can't be installed without user interaction. Therefore, I use
+# the official installer from python.org, instead.
+echo "==> Installing Python 2.7.13"
+curl -so python2.pkg "https://www.python.org/ftp/python/2.7.13/python-2.7.13-macosx10.6.pkg"
+sudo installer -store -pkg python2.pkg -target /
+
+echo "==> Installing dmgbuild"
+pip2 install dmgbuild
+
 # We need Python 3.5 since that's the latest version PyInstaller supports.
-echo "==> Installing Python 3.5"
+echo "==> Installing Python 3.5.3"
 curl -so python.pkg "https://www.python.org/ftp/python/3.5.3/python-3.5.3-macosx10.6.pkg"
 sudo installer -store -pkg python.pkg -target /
 

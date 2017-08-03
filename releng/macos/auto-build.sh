@@ -2,7 +2,7 @@
 
 set -e
 
-export PATH="/usr/local/bin:$PATH"
+export PATH="/usr/local/bin:$PATH:/Library/Frameworks/Python.framework/Versions/2.7/bin"
 export LANG="en_US.UTF-8"
 
 cd "$(dirname "$0")"

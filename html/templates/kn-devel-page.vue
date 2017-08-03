@@ -1,0 +1,661 @@
+<script>
+export default {
+    props: ['mods'],
+
+    data: () => ({
+        mod_map: {},
+
+        page: 'fso',
+        selected_mod: null,
+        selected_pkg: null,
+        video_urls: '',
+
+        fso_build: null,
+        caps: null,
+
+        edit_dep: false,
+        edit_dep_idx: -1,
+        edit_dep_mod: null,
+        edit_dep_pkgs: null,
+        edit_dep_pkg_sel: null
+    }),
+
+    created() {
+        window.dp = this;
+
+        this.mod_map = {};
+        for(let mod of this.mods) {
+            this.mod_map[mod.id] = mod;
+        }
+    },
+
+    watch: {
+        mods(new_list) {
+            this.mod_map = {};
+            for(let mod of new_list) {
+                this.mod_map[mod.id] = mod;
+            }
+
+            // Update the references when the list is updated.
+
+            if(this.selected_mod) {
+                // TODO: Warn about unsaved changes?
+                let found = false;
+
+                for(let mod of new_list) {
+                    if(mod.id === this.selected_mod.id && mod.version === this.selected_mod.version) {
+                        this.selected_mod = Object.assign({}, mod);
+                        found = true;
+                        break;
+                    }
+                }
+
+                if(!found) {
+                    this.selected_mod = null;
+                    this.selected_pkg = null;
+                }
+
+                if(this.selected_pkg) {
+                    for(let pkg of this.selected_mod.packages) {
+                        if(pkg.name === this.selected_pkg.name) {
+                            this.selected_pkg = pkg;
+                            break;
+                        }
+                    }
+                }
+            }
+        },
+
+        selected_mod(sel_mod) {
+            this.selected_pkg = null;
+
+            if(sel_mod) {
+                this.fso_build = null;
+                this.video_urls = sel_mod.videos.join("\n");
+
+                if(sel_mod.type === 'mod' || sel_mod.type === 'tc') {
+                    this.page = 'fso';
+
+                    call(fs2mod.getFsoBuild, sel_mod.id, sel_mod.version, (result) => {
+                        this.fso_build = result;
+                    });
+                } else {
+                    this.page = 'details';
+                }
+            }
+        },
+
+        selected_pkg(sel_pkg) {
+            this.edit_dep = false;
+        },
+
+        fso_build(sel_build) {
+            if(sel_build) {
+                sel_build = sel_build.split('#');
+                call(fs2mod.getFsoCaps, sel_build[0], sel_build[1], (caps) => {
+                    this.caps = JSON.parse(caps);
+                });
+            } else {
+                this.caps = null;
+            }
+        },
+
+        edit_dep_mod(sel_mod) {
+            let mod = this.mod_map[sel_mod];
+
+            this.edit_dep_pkgs = [];
+            this.edit_dep_pkg_sel = {};
+
+            if(mod && mod.packages) {
+                for(let pkg of mod.packages) {
+                    this.edit_dep_pkgs.push(pkg);
+                    this.edit_dep_pkg_sel[pkg.name] = pkg.status !== 'optional';
+                }
+            }
+        }
+    },
+
+    methods: {
+        showRetailPrompt() {
+            vm.showRetailPrompt();
+        },
+
+        openModFolder() {
+            fs2mod.openExternal('file://' + this.selected_mod.folder);
+        },
+
+        openCreatePopup() {
+            vm.popup_mode = 'create_mod';
+            vm.popup_title = 'Create mod';
+            vm.popup_mod_name = '';
+            vm.popup_mod_id = '';
+            vm.popup_mod_version = '1.0';
+            vm.popup_mod_type = 'mod';
+            vm.popup_mod_tcs = this.mods.filter((mod) => mod.type === 'tc');
+            vm.popup_mod_parent = vm.popup_mod_tcs.indexOf('FS2') > -1 ? 'FS2' : '';
+            vm.popup_visible = true;
+        },
+
+        selectMod(mod) {
+            // TODO: Warn about unsaved changes?
+            this.selected_mod = Object.assign({}, mod);
+        },
+
+        switchPage(page) {
+            this.selected_pkg = null;
+            this.page = page;
+        },
+
+        selectPkg(pkg) {
+            // TODO: Warn about unsaved changes?
+            this.selected_pkg = pkg;
+            this.page = 'pkg';
+        },
+
+        saveDetails() {
+            let mod = Object.assign({}, this.selected_mod);
+            delete mod.packages;
+            delete mod.cmdline;
+
+            mod.video_urls = this.video_urls;
+            fs2mod.saveModDetails(JSON.stringify(mod));
+        },
+
+        saveFsoSettings() {
+            let mod = this.selected_mod;
+
+            fs2mod.saveModFsoDetails(mod.id, mod.version, this.fso_build, mod.cmdline);
+        },
+
+        savePackage() {
+            let pkg = Object.assign({}, this.selected_pkg);
+            let mod = this.selected_mod;
+
+            fs2mod.savePackage(mod.id, mod.version, pkg.name, JSON.stringify(pkg));
+        },
+
+        addPackage() {
+            vm.popup_mode = 'add_pkg';
+            vm.popup_title = 'Add Package';
+            vm.popup_mod_id = this.selected_mod.id;
+            vm.popup_mod_version = this.selected_mod.version;
+            vm.popup_pkg_name = '';
+            vm.popup_pkg_folder = '';
+            vm.popup_visible = true;
+        },
+
+        deletePackage() {
+            vm.popup_mode = 'are_you_sure';
+            vm.popup_title = 'Confirmation';
+            vm.popup_sure_question = 'Are you sure you want to delete ' + this.selected_pkg.name + '?';
+            vm.sureCallback = () => {
+                let pidx = this.selected_mod.packages.indexOf(this.selected_pkg);
+                call(fs2mod.deletePackage, this.selected_mod.id, this.selected_mod.version, pidx, (result) => {
+                    if(result) {
+                        vm.popup_visible = false;
+                        this.selected_pkg = null;
+                    }
+                });
+            };
+            vm.popup_visible = true;
+        },
+
+        changeLogo() {
+            call(fs2mod.selectImage, this.selected_mod.logo_path || '', (new_path) => {
+                this.selected_mod.logo_path = new_path;
+            });
+        },
+
+        changeTile() {
+            call(fs2mod.selectImage, this.selected_mod.tile_path || '', (new_path) => {
+                this.selected_mod.tile_path = new_path;
+            });
+        },
+
+        addDep() {
+            this.edit_dep_idx = -1;
+            this.edit_dep_mod = null;
+            this.edit_dep_pkgs = [];
+            this.edit_dep_pkg_sel = {};
+            this.edit_dep = true;
+        },
+
+        editDep(idx, dep) {
+            this.edit_dep_idx = idx;
+            this.edit_dep_mod = dep.id;
+            this.edit_dep_pkg_sel = {};
+            this.edit_dep = true;
+
+            if(dep.packages) {
+                for(let pkg of dep.packages) {
+                    this.edit_dep_pkg_sel[pkg] = true;
+                }
+            }
+        },
+
+        deleteDep() {
+            if(this.edit_dep_idx !== -1) {
+                this.selected_pkg.dependencies.splice(this.edit_dep_idx, 1);
+            }
+
+            this.edit_dep = false;
+        },
+
+        saveDep() {
+            let dep = {
+                id: this.edit_dep_mod,
+                packages: []
+            };
+
+            for(let pkg of this.edit_dep_pkgs) {
+                if(this.edit_dep_pkg_sel[pkg.name]) {
+                    dep.packages.push(pkg.name);
+                }
+            }
+
+            if(this.edit_dep_idx === -1) {
+                this.selected_pkg.dependencies.push(dep);
+            } else {
+                this.selected_pkg.dependencies[this.edit_dep_idx] = dep;
+            }
+
+            this.edit_dep = false;
+        },
+
+        swapDep(idx, dir) {
+            let other = idx + dir;
+            let deps = this.selected_pkg.dependencies;
+
+            if(other < 0) return;
+            if(other >= deps.length) return;
+
+            // We have to create a new copy of the array and can't simply swap these in-place otherwise Vue.js gets confused
+            // and can't detect the change.
+            let new_deps = deps.slice(0, Math.min(other, idx));
+            if(dir === -1) {
+                new_deps.push(deps[idx]);
+                new_deps.push(deps[other]);
+            } else {
+                new_deps.push(deps[other]);
+                new_deps.push(deps[idx]);
+            }
+            
+            this.selected_pkg.dependencies = new_deps.concat(deps.slice(Math.max(other, idx) + 1));
+        },
+
+        addExe() {
+            call(fs2mod.addPkgExe, this.selected_mod.folder, (files) => {
+                for(let path of files) {
+                    this.selected_pkg.executables.push({
+                        'file': path,
+                        'debug': false
+                    });
+                }
+            });
+        },
+
+        autoAddExes() {
+            let exes = this.selected_pkg.executables.map((item) => item.file);
+
+            call(fs2mod.findPkgExes, this.selected_mod.folder, (files) => {
+                for(let path of files) {
+                    if(exes.indexOf(path) === -1) {
+                        this.selected_pkg.executables.push({
+                            'file': path,
+                            'debug': false
+                        });
+                    }
+                }
+            });
+        },
+
+        deleteExe(i) {
+            this.selected_pkg.executables.splice(i, 1);
+        }
+    }
+};
+</script>
+<template>
+    <div>
+        <div class="scroll-style mlist">
+            <button class="mod-btn btn-orange" @click.prevent="openCreatePopup"><span class="btn-text">CREATE</span></button>
+            <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL RETAIL</button>
+
+            <!-- TODO This should probably list *all* available versions -->
+            <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>
+        </div>
+        <div class="content-pane">
+            <div class="logo-box" v-if="selected_mod">
+                <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
+
+                <p>
+                    <button @click.prevent="switchPage('details')" class="btn btn-default dev-btn">Edit Mod Details</button><br>
+                    <button @click.prevent="switchPage('fso')" class="btn btn-default dev-btn" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button>
+                </p>
+
+                Mod Path: <button @click.prevent="openModFolder">Browse</button>
+                <br>
+                <div class="mod-value">{{ selected_mod.folder }}</div>
+
+                <br>
+                Mod Packages:
+                <div class="mod-value">
+                    <button class="mod-btn btn-green" @click.prevent="addPackage"><span class="btn-text">ADD</span></button>
+                    <br>
+                    <div v-for="pkg in selected_mod.packages">
+                        <a href="#" @click.prevent="selectPkg(pkg)">{{ pkg.name }}</a>
+                    </div>
+                </div>
+            </div>
+            <div class="dev-instructions" v-else>
+                This is the Development tab. Here you can create new mods or edit currently installed mods. This is also where you can apply experimental mod settings, work with the Freespace Mission Editor, and alter the mod flags and commandline options. </br></br>Consider this an advanced section of Knossos but also a great place to get started if you wish to learn the ins and outs of modding with Freespace 2 Open.
+            </div>
+            <div class="form-box row">
+                <form class="form-horizontal" v-if="selected_mod">
+                    <div v-if="!selected_pkg && page === 'details'">
+                        <h4>Mod Details</h4>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Name</label>
+                            <div class="col-xs-9">
+                                <input type="text" class="form-control" v-model="selected_mod.title">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">ID</label>
+                            <div class="col-xs-9">
+                                <p class="form-control-static">{{ selected_mod.id }}</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Version</label>
+                            <div class="col-xs-9">
+                                <input type="text" class="form-control" :value="selected_mod.version" disabled>
+
+                                <p class="help-block">
+                                    TODO: Version explanation. The versioning scheme is still pending. See the forum thread for details.
+                                </p>
+
+                                <p class="help-block">
+                                    TODO: Allow version change through popup. (Important: Allow to choose whether to copy or rename the mod folder.)
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Type</label>
+                            <div class="col-xs-9">
+                                <select class="form-control" v-model="selected_mod.type" disabled>
+                                    <option value="mod">Mod</option>
+                                    <option value="tc">Total Conversion</option>
+                                    <option value="engine">FSO build</option>
+                                    <option value="tool">Tool</option>
+                                    <option value="ext">Extension</option>
+                                </select>
+
+                                <span class="help-block" v-if="selected_mod.type === 'mod'">
+                                    This type is the default and covers most cases. Normally you'll want to use this type.
+                                </span>
+
+                                <span class="help-block" v-if="selected_mod.type === 'tc'">
+                                    Use this type if your mod doesn't depend on other mods or retail files.<br>
+                                    (Mods for TCs should still use the "Mod" type.)
+                                </span>
+
+                                <span class="help-block" v-if="selected_mod.type === 'engine'">
+                                    This should only be used for builds FSO builds (fs2_open*.exe, fs2_open*.AppImage, etc.).
+                                </span>
+
+                                <span class="help-block" v-if="selected_mod.type === 'tool'">
+                                    This is used for all executables which aren't FSO like FRED or PCS2.
+                                </span>
+
+                                <span class="help-block" v-if="selected_mod.type === 'ext'">
+                                    This mod type is meant for overrides like custom HUD tables.
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="form-group" v-if="selected_mod.type === 'mod' || selected_mod.type === 'ext'">
+                            <label class="col-xs-3 control-label">Parent mod</label>
+                            <div class="col-xs-9">
+                                <p class="form-control-static">{{ selected_mod.parent }}</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Description</label>
+                            <div class="col-xs-9">
+                                <textarea class="form-control" v-model="selected_mod.description"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Title Image</label>
+                            <div class="col-xs-9">
+                                <img :src="'file://' + selected_mod.tile_path" v-if="selected_mod.tile_path"><br>
+
+                                <p class="help-block">
+                                    This image should be 150&times;225 pixels large.
+                                </p>
+
+                                <button class="btn btn-small btn-default" @click.prevent="changeTile">Select Image</button>
+                                <button class="btn btn-small btn-default" @click.prevent="selected_mod.tile_path = null" v-if="selected_mod.tile_path">Remove Image</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Legacy Logo</label>
+                            <div class="col-xs-9">
+                                <img :src="'file://' + selected_mod.logo_path" v-if="selected_mod.logo_path"><br>
+
+                                <p class="help-block">
+                                    This image should be about 255&times;112 pixels large. Please only use this for legacy logos and mod images from mods predating the Knossos installer.
+                                    If you create a new mod logo or image, please use the above setting.
+                                </p>
+
+                                <button class="btn btn-small btn-default" @click.prevent="changeLogo">Select Image</button>
+                                <button class="btn btn-small btn-default" @click.prevent="selected_mod.logo_path = null" v-if="selected_mod.logo_path">Remove Image</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Release Thread</label>
+                            <div class="col-xs-9">
+                                <input type="text" class="form-control" v-model="selected_mod.release_thread">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Videos</label>
+                            <div class="col-xs-9">
+                                <textarea class="form-control" v-model="video_urls"></textarea>
+
+                                <span class="help-block">You can put YouTube links here, one per line.</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">First Release</label>
+                            <div class="col-xs-9">
+                                <p class="form-control-static">{{ selected_mod.first_release }}</p>
+                                <!-- TODO: Date widget -->
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Last Update</label>
+                            <div class="col-xs-9">
+                                <p class="form-control-static">{{ selected_mod.last_update }}</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="col-xs-9 col-xs-offset-3">
+                                <button class="mod-btn btn-green" @click.prevent="saveDetails"><span class="btn-text">SAVE</span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="!selected_pkg && page === 'fso'">
+                        <h4>FSO Settings</h4>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">FSO build</label>
+                            <div class="col-xs-9">
+                                <select class="form-control" v-model="fso_build">
+                                    <option v-for="mod in mods" v-if="mod.type === 'engine'" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
+                                        {{ mod.title }} {{ mod.version }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <kn-flag-editor :caps="caps" :cmdline.sync="selected_mod.cmdline"></kn-flag-editor>
+
+                        <div class="form-group">
+                            <div class="col-xs-9 col-xs-offset-3">
+                                <button class="mod-btn btn-green" @click.prevent="saveFsoSettings"><span class="btn-text">SAVE</span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="selected_mod && selected_pkg">
+                        <h4>Package</h4>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Name</label>
+                            <div class="col-xs-9">
+                                {{ selected_pkg.name }}
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Folder</label>
+                            <div class="col-xs-9">
+                                {{ selected_pkg.folder }}
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Description</label>
+                            <div class="col-xs-9">
+                                <textarea class="form-control" v-model="selected_pkg.notes"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Status</label>
+                            <div class="col-xs-9">
+                                <select class="form-control" v-model="selected_pkg.status">
+                                    <option value="required">Required</option>
+                                    <option value="recommended">Recommended</option>
+                                    <option value="Optional">Optional</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Dependencies</label>
+                            <div class="col-xs-9">
+                                <div v-for="(dep, i) in selected_pkg.dependencies">
+                                    <a href="#" @click.prevent="swapDep(i, -1)"><i class="fa fa-chevron-up"></i></a>
+                                    <a href="#" @click.prevent="swapDep(i, 1)"><i class="fa fa-chevron-down"></i></a>
+
+                                    <a href="#" @click.prevent="editDep(i, dep)">{{ (mod_map[dep.id] || { title: 'NOT FOUND!' }).title }}</a>
+                                    <span v-if="dep.packages && dep.packages.length > 0">({{ dep.packages.join(', ') }})</span>
+                                </div>
+
+                                <a href="#" @click.prevent="addDep()">Add a dependency</a>
+
+                                <div v-if="edit_dep">
+                                    <br>
+                                    <div class="form-group">
+                                        <label class="col-xs-4 control-label">Mod</label>
+                                        <div class="col-xs-8">
+                                            <select class="form-control" v-model="edit_dep_mod">
+                                                <option v-for="mod in mods" :value="mod.id" :key="mod.id">{{ mod.title }}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="col-xs-4 control-label">Packages</label>
+                                        <div class="col-xs-8">
+                                            <span v-if="!edit_dep_pkgs" class="help-block">Please select a mod above.</span>
+
+                                            <div v-if="edit_dep_pkgs">
+                                                <label class="checkbox" v-for="pkg in edit_dep_pkgs">
+                                                    <input type="checkbox" :key="pkg.name" v-model="edit_dep_pkg_sel[pkg.name]" v-if="pkg.status !== 'required'">
+                                                    <input type="checkbox" :key="pkg.name" disabled checked="true" v-if="pkg.status === 'required'">
+                                                    {{ pkg.name }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button class="btn btn-small" @click.prevent="saveDep">Save</button>
+
+                                    <button class="btn btn-small" @click.prevent="edit_dep = false">Cancel</button>
+                                    <button class="btn btn-small pull-right" v-if="edit_dep_idx !== -1" @click.prevent="deleteDep">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" v-if="selected_mod.type === 'engine' || selected_mod.type === 'tool'">
+                            <label class="col-xs-3 control-label">Conditions</label>
+                            <div class="col-xs-9">
+                                <textarea class="form-control" rows="5" v-model="selected_pkg.environment"></textarea>
+
+                                <span class="help-block">
+                                    This field determines on which CPUs and OS this
+                                    {{ selected_mod.type === 'engine' ? 'build' : 'tool' }}
+                                    is available. It can contain an expression like "x86_64 &amp;&amp; sse2 &amp;&amp; windows"
+                                </span>
+
+                                <p class="help-block">
+                                    TODO: Add a list of available variables.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="form-group" v-if="selected_mod.type === 'engine' || selected_mod.type === 'tool'">
+                            <label class="col-xs-3 control-label">Executables</label>
+                            <div class="col-xs-9">
+                                <table class="table">
+                                    <tr v-for="(exe, i) in selected_pkg.executables" :key="exe.file">
+                                        <td>
+                                            <input type="text" class="form-control" v-model="exe.file">
+                                        </td>
+                                        <td>
+                                            <label>
+                                                <input type="checkbox" v-model="exe.debug">
+                                                Debug
+                                            </label>
+                                            <button type="button" class="btn btn-small btn-danger" @click.prevent="deleteExe(i)">
+                                                <i class="fa fa-times"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <button type="button" class="btn btn-small" @click.prevent="addExe">Add</button>
+                                <button type="button" class="btn btn-small" @click.prevent="autoAddExes">Auto Add</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="col-xs-9 col-xs-offset-3">
+                                <button class="mod-btn btn-green" @click.prevent="savePackage"><span class="btn-text">SAVE</span></button>
+
+                                <button class="mod-btn btn-red" @click.prevent="deletePackage">DELETE</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</template>

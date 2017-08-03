@@ -8,8 +8,6 @@ RUN apt-get update && apt-get upgrade -y && \
 		ninja-build rsync npm twine python3-wheel gnupg-agent gnupg2 pinentry-tty gdb && \
 	useradd -mG sudo packager && \
 	echo '%sudo ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers && \
-	install -do packager /build && \
-	cd /build && \
-	sudo -Hu packager npm i babel-cli babel-preset-env
+	install -do packager /build
 
 CMD ["/bin/bash"]

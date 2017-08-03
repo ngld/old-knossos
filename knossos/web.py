@@ -22,7 +22,7 @@ import json
 import stat
 import semantic_version
 
-from .qt import read_file, QtCore, QtGui, QtWidgets, QtWebChannel
+from .qt import QtCore, QtGui, QtWidgets, QtWebChannel
 from . import center, runner, repo, windows, tasks, util, settings
 
 if not QtWebChannel:
@@ -54,43 +54,16 @@ class WebBridge(QtCore.QObject):
             page.setWebChannel(channel)
             channel.registerObject('fs2mod', self)
 
-            if center.DEBUG and os.path.isdir('../html') and os.environ.get('KN_BABEL') != 'True':
+            if center.DEBUG and os.path.isdir('../html'):
                 link = os.path.abspath('../html/index_debug.html')
                 if sys.platform == 'win32':
                     link = '/' + link.replace('\\', '/')
 
                 link = 'file://' + link
-                self._path = os.path.abspath('../html')
             else:
                 link = 'qrc:///html/index.html'
-                self._path = ':/html'
 
             webView.load(QtCore.QUrl(link))
-        else:
-            self._path = ':/html'
-
-    @QtCore.Slot(str, result=str)
-    def loadTemplate(self, name):
-        path = os.path.join(self._path, 'templates', os.path.basename(name) + '.html')
-
-        try:
-            if path.startswith(':/'):
-                data = read_file(path)
-                if data:
-                    return data
-                else:
-                    raise Exception('Qt failed to read "%s"!' % path)
-            else:
-                with open(path, 'r') as stream:
-                    return stream.read()
-        except Exception:
-            logging.exception('Failed to load template %s!' % name)
-
-            if not center.DEBUG:
-                # These messages can get annoying. Don't display them in DEBUG mode since then they'd show up in the log.
-                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to load template "%s". The UI might be broken.') % name)
-
-            return ''
 
     @QtCore.Slot('QVariantList', result='QVariantMap')
     def finishInit(self, tr_keys):
@@ -234,7 +207,7 @@ class WebBridge(QtCore.QObject):
             has_retail = False
             if center.settings['base_path'] is not None:
                 fs2_path = os.path.join(center.settings['base_path'], 'FS2')
-                
+
                 if os.path.isdir(fs2_path):
                     for item in os.listdir(fs2_path):
                         if item.lower() == 'root_fs2.vp':
@@ -244,7 +217,7 @@ class WebBridge(QtCore.QObject):
             if not has_retail:
                 self.showRetailPrompt.emit()
                 return 0
-        
+
         windows.ModInstallWindow(mod, pkgs)
         return 0
 

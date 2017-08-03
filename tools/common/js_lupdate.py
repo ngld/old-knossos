@@ -57,7 +57,7 @@ def main(args):
                 msgs.append(m.group(2))
 
     with open(output, 'w', encoding='utf-8') as stream:
-        stream.write('function get_translation_source() {\n')
+        stream.write('export default () => {\n')
         stream.write('    var ts = [];\n')
         stream.write('    function qsTr(k) { ts.push(k); }\n')
 

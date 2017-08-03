@@ -910,9 +910,12 @@ class InstalledMod(Mod):
         if self.mtype in ('engine', 'tool'):
             deps = self.packages
         else:
-            deps = self.resolve_deps(True)
-            if not deps:
-                deps = self.resolve_deps()
+            try:
+                deps = self.resolve_deps(True)
+                if not deps:
+                    deps = self.resolve_deps()
+            except ModNotFound:
+                deps = []
 
         skipped = set()
         exes = []

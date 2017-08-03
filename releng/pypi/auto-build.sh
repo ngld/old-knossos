@@ -13,10 +13,6 @@ import_key
 export QT_SELECT=5
 VERSION="$(python3 setup.py get_version)"
 
-echo "Installing Babel..."
-rm -rf node_modules
-cp -r /build/node_modules .
-
 if [ -d dist ]; then
 	rm -rf dist/*
 fi

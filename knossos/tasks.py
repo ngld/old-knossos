@@ -813,6 +813,13 @@ class GOGExtractTask(progress.Task):
         self.add_work([(gog_path, dest_path)])
         self.title = 'Installing FS2 from GOG...'
 
+        if not center.installed.has('FSO'):
+            try:
+                fso = center.mods.query('FSO')
+                run_task(InstallTask(fso.resolve_deps()))
+            except repo.ModNotFound:
+                logging.warn('Installing retail files but FSO is missing!')
+
     def work(self, paths):
         gog_path, dest_path = paths
 
@@ -989,6 +996,13 @@ class GOGCopyTask(progress.Task):
         self.done.connect(self.finish)
         self.add_work([(gog_path, dest_path)])
         self.title = 'Copying retail files...'
+
+        if not center.installed.has('FSO'):
+            try:
+                fso = center.mods.query('FSO')
+                run_task(InstallTask(fso.resolve_deps()))
+            except repo.ModNotFound:
+                logging.warn('Installing retail files but FSO is missing!')
 
     def work(self, paths):
         gog_path, dest_path = paths

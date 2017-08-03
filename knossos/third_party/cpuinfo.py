@@ -1121,7 +1121,8 @@ def _get_cpu_info_from_cpuid():
 	if not arch in ['X86_32', 'X86_64']:
 		return {}
 
-	returncode, output = run_and_get_stdout([sys.executable, "-c", "import cpuinfo; print(cpuinfo.actual_get_cpu_info_from_cpuid())"])
+	from knossos.launcher import get_cmd
+	returncode, output = run_and_get_stdout(get_cmd(['--run-cpuid']))
 	if returncode != 0:
 		return {}
 	info = b64_to_obj(output)

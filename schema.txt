@@ -1,4 +1,4 @@
-/* Repo configuration */
+/* mod.json schema */
 // Created by ngld, m!m and Hellzed
 // Inspired by Goober's text files (http://www.hard-light.net/wiki/index.php/FSO_Installer_Text_Files)
 
@@ -51,58 +51,25 @@
                             "debug": false // optional, default: true, Is this a debug build?
                         }
                     ],
-                    "files": [ // optional
-                        /* You can use this syntax ...
-                            [
-                                [ // required
-                                    "<link1>",
-                                    "..."
-                                ],
-                                {
-                                    "<filename>": {
-                                        "is_archive": true, // optional, default: true
-                                        "dest": "<destination path>" // optional, default: "", relative to the mod folder 
-                                    }
-                                }
-                            ],
-                            ...
-                        /* ... or this one: */
-                            {
-                                "filename": "<filename>", // required
-                                "is_archive": true, // optional, default: true
-                                "dest": "<destination path>", // optional, default: "", relative to the mod folder 
-                                "urls": ["<url1>", "<url2>"] // required
-                            },
-                            ...
-                        /* . */
+                    "files": [
+                        {
+                            "filename": "...",
+                            "dest": "<destination path>",
+                            "checksum": ["sha256", "..."],
+                            "filesize": "<size in bytes>",
+                            "urls": ["<URL1>", "<URL2>"], // The URLs are full URLs (they contain the filename).
+                        }
+                    ],
+                    "filelist": [
+                        {
+                            "filename": "<file path>",
+                            "archive": "...",
+                            "orig_name": "<name in archive>",
+                            "checksum": ["sha256", "..."]
+                        },
+                        ...
                     ]
                 },
-                ...
-            ],
-            "actions": [ // optional
-                // NOTE: Globbing only applies to the "paths" property.
-                {
-                    "type": "delete", // required
-                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
-                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
-                },
-                {
-                    "type": "move", // required
-                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
-                    "dest": "<path>", // required, specifies the destination relative to the mod folder
-                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
-                },
-                {
-                    "type": "copy", // required
-                    "paths": ["<file1>", "<file2>", "<dir1>", "<file3>", "..."], // required, relative to the mod folder 
-                    "dest": "<path>", // required, specifies the destination relative to the mod folder
-                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
-                },
-                {
-                    "type": "mkdir",
-                    "paths": ["<folder1>", "<folder2>", "..."],
-                    "glob": true // optional, default: true, turns globbing on (https://en.wikipedia.org/wiki/Glob_%28programming%29)
-                }
                 ...
             ]
         },
@@ -115,40 +82,5 @@
     "remote_includes": [ // optional, These will be kept and should be full URLs.
         "<URL1>",
         "..."
-    ]
-}
-
-/* generated repo files */
-{
-    "generated": "<time of generation>",
-    "includes": ["<URL1>", "..."],
-    "mods": [
-        {
-            /* All of the above */
-            "packages": [
-                {
-                    /* All of the above */
-                    "files": [
-                        {
-                            "filename": "...",
-                            "is_archive": true,
-                            "dest": "<destination path>",
-                            "md5sum": "...",
-                            "filesize": "<size in bytes>",
-                            "urls": ["<URL1>", "<URL2>"], // The URLs are full URLs (they contain the filename).
-                        }
-                    ],
-                    "filelist": [
-                        {
-                            "filename": "<file path>",
-                            "archive": "...",
-                            "orig_name": "<name in archive>",
-                            "md5sum": "..."
-                        },
-                        ...
-                    ]
-                }
-            ]
-        }
     ]
 }

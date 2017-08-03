@@ -1,7 +1,6 @@
-# A simple mod manager
+# A mod manager
 
-The original idea and prototype were created by Hellzed.
-ngld rewrote the manager in Python and extended it.
+A modern mod manager and launcher for FreeSpace Open
 
 ## Website
 
