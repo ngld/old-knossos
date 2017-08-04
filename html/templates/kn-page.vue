@@ -31,6 +31,9 @@ export default {
         popup_mod_parent: 'FS2',
         popup_mod_tcs: [],
 
+        popup_mod_new_version: '',
+        popup_mod_method: 'copy',
+
         popup_pkg_name: '',
         popup_pkg_folder: '',
 
@@ -138,6 +141,14 @@ export default {
             call(fs2mod.addPackage, this.popup_mod_id, this.popup_mod_version, this.popup_pkg_name, this.popup_pkg_folder, (result) => {
                 if(result > -1) {
                     dp.selected_pkg = dp.selected_mod.packages[result];
+                    this.popup_visible = false;
+                }
+            });
+        },
+
+        createNewModVersion() {
+            call(fs2mod.createModVersion, this.popup_mod_id, this.popup_mod_version, this.popup_mod_new_version, this.popup_mod_method, (result) => {
+                if(result) {
                     this.popup_visible = false;
                 }
             });
@@ -484,6 +495,54 @@ export default {
                         </div>
 
                         <button class="mod-btn btn-green" @click.prevent="addPackage">ADD</button>
+                        <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">CANCEL</button>
+                    </form>
+                </div>
+
+                <div v-if="popup_mode === 'new_mod_version'">
+                    <form class="form-horizontal">
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Mod</label>
+                            <div class="col-xs-9">
+                                <p class="form-control-static">{{ popup_mod_name }}</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Old Version</label>
+                            <div class="col-xs-9">
+                                <p class="form-control-static">{{ popup_mod_version }}</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">New Version</label>
+                            <div class="col-xs-9">
+                                <input type="text" class="form-control" v-model="popup_mod_new_version">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Method</label>
+                            <div class="col-xs-9">
+                                <label class="checkbox">
+                                    <input type="radio" name="v_popup_mod_method" value="copy" v-model="popup_mod_method">
+                                    Copy the old folder
+                                </label>
+
+                                <label class="checkbox">
+                                    <input type="radio" name="v_popup_mod_method" value="rename" v-model="popup_mod_method">
+                                    Rename the old folder
+                                </label>
+
+                                <label class="checkbox">
+                                    <input type="radio" name="v_popup_mod_method" value="empty" v-model="popup_mod_method">
+                                    Create a new, empty folder
+                                </label>
+                            </div>
+                        </div>
+
+                        <button class="mod-btn btn-green" @click.prevent="createNewModVersion">CREATE</button>
                         <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">CANCEL</button>
                     </form>
                 </div>

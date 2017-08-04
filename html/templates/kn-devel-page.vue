@@ -142,6 +142,17 @@ export default {
             vm.popup_visible = true;
         },
 
+        openNewVersionPopup() {
+            vm.popup_mode = 'new_mod_version';
+            vm.popup_title = 'Create a new mod version';
+            vm.popup_mod_method = 'copy';
+            vm.popup_mod_id = this.selected_mod.id;
+            vm.popup_mod_name = this.selected_mod.title;
+            vm.popup_mod_version = this.selected_mod.version;
+            vm.popup_mod_new_version = this.selected_mod.version;
+            vm.popup_visible = true;
+        },
+
         selectMod(mod) {
             // TODO: Warn about unsaved changes?
             this.selected_mod = Object.assign({}, mod);
@@ -216,6 +227,27 @@ export default {
             call(fs2mod.selectImage, this.selected_mod.tile_path || '', (new_path) => {
                 this.selected_mod.tile_path = new_path;
             });
+        },
+
+        swapFlagMod(idx, dir) {
+            let other = idx + dir;
+            let mod_flag = this.selected_mod.mod_flag;
+
+            if(other < 0) return;
+            if(other >= mod_flag.length) return;
+
+            // We have to create a new copy of the array and can't simply swap these in-place otherwise Vue.js gets confused
+            // and can't detect the change.
+            let new_mod_flag = mod_flag.slice(0, Math.min(other, idx));
+            if(dir === -1) {
+                new_mod_flag.push(mod_flag[idx]);
+                new_mod_flag.push(mod_flag[other]);
+            } else {
+                new_mod_flag.push(mod_flag[other]);
+                new_mod_flag.push(mod_flag[idx]);
+            }
+            
+            this.selected_mod.mod_flag = new_mod_flag.concat(mod_flag.slice(Math.max(other, idx) + 1));
         },
 
         addDep() {
@@ -353,6 +385,9 @@ export default {
                     <button @click.prevent="switchPage('details')" class="btn btn-default dev-btn">Edit Mod Details</button><br>
                     <button @click.prevent="switchPage('fso')" class="btn btn-default dev-btn" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button><br>
                     <button @click.prevent="uploadMod" class="btn btn-default dev-btn">Upload</button>
+                    <button @click.prevent="switchPage('mod_flag')" class="btn btn-default dev-btn" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit -mod Flag</button><br>
+                    <button @click.prevent="switchPage('team')" class="btn btn-default dev-btn">Edit Team Members</button>
+                    <button @click.prevent="openNewVersionPopup" class="btn btn-default dev-btn">Create New Version</button>
                 </p>
 
                 Mod Path: <button @click.prevent="openModFolder">Browse</button>
@@ -542,6 +577,20 @@ export default {
                                 <button class="mod-btn btn-green" @click.prevent="saveFsoSettings"><span class="btn-text">SAVE</span></button>
                             </div>
                         </div>
+                    </div>
+
+                    <div v-if="!selected_pkg && page === 'mod_flag'">
+                        <h4>-mod Flag</h4>
+
+                        <div v-for="(dep, i) in selected_mod.mod_flag">
+                            <a href="#" @click.prevent="swapFlagMod(i, -1)"><i class="fa fa-chevron-up"></i></a>
+                            <a href="#" @click.prevent="swapFlagMod(i, 1)"><i class="fa fa-chevron-down"></i></a>
+
+                            {{ dep }}
+                        </div>
+                    </div>
+
+                    <div v-if="!selected_pkg && page === 'team'">
                     </div>
 
                     <div v-if="selected_mod && selected_pkg">

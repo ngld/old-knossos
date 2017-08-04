@@ -1275,6 +1275,54 @@ class WindowsUpdateTask(progress.Task):
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to launch the update!'))
 
 
+class CopyFolderTask(progress.Task):
+
+    def __init__(self, src_path, dest_path):
+        super(CopyFolderTask, self).__init__()
+
+        self.add_work(((src_path, dest_path),))
+        self.title = 'Copying folder...'
+
+    def work(self, p):
+        src_path, dest_path = p
+
+        if not os.path.isdir(src_path):
+            logging.error('CopyFolderTask(): The src_path "%s" is not a folder!' % src_path)
+            return
+
+        progress.update(0, 'Scanning...')
+
+        dest_base = os.path.dirname(dest_path)
+        if not os.path.isdir(dest_base):
+            os.makedirs(dest_base)
+
+        files = []
+        total_size = 0.0
+        for src_prefix, dirs, files in os.walk(src_path):
+            dest_prefix = os.path.join(dest_path, os.path.relpath(src_prefix, src_path))
+
+            for sub in dirs:
+                sdest = os.path.join(dest_prefix, sub)
+                try:
+                    os.mkdir(sdest)
+                except OSError:
+                    logging.exception('Failed to mkdir %s.' % sdest)
+
+            for sub in files:
+                sdest = os.path.join(dest_prefix, sub)
+                ssrc = os.path.join(src_prefix, sub)
+                files.append((ssrc, sdest))
+                total_size += os.stat(ssrc).st_size
+
+        count = len(files)
+        bytes_done = 0
+        for src, dest in files:
+            progress.update(bytes_done / total_size, os.path.relpath(src, src_path))
+            shutil.copyfile(src, dest)
+
+            bytes_done += os.stat(src).st_size
+
+
 def run_task(task, cb=None):
     def wrapper():
         cb(task.get_results())

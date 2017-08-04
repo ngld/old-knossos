@@ -368,6 +368,7 @@ class Mod(object):
     version = None
     parent = None
     cmdline = ''
+    mod_flag = None
     logo = None
     logo_path = None
     tile = None
@@ -405,6 +406,7 @@ class Mod(object):
         self.version = semantic_version.Version(values['version'], partial=True)
         self.parent = values.get('parent', 'FS2')
         self.cmdline = values.get('cmdline', '')
+        self.mod_flag = values.get('mod_flag', [])
         self.logo = values.get('logo', None)
         self.tile = values.get('tile', None)
         self.description = values.get('description', '')
@@ -458,6 +460,7 @@ class Mod(object):
             'version': str(self.version),
             'parent': self.parent,
             'cmdline': self.cmdline,
+            'mod_flag': self.mod_flag,
             'logo': self.logo,
             'logo_path': self.logo,
             'tile': self.tile,
@@ -844,6 +847,9 @@ class InstalledMod(Mod):
             'cmdline': self.cmdline,
             'packages': [pkg.get() for pkg in self.packages]
         }
+
+    def copy(self):
+        return InstalledMod(self.get(), self._repo)
 
     def generate_folder(self):
         # IMPORTANT: This code decides where newly installed mods are stored.

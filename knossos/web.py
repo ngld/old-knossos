@@ -808,6 +808,62 @@ class WebBridge(QtCore.QObject):
         except Exception:
             logging.exception('Failed to encode FSO flags!')
 
+    @QtCore.Slot(str, str, str, str, result=bool)
+    def createModVersion(self, mid, version, dest_ver, method):
+        mod = self._get_mod(mid, version)
+
+        if not isinstance(mod, repo.InstalledMod):
+            logging.error('Mod %s (%s) should have gotten a new version but was not found!' % (mid, version))
+
+            QtWidgets.QMessageBox.critical(None, self.tr('Error'),
+                self.tr("Somehow I lost the mod you're talking about! I'm sorry, this is a bug."))
+            return False
+
+        old_ver = semantic_version.Version(version, partial=True)
+        try:
+            dest_ver = semantic_version.Version(dest_ver, partial=True)
+        except ValueError:
+            QtWidgets.QMessageBox.critical(None, self.tr('Error'),
+                self.tr("The specified version number is invalid!"))
+            return False
+        except Exception:
+            logging.exception('Failed to parse new version (%s)!' % dest_ver)
+            QtWidgets.QMessageBox.critical(None, self.tr('Error'),
+                self.tr("Failed to parse the new version! This is a bug."))
+            return False
+
+        if old_ver >= dest_ver:
+            # TODO: Is this check too restrictive?
+            QtWidgets.QMessageBox.critical(None, self.tr('Error'),
+                self.tr("The new version has to be higher than the old version!"))
+            return False
+
+        new_mod = mod.copy()
+        new_mod.version = dest_ver
+        new_mod.generate_folder()
+
+        if os.path.isdir(new_mod.folder):
+            QtWidgets.QMessageBox.critical(None, self.tr('Error'),
+                self.tr("The destination folder (%s) already exists! I won't overwrite an existing folder!"))
+            return False
+
+        if method == 'copy':
+            os.mkdir(new_mod.folder)
+
+            tasks.run_task(tasks.CopyFolderTask(mod.folder, new_mod.folder))
+        elif method == 'rename':
+            os.rename(mod.folder, new_mod.folder)
+
+            center.installed.remove_mod(mod)
+        elif method == 'empty':
+            os.mkdir(new_mod.folder)
+
+        new_mod.save()
+        center.installed.add_mod(new_mod)
+        center.main_win.update_mod_list()
+
+        return True
+
 
 if QtWebChannel:
     BrowserCtrl = WebBridge
