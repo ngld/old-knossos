@@ -18,10 +18,10 @@
   "homepage": "https://github.com/ngld/knossos#readme",
   "devDependencies": {
     "buble-loader": "^0.4.1",
-    "css-loader": "^0.28.4",
+    "css-loader": "^0.28.7",
     "vue": "^2.4.2",
-    "vue-loader": "^13.0.2",
+    "vue-loader": "^13.0.4",
     "vue-template-compiler": "^2.4.2",
-    "webpack": "^3.4.1"
+    "webpack": "^3.5.6"
   }
 }

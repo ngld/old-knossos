@@ -10,6 +10,9 @@ rm -rf dist/*
 
 cd ../..
 
+echo "==> Installing NPM modules"
+npm install
+
 echo "==> Configuring..."
 PATH="$PATH:/usr/local/opt/qt5/bin" python3 configure.py
 

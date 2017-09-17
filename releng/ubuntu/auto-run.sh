@@ -4,11 +4,22 @@ set -eo pipefail
 
 cd /build
 sudo chown packager .
-rsync -a --exclude=releng src/ work/
-cd work
+rsync -a --exclude=releng --exclude=node_modules src/ work/
+
+if [ ! -d src/releng/ubuntu/cache ]; then
+	mkdir -p src/releng/ubuntu/cache
+fi
+
+cd src/releng/ubuntu/cache
+cp ../../../package.json .
+npm install
+npm install es6-shim
+
+cd ../../../../work
 
 export QT_SELECT=5
 
+rsync -au ../src/releng/ubuntu/cache/node_modules/ node_modules/
 python3 configure.py
 ninja resources
 

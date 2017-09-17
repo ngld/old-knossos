@@ -4,18 +4,28 @@ set -eo pipefail
 
 cd /build
 sudo chown packager .
-rsync -a --exclude=releng src/ work/
+rsync -a --exclude=releng --exclude=node_modules src/ work/
 
 cd src
 . releng/config/config.sh
 import_key
 
-cd ../work
+if [ ! -d releng/ubuntu/cache ]; then
+	mkdir -p releng/ubuntu/cache
+fi
+
+cd releng/ubuntu/cache
+cp ../../../package.json .
+npm install
+npm install es6-shim
+
+cd ../../../../work
 
 export QT_SELECT=5
 VERSION="$(python3 setup.py get_version)"
 UBUNTU_VERSION="xenial"
 
+rsync -au ../src/releng/ubuntu/cache/node_modules/ node_modules/
 python3 configure.py
 ninja resources
 

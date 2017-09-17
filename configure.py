@@ -166,6 +166,11 @@ if not check_module('PyQt5.QtWebEngine', required=False):
     # If it's not available, we use QtWebKit as a fallback.
     check_module('PyQt5.QtWebKit')
     webkit = True
+
+    if not os.path.isdir('node_modules/es6-shim'):
+        fail('es6-shim is missing!\n\nPlease run "npm install es6-shim" to install it.')
+
+    JS_FILES.append('node_modules/es6-shim/package.json')
 else:
     # We need QtWebChannel to communicate with the web page inside QtWebEngine.
     check_module('PyQt5.QtWebChannel')
@@ -180,7 +185,12 @@ rcc = find_program(['rcc-qt5', 'rcc'], 'rcc')
 find_program(['7z', '7za'], '7zip')
 
 node = find_program(['node', 'nodejs'], 'nodejs')
-npm = find_program(['npm'], 'npm')
+
+info('Checking npm modules...')
+if os.path.isfile('node_modules/webpack/bin/webpack.js'):
+    info(' ok\n')
+else:
+    fail(' not found!\nPlease run "npm install" to install the missing modules.')
 
 check_ctypes_lib(['libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib'], 'SDL2')
 check_ctypes_lib(['libopenal.so.1.15.1', 'openal', 'OpenAL', 'OpenAL32'], 'OpenAL')
@@ -219,8 +229,6 @@ with open('build.ninja', 'w') as stream:
     n.rule('lupdate', cmd2str([lupdate, '$in', '-ts', '$out']), 'LUPDATE $out')
     n.rule('webpack', cmdenv([node, 'node_modules/webpack/bin/webpack.js'], {'USE_WEBKIT': webkit}), 'WEBPACK $out')
 
-    n.rule('npm', cmd2str([npm, 'install']), 'NPM', pool='console')
-
     if sys.platform.startswith('linux'):
         n.rule('cat', 'cat $in > $out', 'CAT $out')
 
@@ -230,16 +238,6 @@ with open('build.ninja', 'w') as stream:
     n.build('html/js/translations.js', 'js_lupdate', ['html/js/main.js'])
     n.build('locale/_py.ts', 'pylupdate', SRC_FILES)
     n.build('locale/_ui.ts', 'lupdate', ['locale/_py.ts', 'html/js/translations.js'] + UI_FILES)
-
-    if webkit:
-        n.comment('Install es6-shim for QtWebKit compatibility')
-        n.rule('npm_es6', cmd2str([npm, 'install', 'es6-shim']), 'NPM es6-shim', pool='console')
-        n.build('node_modules/es6-shim/package.json', 'npm_es6')
-
-        JS_FILES.append('node_modules/es6-shim/package.json')
-
-    n.comment("Install Webpack if it's missing")
-    n.build('node_modules/webpack/bin/webpack.js', 'npm', implicit=['package.json', 'package-lock.json'])
     n.build('html/dist/bundle.js', 'webpack', JS_FILES, implicit=['node_modules/webpack/bin/webpack.js'])
 
     n.comment('Shortcuts')

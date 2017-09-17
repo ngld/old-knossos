@@ -2,6 +2,8 @@
 
 cd %~dp0..\..
 
+cscript \Windows\system32\slmgr.vbs /ato
+
 echo ::: Installing Chocolatey...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
 SET "PATH=%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
@@ -30,3 +32,5 @@ py -3 -mpip install PyQt5 six requests raven semantic_version pypiwin32 comtypes
 
 echo ::: Downloading remaining dependencies...
 py -3 tools/common/download_archive.py releng/windows/support/support.json
+
+call npm install

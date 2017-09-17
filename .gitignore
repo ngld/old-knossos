@@ -38,3 +38,4 @@ ssh_config
 /node_modules/
 /html/js/translations.js
 /releng/windows/support/
+/releng/ubuntu/cache/
