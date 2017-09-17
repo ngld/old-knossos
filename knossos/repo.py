@@ -416,10 +416,12 @@ class Mod(object):
         self.actions = values.get('actions', [])
 
         self.packages = []
-        for pkg in values.get('packages', []):
-            pkg = Package(pkg, self)
-            if pkg.check_env():
-                self.packages.append(pkg)
+        # TODO: Reimplement this properly in the FetchTask
+
+        # for pkg in values.get('packages', []):
+        #     pkg = Package(pkg, self)
+        #     if pkg.check_env():
+        #         self.packages.append(pkg)
 
         if self._repo is not None and self._repo.base is not None:
             if self.logo is not None:
@@ -471,7 +473,7 @@ class Mod(object):
         }
 
     def copy(self):
-        return Mod(self.get(), self._repo)
+        return self.__class__(self.get(), self._repo)
 
     def get_files(self):
         files = []
@@ -602,7 +604,7 @@ class Package(object):
                 for path, csum in item['contents'].items():
                     files[os.path.join(item['dest'], path)] = (csum, name)
             else:
-                files[os.path.join(item['dest'], name)] = (item['md5sum'], name)
+                files[os.path.join(item['dest'], name)] = (item['checksum'], name)
 
         return files
 
@@ -750,11 +752,11 @@ class InstalledRepo(Repo):
                 my_pkgs = [pkg.name for pkg in mods[0].packages]
 
                 for item in mods[0].get_files():
-                    my_files[item['filename']] = item['md5sum']
+                    my_files[item['filename']] = item['checksum']
 
                 for item in rem_mod.get_files():
                     if item['package'] in my_pkgs:
-                        rem_files[item['filename']] = item['md5sum']
+                        rem_files[item['filename']] = item['checksum']
 
                 if rem_files == my_files:
                     logging.warning('Detected an empty update for mod "%s"! (%s -> %s)', mods[0].title, str(mods[0].version), str(rem_mod.version))
@@ -806,9 +808,6 @@ class InstalledMod(Mod):
         nmod.generate_folder()
         return nmod
 
-    def __init__(self, values=None):
-        super(InstalledMod, self).__init__(values)
-
     def set(self, values):
         pkgs = values.get('packages', [])
         values = values.copy()
@@ -832,6 +831,7 @@ class InstalledMod(Mod):
             'parent': self.parent,
             'version': str(self.version),
             'description': self.description,
+            'notes': self.notes,
             'folder': self.folder,
             'logo': self.logo,
             'logo_path': self.logo_path,

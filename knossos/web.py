@@ -23,7 +23,7 @@ import stat
 import semantic_version
 
 from .qt import QtCore, QtGui, QtWidgets, QtWebChannel
-from . import center, runner, repo, windows, tasks, util, settings
+from . import center, runner, repo, windows, tasks, util, settings, nebula
 
 if not QtWebChannel:
     from .qt import QtWebKit
@@ -38,6 +38,7 @@ class WebBridge(QtCore.QObject):
     updateModlist = QtCore.Signal(str, str)
     modProgress = QtCore.Signal(str, float, str)
     settingsArrived = QtCore.Signal(str)
+    hidePopup = QtCore.Signal()
 
     taskStarted = QtCore.Signal(float, str, list)
     taskProgress = QtCore.Signal(float, float, str)
@@ -718,6 +719,36 @@ class WebBridge(QtCore.QObject):
         mod.save()
 
         center.main_win.update_mod_list()
+
+    @QtCore.Slot(str, str)
+    def startUpload(self, mid, version):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return
+
+        tasks.run_task(tasks.UploadTask(mod))
+
+    @QtCore.Slot(str, str)
+    def nebLogin(self, user, password):
+        client = nebula.NebulaClient()
+        if client.login(user, password):
+            QtWidgets.QMessageBox.information(None, 'Knossos', 'Login successful!')
+
+            # TODO: Figure out a better way for this!
+            center.settings['neb_user'] = user
+            center.settings['neb_password'] = password
+            center.save_settings()
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Login failed.')
+
+    @QtCore.Slot(str, str, str)
+    def nebRegister(self, user, password, email):
+        client = nebula.NebulaClient()
+        if client.register(user, password, email):
+            QtWidgets.QMessageBox.information(None, 'Knossos',
+                'Registered. Please check your e-mail inbox for your confirmation mail.')
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Registration failed. Please contact ngld.')
 
     @QtCore.Slot(str, str, result=str)
     def getFsoBuild(self, mid, version):

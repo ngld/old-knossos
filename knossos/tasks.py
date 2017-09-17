@@ -28,7 +28,7 @@ import random
 import time
 import semantic_version
 
-from . import center, util, progress, repo
+from . import center, util, progress, nebula, repo
 from .repo import Repo
 from .qt import QtCore, QtWidgets, read_file
 
@@ -182,7 +182,7 @@ class CheckTask(progress.MultistepTask):
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
 
-                if util.gen_hash(mypath) == info['md5sum']:
+                if util.check_hash(info['checksum'], mypath):
                     success += 1
                 else:
                     msgs.append('File "%s" is corrupted. (checksum mismatch)' % (info['filename']))
@@ -266,7 +266,7 @@ class CheckFilesTask(progress.MultistepTask):
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
 
-                if util.gen_hash(mypath) == info['md5sum']:
+                if util.check_hash(info['checksum'], mypath):
                     success += 1
                     summary['ok'].append(info['filename'])
                 else:
@@ -393,7 +393,7 @@ class InstallTask(progress.MultistepTask):
             for mod in self._mods:
                 try:
                     mod.save()
-                    util.get(center.settings['nebula_link'] + 'api/track/install/' + mod.mid)
+                    util.get(center.settings['nebula_link'] + 'api/1/track/install/' + mod.mid)
                 except Exception:
                     logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
@@ -444,7 +444,7 @@ class InstallTask(progress.MultistepTask):
             progress.update(i / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
 
             itempath = util.ipath(os.path.join(modpath, info['filename']))
-            if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
+            if not os.path.isfile(itempath) or util.check_hash(info['checksum'], itempath):
                 archives.add((mod.mid, info['package'], info['archive']))
                 logging.debug('%s is missing for %s.', itempath, mod)
 
@@ -508,7 +508,7 @@ class InstallTask(progress.MultistepTask):
                     progress.finish_task()
                     progress.update(0.97, 'Checking "%s"...' % archive['filename'])
 
-                    if util.gen_hash(arpath) == archive['md5sum']:
+                    if util.check_hash(archive['checksum'], arpath):
                         done = True
                         retries = 0
                         break
@@ -801,6 +801,163 @@ class UpdateTask(InstallTask):
 
         if self.__check_after:
             run_task(CheckTask())
+
+
+class UploadTask(progress.MultistepTask):
+    can_abort = True
+    _steps = 2
+    _client = None
+    _mod = None
+    _dir = None
+    _login_failed = False
+    _access_denied = False
+    _success = False
+
+    def __init__(self, mod):
+        super(UploadTask, self).__init__()
+
+        self.title = 'Uploading mod...'
+        self.mods = [mod]
+        self._mod = mod.copy()
+
+        self._local = threading.local()
+        self._slot_prog = {
+            'total': ('Status', 0, 'Waiting...')
+        }
+
+        self.done.connect(self.finish)
+
+    def _track_progress(self, prog, text):
+        with self._progress_lock:
+            if self._local.slot:
+                self._slot_prog[self._local.slot] = (self._slot_prog[self._local.slot][0], prog, text)
+
+            total = 0
+            for label, prog, text in self._slot_prog.values():
+                total += prog
+
+            self.progress.emit((total / max(1, len(self._slot_prog)), self._slot_prog, 'Uploading mod...'))
+
+    def init1(self):
+        self._local.slot = 'total'
+
+        try:
+            progress.update(0.1, 'Logging in...')
+
+            self._dir = tempfile.TemporaryDirectory()
+            self._client = client = nebula.NebulaClient()
+
+            try:
+                mods = client.get_editable_mods()
+            except nebula.InvalidLoginException:
+                self._login_failed = True
+                self.abort()
+
+                progress.update(0.1, 'Failed to login!')
+                return
+
+            progress.update(0.11, 'Updating metadata...')
+
+            if self._mod.mid not in mods:
+                client.create_mod(self._mod)
+            else:
+                client.update_mod(self._mod)
+
+            progress.update(0.15, 'Scanning files...')
+            archives = []
+            for pkg in self._mod.packages:
+                ar_name = pkg.name + '.7z'
+                pkg_path = os.path.join(self._mod.folder, pkg.folder)
+                pkg.filelist = []
+
+                for sub, dirs, files in os.walk(pkg_path):
+                    relsub = os.path.relpath(sub, pkg_path)
+                    for fn in files:
+                        path = os.path.join(sub, fn)
+                        relpath = os.path.join(relsub, fn)
+
+                        pkg.filelist.append({
+                            'filename': relpath,
+                            'archive': ar_name,
+                            'orig_name': relpath,
+                            'checksum': util.gen_hash(path)
+                        })
+
+                archives.append(pkg)
+                self._slot_prog[pkg.name] = (pkg.name + '.7z', 0, 'Waiting...')
+
+            progress.update(0.2, 'Uploading...')
+            self.add_work(archives)
+        except nebula.RequestFailedException:
+            logging.exception('Failed request to nebula during upload!')
+
+            self.abort()
+            return
+
+    def work1(self, pkg):
+        self._local.slot = pkg.name
+
+        try:
+            progress.update(0, 'Packing...')
+
+            ar_name = pkg.name + '.7z'
+            ar_path = os.path.join(self._dir.name, ar_name)
+
+            rc = util.call([util.SEVEN_PATH, 'a', ar_path, '.'], cwd=os.path.join(self._mod.folder, pkg.folder))
+            if rc != 0:
+                logging.error('Failed to build %s!' % ar_name)
+                self.abort()
+                return
+
+            progress.start_task(0.1, 0.9, '%s')
+            progress.update(0, 'Preparing upload...')
+
+            pkg.files[ar_name] = {
+                'filename': ar_name,
+                'dest': '',
+                'checksum': util.gen_hash(ar_path),
+                'filesize': os.stat(ar_path).st_size
+            }
+
+            self._client.upload_file(ar_name, ar_path)
+            progress.finish_task()
+            progress.update(1, 'Done!')
+        except nebula.RequestFailedException:
+            logging.exception('Failed request to nebula during upload!')
+
+            self.abort()
+
+    def init2(self):
+        self._local.slot = 'total'
+
+        try:
+            progress.update(0.8, 'Finishing...')
+            self._client.create_release(self._mod)
+            progress.update(1, 'Done')
+            self._success = True
+        except nebula.AccessDeniedException:
+            self._access_denied = True
+            self.abort()
+
+        except nebula.RequestFailedException:
+            logging.exception('Failed request to nebula during upload!')
+
+            self.abort()
+
+    def work2(self):
+        pass
+
+    def finish(self):
+        self._dir.cleanup()
+
+        if self._login_failed:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to login!')
+        elif self._access_denied:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'You are not authorized to edit this mod!')
+        elif self._success:
+            QtWidgets.QMessageBox.information(None, 'Knossos', 'Successfully uploaded mod!')
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'An unexpected error occured! Sorry...')
 
 
 class GOGExtractTask(progress.Task):

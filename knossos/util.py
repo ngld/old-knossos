@@ -459,17 +459,17 @@ def url_join(a, b):
     return pjoin(a, b)
 
 
-def gen_hash(path, algo='md5'):
+def gen_hash(path, algo='sha256'):
     global HASH_CACHE
 
     path = os.path.abspath(path)
     info = os.stat(path)
 
-    if algo == 'md5' and path in HASH_CACHE:
+    if algo == 'sha256' and path in HASH_CACHE:
         chksum, mtime = HASH_CACHE[path]
         if mtime == info.st_mtime:
             # logging.debug('Found checksum for %s in cache.', path)
-            return chksum
+            return algo, chksum
 
     logging.debug('Calculating checksum for %s...', path)
 
@@ -483,10 +483,20 @@ def gen_hash(path, algo='md5'):
             h.update(chunk)
 
     chksum = h.hexdigest()
-    if algo == 'md5':
+    if algo == 'sha256':
         HASH_CACHE[path] = (chksum, info.st_mtime)
 
-    return chksum
+    return algo, chksum
+
+
+def check_hash(value, path):
+    algo, csum = value
+
+    if algo != 'sha256':
+        logging.warning("Comparing checksums which aren't sha256! (%s, %s)" % (csum, path))
+
+    _, path_sum = gen_hash(path, algo)
+    return csum == path_sum
 
 
 def test_7z():

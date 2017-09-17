@@ -1023,6 +1023,10 @@ input {
     visibility: visible;
 }
 
+.kn-drawer .content-wrapper {
+    margin-top: 10px;
+}
+
 .checklist {
     background: white;
     padding: 5px 5px 5px 25px;

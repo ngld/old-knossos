@@ -289,6 +289,7 @@ class Task(QtCore.QObject):
 
     def abort(self):
         if not self.can_abort:
+            logging.debug("Abort request failed for task %s because it can't abort!" % self)
             return False
 
         # Empty the work queue, this won't stop running workers but it will
@@ -378,7 +379,7 @@ class MultistepTask(Task):
             # Maybe we need to advance to the next step.
             self._work_lock.acquire()
 
-            if self._pending == 1 and self._running == 1 and len(self._work) == 0:
+            if (self._pending == 1 and self._running == 1 and len(self._work) == 0) or self._cur_step < 0:
                 self._work_lock.release()
                 self._next_step()
             else:

@@ -8,7 +8,11 @@ export default {
         old_settings: {},
         default_fs2_bin: null,
         default_fred_bin: null,
-        caps: null
+        caps: null,
+
+        neb_user: '',
+        neb_password: '',
+        neb_email: ''
     }),
 
     beforeMount() {
@@ -20,6 +24,8 @@ export default {
             this.old_settings = settings;
             this.default_fs2_bin = settings.knossos.fs2_bin;
             this.default_fred_bin = settings.knossos.fred_bin;
+
+            this.neb_user = this.knossos.neb_user;
         });
         fs2mod.getSettings();
         call(fs2mod.getDefaultFsoCaps, (caps) => {
@@ -47,6 +53,18 @@ export default {
             }
 
             fs2mod.saveFsoSettings(JSON.stringify(fso));
+        },
+
+        login() {
+            fs2mod.nebLogin(this.neb_user, this.neb_password);
+        },
+
+        register() {
+            if(this.neb_user == '' || this.neb_password == '' || this.neb_email == '') {
+                alert('You have to enter your desired username, password and email address!');
+            } else {
+                fs2mod.nebRegister(this.neb_user, this.neb_password, this.neb_email);
+            }
         }
     },
 
@@ -289,9 +307,41 @@ export default {
             </kn-drawer>
             -->
 
+            <!--
             <kn-drawer label="Flag Defaults">
                 <kn-flag-editor :caps="caps" :cmdline="''" ref="flagEditor"></kn-flag-editor>
             </kn-drawer>
+            -->
+
+            <kn-drawer label="Nebula">
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Username:</label>
+                    <div class="col-sm-8">
+                        <input type="text" class="form-control" v-model="neb_user">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Password:</label>
+                    <div class="col-sm-8">
+                        <input type="password" class="form-control" v-model="neb_password">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">E-Mail:</label>
+                    <div class="col-sm-8">
+                        <input type="email" class="form-control" v-model="neb_email" placeholder="only required for registration">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-4 col-sm-4">
+                        <button class="btn btn-primary" @click="login">Login</button>
+                        <button class="btn btn-primary" @click="register">Register</button>
+                    </div>
+                </div>
+            </kn-drawer> 
         </div>
     </div>
 </template>

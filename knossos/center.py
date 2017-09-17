@@ -52,14 +52,16 @@ settings = {
     'base_dirs': [],
     'hash_cache': None,
     'max_downloads': 3,
-    'repos': [('https://fsnebula.org/repo/master.json', 'FSNebula')],
+    'repos': [('https://fsnebula.org/storage/repo.json', 'FSNebula')],
     'nebula_link': 'https://fsnebula.org/',
     'update_notify': True,
     'use_raven': True,
     'mod_settings': {},
     'sdl2_path': None,
     'openal_path': None,
-    'language': None
+    'language': None,
+    'neb_user': '',
+    'neb_password': ''
 }
 
 if sys.platform.startswith('win'):

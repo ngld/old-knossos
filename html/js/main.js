@@ -74,10 +74,11 @@ function init() {
         vm.page = type === 'develop' ? 'develop' : 'modlist';
         vm.tab = type;
     });
+    fs2mod.hidePopup.connect(() => vm.popup_visible = false);
 
     let tasks = null;
-    call(fs2mod.getRunningTasks, (tasks) => {
-        tasks = JSON.parse(tasks);
+    call(fs2mod.getRunningTasks, (raw_tasks) => {
+        tasks = JSON.parse(raw_tasks);
     });
 
     fs2mod.taskStarted.connect((tid, title, mods) => {

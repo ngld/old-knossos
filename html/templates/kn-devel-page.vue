@@ -311,6 +311,20 @@ export default {
 
         deleteExe(i) {
             this.selected_pkg.executables.splice(i, 1);
+        },
+
+        uploadMod()  {
+            vm.popup_mode = 'are_you_sure';
+            vm.popup_title = 'Upload mod';
+            vm.popup_sure_question = `Are you sure that you want to upload ${this.selected_mod.title} ${this.selected_mod.version}?`;
+            vm.sureCallback = () => {
+                vm.popup_mode = 'mod_progress';
+                // We need the original mod here because the copy doesn't contain the progress info.
+                vm.popup_content = this.mod_map[this.selected_mod.id];
+
+                fs2mod.startUpload(this.selected_mod.id, this.selected_mod.version);
+            };
+            vm.popup_visible = true;
         }
     }
 };
@@ -321,16 +335,18 @@ export default {
             <button class="mod-btn btn-orange" @click.prevent="openCreatePopup"><span class="btn-text">CREATE</span></button>
             <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL RETAIL</button>
 
-            <!-- TODO This should probably list *all* available versions -->
             <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>
         </div>
         <div class="content-pane">
             <div class="logo-box" v-if="selected_mod">
                 <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
 
+                <!-- TODO: Version select -->
+
                 <p>
                     <button @click.prevent="switchPage('details')" class="btn btn-default dev-btn">Edit Mod Details</button><br>
-                    <button @click.prevent="switchPage('fso')" class="btn btn-default dev-btn" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button>
+                    <button @click.prevent="switchPage('fso')" class="btn btn-default dev-btn" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button><br>
+                    <button @click.prevent="uploadMod" class="btn btn-default dev-btn">Upload</button>
                 </p>
 
                 Mod Path: <button @click.prevent="openModFolder">Browse</button>
