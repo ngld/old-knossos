@@ -178,6 +178,9 @@ def run_knossos():
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()
 
+    # This has to run before we can load any mods!
+    repo.CPU_INFO = util.get_cpuinfo()
+
     integration.init()
     mod_db = os.path.join(center.settings_path, 'mods.json')
     if os.path.isfile(mod_db):

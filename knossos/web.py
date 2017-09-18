@@ -581,9 +581,8 @@ class WebBridge(QtCore.QObject):
             for fn in files:
                 fn = os.path.join(path, fn)
 
-                if sys.platform == 'win32':
-                    if fn.endswith('.exe'):
-                        result.append(fn)
+                if fn.endswith('.exe'):
+                    result.append(fn)
                 elif '.so' not in fn and os.stat(fn).st_mode & stat.S_IXUSR == stat.S_IXUSR:
                     result.append(fn)
 

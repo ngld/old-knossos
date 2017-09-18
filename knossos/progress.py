@@ -361,7 +361,7 @@ class MultistepTask(Task):
 
     def _get_work(self):
         with self._work_lock:
-            if (self._threads > 0 and self._running >= self._threads) or self._sdone or self.aborted:
+            if (self._threads > 0 and self._pending >= self._threads) or self._sdone or self.aborted:
                 return None
             elif len(self._work) == 0 or self._cur_step < 0:
                 if self._pending == 0 and self._running == 0:

@@ -49,22 +49,10 @@ class FetchTask(progress.Task):
                 os.unlink(path)
 
         self.done.connect(self.finish)
-
-        if repo.CPU_INFO is None:
-            self.add_work([('init',)])
-        else:
-            self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
+        self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
 
     def work(self, params):
-        if params[0] == 'init':
-            progress.update(0, 'Checking CPU...')
-
-            # We're doing this here because we don't want to block the UI.
-            repo.CPU_INFO = util.get_cpuinfo()
-
-            self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
-            return
-        elif params[0] == 'repo':
+        if params[0] == 'repo':
             _, prio, link = params
 
             progress.update(0.1, 'Fetching "%s"...' % link)
@@ -820,6 +808,7 @@ class UploadTask(progress.MultistepTask):
         self.mods = [mod]
         self._mod = mod.copy()
 
+        self._threads = 2
         self._local = threading.local()
         self._slot_prog = {
             'total': ('Status', 0, 'Waiting...')

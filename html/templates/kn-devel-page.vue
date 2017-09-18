@@ -3,6 +3,7 @@ export default {
     props: ['mods'],
 
     data: () => ({
+        reloading: false,
         mod_map: {},
 
         page: 'fso',
@@ -31,6 +32,7 @@ export default {
 
     watch: {
         mods(new_list) {
+            this.reloading = true;
             this.mod_map = {};
             for(let mod of new_list) {
                 this.mod_map[mod.id] = mod;
@@ -64,9 +66,12 @@ export default {
                     }
                 }
             }
+
+            this.reloading = false;
         },
 
         selected_mod(sel_mod) {
+            if(this.reloading) return;
             this.selected_pkg = null;
 
             if(sel_mod) {
@@ -86,6 +91,7 @@ export default {
         },
 
         selected_pkg(sel_pkg) {
+            if(this.reloading) return;
             this.edit_dep = false;
         },
 
@@ -297,7 +303,7 @@ export default {
         autoAddExes() {
             let exes = this.selected_pkg.executables.map((item) => item.file);
 
-            call(fs2mod.findPkgExes, this.selected_mod.folder, (files) => {
+            call(fs2mod.findPkgExes, this.selected_mod.folder + '/' + this.selected_pkg.folder, (files) => {
                 for(let path of files) {
                     if(exes.indexOf(path) === -1) {
                         this.selected_pkg.executables.push({
