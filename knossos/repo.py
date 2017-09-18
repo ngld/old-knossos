@@ -416,12 +416,12 @@ class Mod(object):
         self.actions = values.get('actions', [])
 
         self.packages = []
-        # TODO: Reimplement this properly in the FetchTask
 
-        # for pkg in values.get('packages', []):
-        #     pkg = Package(pkg, self)
-        #     if pkg.check_env():
-        #         self.packages.append(pkg)
+        installed = isinstance(self, InstalledMod)
+        for pkg in values.get('packages', []):
+            p = Package(pkg, self)
+            if installed or p.check_env():
+                self.packages.append(p)
 
         if self._repo is not None and self._repo.base is not None:
             if self.logo is not None:
@@ -643,7 +643,7 @@ class Package(object):
             return True
 
         bvars = {}
-        bvars[CPU_INFO['arch']] = True  # this is either X86_32 or X86_64
+        bvars[CPU_INFO['arch'].lower()] = True  # this is either X86_32 or X86_64
 
         if sys.platform in ('win32', 'cygwin'):
             bvars['windows'] = True
@@ -655,7 +655,7 @@ class Package(object):
             logging.error('You are using an unrecognized OS! (%s)' % sys.platform)
 
         for flag in CPU_INFO['flags']:
-            bvars[flag] = True
+            bvars[flag.lower()] = True
 
         try:
             return eval_string(self.environment, bvars)

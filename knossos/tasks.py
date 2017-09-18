@@ -916,7 +916,8 @@ class UploadTask(progress.MultistepTask):
                 'filename': ar_name,
                 'dest': '',
                 'checksum': util.gen_hash(ar_path),
-                'filesize': os.stat(ar_path).st_size
+                'filesize': os.stat(ar_path).st_size,
+                'is_archive': True
             }
 
             self._client.upload_file(ar_name, ar_path)

@@ -53,7 +53,7 @@ settings = {
     'hash_cache': None,
     'max_downloads': 3,
     'repos': [('https://fsnebula.org/storage/repo.json', 'FSNebula')],
-    'nebula_link': 'https://fsnebula.org/',
+    'nebula_link': 'https://fsnebula.org/api/1/',
     'update_notify': True,
     'use_raven': True,
     'mod_settings': {},
