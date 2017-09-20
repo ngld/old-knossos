@@ -122,9 +122,8 @@ def load_settings():
             logging.exception('Failed to load settings from "%s"!', spath)
 
         # Migration
-        if 's_version' not in settings or settings['s_version'] < 2:
-            settings['repos'] = defaults['repos']
-            settings['s_version'] = 2
+        if 's_version' not in settings:
+            settings['s_version'] = 0
 
         if settings['s_version'] < 3:
             if 'mods' in settings:
@@ -134,14 +133,15 @@ def load_settings():
 
             settings['s_version'] = 3
 
-        if settings['s_version'] < 4:
+        if settings['s_version'] < 5:
             settings['repos'] = defaults['repos']
-            settings['s_version'] = 4
+            settings['nebula_link'] = defaults['nebula_link']
+            settings['s_version'] = 5
 
         del defaults
     else:
         # Most recent settings version
-        settings['s_version'] = 4
+        settings['s_version'] = 5
 
     if settings['hash_cache'] is not None:
         util.HASH_CACHE = settings['hash_cache']
