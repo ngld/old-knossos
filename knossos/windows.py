@@ -215,31 +215,35 @@ class HellWindow(Window):
         result = []
         for mid, mvs in mods.items():
             if query in mvs[0].title.lower():
+                mod = mvs[0]
+                item = mod.get()
+                item['progress'] = 0
+                item['progress_info'] = {}
+
+                try:
+                    rmod = center.mods.query(mod)
+                except repo.ModNotFound:
+                    rmod = None
+
+                if rmod and rmod.version > mod.version:
+                    item['status'] = 'update'
+                elif mod.mid in self._updating_mods:
+                    item['status'] = 'updating'
+                    item['progress'] = self._updating_mods[mod.mid]
+                else:
+                    item['status'] = 'ready'
+
+                    if self._mod_filter == 'home':
+                        for pkg in mod.packages:
+                            if pkg.files_checked > 0 and pkg.files_ok < pkg.files_checked:
+                                item['status'] = 'error'
+                                break
+
+                item['versions'] = []
                 for mod in mvs:
-                    item = mod.get()
-                    item['progress'] = 0
-                    item['progress_info'] = {}
+                    item['versions'].append(mod.get())
 
-                    try:
-                        rmod = center.mods.query(mod)
-                    except repo.ModNotFound:
-                        rmod = None
-
-                    if rmod and rmod.version > mod.version:
-                        item['status'] = 'update'
-                    elif mod.mid in self._updating_mods:
-                        item['status'] = 'updating'
-                        item['progress'] = self._updating_mods[mod.mid]
-                    else:
-                        item['status'] = 'ready'
-
-                        if self._mod_filter == 'home':
-                            for pkg in mod.packages:
-                                if pkg.files_checked > 0 and pkg.files_ok < pkg.files_checked:
-                                    item['status'] = 'error'
-                                    break
-
-                    result.append(item)
+                result.append(item)
 
         result.sort(key=lambda m: m['title'])
         return result, self._mod_filter

@@ -9,6 +9,7 @@ export default {
         page: 'fso',
         selected_mod: null,
         selected_pkg: null,
+        sel_version: null,
         video_urls: '',
 
         fso_build: null,
@@ -156,6 +157,21 @@ export default {
         selectMod(mod) {
             // TODO: Warn about unsaved changes?
             this.selected_mod = Object.assign({}, mod);
+            this.sel_version = this.selected_mod.version;
+        },
+
+        selectVersion(version) {
+            let v_mod = null;
+            for(let mod of this.selected_mod.versions) {
+                if(mod.version === version) {
+                    v_mod = mod;
+                    break;
+                }
+            }
+
+            if(!v_mod) return;
+            v_mod.versions = this.selected_mod.versions;
+            this.selected_mod = v_mod;
         },
 
         switchPage(page) {
@@ -246,7 +262,7 @@ export default {
                 new_mod_flag.push(mod_flag[other]);
                 new_mod_flag.push(mod_flag[idx]);
             }
-            
+
             this.selected_mod.mod_flag = new_mod_flag.concat(mod_flag.slice(Math.max(other, idx) + 1));
         },
 
@@ -317,7 +333,7 @@ export default {
                 new_deps.push(deps[other]);
                 new_deps.push(deps[idx]);
             }
-            
+
             this.selected_pkg.dependencies = new_deps.concat(deps.slice(Math.max(other, idx) + 1));
         },
 
@@ -389,6 +405,12 @@ export default {
                     <button @click.prevent="switchPage('team')" class="btn btn-default dev-btn">Edit Team Members</button>
                     <button @click.prevent="openNewVersionPopup" class="btn btn-default dev-btn">Create New Version</button>
                 </p>
+
+                Mod Versions:
+                <select class="form-control" v-model="sel_version" @change="selectVersion(sel_version)">
+                    <option v-for="m in selected_mod.versions">{{ m.version }}</option>
+                </select>
+                <br>
 
                 Mod Path: <button @click.prevent="openModFolder">Browse</button>
                 <br>
