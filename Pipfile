@@ -12,4 +12,5 @@ semantic-version = "*"
 raven = "*"
 pyqt5 = "*"
 requests-toolbelt = "*"
+ply = "*"
 

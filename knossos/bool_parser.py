@@ -1,97 +1,51 @@
-import re
-from collections import deque
+from ply import lex, yacc
 
-WHITE_RE = re.compile(r'\s')
-IDENT_RE = re.compile(r'[a-z0-9_-]+')
+tokens = ('LPARENS', 'RPARENS', 'AND', 'OR', 'NOT', 'VAR')
 
+t_LPARENS = r'\('
+t_RPARENS = r'\)'
+t_AND = r'&&'
+t_OR = r'\|\|'
+t_NOT = r'!'
+t_VAR = '[a-zA-Z_0-9]+'
 
-def tokenize(data):
-    stack = deque()
-    context = deque()
-
-    data = WHITE_RE.sub('', data)
-    pos = 0
-    dlen = len(data)
-    while pos < dlen:
-        if data[pos] == '(':
-            stack.append(context)
-            context = deque()
-            pos += 1
-        elif data[pos] == ')':
-            if not stack:
-                raise Exception('Unbalanced parens!')
-
-            parctx = stack.pop()
-            parctx.append(('tsub', context))
-            context = parctx
-            pos += 1
-        elif data[pos] == '!':
-            context.append(('tnot',))
-            pos += 1
-        elif data[pos:pos + 2] == '&&':
-            context.append(('tand',))
-            pos += 2
-        elif data[pos:pos + 2] == '||':
-            context.append(('tor',))
-            pos += 2
-        else:
-            ident = IDENT_RE.match(data[pos:])
-            if not ident:
-                raise Exception('Expected identifier, found "%s"!' % data[pos:])
-
-            iname = ident.group(0)
-            context.append(('ident', iname))
-            pos += len(iname)
-
-    assert len(stack) == 0, 'Unbalanced parens!'
-    return context
+t_ignore = ' \t\n\r'
 
 
-def parse(stack):
-    queue = None
+def t_error(t):
+    raise Exception('Invalid character %s!' % t.value[0])
 
-    try:
-        changed = True
-        while changed:
-            changed = False
-            queue = stack
-            stack = deque()
 
-            while queue:
-                el = queue.popleft()
-                if el[0] == 'tsub':
-                    stack.append(parse(el[1]))
-                    changed = True
-                    continue
+precedence = (
+    ('left', 'AND', 'OR'),
+    ('right', 'NOT')
+)
 
-                if queue and queue[0][0][0] != 't':
-                    if el[0] == 'tnot':
-                        stack.append(('not', queue.popleft()))
-                        changed = True
-                        continue
 
-                    if stack and stack[-1][0][0] != 't':
-                        if el[0] == 'tand':
-                            a = stack.pop()
-                            b = queue.pop()
-                            stack.append(('and', a, b))
-                            changed = True
-                            continue
-                        elif el[0] == 'tor':
-                            a = stack.pop()
-                            b = queue.pop()
-                            stack.append(('or', a, b))
-                            changed = True
-                            continue
+def p_expr_var(t):
+    'expr : VAR'
+    t[0] = ('ident', t[1])
 
-                stack.append(el)
-    except Exception:
-        print('stack', stack)
-        print('queue', queue)
-        raise
 
-    assert len(stack) == 1, 'Unprocessed tokens! (%r)' % stack
-    return stack[0]
+def p_expr_parens(t):
+    'expr : LPARENS expr RPARENS'
+    t[0] = t[2]
+
+
+def p_expr_not(t):
+    'expr : NOT expr'
+    t[0] = ('not', t[2])
+
+
+def p_expr_op(t):
+    """expr : expr AND expr
+            | expr OR  expr"""
+
+    t[0] = ('and' if t[2] == '&&' else 'or', t[1], t[3])
+
+
+lexer = lex.lex()
+parser = yacc.yacc()
 
 
 def eval_expr(expr, values):
@@ -108,12 +62,10 @@ def eval_expr(expr, values):
 
 
 def eval_string(data, values):
-    return eval_expr(parse(tokenize(data)), values)
+    return eval_expr(parser.parse(data), values)
 
 
 if __name__ == '__main__':
-    src = '!(a || !b) || (!z)'
-    values = {'a': True, 'z': True}
-
-    for i in range(1000):
-        print(eval_string(src, values))
+    import sys
+    import json
+    print(eval_string(sys.argv[1], json.loads(sys.argv[2])))
