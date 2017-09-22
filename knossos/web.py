@@ -753,7 +753,13 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str)
     def nebLogin(self, user, password):
         client = nebula.NebulaClient()
-        if client.login(user, password):
+        try:
+            result = client.login(user, password)
+        except Exception:
+            result = False
+            logging.exception('Failed to login to Nebula!')
+
+        if result:
             QtWidgets.QMessageBox.information(None, 'Knossos', 'Login successful!')
 
             # TODO: Figure out a better way for this!
@@ -766,11 +772,34 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str, str)
     def nebRegister(self, user, password, email):
         client = nebula.NebulaClient()
-        if client.register(user, password, email):
+
+        try:
+            result = client.register(user, password, email)
+        except Exception:
+            result = False
+            logging.exception('Failed to register to the Nebula!')
+
+        if result:
             QtWidgets.QMessageBox.information(None, 'Knossos',
                 'Registered. Please check your e-mail inbox for your confirmation mail.')
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'Registration failed. Please contact ngld.')
+
+    @QtCore.Slot(str)
+    def nebResetPassword(self, user):
+        client = nebula.NebulaClient()
+
+        try:
+            result = client.reset_password(user)
+        except Exception:
+            result = False
+            logging.exception('Failed to reset Nebula password!')
+
+        if result:
+            QtWidgets.QMessageBox.information(None, 'Knossos', 'You should now receive a mail with a reset link. ' +
+                'Remember to check your spam folder!')
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Request failed. Please contect ngld.')
 
     @QtCore.Slot(str, str, result=str)
     def getFsoBuild(self, mid, version):

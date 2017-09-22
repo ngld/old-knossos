@@ -65,6 +65,10 @@ export default {
             } else {
                 fs2mod.nebRegister(this.neb_user, this.neb_password, this.neb_email);
             }
+        },
+
+        resetPassword() {
+            fs2mod.nebResetPassword(this.neb_user);
         }
     },
 
@@ -339,6 +343,7 @@ export default {
                     <div class="col-sm-offset-4 col-sm-4">
                         <button class="btn btn-primary" @click="login">Login</button>
                         <button class="btn btn-primary" @click="register">Register</button>
+                        <button class="btn btn-primary" @click="resetPassword">Reset Password</button>
                     </div>
                 </div>
             </kn-drawer> 
