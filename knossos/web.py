@@ -36,6 +36,7 @@ class WebBridge(QtCore.QObject):
     showWelcome = QtCore.Signal()
     showDetailsPage = QtCore.Signal('QVariant')
     showRetailPrompt = QtCore.Signal()
+    showLaunchPopup = QtCore.Signal(str)
     updateModlist = QtCore.Signal(str, str)
     modProgress = QtCore.Signal(str, float, str)
     settingsArrived = QtCore.Signal(str)
@@ -229,6 +230,10 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return mod
 
+        if mod.dev_mode:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("I can't uninstall this mod because it's in dev mode!"))
+            return
+
         if len(pkgs) == 0:
             plist = mod.packages
         else:
@@ -272,7 +277,7 @@ class WebBridge(QtCore.QObject):
             return mod
 
         all_vers = list(center.installed.query_all(mid))
-        if len(all_vers) == 1:
+        if len(all_vers) == 1 and not all_vers[0].dev_mode:
             # Only one version is installed, let's update it.
             tasks.run_task(tasks.UpdateTask(mod))
         else:
@@ -308,6 +313,14 @@ class WebBridge(QtCore.QObject):
 
         runner.run_mod(mod, fred=True)
         return 0
+
+    @QtCore.Slot(str, str, str, list)
+    def runModAdvanced(self, mid, version, exe, mod_flag):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return
+
+        runner.run_mod_ex(mod, exe, mod_flag)
 
     @QtCore.Slot(str, str, result=int)
     def vercmp(self, a, b):
@@ -490,7 +503,8 @@ class WebBridge(QtCore.QObject):
             'id': mid,
             'version': version,
             'type': mtype,
-            'parent': parent
+            'parent': parent,
+            'dev_mode': True
         })
         mod.generate_folder()
 
@@ -523,6 +537,10 @@ class WebBridge(QtCore.QObject):
             pkg.folder = '.'
 
         os.mkdir(mod.folder)
+        pkg_folder = os.path.join(mod.folder, pkg.folder)
+        if not os.path.isdir(pkg_folder):
+            os.mkdir(pkg_folder)
+
         mod.add_pkg(pkg)
         mod.save()
 
@@ -536,6 +554,11 @@ class WebBridge(QtCore.QObject):
         mod = self._get_mod(mid, version)
         if mod in (-1, -2):
             return mod
+
+        if not mod.dev_mode:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
+            return -1
 
         pkg = mod.add_pkg(repo.Package({'name': pkg_name}))
         pkg.folder = pkg_folder
@@ -557,6 +580,11 @@ class WebBridge(QtCore.QObject):
 
         if idx < 0 or idx >= len(mod.packages):
             logging.error('Invalid index passed to deletePackage()!')
+            return False
+
+        if not mod.dev_mode:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
             return False
 
         # TODO: Delete the package folder?
@@ -626,6 +654,11 @@ class WebBridge(QtCore.QObject):
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
             return
 
+        if not mod.dev_mode:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
+            return
+
         mod.description = data['description']
 
         if data['logo_path'] != mod.logo_path:
@@ -664,6 +697,11 @@ class WebBridge(QtCore.QObject):
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
             return
 
+        if not mod.dev_mode:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
+            return
+
         pkg = None
         for item in mod.packages:
             if item.name == pkg_name:
@@ -686,6 +724,7 @@ class WebBridge(QtCore.QObject):
             pkg.environment = None
             pkg.executables = []
 
+        mod.update_mod_flag()
         mod.save()
         center.main_win.update_mod_list()
 
@@ -695,6 +734,11 @@ class WebBridge(QtCore.QObject):
         if mod == -1:
             logging.error('Failed find mod "%s" during save!' % mid)
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
+            return
+
+        if not mod.dev_mode:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
             return
 
         build = build.split('#')
@@ -881,6 +925,11 @@ class WebBridge(QtCore.QObject):
 
             QtWidgets.QMessageBox.critical(None, self.tr('Error'),
                 self.tr("Somehow I lost the mod you're talking about! I'm sorry, this is a bug."))
+            return False
+
+        if not mod.dev_mode:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
             return False
 
         old_ver = semantic_version.Version(version, partial=True)

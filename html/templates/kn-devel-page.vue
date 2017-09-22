@@ -139,7 +139,15 @@ export default {
             vm.popup_mod_version = '1.0';
             vm.popup_mod_type = 'mod';
             vm.popup_mod_tcs = this.mods.filter((mod) => mod.type === 'tc');
-            vm.popup_mod_parent = vm.popup_mod_tcs.indexOf('FS2') > -1 ? 'FS2' : '';
+            vm.popup_mod_parent = '';
+
+            for(let tc of vm.popup_mod_tcs) {
+                if(tc.id === 'FS2') {
+                    vm.popup_mod_parent = 'FS2';
+                    break;
+                }
+            }
+
             vm.popup_visible = true;
         },
 
@@ -243,6 +251,10 @@ export default {
             call(fs2mod.selectImage, this.selected_mod.tile_path || '', (new_path) => {
                 this.selected_mod.tile_path = new_path;
             });
+        },
+
+        isValidBuild() {
+            return this.fso_build && this.fso_build.indexOf('#') > -1;
         },
 
         swapFlagMod(idx, dir) {
@@ -401,13 +413,11 @@ export default {
             <button class="mod-btn btn-orange" @click.prevent="openCreatePopup"><span class="btn-text">CREATE</span></button>
             <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL RETAIL</button>
 
-            <a href="#" v-for="mod in mods" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>
+            <a href="#" v-for="mod in mods" v-if="mod.dev_mode" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>
         </div>
         <div class="content-pane">
             <div class="logo-box" v-if="selected_mod">
                 <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
-
-                <!-- TODO: Version select -->
 
                 <p>
                     <button @click.prevent="switchPage('details')" class="btn btn-default dev-btn">Edit Mod Details</button><br>
@@ -598,6 +608,7 @@ export default {
                             <label class="col-xs-3 control-label">FSO build</label>
                             <div class="col-xs-9">
                                 <select class="form-control" v-model="fso_build">
+                                    <option v-if="!isValidBuild()" :key="'invalid'" value="invalid">Please select a valid build</option>
                                     <option v-for="mod in mods" v-if="mod.type === 'engine'" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
                                         {{ mod.title }} {{ mod.version }}
                                     </option>
@@ -617,6 +628,11 @@ export default {
                     <div v-if="!selected_pkg && page === 'mod_flag'">
                         <h4>-mod Flag</h4>
 
+                        <p v-if="selected_mod.mod_flag.length < 1">
+                            No dependencies available. Please add your dependencies to the relevant packages and then
+                            return here.
+                        </p>
+
                         <div v-for="(dep, i) in selected_mod.mod_flag">
                             <a href="#" @click.prevent="swapFlagMod(i, -1)"><i class="fa fa-chevron-up"></i></a>
                             <a href="#" @click.prevent="swapFlagMod(i, 1)"><i class="fa fa-chevron-down"></i></a>
@@ -626,6 +642,11 @@ export default {
                     </div>
 
                     <div v-if="!selected_pkg && page === 'team'">
+                        <h4>Staff List</h4>
+
+                        <p>
+                            This page hasn't been implemented, yet.
+                        </p>
                     </div>
 
                     <div v-if="selected_mod && selected_pkg">

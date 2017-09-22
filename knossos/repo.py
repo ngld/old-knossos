@@ -776,6 +776,7 @@ class InstalledRepo(Repo):
 class InstalledMod(Mod):
     check_notes = ''
     folder = None
+    dev_mode = False
     _path = None
 
     @staticmethod
@@ -821,6 +822,7 @@ class InstalledMod(Mod):
         if 'folder' in values:
             self.folder = values['folder']
 
+        self.dev_mode = values.get('dev_mode', False)
         self.check_notes = values.get('check_notes', '')
         for pkg in pkgs:
             self.packages.append(InstalledPackage(pkg, self))
@@ -845,6 +847,8 @@ class InstalledMod(Mod):
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
             'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
             'cmdline': self.cmdline,
+            'mod_flag': self.mod_flag,
+            'dev_mode': self.dev_mode,
             'packages': [pkg.get() for pkg in self.packages]
         }
 
@@ -909,8 +913,54 @@ class InstalledMod(Mod):
         with open(path, 'w') as stream:
             json.dump(info, stream)
 
+    def update_mod_flag(self):
+        old_list = self.mod_flag
+        new_list = set([self.mid])
+
+        # Collect all dependency IDs
+        for pkg in self.packages:
+            for dep in pkg.dependencies:
+                mod = self._repo.query(dep['id'])
+                if mod and mod.mtype not in ('tool', 'engine'):
+                    new_list.add(dep['id'])
+
+        # Remove old IDs which have been removed from our dependencies
+        for i, mid in reversed(list(enumerate(old_list))):
+            if mid not in new_list:
+                del old_list[i]
+
+        # Add new IDs which have been added to our dependencies
+        for mid in new_list:
+            if mid not in old_list:
+                old_list.append(mid)
+
+        self.mod_flag = old_list
+
     def get_mod_flag(self):
-        return []
+        # Since mod_flag is just a list of IDs, we have to look up their paths here.
+        paths = []
+        dev_involved = False
+
+        for mid in self.mod_flag:
+            mod = self._repo.query(mid)
+            if not mod:
+                # We don't know if this is an optional dependency; ignore it for now.
+                logging.debug('Skipping mod "%s" during -mod generation because it\'s missing.' % mid)
+                continue
+
+            if mod.dev_mode:
+                pkgs = []
+                for pkg in mod.packages:
+                    if pkg.check_env():
+                        pkgs.append((os.path.join(mod.folder, pkg.folder), pkg.name))
+
+                if len(pkgs) > 0:
+                    paths.append(pkgs)
+                    dev_involved = True
+            else:
+                paths.append(mod.folder)
+
+        return paths, dev_involved
 
     def get_executables(self):
         if self.mtype in ('engine', 'tool'):
@@ -935,9 +985,16 @@ class InstalledMod(Mod):
                 skipped.add(mod.mid)
                 continue
 
+            if mod.dev_mode and not pkg.check_env():
+                continue
+
             for exe in pkg.executables:
                 exe = exe.copy()
-                exe['file'] = os.path.join(mod.folder, exe['file'])
+                pkgpath = mod.folder
+                if True or mod.dev_mode:
+                    pkgpath = os.path.join(pkgpath, pkg.folder)
+
+                exe['file'] = os.path.join(pkgpath, exe['file'])
                 exe['mod'] = mod
                 exes.append(exe)
 

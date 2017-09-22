@@ -1334,7 +1334,6 @@ class CopyFolderTask(progress.Task):
                 files.append((ssrc, sdest))
                 total_size += os.stat(ssrc).st_size
 
-        count = len(files)
         bytes_done = 0
         for src, dest in files:
             progress.update(bytes_done / total_size, os.path.relpath(src, src_path))

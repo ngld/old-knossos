@@ -451,6 +451,7 @@ def get_fso_flags(fs2_bin):
         return center.fso_flags[1]
 
     if not os.path.isfile(fs2_bin):
+        logging.warn('Tried to get flags for missing executable "%s"!' % fs2_bin)
         return None
 
     flags_path = os.path.join(center.settings['base_path'], 'flags.lch')

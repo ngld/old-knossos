@@ -23,8 +23,7 @@ import subprocess
 import time
 import ctypes.util
 import stat
-import shutil
-import six
+import json
 
 from . import center, repo, util, settings
 from .qt import QtCore, QtWidgets
@@ -61,13 +60,13 @@ def run_in_qt(func):
 
 class Fs2Watcher(threading.Thread):
     _params = None
-    _mod = None
+    _cwd = None
 
-    def __init__(self, params, mod):
+    def __init__(self, params, cwd):
         super(Fs2Watcher, self).__init__()
 
         self._params = params
-        self._mod = mod
+        self._cwd = cwd
         self.daemon = True
         self.start()
 
@@ -76,14 +75,6 @@ class Fs2Watcher(threading.Thread):
     def run(self):
         try:
             fs2_bin = self._params[0]
-
-            if self._mod.mtype == 'mod':
-                basepath = self._mod.get_parent().folder
-            elif self._mod.mtype == 'tc':
-                basepath = self._mod.folder
-            else:
-                self.wrong_type_msg()
-                return
 
             if not os.path.isfile(fs2_bin):
                 self.fs2_missing_msg(fs2_bin)
@@ -103,13 +94,13 @@ class Fs2Watcher(threading.Thread):
 
                 env['LD_LIBRARY_PATH'] = ld_path
 
-            logging.debug('Launching FS2: %s in %s', repr([fs2_bin] + self._params[1:]), basepath)
+            logging.debug('Launching FS2: %s in %s', repr([fs2_bin] + self._params[1:]), self._cwd)
 
             fail = False
             rc = -999
             reason = '???'
             try:
-                p = subprocess.Popen([fs2_bin] + self._params[1:], cwd=basepath, env=env)
+                p = subprocess.Popen([fs2_bin] + self._params[1:], cwd=self._cwd, env=env)
 
                 time.sleep(0.3)
                 if p.poll() is not None:
@@ -150,12 +141,6 @@ class Fs2Watcher(threading.Thread):
             msg = translate('runner', "I can't start because the library %s is missing!")
 
         QtWidgets.QMessageBox.critical(None, 'Knossos', msg % util.human_list(missing))
-
-    @run_in_qt
-    def wrong_type_msg(self):
-        logging.error('Tried to start mod "%s" of invalid type "%s"!' % (self._mod.mid, self._mod.mtype))
-        QtWidgets.QMessageBox.critical(None, 'Knossos',
-            translate('runner', "I'm sorry but you can't launch this tool or engine directly. You shouldn't be able to."))
 
 
 def check_elf_libs(fpath):
@@ -309,22 +294,48 @@ def run_mod(mod, tool=None, debug=False):
                 translate('runner', "I couldn't find an executable. Aborted."))
             return
 
-    binpath = None
-    for item in exes:
-        if item['debug'] == debug:
-            binpath = item['file']
-            break
-
-    if not binpath:
+    exes = [item for item in exes if item['debug'] == debug]
+    if len(exes) == 0:
         logging.error('"%s" provided no valid executable. (debug = %r)' % ((tool or mod).mid, debug))
         QtWidgets.QMessageBox.critical(None, 'Knossos',
             translate('runner', 'No matching executable was found!'))
         return
 
-    # Look for the cmdline path.
-    path = os.path.join(settings.get_fso_profile_path(), 'data/cmdline_fso.cfg')
+    mod_flag, mod_choice = mod.get_mod_flag()
+    if mod_choice or len(exes) > 1:
+        # We have to ask the user
+        center.main_win.browser_ctrl.bridge.showLaunchPopup.emit(json.dumps({
+            'id': mod.mid,
+            'version': str(mod.version),
+            'title': mod.title,
+            'exes': [(x['file'], '%s - %s' % (x['mod'].title, os.path.basename(x['file']))) for x in exes],
+            'mod_flag': mod_flag
+        }))
+    else:
+        run_mod_ex(mod, exes[0]['file'], mod_flag)
+
+
+def run_mod_ex(mod, binpath, mod_flag):
+    # Put the cmdline together
     cmdline = mod.cmdline
 
+    if mod.mtype == 'mod':
+        basepath = mod.get_parent().folder
+    elif mod.mtype == 'tc':
+        basepath = mod.folder
+    else:
+        basepath = ''
+
+    if len(mod_flag) > 0:
+        # The paths for -mod must be relative to the base path.
+        # TODO: Do we have to make sure that there are no special characters here or are the rules for mod.folder and
+        #       pkg.folder enough to assure that?
+        cmdline += ' -mod ' + ','.join([os.path.relpath(p, basepath) for p in mod_flag])
+
+    # Look for the cmdline path.
+    path = os.path.join(settings.get_fso_profile_path(), 'data/cmdline_fso.cfg')
+
+    # Create the containing folders if they are missing.
     if not os.path.isfile(path):
         basep = os.path.dirname(path)
         if not os.path.isdir(basep):
@@ -332,15 +343,15 @@ def run_mod(mod, tool=None, debug=False):
 
     try:
         with open(path, 'w') as stream:
-            stream.write(stringify_cmdline(cmdline))
+            stream.write(cmdline)
     except Exception:
         logging.exception('Failed to modify "%s". Not starting!!', path)
 
         QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
             translate('runner', 'Failed to edit "%s"! I can\'t change the current mod!') % path)
     else:
-        logging.info('Starting mod "%s" with cmdline "%s" and tool "%s".', mod.title, cmdline, tool.title if tool else '<None>')
-        Fs2Watcher([binpath], mod)
+        logging.info('Starting mod "%s" with cmdline "%s" and tool "%s".', mod.title, cmdline, binpath)
+        Fs2Watcher([binpath], cwd=basepath)
 
 
 def stringify_cmdline(line):

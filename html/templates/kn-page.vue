@@ -36,6 +36,11 @@ export default {
 
         popup_mod_message: '',
 
+        popup_mod_exes: [],
+        popup_mod_flag: [],
+        popup_mod_sel_exe: null,
+        popup_mod_flag_map: {},
+
         popup_pkg_name: '',
         popup_pkg_folder: '',
 
@@ -219,6 +224,21 @@ export default {
             call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
                 if(result) this.popup_visible = false;
             });
+        },
+
+        launchModAdvanced() {
+            let mod_flag = [];
+            for(let part of this.popup_mod_flag) {
+                if(typeof part === 'string') {
+                    mod_flag.push(part);
+                } else {
+                    for(let p of part) {
+                        if(this.popup_mod_flag_map[p[0]]) mod_flag.push(p[0]);
+                    }
+                }
+            }
+
+            fs2mod.runModAdvanced(this.popup_mod_id, this.popup_mod_version, this.popup_mod_sel_exe, mod_flag);
         }
     }
 };
@@ -560,6 +580,37 @@ export default {
 
                         <button class="mod-btn btn-green" @click.prevent="sendModReport">SEND</button>
                         <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">CANCEL</button>
+                    </form>
+                </div>
+
+                <div v-if="popup_mode == 'launch_mod'">
+                    <form class="form">
+                        <div class="form-group">
+                            <label class="control-label" for="mod_exes">FSO build / Tool</label>
+                            <select name="mod_exes" class="form-control" v-model="popup_mod_sel_exe">
+                                <option v-for="x in popup_mod_exes" :key="x[0]" :value="x[0]">{{ x[1] }}</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="control-label">Activated packages</label>
+                            <div class="checklist">
+                                <div v-for="part in popup_mod_flag">
+                                    <span v-if="typeof part === 'string'">{{ part }}</span>
+                                    <div v-else>
+                                        <label class="checkbox" v-for="p in part">
+                                            <input type="checkbox" v-model="popup_mod_flag_map[p[0]]">
+                                            {{ p[1] }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <button class="mod-btn btn-green" @click.prevent="launchModAdvanced">LAUNCH</button>
+                            <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">CANCEL</button>
+                        </div>
                     </form>
                 </div>
 

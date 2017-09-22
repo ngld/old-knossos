@@ -64,6 +64,28 @@ function init() {
     fs2mod.showRetailPrompt.connect(() => {
         vm.showRetailPrompt();
     });
+    fs2mod.showLaunchPopup.connect((info) => {
+        info = JSON.parse(info);
+
+        vm.popup_mode = 'launch_mod';
+        vm.popup_title = 'Launch ' + info.title;
+        vm.popup_mod_id = info.id;
+        vm.popup_mod_version = info.version;
+        vm.popup_mod_exes = info.exes;
+        vm.popup_mod_flag = info.mod_flag;
+        vm.popup_mod_sel_exe = info.exes[0][0];
+        vm.popup_mod_flag_map = {};
+
+        for(let part of info.mod_flag) {
+            if(typeof part !== 'string') {
+                for(let p of part) {
+                    vm.popup_mod_flag_map[p[0]] = true;
+                }
+            }
+        }
+
+        vm.popup_visible = true;
+    });
     fs2mod.updateModlist.connect((mods, type) => {
         mod_table = {};
         mods = JSON.parse(mods);
