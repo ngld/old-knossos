@@ -43,7 +43,7 @@ class NebulaClient(object):
             return None
 
         if check_code and result.status_code != 200:
-            raise RequestFailedException()
+            raise RequestFailedException('unknown')
 
         return result
 
@@ -124,8 +124,8 @@ class NebulaClient(object):
         })
         return True
 
-    def create_release(self, mod):
-        result = self._call('mod/release', check_code=True, json=mod.get())
+    def preflight_release(self, mod):
+        result = self._call('mod/release/preflight', check_code=True, json=mod.get())
         data = result.json()
         if not data:
             raise RequestFailedException()
@@ -137,6 +137,46 @@ class NebulaClient(object):
             raise AccessDeniedException()
 
         raise RequestFailedException(data.get('reason'))
+
+    def create_release(self, mod):
+        result = self._call('mod/release', check_code=True, json=mod.get())
+        data = result.json()
+        if not data:
+            raise RequestFailedException('unknown')
+
+        if data['result']:
+            return True
+
+        if data.get('reason') == 'unauthorized':
+            raise AccessDeniedException(data['reason'])
+
+        raise RequestFailedException(data.get('reason'))
+
+    def report_release(self, mod, message):
+        result = self._call('mod/release/report', check_code=True, data={
+            'mid': mod.mid,
+            'version': str(mod.version),
+            'message': message
+        })
+        data = result.json()
+        if not data or not data.get('result'):
+            raise RequestFailedException('unknown')
+
+        return True
+
+    def delete_release(self, mod):
+        result = self._call('mod/release/delete', check_code=True, json={
+            'mid': mod.mid,
+            'version': str(mod.version)
+        })
+        data = result.json()
+        if not data or not data.get('result'):
+            if data.get('reason') == 'unauthorized':
+                raise AccessDeniedException(data['reason'])
+            else:
+                raise RequestFailedException('unknown')
+
+        return True
 
     def upload_file(self, name, path, fn=None):
         _, checksum = util.gen_hash(path)

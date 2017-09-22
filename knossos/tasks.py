@@ -798,8 +798,14 @@ class UploadTask(progress.MultistepTask):
     _mod = None
     _dir = None
     _login_failed = False
-    _access_denied = False
+    _reason = None
     _success = False
+    _msg_table = {
+        'invalid version': 'the version number specified for this release is invalid!',
+        'outdated version': 'there is already a release with the same or newer version on the nebula.',
+        'unsupported archive checksum': 'your client sent an invalid checksum. You probably need to update.',
+        'archive missing': 'one of your archives failed to upload.'
+    }
 
     def __init__(self, mod):
         super(UploadTask, self).__init__()
@@ -852,6 +858,9 @@ class UploadTask(progress.MultistepTask):
             else:
                 client.update_mod(self._mod)
 
+            progress.update(0.13, 'Performing pre-flight checks...')
+            client.preflight_release(self._mod)
+
             progress.update(0.15, 'Scanning files...')
             archives = []
             for pkg in self._mod.packages:
@@ -877,9 +886,14 @@ class UploadTask(progress.MultistepTask):
 
             progress.update(0.2, 'Uploading...')
             self.add_work(archives)
-        except nebula.RequestFailedException:
-            logging.exception('Failed request to nebula during upload!')
+        except nebula.AccessDeniedException:
+            self._reason = 'unauthorized'
+            self.abort()
+        except nebula.RequestFailedException as exc:
+            if exc.args[0] not in self._msg_table:
+                logging.exception('Failed request to nebula during upload!')
 
+            self._reason = exc.args[0]
             self.abort()
             return
 
@@ -915,6 +929,7 @@ class UploadTask(progress.MultistepTask):
         except nebula.RequestFailedException:
             logging.exception('Failed request to nebula during upload!')
 
+            self._reason = 'archive missing'
             self.abort()
 
     def init2(self):
@@ -926,12 +941,14 @@ class UploadTask(progress.MultistepTask):
             progress.update(1, 'Done')
             self._success = True
         except nebula.AccessDeniedException:
-            self._access_denied = True
+            self._reason = 'unauthorized'
             self.abort()
 
-        except nebula.RequestFailedException:
-            logging.exception('Failed request to nebula during upload!')
+        except nebula.RequestFailedException as exc:
+            if exc.args[0] not in self._msg_table:
+                logging.exception('Failed request to nebula during upload!')
 
+            self._reason = exc.args[0]
             self.abort()
 
     def work2(self):
@@ -942,10 +959,13 @@ class UploadTask(progress.MultistepTask):
 
         if self._login_failed:
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to login!')
-        elif self._access_denied:
+        elif self._reason == 'unauthorized':
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'You are not authorized to edit this mod!')
         elif self._success:
             QtWidgets.QMessageBox.information(None, 'Knossos', 'Successfully uploaded mod!')
+        elif self._reason in self._msg_table:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                "Your mod couldn't be uploaded because %s" % self._msg_table[self._reason])
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'An unexpected error occured! Sorry...')
 

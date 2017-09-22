@@ -801,6 +801,41 @@ class WebBridge(QtCore.QObject):
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'Request failed. Please contect ngld.')
 
+    @QtCore.Slot(str, str, str, result=bool)
+    def nebReportMod(self, mid, version, message):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return False
+
+        client = nebula.NebulaClient()
+        try:
+            client.report_release(mod, message)
+        except Exception:
+            logging.exception('Failed to send mod report!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Request failed. Please contect ngld.')
+            return False
+        else:
+            QtWidgets.QMessageBox.information(None, 'Knossos',
+                'Thanks for your report. We will act on it as soon as possible.')
+            return True
+
+    @QtCore.Slot(str, str)
+    def nebDeleteMod(self, mid, version):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return
+
+        client = nebula.NebulaClient()
+        try:
+            client.delete_release(mod)
+        except nebula.AccessDeniedException:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', "You can't do that!")
+        except Exception:
+            logging.exception('Failed to send mod report!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Request failed. Please contect ngld.')
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'The release was successfully deleted.')
+
     @QtCore.Slot(str, str, result=str)
     def getFsoBuild(self, mid, version):
         mod = self._get_mod(mid, version)

@@ -34,6 +34,8 @@ export default {
         popup_mod_new_version: '',
         popup_mod_method: 'copy',
 
+        popup_mod_message: '',
+
         popup_pkg_name: '',
         popup_pkg_folder: '',
 
@@ -148,6 +150,14 @@ export default {
 
         createNewModVersion() {
             call(fs2mod.createModVersion, this.popup_mod_id, this.popup_mod_version, this.popup_mod_new_version, this.popup_mod_method, (result) => {
+                if(result) {
+                    this.popup_visible = false;
+                }
+            });
+        },
+
+        sendModReport() {
+            call(fs2mod.nebReportMod, this.popup_mod_id, this.popup_mod_version, this.popup_mod_message, (result) => {
                 if(result) {
                     this.popup_visible = false;
                 }
@@ -299,30 +309,7 @@ export default {
 
     <!-------------------------------------------------------------------------------- Start the Details page ---------->
             <div class="info-page" id="details-page" v-if="page === 'details'">
-                <div class="img-frame">
-                    <div class="title-frame">
-                        <h1>{{ mod.title }}</h1>
-                        Version <span>{{ mod.version }}</span>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-sm-6">
-                        <kn-mod-buttons :tab="tab" :mod="mod"></kn-mod-buttons>
-                    </div>
-
-                    <div class="col-sm-6 short-frame">
-                        <button class="link-btn btn-link-red" v-if="mod.release_thread" @click="openLink(mod.release_thread)"><span class="btn-text">FORUM</span></button>
-                        <button class="link-btn btn-link-blue" v-if="mod.videos.length > 0" @click="showVideos(mod.videos)"><span class="btn-text">VIDEOS</span></button>
-
-                        <div class="date-frame pull-right">
-                            <div v-if="mod.first_release">Release: {{ mod.first_release }}</div>
-                            <div v-if="mod.last_update"><em>Last Updated: {{ mod.last_update }}</em></div>
-                        </div>
-                    </div>
-                </div>
-
-                <p v-html="mod.description"></p>
+                <kn-details-page :mod="mod"></kn-details-page>
             </div>
 
             <div class="info-page settings-page container-fluid" v-if="page === 'settings'">
@@ -543,6 +530,35 @@ export default {
                         </div>
 
                         <button class="mod-btn btn-green" @click.prevent="createNewModVersion">CREATE</button>
+                        <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">CANCEL</button>
+                    </form>
+                </div>
+
+                <div v-if="popup_mode === 'report_mod'">
+                    <form class="form-horizontal">
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Mod</label>
+                            <div class="col-xs-9">
+                                <p class="form-control-static">{{ popup_mod_name }}</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Version</label>
+                            <div class="col-xs-9">
+                                <p class="form-control-static">{{ popup_mod_version }}</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Message</label>
+                            <div class="col-xs-9">
+                                <textarea class="form-control" v-model="popup_mod_message" placeholder="Please provide a reason for your report.">
+                                </textarea>
+                            </div>
+                        </div>
+
+                        <button class="mod-btn btn-green" @click.prevent="sendModReport">SEND</button>
                         <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">CANCEL</button>
                     </form>
                 </div>

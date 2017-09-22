@@ -379,6 +379,18 @@ export default {
                 fs2mod.startUpload(this.selected_mod.id, this.selected_mod.version);
             };
             vm.popup_visible = true;
+        },
+
+        deleteMod()  {
+            vm.popup_mode = 'are_you_sure';
+            vm.popup_title = 'Delete mod release';
+            vm.popup_sure_question = `Are you sure that you want to delete ${this.selected_mod.title} ${this.selected_mod.version}?` +
+                "\nThis will only delete this specific version.";
+
+            vm.sureCallback = () => {
+                fs2mod.nebDeleteMod(this.selected_mod.id, this.selected_mod.version);
+            };
+            vm.popup_visible = true;
         }
     }
 };
@@ -400,7 +412,8 @@ export default {
                 <p>
                     <button @click.prevent="switchPage('details')" class="btn btn-default dev-btn">Edit Mod Details</button><br>
                     <button @click.prevent="switchPage('fso')" class="btn btn-default dev-btn" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit FSO Settings</button><br>
-                    <button @click.prevent="uploadMod" class="btn btn-default dev-btn">Upload</button>
+                    <button @click.prevent="uploadMod" class="btn btn-default dev-btn">Upload</button><br>
+                    <button @click.prevent="deleteMod" class="btn btn-default dev-btn">Delete</button><br>
                     <button @click.prevent="switchPage('mod_flag')" class="btn btn-default dev-btn" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">Edit -mod Flag</button><br>
                     <button @click.prevent="switchPage('team')" class="btn btn-default dev-btn">Edit Team Members</button>
                     <button @click.prevent="openNewVersionPopup" class="btn btn-default dev-btn">Create New Version</button>

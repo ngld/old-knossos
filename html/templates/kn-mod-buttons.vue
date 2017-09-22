@@ -35,41 +35,54 @@ export default {
             vm.popup_title = 'Installation Details';
             vm.popup_mode = 'mod_progress';
             vm.popup_visible = true;
+        },
+
+        reportMod() {
+            vm.popup_mode = 'report_mod';
+            vm.popup_mod_id = this.mod.id;
+            vm.popup_mod_name = this.mod.title;
+            vm.popup_mod_version = this.mod.version;
+            vm.popup_mod_message = '';
+            vm.popup_visible = true;
         }
     }
 };
 </script>
 <template>
     <div>
-        <button class="mod-btn btn-green" v-if="mod.installed && (mod.status === 'ready' || mod.status === 'update') && (mod.type === 'mod' || mod.type == 'tc')" v-on:click="play">
+        <button class="mod-btn btn-green" v-if="mod.installed && (mod.status === 'ready' || mod.status === 'update') && (mod.type === 'mod' || mod.type == 'tc')" @click="play">
             <span class="btn-text">PLAY</span>
         </button>
 
-        <button class="mod-btn btn-yellow" v-if="mod.installed && mod.status === 'update'" v-on:click="update">
+        <button class="mod-btn btn-yellow" v-if="mod.installed && mod.status === 'update'" @click="update">
             <span class="btn-text">UPDATE</span>
         </button>
 
-        <button class="mod-btn btn-red" v-if="mod.status === 'error'" v-on:click="showErrors">
+        <button class="mod-btn btn-red" v-if="mod.status === 'error'" @click="showErrors">
             <span class="btn-text">ERROR</span>
         </button>
 
-        <button class="mod-btn btn-orange" v-if="mod.installed && mod.status !== 'updating'" v-on:click="uninstall">
+        <button class="mod-btn btn-orange" v-if="mod.installed && mod.status !== 'updating'" @click="uninstall">
             <span class="btn-text">UNINSTALL</span>
         </button>
 
-        <button class="mod-btn btn-blue" v-if="!mod.installed" v-on:click="install">
+        <button class="mod-btn btn-blue" v-if="!mod.installed" @click="install">
             <span class="btn-text">INSTALL</span>
         </button>
 
-        <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" v-on:click="showProgress">
+        <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" @click="showProgress">
             <span class="small-btn-text">
                 INSTALLING...<br>
                 {{ Math.round(mod.progress) }}%
             </span>
         </button>
 
-        <button class="mod-btn btn-orange" v-if="mod.status === 'updating'" v-on:click="cancel">
+        <button class="mod-btn btn-orange" v-if="mod.status === 'updating'" @click="cancel">
             <span class="btn-text">CANCEL</span>
+        </button>
+
+        <button class="mod-btn btn-blue" v-if="mod.installed && tab == 'details'" @click="reportMod">
+            <span class="btn-text">REPORT</span>
         </button>
     </div>
 </template>

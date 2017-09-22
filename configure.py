@@ -25,16 +25,12 @@ from configlib import *
 
 UI_FILES = [
     'ui/flags.ui',
-    'ui/gogextract.ui',
     'ui/hell.ui',
-    'ui/install.ui',
-    'ui/log_viewer.ui',
-    'ui/mod_settings.ui',
-    'ui/mod_versions.ui',
-    'ui/select_list.ui'
+    'ui/install.ui'
 ]
 
 JS_FILES = [
+    'html/templates/kn-details-page.vue',
     'html/templates/kn-dev-mod.vue',
     'html/templates/kn-devel-page.vue',
     'html/templates/kn-drawer.vue',
@@ -133,6 +129,7 @@ SRC_FILES = [
     'knossos/integration.py',
     'knossos/ipc.py',
     'knossos/launcher.py',
+    'knossos/nebula.py',
     'knossos/progress.py',
     'knossos/py2_compat.py',
     'knossos/qt.py',

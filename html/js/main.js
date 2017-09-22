@@ -31,6 +31,7 @@ function init() {
     }
 
     let tmp = [
+        'kn-details-page',
         'kn-dev-mod',
         'kn-devel-page',
         'kn-drawer',
