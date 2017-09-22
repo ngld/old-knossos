@@ -6,6 +6,9 @@ set "PATH=%PATH%;%CD%\releng\windows\support"
 :: Update the Windows dependencies if necessary.
 py -3 tools\common\download_archive.py releng\windows\support\support.json
 
+:: Run "npm install" if necessary.
+py -3 tools\common\npm_wrapper.py
+
 if exist build.ninja goto :build
 
 py -3 configure.py

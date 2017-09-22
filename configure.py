@@ -154,6 +154,8 @@ check_module('PyQt5')
 check_module('semantic_version')
 check_module('six')
 check_module('requests')
+check_module('requests_toolbelt')
+check_module('ply')
 if sys.platform == 'win32':
     check_module('comtypes')
 
