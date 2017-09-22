@@ -786,6 +786,17 @@ class WebBridge(QtCore.QObject):
 
         center.main_win.update_mod_list()
 
+    @QtCore.Slot(str, str, list)
+    def saveModFlag(self, mid, version, mod_flag):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return
+
+        mod.mod_flag = mod_flag
+        mod.save()
+
+        center.main_win.update_mod_list()
+
     @QtCore.Slot(str, str)
     def startUpload(self, mid, version):
         mod = self._get_mod(mid, version)

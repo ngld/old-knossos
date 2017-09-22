@@ -278,6 +278,10 @@ export default {
             this.selected_mod.mod_flag = new_mod_flag.concat(mod_flag.slice(Math.max(other, idx) + 1));
         },
 
+        saveModFlag() {
+            fs2mod.saveModFlag(this.selected_mod.id, this.selected_mod.version, this.selected_mod.mod_flag);
+        },
+
         addDep() {
             this.edit_dep_idx = -1;
             this.edit_dep_mod = null;
@@ -639,6 +643,8 @@ export default {
 
                             {{ dep }}
                         </div>
+
+                        <button class="mod-btn btn-green" @click.prevent="saveModFlag"><span class="btn-text">SAVE</span></button>
                     </div>
 
                     <div v-if="!selected_pkg && page === 'team'">
