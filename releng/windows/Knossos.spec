@@ -20,7 +20,7 @@ import subprocess
 import PyQt5
 
 onefile = False
-him = []
+him = ['knossos.parsetab']
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 
 # Build the TaskbarLib module.
@@ -62,6 +62,7 @@ a = Analysis(['../../knossos/__main__.py'],
             datas=[
                 ('../../knossos/data/hlp.ico', 'data'),
                 ('../../knossos/data/resources.rcc', 'data'),
+                ('../../knossos/parser.out', 'knossos'),
                 (os.path.join(qt_path, 'qt', 'resources'), '.')
             ])
 

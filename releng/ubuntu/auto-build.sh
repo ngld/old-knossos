@@ -16,8 +16,10 @@ fi
 
 cd releng/ubuntu/cache
 cp ../../../package.json .
-npm install
-npm install es6-shim
+python3 ../../../tools/common/npm_wrapper.py
+if [ ! -d node_modules/es6-shim ]; then
+	npm install es6-shim
+fi
 
 cd ../../../../work
 

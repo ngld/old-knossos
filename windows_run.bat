@@ -1,7 +1,7 @@
 @echo off
 
 cd %~dp0
-set "PATH=%PATH%;%CD%\releng\windows\support"
+set "PATH=%PATH%;%CD%\releng\windows\support;%CD%\releng\windows\support\x64"
 
 :: Update the Windows dependencies if necessary.
 py -3 tools\common\download_archive.py releng\windows\support\support.json

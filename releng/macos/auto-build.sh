@@ -11,7 +11,7 @@ rm -rf dist/*
 cd ../..
 
 echo "==> Installing NPM modules"
-npm install
+python3 tools/common/npm_wrapper.py
 
 echo "==> Configuring..."
 PATH="$PATH:/usr/local/opt/qt5/bin" python3 configure.py

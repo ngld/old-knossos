@@ -78,7 +78,11 @@ export default {
         },
 
         showTab(tab) {
-            fs2mod.showTab(tab);
+            if(window.qt) {
+                fs2mod.showTab(tab);
+            } else {
+                setTimeout(() => { fs2mod.showTab(tab); }, 100);
+            }
         },
 
         exitDetails() {
@@ -259,7 +263,7 @@ export default {
         </div>
     <!-------------------------------------------------------------------------------- Start the Tab Menus ---------->
         <div id="tab-bar" v-if="page !== 'details'">
-            <a href="#" class="main-btn" v-for="(label, name) in tabs" :class="{ active: tab === name }" @click="showTab(name)">
+            <a href="#" class="main-btn" v-for="(label, name) in tabs" :class="{ active: tab === name }" @click.prevent="showTab(name)">
                 <span :class="'icon ' + name + '-image'"></span>
                 {{ label }}
             </a>

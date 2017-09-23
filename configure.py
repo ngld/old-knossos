@@ -263,7 +263,7 @@ with open('build.ninja', 'w') as stream:
         n.comment('Win32')
 
         if check_module('PyInstaller', required=False):
-            pyinstaller = 'cmd /C "cd releng\\windows && %s"' % cmd2str([sys.executable, '-OO', '-mPyInstaller', '-d', '--distpath=.\\dist', '--workpath=.\\build', 'Knossos.spec', '-y'])
+            pyinstaller = 'cmd /C "cd releng\\windows && %s"' % cmd2str([sys.executable, '-O', '-mPyInstaller', '-d', '--distpath=.\\dist', '--workpath=.\\build', 'Knossos.spec', '-y'])
             n.rule('pyinstaller', pyinstaller, 'PACKAGE', pool='console')
             n.build('pyi', 'pyinstaller', ['resources'] + SRC_FILES)
 
@@ -279,7 +279,7 @@ with open('build.ninja', 'w') as stream:
         n.comment('macOS')
 
         if check_module('PyInstaller', required=False):
-            pyinstaller = 'cd releng/macos && ' + cmd2str([sys.executable, '-OO', '-mPyInstaller', '-d', '--distpath=./dist', '--workpath=./build', 'Knossos.spec', '-y'])
+            pyinstaller = 'cd releng/macos && ' + cmd2str([sys.executable, '-O', '-mPyInstaller', '-d', '--distpath=./dist', '--workpath=./build', 'Knossos.spec', '-y'])
             n.rule('pyinstaller', pyinstaller, 'PACKAGE', pool='console')
             n.build('pyi', 'pyinstaller', ['resources'] + SRC_FILES)
 

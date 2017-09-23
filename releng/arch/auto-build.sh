@@ -4,7 +4,7 @@ set -eo pipefail
 
 cd /build
 sudo chown packager .
-rsync -a --exclude=dist --exclude=build --exclude=packer --exclude=.vagrant src/ work/
+rsync -a --exclude=dist --exclude=build --exclude=packer --exclude=.vagrant --exclude=node_modules src/ work/
 cd work
 
 install -Dm600 releng/config/aur_key ~/.ssh/id_rsa

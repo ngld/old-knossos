@@ -28,7 +28,7 @@ choco install -y --no-progress --x86 vcredist2010 vcredist2015 nsis
 
 echo ::: Installing python dependencies...
 py -3 -mpip install -U pip
-py -3 -mpip install PyQt5 six requests raven semantic_version pypiwin32 comtypes pyinstaller etaprogress
+py -3 -mpip install PyQt5 six requests requests_toolbelt ply raven semantic_version pypiwin32 comtypes pyinstaller etaprogress
 
 echo ::: Downloading remaining dependencies...
 py -3 tools/common/download_archive.py releng/windows/support/support.json

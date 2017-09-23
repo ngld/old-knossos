@@ -4,7 +4,11 @@ import subprocess
 
 
 def update():
-    subprocess.check_call(['npm', 'install'])
+    if sys.platform == 'win32':
+        # For whatever reason, node.exe hangs if we don't capture stderr... Windows is weird.
+        print(subprocess.check_output(['cmd', '/C', 'npm', 'install'], stderr=subprocess.STDOUT).decode('utf8', 'replace'))
+    else:
+        subprocess.check_call(['npm', 'install'])
 
     open('node_modules/stamp', 'w').close()
 

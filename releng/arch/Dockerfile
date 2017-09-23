@@ -6,8 +6,8 @@ ARG AUR_EMAIL
 ADD aur.sh /usr/bin/aur
 
 RUN pacman -Syu --needed --noconfirm base-devel sudo python pkgbuild-introspection \
-		python-six python-requests python-pyqt5 python-raven qt5-webengine \
-		qt5-webchannel qt5-tools sdl2 openal p7zip ninja rsync git openssh && \
+		python-six python-requests python-requests-toolbelt python-ply python-pyqt5 python-raven \
+		qt5-webengine qt5-webchannel qt5-tools sdl2 openal p7zip ninja rsync git openssh && \
 	chmod a+x /usr/bin/aur && \
 	useradd -mG wheel packager && \
 	echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers && \

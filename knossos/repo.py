@@ -28,7 +28,7 @@ from semantic_version import SpecItem
 from . import uhf
 uhf(__name__)
 
-from . import center, util
+from . import center, util, bool_parser
 
 # You have to fill this using https://github.com/workhorsy/py-cpuinfo .
 CPU_INFO = None
@@ -636,8 +636,6 @@ class Package(object):
         return result
 
     def check_env(self):
-        from bool_parser import eval_string
-
         if self.environment in ('', None):
             return True
 
@@ -661,7 +659,7 @@ class Package(object):
             bvars[flag.lower()] = True
 
         try:
-            return eval_string(self.environment, bvars)
+            return bool_parser.eval_string(self.environment, bvars)
         except Exception:
             logging.exception('Failed to evaluate expression "%s"!' % self.environment)
 

@@ -27,7 +27,7 @@ sudo installer -store -pkg python.pkg -target /
 
 echo "==> Installing Python dependencies"
 pip3 install -U pip
-pip3 install six requests raven semantic_version PyQt5 PyInstaller
+pip3 install six requests requests_toolbelt ply raven semantic_version PyQt5 PyInstaller
 
 echo "==> Installing SDL2"
 curl -so SDL2.dmg "https://libsdl.org/release/SDL2-2.0.5.dmg"

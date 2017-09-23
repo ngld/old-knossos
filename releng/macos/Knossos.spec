@@ -21,7 +21,7 @@ import ctypes.util
 from shutil import which, copytree
 import PyQt5
 
-him = []
+him = ['knossos.parsetab']
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 
 rthooks = ['version-rthook.py']
@@ -79,10 +79,14 @@ a = Analysis(['../../knossos/__main__.py'],
             datas=[
                 (p7zip_path, '.'),
                 ('../../knossos/data/resources.rcc', 'data'),
+                ('../../knossos/parser.out', '.'),
 
                 # Add QtWebEngine stuff because PyInstaller's hook doesn't do anything without qmake (which PyQt5 doesn't include).
                 (os.path.join(resources_dir, 'icudtl.dat'), ''),
                 (os.path.join(resources_dir, 'qtwebengine_resources.pak'), ''),
+                (os.path.join(resources_dir, 'qtwebengine_resources_100p.pak'), ''),
+                (os.path.join(resources_dir, 'qtwebengine_resources_200p.pak'), ''),
+
                 
                 # The distributed Info.plist has LSUIElement set to true, which prevents the
                 # icon from appearing in the dock.
