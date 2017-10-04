@@ -947,16 +947,13 @@ class InstalledMod(Mod):
                 continue
 
             if mod.dev_mode:
-                pkgs = []
                 for pkg in mod.packages:
                     if pkg.check_env():
-                        pkgs.append((os.path.join(mod.folder, pkg.folder), pkg.name))
+                        paths.append((os.path.join(mod.folder, pkg.folder), '%s - %s' % (mod.title, pkg.name)))
+                        dev_involved = True
 
-                if len(pkgs) > 0:
-                    paths.append(pkgs)
-                    dev_involved = True
             else:
-                paths.append(mod.folder)
+                paths.append((mod.folder, mod.title))
 
         return paths, dev_involved
 

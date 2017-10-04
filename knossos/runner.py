@@ -312,7 +312,7 @@ def run_mod(mod, tool=None, debug=False):
             'mod_flag': mod_flag
         }))
     else:
-        run_mod_ex(mod, exes[0]['file'], mod_flag)
+        run_mod_ex(mod, exes[0]['file'], [path for path, label in mod_flag])
 
 
 def run_mod_ex(mod, binpath, mod_flag):

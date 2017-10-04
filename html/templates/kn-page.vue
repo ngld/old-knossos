@@ -233,13 +233,7 @@ export default {
         launchModAdvanced() {
             let mod_flag = [];
             for(let part of this.popup_mod_flag) {
-                if(typeof part === 'string') {
-                    mod_flag.push(part);
-                } else {
-                    for(let p of part) {
-                        if(this.popup_mod_flag_map[p[0]]) mod_flag.push(p[0]);
-                    }
-                }
+                if(this.popup_mod_flag_map[part[0]]) mod_flag.push(part[0]);
             }
 
             fs2mod.runModAdvanced(this.popup_mod_id, this.popup_mod_version, this.popup_mod_sel_exe, mod_flag);
@@ -599,15 +593,10 @@ export default {
                         <div class="form-group">
                             <label class="control-label">Activated packages</label>
                             <div class="checklist">
-                                <div v-for="part in popup_mod_flag">
-                                    <span v-if="typeof part === 'string'">{{ part }}</span>
-                                    <div v-else>
-                                        <label class="checkbox" v-for="p in part">
-                                            <input type="checkbox" v-model="popup_mod_flag_map[p[0]]">
-                                            {{ p[1] }}
-                                        </label>
-                                    </div>
-                                </div>
+                                <label class="checkbox" v-for="p in popup_mod_flag">
+                                    <input type="checkbox" v-model="popup_mod_flag_map[p[0]]">
+                                    {{ p[1] }}
+                                </label>
                             </div>
                         </div>
 

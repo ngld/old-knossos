@@ -77,11 +77,7 @@ function init() {
         vm.popup_mod_flag_map = {};
 
         for(let part of info.mod_flag) {
-            if(typeof part !== 'string') {
-                for(let p of part) {
-                    vm.popup_mod_flag_map[p[0]] = true;
-                }
-            }
+            vm.popup_mod_flag_map[part[0]] = true;
         }
 
         vm.popup_visible = true;

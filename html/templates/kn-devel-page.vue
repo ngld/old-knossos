@@ -641,7 +641,7 @@ export default {
                             <a href="#" @click.prevent="swapFlagMod(i, -1)"><i class="fa fa-chevron-up"></i></a>
                             <a href="#" @click.prevent="swapFlagMod(i, 1)"><i class="fa fa-chevron-down"></i></a>
 
-                            {{ dep }}
+                            {{ mod_map[dep].title }}
                         </div>
 
                         <button class="mod-btn btn-green" @click.prevent="saveModFlag"><span class="btn-text">SAVE</span></button>
