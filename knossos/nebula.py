@@ -40,7 +40,7 @@ class NebulaClient(object):
             result = self._sess.request(method, url, **kwargs)
         except requests.RequestException:
             logging.exception('Failed to send %s request to %s!' % (method, path))
-            return None
+            raise RequestFailedException('connection')
 
         if check_code and result.status_code != 200:
             raise RequestFailedException('unknown')
@@ -165,7 +165,7 @@ class NebulaClient(object):
         return True
 
     def delete_release(self, mod):
-        result = self._call('mod/release/delete', check_code=True, json={
+        result = self._call('mod/release/delete', check_code=True, data={
             'mid': mod.mid,
             'version': str(mod.version)
         })
