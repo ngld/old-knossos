@@ -225,6 +225,7 @@ class HellWindow(Window):
                 except repo.ModNotFound:
                     rmod = None
 
+                # TODO: Refactor (see also templates/kn-{details,devel}-page.vue)
                 if rmod and rmod.version > mod.version:
                     item['status'] = 'update'
                 elif mod.mid in self._updating_mods:

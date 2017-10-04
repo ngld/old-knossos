@@ -232,7 +232,7 @@ class WebBridge(QtCore.QObject):
 
         if mod.dev_mode:
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("I can't uninstall this mod because it's in dev mode!"))
-            return
+            return 0
 
         if len(pkgs) == 0:
             plist = mod.packages

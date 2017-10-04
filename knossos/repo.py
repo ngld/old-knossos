@@ -938,14 +938,22 @@ class InstalledMod(Mod):
         # Since mod_flag is just a list of IDs, we have to look up their paths here.
         paths = []
         dev_involved = False
+        mods = {}
+
+        # We have to retrieve the mods this way to honor the version constraints
+        for pkg in self._repo.process_pkg_selection(self.packages):
+            mod = pkg.get_mod()
+
+            if mod.mid not in mods:
+                mods[mod.mid] = mod
 
         for mid in self.mod_flag:
-            mod = self._repo.query(mid)
-            if not mod:
+            if mid not in mods:
                 # We don't know if this is an optional dependency; ignore it for now.
                 logging.debug('Skipping mod "%s" during -mod generation because it\'s missing.' % mid)
                 continue
 
+            mod = mods[mid]
             if mod.dev_mode:
                 for pkg in mod.packages:
                     if pkg.check_env():

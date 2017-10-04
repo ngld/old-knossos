@@ -4,19 +4,19 @@ export default {
 
     methods: {
         play() {
-            fs2mod.runMod(this.mod.id, '');
+            fs2mod.runMod(this.mod.id, this.mod.version);
         },
 
         update() {
-            fs2mod.updateMod(this.mod.id, '');
+            fs2mod.updateMod(this.mod.id, this.mod.version);
         },
 
         install() {
-            fs2mod.install(this.mod.id, '', []);
+            fs2mod.install(this.mod.id, this.mod.version, []);
         },
 
         uninstall() {
-            fs2mod.uninstall(this.mod.id, '', []);
+            fs2mod.uninstall(this.mod.id, this.mod.version, []);
         },
 
         cancel() {

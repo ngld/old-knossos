@@ -178,7 +178,11 @@ export default {
             }
 
             if(!v_mod) return;
+            // TODO: Refactor
             v_mod.versions = this.selected_mod.versions;
+            v_mod.status = this.selected_mod.status;
+            v_mod.progress = this.selected_mod.progress;
+            v_mod.progress_info = this.selected_mod.progress_info;
             this.selected_mod = v_mod;
         },
 
