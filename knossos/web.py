@@ -993,7 +993,7 @@ class WebBridge(QtCore.QObject):
 
         if os.path.isdir(new_mod.folder):
             QtWidgets.QMessageBox.critical(None, self.tr('Error'),
-                self.tr("The destination folder (%s) already exists! I won't overwrite an existing folder!"))
+                self.tr("The destination folder (%s) already exists! I won't overwrite an existing folder!") % new_mod.folder)
             return False
 
         if method == 'copy':
@@ -1003,7 +1003,10 @@ class WebBridge(QtCore.QObject):
         elif method == 'rename':
             os.rename(mod.folder, new_mod.folder)
 
-            center.installed.remove_mod(mod)
+            try:
+                center.installed.remove_mod(mod)
+            except repo.ModNotFound:
+                logging.exception('The old mod is missing after rename! Did the copy fail?')
         elif method == 'empty':
             os.mkdir(new_mod.folder)
 

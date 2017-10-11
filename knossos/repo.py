@@ -180,7 +180,7 @@ class Repo(object):
         mid = mod.mid
 
         if mid not in self.mods:
-            raise ModNotFound('Mod "%s" (%s) could not be removed from %s!' % (mid, mod.version, self.base))
+            raise ModNotFound('Mod "%s" (%s) could not be removed from %s!' % (mid, mod.version, self.base), mid=mid)
 
         idx = None
         for i, item in enumerate(self.mods[mid]):
