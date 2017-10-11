@@ -261,7 +261,7 @@ def run_fs2_silent(params):
     return rc
 
 
-def run_mod(mod, tool=None, debug=False):
+def run_mod(mod, tool=None, exe_label=None):
     global installed
 
     if mod is None:
@@ -294,9 +294,9 @@ def run_mod(mod, tool=None, debug=False):
                 translate('runner', "I couldn't find an executable. Aborted."))
             return
 
-    exes = [item for item in exes if item['debug'] == debug]
+    exes = [item for item in exes if item.get('label', None) == exe_label]
     if len(exes) == 0:
-        logging.error('"%s" provided no valid executable. (debug = %r)' % ((tool or mod).mid, debug))
+        logging.error('"%s" provided no valid executable.' % (tool or mod).mid)
         QtWidgets.QMessageBox.critical(None, 'Knossos',
             translate('runner', 'No matching executable was found!'))
         return

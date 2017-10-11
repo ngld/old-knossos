@@ -4,20 +4,48 @@ export default {
 
     data: () => ({
         dropdown_active: false,
-        force_active: false
+        open: false,
+        tools: [],
+        tools_built: false
     }),
+
+    watch: {
+        mod(new_mod) {
+            this.mod = new_mod;
+            this.tools_built = false;
+
+            if(this.open) this.updateTools();
+        }
+    },
 
     methods: {
         showDetails() {
             vm.mod = this.mod;
             vm.page = 'details';
+        },
+
+        updateTools() {
+            if(this.tools_built) return;
+            this.tools_built = true;
+
+            call(fs2mod.getModTools, this.mod.id, this.mod.version, (tools) => {
+                this.tools = tools;
+            });
+        },
+
+        launchTool(label) {
+            fs2mod.runModTool(this.mod.id, this.mod.version, '', '', label);
+        },
+
+        uploadLog() {
+            alert('Not yet implemented!');
         }
     }
 };
 </script>
 <template>
     <div class="mod row">
-        <div :class="{ 'mod-node': true, 'active': force_active }">
+        <div :class="{ 'mod-node': true, 'active': open }">
             <div class="mod-image">
                 <img :src="mod.tile_path ? ('file://' + mod.tile_path) : 'images/modstock.jpg'" class="mod-stock">
                 <div class="mod-logo-container">
@@ -35,10 +63,9 @@ export default {
                         <span class="btn-text">DETAILS</span>
                     </button>
 
-                    <kn-dropdown v-if="tab === 'home'" @change="val => force_active = val">
-                        <button>Run Fast Debug</button>
-                        <button>Run Debug</button>
-                        <button>Upload Debug Log</button>
+                    <kn-dropdown v-if="tab === 'home'" @open="updateTools(); open = true" @close="open = false">
+                        <button v-for="tool in tools" @click="launchTool(tool)">Run {{ tool }}</button>
+                        <button @click="uploadLog">Upload Debug Log</button>
                     </kn-dropdown>
                 </div>
             </div>

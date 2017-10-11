@@ -976,19 +976,11 @@ class InstalledMod(Mod):
             except ModNotFound:
                 deps = []
 
-        skipped = set()
         exes = []
 
         for pkg in deps:
             mod = pkg.get_mod()
-            if mod.mid in skipped:
-                continue
-
-            if mod.mtype != 'engine':
-                skipped.add(mod.mid)
-                continue
-
-            if mod.dev_mode and not pkg.check_env():
+            if mod.mtype != 'engine' or (mod.dev_mode and not pkg.check_env()):
                 continue
 
             for exe in pkg.executables:

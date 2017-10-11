@@ -305,13 +305,38 @@ class WebBridge(QtCore.QObject):
         runner.run_mod(mod)
         return 0
 
-    @QtCore.Slot(str, str, result=int)
-    def runFredMod(self, mid, spec=None):
+    @QtCore.Slot(str, str, result=list)
+    def getModTools(self, mid, spec):
         mod = self._get_mod(mid, spec)
         if mod in (-1, -2):
             return mod
 
-        runner.run_mod(mod, fred=True)
+        labels = set()
+        for exe in mod.get_executables():
+            if exe.get('label') is not None:
+                labels.add(exe['label'])
+
+        labels = list(labels)
+        labels.sort()
+        return labels
+
+    @QtCore.Slot(str, str, str, str, str, result=int)
+    def runModTool(self, mid, spec, tool, tool_spec, label):
+        mod = self._get_mod(mid, spec)
+        if mod in (-1, -2):
+            return mod
+
+        if tool == '':
+            tool = None
+        else:
+            tool = self._get_mod(tool, tool_spec)
+            if tool in (-1, -2):
+                return mod
+
+        if label == '':
+            label = None
+
+        runner.run_mod(mod, tool, label)
         return 0
 
     @QtCore.Slot(str, str, str, list)

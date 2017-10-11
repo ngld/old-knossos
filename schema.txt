@@ -48,7 +48,7 @@
                     "executables": [ // optional
                         {
                             "file": "...", // required, path to the executable (*.exe file on Windows), relative to the mod folder
-                            "debug": false // optional, default: true, Is this a debug build?
+                            "label": "" // optional, should be empty for release builds and contain the name for others (i.e. "Fast Debug" or "FRED")
                         }
                     ],
                     "files": [

@@ -767,16 +767,14 @@ export default {
                                             <input type="text" class="form-control" v-model="exe.file">
                                         </td>
                                         <td>
-                                            <label>
-                                                <input type="checkbox" v-model="exe.debug">
-                                                Debug
-                                            </label>
-                                            <button type="button" class="btn btn-small btn-danger" @click.prevent="deleteExe(i)">
-                                                <i class="fa fa-times"></i>
-                                            </button>
+                                            <input type="text" class="form-control" v-model="exe.label" placeholder="name">
                                         </td>
                                     </tr>
                                 </table>
+                                <p class="help-block">
+                                    Please use the name column to label debug builds and other tools like FRED.
+                                    Executables without a name are expected to be FSO release builds.
+                                </p>
 
                                 <button type="button" class="btn btn-small" @click.prevent="addExe">Add</button>
                                 <button type="button" class="btn btn-small" @click.prevent="autoAddExes">Auto Add</button>
