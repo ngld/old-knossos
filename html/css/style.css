@@ -1086,13 +1086,15 @@ input {
     left: 200px;
     width: calc(100% - 200px);
     height: 100%;
+
+    overflow: hidden;
 }
 
 .devel-page .logo-box {
     position: absolute;
     top: 0;
     left: 0px;
-    width: 300px;
+    width: 200px;
 
     padding: 5px;
 }
@@ -1107,10 +1109,39 @@ input {
 .devel-page .form-box {
     position: absolute;
     top: 0;
-    left: 300px;
+    left: 220px;
+    bottom: 0;
 
-    width: calc(100% - 300px);
+    width: calc(100% - 220px);
 
     padding: 5px;
+}
+
+.devel-page .form-content {
+    position: absolute;
+
+    top: 60px;
+    left: 0;
+    bottom: 0;
+
+    width: 100%;
+}
+
+.devel-page .dev-tabbar {
     overflow: hidden;
+    height: 26px;
+}
+
+.devel-page .dev-tabbar > a {
+    text-decoration: none !important;
+    color: #fff !important;
+    background: #333;
+    display: inline-block;
+
+    padding: 3px;
+    margin: 0 10px;
+}
+
+.devel-page .dev-tabbar > a.active {
+    background: #aaa;
 }
