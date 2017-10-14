@@ -312,9 +312,12 @@ class WebBridge(QtCore.QObject):
             return mod
 
         labels = set()
-        for exe in mod.get_executables():
-            if exe.get('label') is not None:
-                labels.add(exe['label'])
+        try:
+            for exe in mod.get_executables():
+                if exe.get('label') is not None:
+                    labels.add(exe['label'])
+        except repo.NoExecutablesFound:
+            pass
 
         labels = list(labels)
         labels.sort()
