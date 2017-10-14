@@ -563,7 +563,13 @@ class Package(object):
         self.environment = values.get('environment', '')
         self.files = {}
         self.filelist = values.get('filelist', [])
-        self.executables = values.get('executables', [])
+        self.executables = []
+
+        for exe in values.get('executables', []):
+            self.executables.append({
+                'file': exe['file'],
+                'label': exe.get('label', None)
+            })
 
         _files = values.get('files', [])
 

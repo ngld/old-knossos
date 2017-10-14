@@ -104,7 +104,6 @@ class NebulaClient(object):
             'id': mod.mid,
             'title': mod.title,
             'type': mod.mtype,
-            'folder': os.path.basename(mod.folder),
             'logo': logo_chk,
             'tile': tile_chk,
             'members': []
