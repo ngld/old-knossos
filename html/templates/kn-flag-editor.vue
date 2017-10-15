@@ -11,6 +11,10 @@ export default {
         list_type: 'Graphics'
     }),
 
+    created() {
+        this.processCmdline();
+    },
+
     methods: {
         processCmdline() {
             if(!this.caps) return;

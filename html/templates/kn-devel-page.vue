@@ -116,7 +116,7 @@ export default {
             if(mod && mod.packages) {
                 for(let pkg of mod.packages) {
                     this.edit_dep_pkgs.push(pkg);
-                    this.edit_dep_pkg_sel[pkg.name] = pkg.status !== 'optional';
+                    this.edit_dep_pkg_sel[pkg.name] = pkg.status === 'recommended';
                 }
             }
         }
@@ -450,8 +450,8 @@ export default {
             <div class="form-box" v-if="selected_mod">
                 <div class="dev-tabbar">
                     <a href="#" @click.prevent="switchPage('details')" :class="{'active': page === 'details'}">Details</a>
-                    <a href="#" @click.prevent="switchPage('fso')" :class="{'active': page === 'fso'}">FSO</a>
-                    <a href="#" @click.prevent="switchPage('mod_flag')" :class="{'active': page === 'mod_flag'}">-mod Flag</a>
+                    <a href="#" @click.prevent="switchPage('fso')" :class="{'active': page === 'fso'}" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">FSO</a>
+                    <a href="#" @click.prevent="switchPage('mod_flag')" :class="{'active': page === 'mod_flag'}" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">-mod Flag</a>
                     <a href="#" @click.prevent="switchPage('team')" :class="{'active': page === 'team'}">Members</a>
                 </div>
 

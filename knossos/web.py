@@ -925,7 +925,7 @@ class WebBridge(QtCore.QObject):
 
         try:
             for item in mod.get_executables():
-                if not item['debug']:
+                if item.get('label') is None:
                     mod = item['mod']
                     return mod.mid + '#' + str(mod.version)
         except repo.NoExecutablesFound:

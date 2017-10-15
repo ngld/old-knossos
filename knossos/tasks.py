@@ -1124,7 +1124,7 @@ class GOGExtractTask(progress.Task):
             'folder': '.',
             'dependencies': [{
                 'id': 'FSO',
-                'version': '>=3.8.0-RC3'
+                'version': '>=3.8.0-1'
             }]
         }))
 

@@ -980,6 +980,7 @@ class InstalledMod(Mod):
                 if not deps:
                     deps = self.resolve_deps()
             except ModNotFound:
+                logging.exception('Error during dep resolve for executables!')
                 deps = []
 
         exes = []
