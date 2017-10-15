@@ -24,6 +24,16 @@ export default {
 
 			return null;
 		}
+	},
+
+	methods: {
+		openLink(url) {
+			fs2mod.openExternal(url);
+		},
+
+		showVideos(videos) {
+			alert('Not implemented yet!');
+		}
 	}
 }
 </script>

@@ -429,13 +429,13 @@ class Mod(object):
             if self.logo is not None:
                 if '://' in self._repo.base:
                     self.logo = util.url_join(self._repo.base, self.logo)
-                else:
+                elif '://' not in self.logo:
                     self.logo = os.path.abspath(os.path.join(self._repo.base, self.logo))
 
             if self.tile is not None:
                 if '://' in self._repo.base:
                     self.tile = util.url_join(self._repo.base, self.tile)
-                else:
+                elif '://' not in self.tile:
                     self.tile = os.path.abspath(os.path.join(self._repo.base, self.tile))
 
         if self.first_release:
@@ -609,18 +609,15 @@ class Package(object):
     def get_files(self):
         files = {}
         for name, item in self.files.items():
-            if item['is_archive']:
-                for path, csum in item['contents'].items():
-                    files[os.path.join(item['dest'], path)] = (csum, name)
-            else:
-                files[os.path.join(item['dest'], name)] = (item['checksum'], name)
+            for path, csum in item['contents'].items():
+                files[os.path.join(item['dest'], path)] = (csum, name)
 
         return files
 
     def resolve_deps(self):
         result = []
         for dep in self.dependencies:
-            version = dep.get('version', '*')
+            version = dep.get('version', '*') or '*'
             if version != '*' and not SpecItem.re_spec.match(version):
                 # Make a spec out of this version
                 version = '==' + version
@@ -826,6 +823,11 @@ class InstalledMod(Mod):
 
         if 'folder' in values:
             self.folder = values['folder']
+
+        self.logo = values.get('logo', None)
+        self.tile = values.get('tile', None)
+        self.logo_path = values.get('logo_path', None)
+        self.tile_path = values.get('tile_path', None)
 
         self.dev_mode = values.get('dev_mode', False)
         self.check_notes = values.get('check_notes', '')

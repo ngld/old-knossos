@@ -41,13 +41,6 @@ class FetchTask(progress.Task):
     def __init__(self):
         super(FetchTask, self).__init__()
         self.title = 'Fetching mod list...'
-
-        # Remove all logos.
-        for path in glob.glob(os.path.join(center.settings_path, 'logo*.*')):
-            if os.path.isfile(path):
-                logging.info('Removing old logo "%s"...', path)
-                os.unlink(path)
-
         self.done.connect(self.finish)
         self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
 
@@ -77,9 +70,6 @@ class FetchTask(progress.Task):
 
             self.add_work(wl)
             self.post((prio, data))
-        else:
-            mod = params[1]
-            mod.save_logo(center.settings_path)
 
     def finish(self):
         if not self.aborted:
@@ -124,7 +114,7 @@ class CheckTask(progress.MultistepTask):
             for base in os.listdir(path):
                 sub = os.path.join(path, base)
 
-                if os.path.isdir(sub):
+                if os.path.isdir(sub) and not sub.endswith('.dis'):
                     subs.append(sub)
                 elif base.lower() == 'mod.json':
                     mod_file = sub
@@ -331,6 +321,14 @@ class InstallTask(progress.MultistepTask):
             self.mods = [mod]
 
         for pkg in pkgs:
+            try:
+                pmod = center.installed.query(pkg.get_mod())
+                if pmod.dev_mode:
+                    # Don't modify mods which are in dev mode!
+                    continue
+            except repo.ModNotFound:
+                pass
+
             ins_pkg = center.installed.add_pkg(pkg)
             pmod = ins_pkg.get_mod()
             self._pkgs.append(ins_pkg)
@@ -380,17 +378,6 @@ class InstallTask(progress.MultistepTask):
             # Generate mod.json files.
             for mod in self._mods:
                 try:
-                    # Make sure the images are in the mod folder so that they won't be deleted during the next
-                    # FetchTask.
-                    for prop in ('logo', 'tile'):
-                        img_path = getattr(mod, prop + '_path')
-                        if img_path:
-                            ext = os.path.splitext(img_path)[1]
-                            dest = os.path.join(mod.folder, 'kn_' + prop + ext)
-
-                            shutil.copyfile(img_path, dest)
-                            setattr(mod, prop + '_path', dest)
-
                     mod.save()
                     util.get(center.settings['nebula_link'] + 'api/1/track/install/' + mod.mid)
                 except Exception:
@@ -434,6 +421,7 @@ class InstallTask(progress.MultistepTask):
                         logging.info('File "%s" is left over.', itempath)
         else:
             logging.debug('Folder %s for %s does not yet exist.', mod, modpath)
+            os.mkdir(modpath)
 
         amount = float(len(mfiles))
         for i, info in enumerate(mfiles):
@@ -448,6 +436,23 @@ class InstallTask(progress.MultistepTask):
                 logging.debug('%s is missing for %s.', itempath, mod)
 
         self.post(archives)
+
+        # Make sure the images are in the mod folder so that they won't be deleted during the next
+        # FetchTask.
+        for prop in ('logo', 'tile'):
+            img_path = getattr(mod, prop)
+            if img_path:
+                ext = os.path.splitext(img_path)[1]
+                dest = os.path.join(mod.folder, 'kn_' + prop + ext)
+
+                if '://' in img_path:
+                    # That's a URL
+                    with open(dest, 'wb') as fobj:
+                        util.download(img_path, fobj)
+                else:
+                    shutil.copyfile(img_path, dest)
+
+                setattr(mod, prop + '_path', dest)
 
     def init2(self):
         archives = set()
@@ -522,134 +527,104 @@ class InstallTask(progress.MultistepTask):
             if self.aborted:
                 return
 
-            if archive['is_archive']:
-                cpath = os.path.join(tpath, 'content')
-                os.mkdir(cpath)
+            cpath = os.path.join(tpath, 'content')
+            os.mkdir(cpath)
 
-                needed_files = filter(lambda item: item['archive'] == archive['filename'], archive['pkg'].filelist)
-                done = False
+            needed_files = filter(lambda item: item['archive'] == archive['filename'], archive['pkg'].filelist)
+            done = False
 
-                if sys.platform == 'win32':
-                    # Apparently I can't run multiple 7z instances on Windows. If I do, I always get the error
-                    # "The archive can't be opened because it is still in use by another process."
-                    # I have no idea why. It works fine on Linux and Mac OS.
-                    # TODO: Is there a better solution?
+            if sys.platform == 'win32':
+                # Apparently I can't run multiple 7z instances on Windows. If I do, I always get the error
+                # "The archive can't be opened because it is still in use by another process."
+                # I have no idea why. It works fine on Linux and Mac OS.
+                # TODO: Is there a better solution?
 
-                    progress.update(0.98, 'Waiting...')
-                    self._7z_lock.acquire()
+                progress.update(0.98, 'Waiting...')
+                self._7z_lock.acquire()
 
-                progress.update(0.98, 'Extracting %s...' % archive['filename'])
-                logging.debug('Extracting %s into %s', archive['filename'], modpath)
+            progress.update(0.98, 'Extracting %s...' % archive['filename'])
+            logging.debug('Extracting %s into %s', archive['filename'], modpath)
 
-                if util.extract_archive(arpath, cpath):
-                    done = True
-                    # Look for missing files
-                    for item in needed_files:
-                        src_path = os.path.join(cpath, item['orig_name'])
-
-                        if not os.path.isfile(src_path):
-                            logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)!',
-                                            item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
-
-                            done = False
-                            break
-
-                if sys.platform == 'win32':
-                    self._7z_lock.release()
-
-                if not done:
-                    logging.error('Failed to unpack archive "%s" for package "%s" (%s)!',
-                                  archive['filename'], archive['pkg'].name, archive['mod'].title)
-                    shutil.rmtree(cpath, ignore_errors=True)
-                    self._error = True
-                    return
-
-                for item in archive['pkg'].filelist:
-                    if item['archive'] != archive['filename']:
-                        continue
-
+            if util.extract_archive(arpath, cpath):
+                done = True
+                # Look for missing files
+                for item in needed_files:
                     src_path = os.path.join(cpath, item['orig_name'])
-                    dest_path = util.ipath(os.path.join(modpath, item['filename']))
 
-                    try:
-                        dparent = os.path.dirname(dest_path)
-                        if not os.path.isdir(dparent):
-                            os.makedirs(dparent)
+                    if not os.path.isfile(src_path):
+                        logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)!',
+                                        item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
 
-                        # This move might fail on Windows with Permission Denied errors.
-                        # "[WinError 32] The process cannot access the file because it is being used by another process"
-                        # Just try it again several times to account of AV scanning and similar problems.
-                        tries = 5
-                        while tries > 0:
-                            try:
-                                shutil.move(src_path, dest_path)
-                                break
-                            except Exception as e:
-                                logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
-                                tries -= 1
+                        done = False
+                        break
 
-                                if tries == 0:
-                                    raise
-                                else:
-                                    time.sleep(1)
-                    except Exception:
-                        logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
-                                          src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
-                        self._error = True
+            if sys.platform == 'win32':
+                self._7z_lock.release()
 
-                # Copy the remaining empty dirs and symlinks.
-                for path, dirs, files in os.walk(cpath):
-                    path = os.path.relpath(path, cpath)
+            if not done:
+                logging.error('Failed to unpack archive "%s" for package "%s" (%s)!',
+                              archive['filename'], archive['pkg'].name, archive['mod'].title)
+                shutil.rmtree(cpath, ignore_errors=True)
+                self._error = True
+                return
 
-                    for name in dirs:
-                        src_path = os.path.join(cpath, path, name)
+            for item in archive['pkg'].filelist:
+                if item['archive'] != archive['filename']:
+                    continue
+
+                src_path = os.path.join(cpath, item['orig_name'])
+                dest_path = util.ipath(os.path.join(modpath, item['filename']))
+
+                try:
+                    dparent = os.path.dirname(dest_path)
+                    if not os.path.isdir(dparent):
+                        os.makedirs(dparent)
+
+                    # This move might fail on Windows with Permission Denied errors.
+                    # "[WinError 32] The process cannot access the file because it is being used by another process"
+                    # Just try it again several times to account of AV scanning and similar problems.
+                    tries = 5
+                    while tries > 0:
+                        try:
+                            shutil.move(src_path, dest_path)
+                            break
+                        except Exception as e:
+                            logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
+                            tries -= 1
+
+                            if tries == 0:
+                                raise
+                            else:
+                                time.sleep(1)
+                except Exception:
+                    logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
+                                      src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
+                    self._error = True
+
+            # Copy the remaining empty dirs and symlinks.
+            for path, dirs, files in os.walk(cpath):
+                path = os.path.relpath(path, cpath)
+
+                for name in dirs:
+                    src_path = os.path.join(cpath, path, name)
+                    dest_path = util.ipath(os.path.join(modpath, path, name))
+
+                    if os.path.islink(src_path):
+                        if not os.path.lexists(dest_path):
+                            linkto = os.readlink(src_path)
+                            os.symlink(linkto, dest_path)
+                    elif not os.path.exists(dest_path):
+                        os.makedirs(dest_path)
+
+                for name in files:
+                    src_path = os.path.join(cpath, path, name)
+
+                    if os.path.islink(src_path):
                         dest_path = util.ipath(os.path.join(modpath, path, name))
-
-                        if os.path.islink(src_path):
-                            if not os.path.lexists(dest_path):
-                                linkto = os.readlink(src_path)
-                                os.symlink(linkto, dest_path)
-                        elif not os.path.exists(dest_path):
-                            os.makedirs(dest_path)
-
-                    for name in files:
-                        src_path = os.path.join(cpath, path, name)
-
-                        if os.path.islink(src_path):
-                            dest_path = util.ipath(os.path.join(modpath, path, name))
-                            if not os.path.lexists(dest_path):
-                                linkto = os.readlink(src_path)
-                                os.symlink(linkto, dest_path)
-            else:
-                for item in archive['pkg'].filelist:
-                    if item['archive'] != archive['filename']:
-                        continue
-
-                    dest_path = util.ipath(os.path.join(modpath, archive['filename']))
-
-                    try:
-                        dparent = os.path.dirname(dest_path)
-                        if not os.path.isdir(dparent):
-                            os.makedirs(dparent)
-
-                        tries = 3
-                        while tries > 0:
-                            try:
-                                shutil.move(arpath, dest_path)
-                                break
-                            except Exception as e:
-                                logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
-                                tries -= 1
-
-                                if tries == 0:
-                                    raise
-                                else:
-                                    time.sleep(1)
-                    except Exception:
-                        logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
-                                          arpath, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
-                        self._error = True
-
+                        if not os.path.lexists(dest_path):
+                            linkto = os.readlink(src_path)
+                            os.symlink(linkto, dest_path)
+        
             progress.update(1, 'Done.')
 
 
@@ -930,8 +905,7 @@ class UploadTask(progress.MultistepTask):
                 'filename': ar_name,
                 'dest': '',
                 'checksum': util.gen_hash(ar_path),
-                'filesize': os.stat(ar_path).st_size,
-                'is_archive': True
+                'filesize': os.stat(ar_path).st_size
             }
 
             self._client.upload_file(ar_name, ar_path)
