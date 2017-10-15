@@ -18,6 +18,7 @@ export default {
         edit_dep: false,
         edit_dep_idx: -1,
         edit_dep_mod: null,
+        edit_dep_version: null,
         edit_dep_pkgs: null,
         edit_dep_pkg_sel: null
     }),
@@ -110,6 +111,7 @@ export default {
         edit_dep_mod(sel_mod) {
             let mod = this.mod_map[sel_mod];
 
+            this.edit_dep_version = null;
             this.edit_dep_pkgs = [];
             this.edit_dep_pkg_sel = {};
 
@@ -136,7 +138,7 @@ export default {
             vm.popup_title = 'Create mod';
             vm.popup_mod_name = '';
             vm.popup_mod_id = '';
-            vm.popup_mod_version = '1.0';
+            vm.popup_mod_version = '1.0.0';
             vm.popup_mod_type = 'mod';
             vm.popup_mod_tcs = this.mods.filter((mod) => mod.type === 'tc');
             vm.popup_mod_parent = '';
@@ -246,7 +248,7 @@ export default {
         },
 
         changeLogo() {
-            call(fs2mod.selectImage, this.selected_mod.logo_path || this.selected_mod.folder, (new_path) => {
+            call(fs2mod.selectImage, this.selected_mod.logo_path || (this.selected_mod.folder + '/dummy'), (new_path) => {
                 if(new_path !== '') {
                     this.selected_mod.logo_path = new_path;
                 }
@@ -254,7 +256,7 @@ export default {
         },
 
         changeTile() {
-            call(fs2mod.selectImage, this.selected_mod.tile_path || this.selected_mod.folder, (new_path) => {
+            call(fs2mod.selectImage, this.selected_mod.tile_path || (this.selected_mod.folder + '/dummy'), (new_path) => {
                 if(new_path !== '') {
                     this.selected_mod.tile_path = new_path;
                 }
@@ -293,6 +295,7 @@ export default {
         addDep() {
             this.edit_dep_idx = -1;
             this.edit_dep_mod = null;
+            this.edit_dep_version = null;
             this.edit_dep_pkgs = [];
             this.edit_dep_pkg_sel = {};
             this.edit_dep = true;
@@ -301,6 +304,7 @@ export default {
         editDep(idx, dep) {
             this.edit_dep_idx = idx;
             this.edit_dep_mod = dep.id;
+            this.edit_dep_version = dep.version;
             this.edit_dep_pkg_sel = {};
             this.edit_dep = true;
 
@@ -322,7 +326,7 @@ export default {
         saveDep() {
             let dep = {
                 id: this.edit_dep_mod,
-                version: null,
+                version: this.edit_dep_version,
                 packages: []
             };
 
@@ -718,6 +722,17 @@ export default {
                                             <div class="col-xs-8">
                                                 <select class="form-control" v-model="edit_dep_mod">
                                                     <option v-for="mod in mods" :value="mod.id" :key="mod.id">{{ mod.title }}</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label class="col-xs-4 control-label">Version</label>
+                                            <div class="col-xs-8">
+                                                <select class="form-control" disabled v-if="!mod_map[edit_dep_mod]"></select>
+                                                <select class="form-control" v-model="edit_dep_version" v-else>
+                                                    <option :value="null" :key="'newest'">newest</option>
+                                                    <option v-for="v in mod_map[edit_dep_mod].versions" :value="v.version" :key="v.version">{{ v.version }}</option>
                                                 </select>
                                             </div>
                                         </div>

@@ -26,6 +26,7 @@ import tempfile
 import threading
 import random
 import time
+import re
 import semantic_version
 
 from . import center, util, progress, nebula, repo
@@ -888,17 +889,38 @@ class UploadTask(progress.MultistepTask):
 
         try:
             progress.update(0, 'Packing...')
+            progress.start_task(0.0, 0.4, '%s')
 
             ar_name = pkg.name + '.7z'
             ar_path = os.path.join(self._dir.name, ar_name)
+            line_re = re.compile(r'^\s*([0-9]+)%')
 
-            rc = util.call([util.SEVEN_PATH, 'a', ar_path, '.'], cwd=os.path.join(self._mod.folder, pkg.folder))
-            if rc != 0:
+            p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, '.'],
+                cwd=os.path.join(self._mod.folder, pkg.folder), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            buf = ''
+            while p.poll() is None:
+                while '\b' not in buf:
+                    line = p.stdout.read(10)
+                    if not line:
+                        break
+                    buf += line.decode('utf8', 'replace')
+
+                buf = buf.split('\b')
+                line = buf.pop(0)
+                buf = '\b'.join(buf)
+
+                m = line_re.match(line)
+                if m:
+                    progress.update(int(m.group(1)) / 100., 'Packing...')
+
+            if p.returncode != 0:
                 logging.error('Failed to build %s!' % ar_name)
                 self.abort()
                 return
 
-            progress.start_task(0.1, 0.9, '%s')
+            progress.finish_task()
+            progress.start_task(0.4, 0.6, '%s')
             progress.update(0, 'Preparing upload...')
 
             pkg.files[ar_name] = {

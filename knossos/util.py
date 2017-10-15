@@ -223,6 +223,23 @@ def call(*args, **kwargs):
     return subprocess.call(*args, **kwargs)
 
 
+def Popen(*args, **kwargs):
+    if sys.platform.startswith('win') and not center.DEBUG:
+        # Provide the called program with proper I/O on Windows.
+        kwargs.setdefault('stdin', subprocess.DEVNULL)
+        kwargs.setdefault('stdout', subprocess.DEVNULL)
+        kwargs.setdefault('stderr', subprocess.DEVNULL)
+
+        si = subprocess.STARTUPINFO()
+        si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = subprocess.SW_HIDE
+
+        kwargs['startupinfo'] = si
+
+    logging.debug('Running %s', args[0])
+    return subprocess.Popen(*args, **kwargs)
+
+
 def check_output(*args, **kwargs):
     if sys.platform.startswith('win'):
         # Provide the called program with proper I/O on Windows.

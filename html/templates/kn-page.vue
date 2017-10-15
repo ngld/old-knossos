@@ -26,7 +26,7 @@ export default {
 
         popup_mod_name: '',
         popup_mod_id: '',
-        popup_mod_version: '1.0',
+        popup_mod_version: '1.0.0',
         popup_mod_type: 'mod',
         popup_mod_parent: 'FS2',
         popup_mod_tcs: [],
