@@ -634,8 +634,10 @@ class WebBridge(QtCore.QObject):
 
         if new_path:
             return new_path
-        else:
+        elif os.path.isfile(old_path):
             return old_path
+        else:
+            return ''
 
     @QtCore.Slot(str, result=list)
     def addPkgExe(self, folder):
@@ -691,11 +693,9 @@ class WebBridge(QtCore.QObject):
 
         if data['logo_path'] != mod.logo_path:
             mod.logo_path = data['logo_path']
-            mod.logo = os.path.relpath(mod.folder, data['logo_path'])
 
         if data['tile_path'] != mod.tile_path:
             mod.tile_path = data['tile_path']
-            mod.tile = os.path.relpath(mod.folder, data['tile_path'])
 
         mod.release_thread = data['release_thread']
         mod.videos = []

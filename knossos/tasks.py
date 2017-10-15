@@ -126,7 +126,7 @@ class CheckTask(progress.MultistepTask):
 
                 if os.path.isdir(sub):
                     subs.append(sub)
-                elif base.lower() == 'mod.json' or (base.lower() == 'mod.ini' and not mod_file):
+                elif base.lower() == 'mod.json':
                     mod_file = sub
         except FileNotFoundError:
             logging.warn('The directory "%s" does not exist anymore!' % path)
@@ -380,6 +380,17 @@ class InstallTask(progress.MultistepTask):
             # Generate mod.json files.
             for mod in self._mods:
                 try:
+                    # Make sure the images are in the mod folder so that they won't be deleted during the next
+                    # FetchTask.
+                    for prop in ('logo', 'tile'):
+                        img_path = getattr(mod, prop + '_path')
+                        if img_path:
+                            ext = os.path.splitext(img_path)[1]
+                            dest = os.path.join(mod.folder, 'kn_' + prop + ext)
+
+                            shutil.copyfile(img_path, dest)
+                            setattr(mod, prop + '_path', dest)
+
                     mod.save()
                     util.get(center.settings['nebula_link'] + 'api/1/track/install/' + mod.mid)
                 except Exception:

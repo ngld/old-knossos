@@ -246,14 +246,18 @@ export default {
         },
 
         changeLogo() {
-            call(fs2mod.selectImage, this.selected_mod.logo_path || '', (new_path) => {
-                this.selected_mod.logo_path = new_path;
+            call(fs2mod.selectImage, this.selected_mod.logo_path || this.selected_mod.folder, (new_path) => {
+                if(new_path !== '') {
+                    this.selected_mod.logo_path = new_path;
+                }
             });
         },
 
         changeTile() {
-            call(fs2mod.selectImage, this.selected_mod.tile_path || '', (new_path) => {
-                this.selected_mod.tile_path = new_path;
+            call(fs2mod.selectImage, this.selected_mod.tile_path || this.selected_mod.folder, (new_path) => {
+                if(new_path !== '') {
+                    this.selected_mod.tile_path = new_path;
+                }
             });
         },
 
@@ -318,6 +322,7 @@ export default {
         saveDep() {
             let dep = {
                 id: this.edit_dep_mod,
+                version: null,
                 packages: []
             };
 

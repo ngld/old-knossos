@@ -189,7 +189,7 @@ class Repo(object):
                 break
 
         if not idx:
-            raise ModNotFound('Mod "%s" (%s) could not be removed from %s because the exact version was missing!' % (mid, mod.version, self.base))
+            raise ModNotFound('Mod "%s" (%s) could not be removed from %s because the exact version was missing!' % (mid, mod.version, self.base), mid=mid)
 
         del self.mods[mid][idx]
 
@@ -813,6 +813,7 @@ class InstalledMod(Mod):
 
         nmod = InstalledMod(data)
         nmod.logo_path = mod.logo_path
+        nmod.tile_path = mod.tile_path
         nmod.generate_folder()
         return nmod
 
@@ -905,14 +906,14 @@ class InstalledMod(Mod):
         path = os.path.join(modpath, 'mod.json')
         info = self.get()
 
-        if self.logo is not None and not self.logo.startswith('knossos.'):
-            logo = os.path.join(modpath, 'knossos.' + self.logo.split('.')[-1])
+        # Storing the folder of the JSON file inside the file would be silly.
+        del info['folder']
 
-            if os.path.abspath(logo) != os.path.abspath(self.logo):
-                # Copy the logo right next to the json file.
-                shutil.copy(self.logo, logo)
-
-            info['logo'] = os.path.basename(logo)
+        # Make sure we only store relative paths.
+        for prop in ('logo', 'tile'):
+            if info['%s_path' % prop]:
+                info[prop] = os.path.relpath(info['%s_path' % prop], modpath)
+                del info['%s_path' % prop]
 
         with open(path, 'w') as stream:
             json.dump(info, stream)

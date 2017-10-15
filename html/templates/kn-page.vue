@@ -149,6 +149,11 @@ export default {
                 return;
             }
 
+            if(this.popup_pkg_folder.indexOf(' ') > -1) {
+                alert("Your folder name must not contain a space!");
+                return;
+            }
+
             call(fs2mod.addPackage, this.popup_mod_id, this.popup_mod_version, this.popup_pkg_name, this.popup_pkg_folder, (result) => {
                 if(result > -1) {
                     dp.selected_pkg = dp.selected_mod.packages[result];
@@ -237,6 +242,12 @@ export default {
             }
 
             fs2mod.runModAdvanced(this.popup_mod_id, this.popup_mod_version, this.popup_mod_sel_exe, mod_flag);
+        },
+
+        popupProposeFolder() {
+            if(this.popup_pkg_folder === '') {
+                this.popup_pkg_folder = this.popup_pkg_name.toLowerCase().replace(/ /g, '_');
+            }
         }
     }
 };
@@ -488,7 +499,7 @@ export default {
                         <div class="form-group">
                             <label class="col-xs-3 control-label">Name</label>
                             <div class="col-xs-9">
-                                <input type="text" class="form-control" v-model="popup_pkg_name">
+                                <input type="text" class="form-control" v-model="popup_pkg_name" @blur="popupProposeFolder">
                             </div>
                         </div>
 
