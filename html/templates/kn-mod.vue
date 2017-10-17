@@ -75,7 +75,7 @@ export default {
                 </div>
             </div>
             <div class="mod-progress"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>
-            <div class="mod-title">{{ mod.title }} {{ mod.version }}</div>
+            <div class="mod-title"><p>{{ mod.title }} {{ mod.version }}</p></div>
         </div>
     </div>
 </template>

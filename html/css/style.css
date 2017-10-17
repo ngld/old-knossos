@@ -502,13 +502,28 @@ input {
     background-color: #422626;
     width: 150px;
     height: 40px;
-    text-align: center;
+
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     padding: 11px;
 
     font-size: 0.8em;
+    color: white;
+    font: Arial, Helvetica, sans-serif;
+    transition: all 0.3s ease-in-out;
+}
+
+.mod-node .mod-title p { /* This creates the mod title's red background box. */
+
+
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+
+    margin: 0;
     color: white;
     font: Arial, Helvetica, sans-serif;
     transition: all 0.3s ease-in-out;
