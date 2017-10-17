@@ -637,6 +637,125 @@ input {
     box-shadow: 0 0 10px #fff;
 }
 
+/* -------------------------- Settings to create the mod nodes for the dev page ----------------------------------*/
+
+.dev-mod-node .mod-title { /* This creates the mod title's red background box. */
+    background-color: #422626;
+    width: 150px;
+    height: 40px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 11px;
+
+    font-size: 0.8em;
+    color: white;
+    font: Arial, Helvetica, sans-serif;
+    transition: all 0.3s ease-in-out;
+}
+
+.dev-mod-node .mod-title p { /* This creates the mod title's red background box. */
+
+
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+
+    margin: 0;
+    color: white;
+    font: Arial, Helvetica, sans-serif;
+    transition: all 0.3s ease-in-out;
+}
+
+.dev-mod-node .mod-image { /* Div sets up the portait mod image properties. */
+    width: 150px;
+    height: 225px;
+}
+
+.dev-mod-node .mod-image img {
+    max-width: 150px;
+    max-height: 225px;
+}
+
+.dev-mod-node .mod-image .mod-logo-legacy {
+    max-height: 100px;
+}
+
+.dev-mod-node .mod-logo-container { /* Make sure any drop shadows for legacy mod images stays within the portrait node */
+    position: absolute;
+    top: 25px;
+    overflow: hidden;
+}
+
+.dev-mod-node .mod-logo-legacy { /* Support for legacy (landscape) mod images and makes them look nice over the stock portrait background. */
+    vertical-align: middle;
+    margin-top: 50px;
+    margin-bottom: 50px;
+    box-shadow: 0px -4px 5px 1px rgba(255,252,222,1),
+        0px 4px 5px 1px rgba(255,252,222,1),
+        0px -23px 30px 5px rgba(0,0,0,1),
+        0px 23px 30px 5px rgba(0,0,0,1);
+}
+
+.dev-mod-node .no-logo { /* If a mod has no image, let's create a div for it anyway. */
+    display: inline-block;
+    max-width: 150px;
+    padding-bottom: 47.80%; /* 122px / 255px */
+    width: 100%;
+
+    background: rgb(100, 100, 100);
+}
+
+.dev-mod-node .mod-notifier { /* Places the top-right mod status notifier. */
+    position: absolute;
+    top: 0px;
+    right: 0px;
+}
+
+.dev-mod-node .actions { /* Div to detect mouse hover */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.dev-mod-node .btn-wrapper { /* CENTER THE BUTTONS DAMMIT and darken the mod image on mouseover */
+    width: 100%;
+    height: 225px;
+    background-color: rgba(0,0,0,0.7);
+
+    padding-top: 30px;
+    text-align: center;
+}
+
+.dev-mod-node .avail-cover {
+    background-color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+}
+
+.dev-mod-node .mod-progress {
+    height: 3px;
+    background-color: #422626;
+    transition: all 0.3s ease-in-out;
+}
+
+.dev-mod-node .mod-progress .bar {
+    position: relative;
+    height: 3px;
+    width: 0;
+
+    z-index: 999;
+    background: #fff;
+    box-shadow: 0 0 10px #fff;
+}
+
 /* ----------------------------- This is the debug dropdown button section. ------------------------------- */
 
 .dropbtn {
@@ -876,6 +995,18 @@ input {
 
 .btn-link-blue:active {
     background-image: url(../images/btn-link-blue-a.png);
+}
+
+.btn-link-grey {
+    background-image: url(../images/btn-link-grey.png);
+}
+
+.btn-link-grey:hover {
+    background-image: url(../images/btn-link-grey-h.png);
+}
+
+.btn-link-grey:active {
+    background-image: url(../images/btn-link-grey-a.png);
 }
 
 
@@ -1180,6 +1311,15 @@ input {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+}
+
+.devel-page select.form-control.mod-version {
+    height: 25px;
+    width: 105px;
+    border-radius: 0px;
+    padding: 0px;
+    display: inline;
+    margin-left: 5px;
 }
 
 .devel-page .form-box {

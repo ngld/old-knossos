@@ -437,14 +437,17 @@ export default {
                 <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
 
                 <p>
-                    <button @click.prevent="uploadMod" class="mod-btn btn-green">Upload</button>
-                    <button @click.prevent="deleteMod" class="mod-btn btn-red">Delete</button><br>
-                    <button @click.prevent="openNewVersionPopup" class="mod-btn btn-grey">+ Version</button>
-                    <button @click.prevent="addPackage" class="mod-btn btn-grey">+ Package</button>
+                    <button @click.prevent="deleteMod" class="mod-btn btn-green">Play</button>
+                    <button @click.prevent="deleteMod" class="mod-btn btn-orange">FRED</button><br>
+                    <button @click.prevent="deleteMod" class="mod-btn btn-yellow">Debug</button><br><br><br>
+                    <button @click.prevent="uploadMod" class="mod-btn btn-link-blue">Upload</button>
+                    <button @click.prevent="deleteMod" class="mod-btn btn-link-red">Delete</button><br>
+                    <button @click.prevent="openNewVersionPopup" class="mod-btn btn-link-grey">+ Version</button>
+                    <button @click.prevent="addPackage" class="mod-btn btn-link-grey">+ Package</button>
                 </p>
 
                 Mod Versions:
-                <select class="form-control" v-model="sel_version" @change="selectVersion(sel_version)">
+                <select class="form-control mod-version" v-model="sel_version" @change="selectVersion(sel_version)">
                     <option v-for="m in selected_mod.versions">{{ m.version }}</option>
                 </select>
                 <br>

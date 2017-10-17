@@ -5,7 +5,7 @@ export default {
 </script>
 <template>
     <div class="mod row">
-        <div class="mod-node">
+        <div class="dev-mod-node">
             <div class="mod-image">
                 <img :src="mod.tile_path || 'images/modstock.jpg'" class="mod-stock">
                 <div class="mod-logo-container">
