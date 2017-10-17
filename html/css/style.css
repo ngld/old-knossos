@@ -883,9 +883,8 @@ input {
 }
 
 .mod-btn p {
-    width: 65px;
+    width: 85px;
     padding: 6px;
-    padding-left: 17px;
     overflow: hidden;
     text-overflow: ellipsis;
 }
