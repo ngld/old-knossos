@@ -439,8 +439,8 @@ export default {
                 <p>
                     <button @click.prevent="uploadMod" class="mod-btn btn-green">Upload</button><br>
                     <button @click.prevent="deleteMod" class="mod-btn btn-red">Delete</button><br>
-                    <button @click.prevent="openNewVersionPopup" class="mod-btn btn-link-blue">Create New Version</button>
-                    <button @click.prevent="addPackage" class="mod-btn btn-link-blue">Add Package</button>
+                    <button @click.prevent="openNewVersionPopup" class="mod-btn btn-grey">+ Version</button>
+                    <button @click.prevent="addPackage" class="mod-btn btn-grey">+ Package</button>
                 </p>
 
                 Mod Versions:
@@ -457,15 +457,18 @@ export default {
                 This is the Development tab. Here you can create new mods or edit currently installed mods. This is also where you can apply experimental mod settings, work with the Freespace Mission Editor, and alter the mod flags and commandline options. </br></br>Consider this an advanced section of Knossos but also a great place to get started if you wish to learn the ins and outs of modding with Freespace 2 Open.
             </div>
             <div class="form-box" v-if="selected_mod">
-                <div class="dev-tabbar">
-                    <a href="#" @click.prevent="switchPage('details')" :class="{'active': page === 'details'}">Details</a>
-                    <a href="#" @click.prevent="switchPage('fso')" :class="{'active': page === 'fso'}" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">FSO</a>
-                    <a href="#" @click.prevent="switchPage('mod_flag')" :class="{'active': page === 'mod_flag'}" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">-mod Flag</a>
-                    <a href="#" @click.prevent="switchPage('team')" :class="{'active': page === 'team'}">Members</a>
-                </div>
+                <div class="tabcorner"></div>
+                <div class="dev-tabbox">
+                    <div class="dev-tabbar">
+                        <a href="#" @click.prevent="switchPage('details')" :class="{'active': page === 'details'}">Details</a>
+                        <a href="#" @click.prevent="switchPage('fso')" :class="{'active': page === 'fso'}" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">FSO</a>
+                        <a href="#" @click.prevent="switchPage('mod_flag')" :class="{'active': page === 'mod_flag'}" v-if="selected_mod.type === 'mod' || selected_mod.type === 'tc'">-mod Flag</a>
+                        <a href="#" @click.prevent="switchPage('team')" :class="{'active': page === 'team'}">Members</a>
+                    </div>
 
-                <div class="dev-tabbar">
-                    <a href="#" v-for="pkg in selected_mod.packages" :class="{'active': (selected_pkg||{}).name === pkg.name }" @click.prevent="selectPkg(pkg)">{{ pkg.name }}</a>
+                    <div class="dev-tabbar">
+                        <a href="#" v-for="pkg in selected_mod.packages" :class="{'active': (selected_pkg||{}).name === pkg.name }" @click.prevent="selectPkg(pkg)">{{ pkg.name }}</a>
+                    </div>
                 </div>
 
                 <div class="form-content container-fluid scroll-style">
