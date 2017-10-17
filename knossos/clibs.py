@@ -299,7 +299,7 @@ def init_openal():
 
     if not alc:
         try:
-            alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL')
+            alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL', 'OpenAL32.dll')
         except Exception:
             logging.exception('Failed to load OpenAL!')
 
@@ -362,6 +362,9 @@ def can_detect_audio():
 
 
 def list_audio_devs():
+    if not alc:
+        return [], '', [], ''
+
     devs = double_zero_string(alc.alcGetString(None, ALC_DEVICE_SPECIFIER))
     default = alc.alcGetString(None, ALC_DEFAULT_DEVICE_SPECIFIER)
 
