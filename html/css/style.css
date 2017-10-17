@@ -35,6 +35,14 @@ input {
     max-width: 98%;
 }
 
+.settings-exp {
+    padding: 5px;
+    width: 80%;
+    font-size: smaller;
+    color: grey;
+
+}
+
 .dev-instructions {
     margin:0 auto;
     margin-top: 10%;
@@ -1006,8 +1014,15 @@ input {
 }
 
 /* drawer */
+.kn-drawer {
+    background-color: rgba(140, 140, 140, 0.37);
+    padding-right: 10px;
+
+}
+
 .kn-drawer .title {
     cursor: pointer;
+
 }
 
 .kn-drawer .title .text {

@@ -98,6 +98,7 @@ export default {
                 Settings
                 <small><button class="btn btn-success pull-right" @click="save">Save</button></small>
             </h2>
+            <div class="settings-exp">Click the arrows to reveal each group's options. Click SAVE when done.</div>
 
             <kn-drawer label="Knossos">
                 <div class="form-group">
