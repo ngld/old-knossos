@@ -1113,9 +1113,13 @@ input {
     position: absolute;
     top: 0;
     left: 0px;
-    width: 200px;
+    width: 214px;
 
     padding: 5px;
+}
+
+.logo-box .mod-btn {
+    margin: 0px;
 }
 
 .devel-page .mod-value {

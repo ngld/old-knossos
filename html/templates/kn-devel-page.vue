@@ -437,8 +437,8 @@ export default {
                 <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
 
                 <p>
-                    <button @click.prevent="uploadMod" class="mod-btn btn-green">Upload</button><br>
-                    <button @click.prevent="deleteMod" class="mod-btn btn-red">Delete</button><br>
+                    <button @click.prevent="uploadMod" class="mod-btn btn-green">Upload</button>
+                    <button @click.prevent="deleteMod" class="mod-btn btn-red">Delete</button>
                     <button @click.prevent="openNewVersionPopup" class="mod-btn btn-grey">+ Version</button>
                     <button @click.prevent="addPackage" class="mod-btn btn-grey">+ Package</button>
                 </p>
