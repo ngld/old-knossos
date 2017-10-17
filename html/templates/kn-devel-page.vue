@@ -438,7 +438,7 @@ export default {
 
                 <p>
                     <button @click.prevent="uploadMod" class="mod-btn btn-green">Upload</button>
-                    <button @click.prevent="deleteMod" class="mod-btn btn-red">Delete</button>
+                    <button @click.prevent="deleteMod" class="mod-btn btn-red">Delete</button><br>
                     <button @click.prevent="openNewVersionPopup" class="mod-btn btn-grey">+ Version</button>
                     <button @click.prevent="addPackage" class="mod-btn btn-grey">+ Package</button>
                 </p>
@@ -454,7 +454,7 @@ export default {
                 <a href="#" @click.prevent="openModFolder">{{ selected_mod.folder }}</a>
             </div>
             <div class="dev-instructions" v-else>
-                This is the Development tab. Here you can create new mods or edit currently installed mods. This is also where you can apply experimental mod settings, work with the Freespace Mission Editor, and alter the mod flags and commandline options. </br></br>Consider this an advanced section of Knossos but also a great place to get started if you wish to learn the ins and outs of modding with Freespace 2 Open.
+                This is the Development tab. Here you can create new mods or edit currently installed mods. This is also where you can apply experimental mod settings, work with the Freespace Mission Editor, and alter the mod flags and commandline options. <br><br>Consider this an advanced section of Knossos but also a great place to get started if you wish to learn the ins and outs of modding with Freespace 2 Open.
             </div>
             <div class="form-box" v-if="selected_mod">
                 <div class="tabcorner"></div>
