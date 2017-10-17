@@ -452,7 +452,7 @@ export default {
 
                 <p>
                     <button @click.prevent="launchMod" class="mod-btn btn-green">Play</button>
-                    <button v-for="tool in tools" @click.prevent="launchTool(tool)" :class="'mod-btn btn-' + (tool.toLowerCase().indexOf('fred') > -1 ? 'orange' : tool.toLowerCase().indexOf('debug') > -1 ? 'yellow' : 'grey')">{{ tool }}</button>
+                    <button v-for="tool in tools" @click.prevent="launchTool(tool)" :class="'mod-btn btn-' + (tool.toLowerCase().indexOf('fred') > -1 ? 'orange' : tool.toLowerCase().indexOf('debug') > -1 ? 'yellow' : 'grey')"><p>{{ tool }}</p></button>
 
                     <br><br>
                     <button @click.prevent="uploadMod" class="mod-btn btn-link-blue">Upload</button>

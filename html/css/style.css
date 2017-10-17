@@ -882,6 +882,14 @@ input {
     height: 43px;
 }
 
+.mod-btn p {
+    width: 65px;
+    padding: 6px;
+    padding-left: 17px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .mod-btn:hover {
     color: #efefef;
 }
@@ -1315,7 +1323,7 @@ input {
 
 .devel-page select.form-control.mod-version {
     height: 25px;
-    width: 105px;
+    width: 100px;
     border-radius: 0px;
     padding: 0px;
     display: inline;
