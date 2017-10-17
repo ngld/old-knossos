@@ -1014,15 +1014,21 @@ input {
 }
 
 /* drawer */
+.settings-container .control-label {
+    padding-top: 0px;
+
+}
+
 .kn-drawer {
     background-color: rgba(140, 140, 140, 0.37);
-    padding-right: 10px;
 
 }
 
 .kn-drawer .title {
     cursor: pointer;
-
+    padding-right: 10px;
+    background-color: #636262;
+    box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.75);
 }
 
 .kn-drawer .title .text {
@@ -1055,6 +1061,14 @@ input {
 
 .kn-drawer .content-wrapper {
     margin-top: 10px;
+}
+
+.kn-drawer .form-group {
+    margin-left: -15px;
+    margin-right: -15px;
+    margin-bottom: 2px;
+    padding-bottom: 2px;
+    padding-right: 10px;
 }
 
 .checklist {
