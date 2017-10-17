@@ -422,7 +422,7 @@ class InstallTask(progress.MultistepTask):
                         logging.info('File "%s" is left over.', itempath)
         else:
             logging.debug('Folder %s for %s does not yet exist.', mod, modpath)
-            os.mkdir(modpath)
+            os.makedirs(modpath)
 
         amount = float(len(mfiles))
         for i, info in enumerate(mfiles):
