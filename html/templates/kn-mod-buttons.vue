@@ -62,9 +62,9 @@ export default {
             <span class="btn-text">ERROR</span>
         </button>
 
-        <button class="mod-btn btn-orange" v-if="mod.installed && mod.status !== 'updating'" @click="uninstall">
+        <!--<button class="mod-btn btn-orange" v-if="mod.installed && mod.status !== 'updating'" @click="uninstall">
             <span class="btn-text">UNINSTALL</span>
-        </button>
+        </button>-->
 
         <button class="mod-btn btn-blue" v-if="!mod.installed" @click="install">
             <span class="btn-text">INSTALL</span>

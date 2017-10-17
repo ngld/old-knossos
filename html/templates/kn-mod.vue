@@ -39,6 +39,10 @@ export default {
 
         uploadLog() {
             alert('Not yet implemented!');
+        },
+
+        uninstallMod() {
+            fs2mod.uninstall(this.mod.id, this.mod.version, []);
         }
     }
 };
@@ -66,6 +70,7 @@ export default {
                     <kn-dropdown v-if="tab === 'home'" @open="updateTools(); open = true" @close="open = false">
                         <button v-for="tool in tools" @click="launchTool(tool)">Run {{ tool }}</button>
                         <button @click="uploadLog">Upload Debug Log</button>
+						<button v-if="mod.installed && mod.status !== 'updating'"@click="uninstallMod">Uninstall</button>
                     </kn-dropdown>
                 </div>
             </div>
