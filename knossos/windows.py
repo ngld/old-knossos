@@ -26,9 +26,7 @@ uhf(__name__)
 from . import center, util, integration, web, repo
 from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
-from .ui.gogextract import Ui_GogExtractDialog
 from .ui.install import Ui_InstallDialog
-from .ui.log_viewer import Ui_LogDialog
 from .tasks import run_task, GOGExtractTask, InstallTask, WindowsUpdateTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
@@ -475,21 +473,3 @@ class ModInstallWindow(Window):
         run_task(InstallTask(self.get_selected_pkgs(), self._mod))
         self.close()
 
-
-class LogViewer(Window):
-
-    def __init__(self, path, window=True):
-        super(LogViewer, self).__init__(window)
-
-        self._create_win(Ui_LogDialog)
-        self.win.pathLabel.setText(path)
-
-        if not os.path.isfile(path):
-            QtWidgets.QMessageBox.critical(None, 'Knossos',
-                self.tr('Log file %s can\'t be shown because it\'s missing!') % path)
-            return
-
-        with open(path, 'r') as stream:
-            self.win.content.setPlainText(stream.read())
-
-        self.open()
