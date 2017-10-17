@@ -14,6 +14,7 @@ export default {
 
         fso_build: null,
         caps: null,
+        tools: [],
 
         edit_dep: false,
         edit_dep_idx: -1,
@@ -79,6 +80,11 @@ export default {
             if(sel_mod) {
                 this.fso_build = null;
                 this.video_urls = sel_mod.videos.join("\n");
+
+                this.tools = [];
+                call(fs2mod.getModTools, this.selected_mod.id, this.selected_mod.version, (tools) => {
+                    this.tools = tools;
+                });
 
                 if(sel_mod.type === 'mod' || sel_mod.type === 'tc') {
                     this.page = 'fso';
@@ -420,6 +426,14 @@ export default {
                 fs2mod.nebDeleteMod(this.selected_mod.id, this.selected_mod.version);
             };
             vm.popup_visible = true;
+        },
+
+        launchMod() {
+            fs2mod.runMod(this.selected_mod.id, this.selected_mod.version);
+        },
+
+        launchTool(label) {
+            fs2mod.runModTool(this.selected_mod.id, this.selected_mod.version, '', '', label);
         }
     }
 };
@@ -437,9 +451,10 @@ export default {
                 <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
 
                 <p>
-                    <button @click.prevent="deleteMod" class="mod-btn btn-green">Play</button>
-                    <button @click.prevent="deleteMod" class="mod-btn btn-orange">FRED</button><br>
-                    <button @click.prevent="deleteMod" class="mod-btn btn-yellow">Debug</button><br><br><br>
+                    <button @click.prevent="launchMod" class="mod-btn btn-green">Play</button>
+                    <button v-for="tool in tools" @click.prevent="launchTool(tool)" :class="'mod-btn btn-' + (tool.toLowerCase().indexOf('fred') > -1 ? 'orange' : tool.toLowerCase().indexOf('debug') > -1 ? 'yellow' : 'grey')">{{ tool }}</button>
+
+                    <br><br>
                     <button @click.prevent="uploadMod" class="mod-btn btn-link-blue">Upload</button>
                     <button @click.prevent="deleteMod" class="mod-btn btn-link-red">Delete</button><br>
                     <button @click.prevent="openNewVersionPopup" class="mod-btn btn-link-grey">+ Version</button>

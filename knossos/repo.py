@@ -996,7 +996,7 @@ class InstalledMod(Mod):
             for exe in pkg.executables:
                 exe = exe.copy()
                 pkgpath = mod.folder
-                if True or mod.dev_mode:
+                if mod.dev_mode:
                     pkgpath = os.path.join(pkgpath, pkg.folder)
 
                 exe['file'] = os.path.join(pkgpath, exe['file'])
