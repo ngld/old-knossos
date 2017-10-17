@@ -96,11 +96,12 @@ export default {
         <div class="col-sm-6">
             <h2>
                 Settings
-                <small><button class="btn btn-success pull-right" @click="save">Save</button></small>
+                <small><button class="mod-btn btn-green pull-right" @click="save">Save</button></small>
             </h2>
             <div class="settings-exp">Click the arrows to reveal each group's options. Click SAVE when done.</div>
 
             <kn-drawer label="Knossos">
+                <div class="settings-exp drawer-exp">Basic Knossos settings for downloads, errors, and data</div>
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Data Path:</label>
                     <div class="col-sm-8">
@@ -124,7 +125,31 @@ export default {
                 </div>
             </kn-drawer>
 
+            <!--We're not using this anymore!
+            <kn-drawer label="Exec">
+                <div class="settings-exp drawer-exp">Manage the default executable Knossos will choose</div>
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">FSO Exec:</label>
+                    <div class="col-sm-8">
+                        <select v-model="default_fs2_bin">
+                            <option v-for="(bin, title) in fso.fs2_bins" :value="bin">{{ title }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">FRED Exec:</label>
+                    <div class="col-sm-8">
+                        <select v-model="default_fred_bin">
+                            <option v-for="(bin, title) in fso.fred_bins" :value="bin">{{ title }}</option>
+                        </select>
+                    </div>
+                </div>
+            </kn-drawer>
+            -->
+
             <kn-drawer label="Video">
+                <div class="settings-exp drawer-exp">Set your default video settings and resolution</div>
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Resolution:</label>
                     <div class="col-sm-8">
@@ -153,6 +178,7 @@ export default {
             </kn-drawer>
 
             <kn-drawer label="Audio">
+                <div class="settings-exp drawer-exp">Set your default playback and capture devices</div>
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Playback Device:</label>
                     <div class="col-sm-8">
@@ -183,27 +209,40 @@ export default {
             </kn-drawer>
         </div>
         <div class="col-sm-6">
-            <kn-drawer label="Exec">
+            <kn-drawer label="Nebula">
+                <div class="settings-exp drawer-exp">Login and manage your Nebula credentials</div>
                 <div class="form-group">
-                    <label class="col-sm-4 control-label">FSO Exec:</label>
+                    <label class="col-sm-4 control-label">Username:</label>
                     <div class="col-sm-8">
-                        <select v-model="default_fs2_bin">
-                            <option v-for="(bin, title) in fso.fs2_bins" :value="bin">{{ title }}</option>
-                        </select>
+                        <input type="text" class="neb-input" v-model="neb_user">
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label class="col-sm-4 control-label">FRED Exec:</label>
+                    <label class="col-sm-4 control-label">Password:</label>
                     <div class="col-sm-8">
-                        <select v-model="default_fred_bin">
-                            <option v-for="(bin, title) in fso.fred_bins" :value="bin">{{ title }}</option>
-                        </select>
+                        <input type="password" class="neb-input" v-model="neb_password">
                     </div>
                 </div>
-            </kn-drawer>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">E-Mail:</label>
+                    <div class="col-sm-8">
+                        <input type="email" class="neb-input" v-model="neb_email" placeholder="only required for registration">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-4 col-sm-4 neb-btns">
+                        <button class="mod-btn btn-link-blue" @click="login">Login</button>
+                        <button class="mod-btn btn-link-blue" @click="register">Register</button>
+                        <button class="mod-btn btn-link-red" @click="resetPassword">Reset Pass</button>
+                    </div>
+                </div>
+            </kn-drawer> 
 
             <kn-drawer label="Speech" v-if="fso.has_voice">
+                <div class="settings-exp drawer-exp">Manage settings related to Text-To-Speech</div>
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Voice:</label>
                     <div class="col-sm-8">
@@ -243,6 +282,7 @@ export default {
             </kn-drawer>
 
             <kn-drawer label="Joystick">
+                <div class="settings-exp drawer-exp">Setup and calibrate your joystick</div>
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Joystick:</label>
                     <div class="col-sm-8">
@@ -272,11 +312,10 @@ export default {
                 </div>
             </kn-drawer>
 
-            <!-- The positioning for this section is hard with the current grid system...
-                Will be fixed later.
-                --ngld
+            
 
             <kn-drawer label="Network">
+                <div class="settings-exp drawer-exp">Manage your network settings for multiplayer</div>
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Connection Type:</label>
                     <div class="col-sm-3">
@@ -310,44 +349,14 @@ export default {
                     </div>
                 </div>
             </kn-drawer>
-            -->
+            
 
             <!--
             <kn-drawer label="Flag Defaults">
+                <div class="settings-exp drawer-exp">Create the default flag set that Knossos will use if a mod or TC does not provide one</div>
                 <kn-flag-editor :caps="caps" :cmdline="''" ref="flagEditor"></kn-flag-editor>
             </kn-drawer>
             -->
-
-            <kn-drawer label="Nebula">
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">Username:</label>
-                    <div class="col-sm-8">
-                        <input type="text" class="form-control" v-model="neb_user">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">Password:</label>
-                    <div class="col-sm-8">
-                        <input type="password" class="form-control" v-model="neb_password">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">E-Mail:</label>
-                    <div class="col-sm-8">
-                        <input type="email" class="form-control" v-model="neb_email" placeholder="only required for registration">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <div class="col-sm-offset-4 col-sm-4">
-                        <button class="btn btn-primary" @click="login">Login</button>
-                        <button class="btn btn-primary" @click="register">Register</button>
-                        <button class="btn btn-primary" @click="resetPassword">Reset Password</button>
-                    </div>
-                </div>
-            </kn-drawer> 
         </div>
     </div>
 </template>

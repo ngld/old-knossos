@@ -1059,6 +1059,17 @@ input {
     visibility: visible;
 }
 
+.kn-drawer .drawer-exp {
+    visibility: visible;
+    position: fixed;
+    width: 495px;
+    text-align: center;
+}
+
+.kn-drawer .content.open .settings-exp.drawer-exp {
+    display: none;
+}
+
 .kn-drawer .content-wrapper {
     margin-top: 10px;
 }
@@ -1069,6 +1080,19 @@ input {
     margin-bottom: 2px;
     padding-bottom: 2px;
     padding-right: 10px;
+}
+
+.kn-drawer .neb-input {
+    width: 100%;
+}
+
+.kn-drawer .neb-btns {
+    width: inherit;
+}
+
+.kn-drawer .neb-btns .mod-btn {
+    margin: 0 auto;
+    height: 50px;
 }
 
 .checklist {
