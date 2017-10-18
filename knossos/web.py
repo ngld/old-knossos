@@ -211,11 +211,7 @@ class WebBridge(QtCore.QObject):
             if center.settings['base_path'] is not None:
                 fs2_path = os.path.join(center.settings['base_path'], 'FS2')
 
-                if os.path.isdir(fs2_path):
-                    for item in os.listdir(fs2_path):
-                        if item.lower() == 'root_fs2.vp':
-                            has_retail = True
-                            break
+                has_retail = util.is_fs2_retail_directory(fs2_path)
 
             if not has_retail:
                 self.showRetailPrompt.emit()
@@ -475,14 +471,14 @@ class WebBridge(QtCore.QObject):
                 logging.exception('Failed to read GOG Galaxy DB!')
 
         for path in folders:
-            if os.path.exists(os.path.join(path, 'root_fs2.vp')):
+            if util.is_fs2_retail_directory(path):
                 return path
 
         return ''
 
     @QtCore.Slot(str, result=bool)
     def copyRetailData(self, path):
-        if os.path.isfile(os.path.join(path, 'root_fs2.vp')):
+        if util.is_fs2_retail_directory(path):
             tasks.run_task(tasks.GOGCopyTask(path, os.path.join(center.settings['base_path'], 'FS2')))
             return True
         elif os.path.isfile(path) and path.endswith('.exe'):

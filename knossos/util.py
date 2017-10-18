@@ -730,6 +730,20 @@ def connect(sig, cb, *args):
     sig.connect(cb)
 
 
+def is_fs2_retail_directory(path):
+    if not os.path.isdir(path):
+        return False
+
+    retail_files = ['root_fs2.vp']
+
+    if os.path.isdir(path):
+        for item in os.listdir(path):
+            if item.lower() in retail_files:
+                return True
+
+    return False
+
+
 def enable_raven():
     try:
         from raven import Client
