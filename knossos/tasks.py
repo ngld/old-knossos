@@ -786,6 +786,7 @@ class UploadTask(progress.MultistepTask):
     _dir = None
     _login_failed = False
     _reason = None
+    _msg = None
     _success = False
     _msg_table = {
         'invalid version': 'the version number specified for this release is invalid!',
@@ -850,6 +851,8 @@ class UploadTask(progress.MultistepTask):
 
             progress.update(0.15, 'Scanning files...')
             archives = []
+            fnames = {}
+            conflicts = {}
             for pkg in self._mod.packages:
                 ar_name = pkg.name + '.7z'
                 pkg_path = os.path.join(self._mod.folder, pkg.folder)
@@ -865,11 +868,43 @@ class UploadTask(progress.MultistepTask):
                             'filename': relpath,
                             'archive': ar_name,
                             'orig_name': relpath,
-                            'checksum': util.gen_hash(path)
+                            'checksum': None
                         })
+
+                        if relpath in fnames:
+                            l = conflicts.setdefault(relpath, [fnames[relpath].name])
+                            l.append(pkg.name)
+
+                        fnames[relpath] = pkg
 
                 archives.append(pkg)
                 self._slot_prog[pkg.name] = (pkg.name + '.7z', 0, 'Waiting...')
+
+            if conflicts:
+                msg = ''
+                for name in sorted(conflicts.keys()):
+                    msg += '\n%s is in %s' % (name, util.human_list(conflicts[name]))
+
+                self._reason = 'conflict'
+                self._msg = msg
+                self.abort()
+                return
+
+            self._slot_prog['#checksums'] = ('Checksums', 0, '')
+            self._local.slot = '#checksums'
+
+            fc = float(len(fnames))
+            done = 0
+            for pkg in self._mod.packages:
+                pkg_path = os.path.join(self._mod.folder, pkg.folder)
+
+                for fn in pkg.filelist:
+                    progress.update(done / fc, fn['filename'])
+                    fn['checksum'] = util.gen_hash(os.path.join(pkg_path, fn['filename']))
+                    done += 1
+
+            progress.update(1, 'Done')
+            self._local.slot = 'total'
 
             progress.update(0.2, 'Uploading...')
             self.add_work(archives)
@@ -882,7 +917,10 @@ class UploadTask(progress.MultistepTask):
 
             self._reason = exc.args[0]
             self.abort()
-            return
+        except Exception:
+            logging.exception('Error during upload initalisation!')
+            self._reason = 'unknown'
+            self.abort()
 
     def work1(self, pkg):
         self._local.slot = pkg.name
@@ -973,6 +1011,9 @@ class UploadTask(progress.MultistepTask):
         elif self._reason in self._msg_table:
             QtWidgets.QMessageBox.critical(None, 'Knossos',
                 "Your mod couldn't be uploaded because %s" % self._msg_table[self._reason])
+        elif self._reason == 'conflict':
+            QtWidgets.QMessageBox.critical(None, 'Knossos', "I can't upload this mod because at least one file is " +
+                "contained in multiple packages.\n" + self._msg)
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'An unexpected error occured! Sorry...')
 

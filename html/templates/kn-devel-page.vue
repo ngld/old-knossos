@@ -809,6 +809,9 @@ export default {
                                             <td>
                                                 <input type="text" class="form-control" v-model="exe.label" placeholder="name">
                                             </td>
+                                            <td>
+                                                <button class="btn btn-small btn-danger" @click.prevent="deleteExe(i)"><i class="fa fa-times"></i></button>
+                                            </td>
                                         </tr>
                                     </table>
                                     <p class="help-block">

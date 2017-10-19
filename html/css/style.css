@@ -1387,3 +1387,7 @@ input {
 .devel-page .dev-tabbar > a.active {
     background-image: url(../images/tabedge-a.png);
 }
+
+.devel-page .table td {
+    padding: 2px;
+}
