@@ -74,7 +74,7 @@ class Fs2Watcher(threading.Thread):
 
     def run(self):
         try:
-            fs2_bin = self._params[0]
+            fs2_bin = os.path.normpath(self._params[0])
 
             if not os.path.isfile(fs2_bin):
                 self.fs2_missing_msg(fs2_bin)
