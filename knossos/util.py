@@ -731,14 +731,9 @@ def connect(sig, cb, *args):
 
 
 def is_fs2_retail_directory(path):
-    if not os.path.isdir(path):
-        return False
-
-    retail_files = ['root_fs2.vp']
-
     if os.path.isdir(path):
         for item in os.listdir(path):
-            if item.lower() in retail_files:
+            if item.lower() == 'root_fs2.vp':
                 return True
 
     return False

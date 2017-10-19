@@ -207,13 +207,9 @@ class WebBridge(QtCore.QObject):
             pkgs = []
 
         if mod.parent == 'FS2':
-            has_retail = False
-            if center.settings['base_path'] is not None:
-                fs2_path = os.path.join(center.settings['base_path'], 'FS2')
+            retail = self._get_mod('FS2')
 
-                has_retail = util.is_fs2_retail_directory(fs2_path)
-
-            if not has_retail:
+            if retail == -1:
                 self.showRetailPrompt.emit()
                 return 0
 
@@ -463,8 +459,9 @@ class WebBridge(QtCore.QObject):
         if os.path.isfile(gog_db):
             try:
                 db = sqlite3.connect(gog_db)
-                db.execute('SELECT localpath FROM Products WHERE productId = 5')
-                row = db.fetchone()
+                c = db.cursor()
+                c.execute('SELECT localpath FROM Products WHERE productId = 5')
+                row = c.fetchone()
                 if row:
                     folders.append(row[0])
             except Exception:
