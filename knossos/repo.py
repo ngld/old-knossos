@@ -354,6 +354,30 @@ class Repo(object):
         dep_list |= set(pkgs)
         return dep_list
 
+    def get_dependents(self, pkgs):
+        deps = {}
+        check_list = {}
+
+        for pkg in pkgs:
+            mid = pkg.get_mod().mid
+            l = check_list.setdefault(mid, {})
+            l[pkg.name] = pkg
+
+        for mvs in self.mods.values():
+            for mod in mvs:
+                for pkg in mod.packages:
+                    try:
+                        for dp, version in pkg.resolve_deps():
+                            mid = dp.get_mod().mid
+                            if mid in check_list:
+                                if dp.name in check_list[mid]:
+                                    if version.match(check_list[mid][dp.name].get_mod().version):
+                                        deps[check_list[mid][dp.name]] = pkg
+                    except ModNotFound:
+                        pass
+
+        return deps
+
     def save_logos(self, path):
         for mid, mvs in self.mods.items():
             for mod in mvs:
@@ -530,6 +554,9 @@ class Mod(object):
             return self._repo.query(self.parent)
         else:
             return None
+
+    def get_dependents(self):
+        return self._repo.get_dependents(self.packages)
 
 
 class Package(object):
