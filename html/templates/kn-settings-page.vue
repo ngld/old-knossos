@@ -41,6 +41,7 @@ export default {
         },
 
         save() {
+            this.knossos['max_downloads'] = parseInt(this.knossos['max_downloads']);
             for(let set of ['base_path', 'max_downloads', 'use_raven']) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
