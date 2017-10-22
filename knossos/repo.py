@@ -300,7 +300,7 @@ class Repo(object):
             yield mod[0]
 
     # TODO: Is this overcomplicated?
-    def process_pkg_selection(self, pkgs):
+    def process_pkg_selection(self, pkgs, recursive=True):
         dep_dict = {}
         ndeps = pkgs
 
@@ -321,7 +321,8 @@ class Repo(object):
 
                     if version not in dep_dict[mid][dep.name]:
                         dep_dict[mid][dep.name][version] = dep
-                        ndeps.append(dep)
+                        if recursive:
+                            ndeps.append(dep)
 
         # Check for conflicts (and try to resolve them if possible).
         dep_list = set()
@@ -355,24 +356,17 @@ class Repo(object):
         return dep_list
 
     def get_dependents(self, pkgs):
-        deps = {}
-        check_list = {}
+        deps = set()
+        mids = set([p.get_mod().mid for p in pkgs])
 
-        for pkg in pkgs:
-            mid = pkg.get_mod().mid
-            l = check_list.setdefault(mid, {})
-            l[pkg.name] = pkg
-
-        for mvs in self.mods.values():
-            for mod in mvs:
-                for pkg in mod.packages:
+        for mid, mvs in self.mods.items():
+            # Ignore self-references
+            if mid not in mids:
+                for mod in mvs:
                     try:
-                        for dp, version in pkg.resolve_deps():
-                            mid = dp.get_mod().mid
-                            if mid in check_list:
-                                if dp.name in check_list[mid]:
-                                    if version.match(check_list[mid][dp.name].get_mod().version):
-                                        deps[check_list[mid][dp.name]] = pkg
+                        for dp in self.process_pkg_selection(mod.packages, False):
+                            if dp in pkgs:
+                                deps.add(mod)
                     except ModNotFound:
                         pass
 

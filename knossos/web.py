@@ -247,8 +247,8 @@ class WebBridge(QtCore.QObject):
 
         deps = center.installed.get_dependents(plist)
         if deps:
-            names = ['%s - %s' % (p.get_mod().title, p.name) for p in deps]
-            msg = self.tr('You can\'t uninstall this because other mods still depend on %s') % util.human_list(names)
+            names = sorted([m.title for m in deps])
+            msg = self.tr('You can\'t uninstall this because %s still depend on it.') % util.human_list(names)
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
             return False
 
