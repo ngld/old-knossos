@@ -311,16 +311,11 @@ class Repo(object):
 
             for pkg in _nd:
                 for dep, version in pkg.resolve_deps():
-                    mid = dep.get_mod().mid
+                    dd = dep_dict.setdefault(dep.get_mod().mid, {})
+                    dd = dd.setdefault(dep.name, {})
 
-                    if mid not in dep_dict:
-                        dep_dict[mid] = {}
-
-                    if dep.name not in dep_dict[mid]:
-                        dep_dict[mid][dep.name] = {}
-
-                    if version not in dep_dict[mid][dep.name]:
-                        dep_dict[mid][dep.name][version] = dep
+                    if version not in dd:
+                        dd[version] = dep
                         if recursive:
                             ndeps.append(dep)
 
