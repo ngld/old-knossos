@@ -51,9 +51,9 @@ export default {
     <div class="mod row">
         <div :class="{ 'mod-node': true, 'active': open }">
             <div class="mod-image">
-                <img :src="mod.tile_path ? ('file://' + mod.tile_path) : 'images/modstock.jpg'" class="mod-stock">
+                <img :src="mod.tile ? ('file://' + mod.tile) : 'images/modstock.jpg'" class="mod-stock">
                 <div class="mod-logo-container">
-                    <img class="mod-logo-legacy img-responsive" v-if="mod.logo_path" :src="(mod.logo_path.indexOf('://') === -1 ? 'file://' : '') + mod.logo_path">
+                    <img class="mod-logo-legacy img-responsive" v-if="mod.logo" :src="(mod.logo.indexOf('://') === -1 ? 'file://' : '') + mod.logo">
                 </div>
             </div>
             <div class="mod-notifier" v-if="tab === 'home' || mod.versions[0].installed">

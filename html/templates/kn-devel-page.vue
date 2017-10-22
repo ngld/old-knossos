@@ -253,18 +253,10 @@ export default {
             vm.popup_visible = true;
         },
 
-        changeLogo() {
-            call(fs2mod.selectImage, this.selected_mod.logo_path || (this.selected_mod.folder + '/dummy'), (new_path) => {
+        changeImage(prop) {
+            call(fs2mod.selectImage, this.selected_mod[prop] || (this.selected_mod.folder + '/dummy'), (new_path) => {
                 if(new_path !== '') {
-                    this.selected_mod.logo_path = new_path;
-                }
-            });
-        },
-
-        changeTile() {
-            call(fs2mod.selectImage, this.selected_mod.tile_path || (this.selected_mod.folder + '/dummy'), (new_path) => {
-                if(new_path !== '') {
-                    this.selected_mod.tile_path = new_path;
+                    this.selected_mod[prop] = new_path;
                 }
             });
         },
@@ -574,29 +566,43 @@ export default {
                             <div class="form-group">
                                 <label class="col-xs-3 control-label">Title Image</label>
                                 <div class="col-xs-9">
-                                    <img :src="'file://' + selected_mod.tile_path" v-if="selected_mod.tile_path"><br>
+                                    <img :src="'file://' + selected_mod.tile" v-if="selected_mod.tile"><br>
 
                                     <p class="help-block">
                                         This image should be 150&times;225 pixels large.
                                     </p>
 
-                                    <button class="btn btn-small btn-default" @click.prevent="changeTile">Select Image</button>
-                                    <button class="btn btn-small btn-default" @click.prevent="selected_mod.tile_path = null" v-if="selected_mod.tile_path">Remove Image</button>
+                                    <button class="btn btn-small btn-default" @click.prevent="changeImage('tile')">Select Image</button>
+                                    <button class="btn btn-small btn-default" @click.prevent="selected_mod.tile = null" v-if="selected_mod.tile">Remove Image</button>
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label class="col-xs-3 control-label">Legacy Logo</label>
                                 <div class="col-xs-9">
-                                    <img :src="'file://' + selected_mod.logo_path" v-if="selected_mod.logo_path"><br>
+                                    <img :src="'file://' + selected_mod.logo" v-if="selected_mod.logo"><br>
 
                                     <p class="help-block">
                                         This image should be about 255&times;112 pixels large. Please only use this for legacy logos and mod images from mods predating the Knossos installer.
                                         If you create a new mod logo or image, please use the above setting.
                                     </p>
 
-                                    <button class="btn btn-small btn-default" @click.prevent="changeLogo">Select Image</button>
-                                    <button class="btn btn-small btn-default" @click.prevent="selected_mod.logo_path = null" v-if="selected_mod.logo_path">Remove Image</button>
+                                    <button class="btn btn-small btn-default" @click.prevent="changeImage('logo')">Select Image</button>
+                                    <button class="btn btn-small btn-default" @click.prevent="selected_mod.logo = null" v-if="selected_mod.logo">Remove Image</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="col-xs-3 control-label">Banner</label>
+                                <div class="col-xs-9">
+                                    <img :src="'file://' + selected_mod.banner" v-if="selected_mod.banner"><br>
+
+                                    <p class="help-block">
+                                        <!-- TODO -->
+                                    </p>
+
+                                    <button class="btn btn-small btn-default" @click.prevent="changeImage('banner')">Select Image</button>
+                                    <button class="btn btn-small btn-default" @click.prevent="selected_mod.banner = null" v-if="selected_mod.banner">Remove Image</button>
                                 </div>
                             </div>
 

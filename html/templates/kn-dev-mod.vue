@@ -9,7 +9,7 @@ export default {
             <div class="mod-image">
                 <img :src="mod.tile_path || 'images/modstock.jpg'" class="mod-stock">
                 <div class="mod-logo-container">
-                    <img class="mod-logo-legacy img-responsive" v-if="mod.logo_path" :src="'file://' + mod.logo_path">
+                    <img class="mod-logo-legacy img-responsive" v-if="mod.logo" :src="'file://' + mod.logo">
                 </div>
             </div>
             <div class="actions">

@@ -40,6 +40,7 @@ export default {
 <template>
 	<div>
 		<div class="img-frame">
+			<img v-if="mod.banner" :src="mod.banner.indexOf('://') === -1 ? 'file://' + mod.banner : mod.banner" class="mod-banner">
 		    <div class="title-frame">
 		        <h1>{{ mod.title }}</h1>
 		        Version

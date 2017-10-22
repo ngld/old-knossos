@@ -85,20 +85,18 @@ class NebulaClient(object):
         return result.json()['mods']
 
     def _upload_mod_logos(self, mod):
-        logo_chk = None
-        if mod.logo_path and os.path.isfile(mod.logo_path):
-            _, logo_chk = util.gen_hash(mod.logo_path)
-            self.upload_file('logo', mod.logo_path)
+        chks = []
 
-        tile_chk = None
-        if mod.tile_path and os.path.isfile(mod.tile_path):
-            _, tile_chk = util.gen_hash(mod.tile_path)
-            self.upload_file('tile', mod.tile_path)
+        for prop in ('logo', 'tile', 'banner'):
+            im = getattr(mod, prop)
+            if im and os.path.isfile(im):
+                chks.append(util.gen_hash(im)[1])
+                self.upload_file(prop, im)
 
-        return logo_chk, tile_chk
+        return chks
 
     def create_mod(self, mod):
-        logo_chk, tile_chk = self._upload_mod_logos(mod)
+        logo_chk, tile_chk, banner_chk = self._upload_mod_logos(mod)
 
         self._call('mod/create', check_code=True, json={
             'id': mod.mid,
@@ -106,19 +104,21 @@ class NebulaClient(object):
             'type': mod.mtype,
             'logo': logo_chk,
             'tile': tile_chk,
+            'banner': banner_chk,
             'members': []
         })
         return True
 
     def update_mod(self, mod):
         # TODO: Check if these actually changed
-        logo_chk, tile_chk = self._upload_mod_logos(mod)
+        logo_chk, tile_chk, banner_chk = self._upload_mod_logos(mod)
 
         self._call('mod/update', check_code=True, json={
             'id': mod.mid,
             'title': mod.title,
             'logo': logo_chk,
             'tile': tile_chk,
+            'banner': banner_chk,
             'members': [center.settings['neb_user']]
         })
         return True

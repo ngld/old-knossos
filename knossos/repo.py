@@ -367,11 +367,6 @@ class Repo(object):
 
         return deps
 
-    def save_logos(self, path):
-        for mid, mvs in self.mods.items():
-            for mod in mvs:
-                mod.save_logo(path)
-
 
 class Mod(object):
     _repo = None
@@ -383,9 +378,8 @@ class Mod(object):
     cmdline = ''
     mod_flag = None
     logo = None
-    logo_path = None
     tile = None
-    tile_path = None
+    banner = None
     description = ''
     notes = ''
     release_thread = None
@@ -395,7 +389,7 @@ class Mod(object):
     actions = None
     packages = None
 
-    __fields__ = ('mid', 'title', 'type', 'version', 'parent', 'cmdline', 'logo', 'tile',
+    __fields__ = ('mid', 'title', 'type', 'version', 'parent', 'cmdline', 'logo', 'tile', 'banner',
         'description', 'notes', 'actions', 'packages')
 
     def __init__(self, values=None, repo=None):
@@ -420,8 +414,6 @@ class Mod(object):
         self.parent = values.get('parent', 'FS2')
         self.cmdline = values.get('cmdline', '')
         self.mod_flag = values.get('mod_flag', [])
-        self.logo = values.get('logo', None)
-        self.tile = values.get('tile', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
         self.release_thread = values.get('release_thread', None)
@@ -438,18 +430,21 @@ class Mod(object):
             if installed or p.check_env():
                 self.packages.append(p)
 
-        if self._repo is not None and self._repo.base is not None:
-            if self.logo is not None:
-                if '://' in self._repo.base:
-                    self.logo = util.url_join(self._repo.base, self.logo)
-                elif '://' not in self.logo:
-                    self.logo = os.path.abspath(os.path.join(self._repo.base, self.logo))
+        base = None
+        if hasattr(self, 'folder'):
+            base = self.folder
+        elif self._repo is not None:
+            base = self._repo.base
 
-            if self.tile is not None:
-                if '://' in self._repo.base:
-                    self.tile = util.url_join(self._repo.base, self.tile)
-                elif '://' not in self.tile:
-                    self.tile = os.path.abspath(os.path.join(self._repo.base, self.tile))
+        if base:
+            for prop in ('logo', 'tile', 'banner'):
+                if values.get(prop) is not None:
+                    if '://' in base:
+                        setattr(self, prop, util.url_join(base, values[prop]))
+                    elif '://' not in values[prop]:
+                        setattr(self, prop, os.path.abspath(os.path.join(base, values[prop])))
+                    else:
+                        setattr(self, prop, values[prop])
 
         if self.first_release:
             self.first_release = datetime.strptime(self.first_release, '%Y-%m-%d')
@@ -475,9 +470,8 @@ class Mod(object):
             'cmdline': self.cmdline,
             'mod_flag': self.mod_flag,
             'logo': self.logo,
-            'logo_path': self.logo,
             'tile': self.tile,
-            'tile_path': self.tile,
+            'banner': self.banner,
             'description': self.description,
             'notes': self.notes,
             'release_thread': self.release_thread,
@@ -508,35 +502,6 @@ class Mod(object):
             pkgs = [pkg for pkg in self.packages if pkg.status in ('required', 'recommended')]
 
         return self._repo.process_pkg_selection(pkgs)
-
-    def save_logo(self, dest):
-        if self.logo is not None:
-            suffix = '.' + self.logo.split('.')[-1]
-            path = os.path.join(dest, 'logo_' + hashlib.md5(self.logo.encode('utf8')).hexdigest() + suffix)
-
-            if not os.path.isfile(path):
-                if '://' in self.logo:
-                    # That's a URL
-                    with open(path, 'wb') as fobj:
-                        util.download(self.logo, fobj)
-                else:
-                    shutil.copyfile(self.logo, path)
-
-            self.logo_path = self.logo = os.path.abspath(path)
-
-        if self.tile is not None:
-            suffix = '.' + self.tile.split('.')[-1]
-            path = os.path.join(dest, 'tile_' + hashlib.md5(self.tile.encode('utf8')).hexdigest() + suffix)
-
-            if not os.path.isfile(path):
-                if '://' in self.tile:
-                    # That's a URL
-                    with open(path, 'wb') as fobj:
-                        util.download(self.tile, fobj)
-                else:
-                    shutil.copyfile(self.tile, path)
-
-            self.tile_path = self.tile = os.path.abspath(path)
 
     def get_parent(self):
         if self.parent:
@@ -802,22 +767,17 @@ class InstalledMod(Mod):
             with open(path, 'r') as stream:
                 data = json.load(stream)
 
-            mod = InstalledMod(data)
-            mod._path = path
+            mod = InstalledMod(None)
+            mod.folder = os.path.dirname(path)
+            mod.set(data)
+            return mod
         elif path.lower().endswith('.ini'):
             mod = IniMod()
+            mod.folder = os.path.dirname(path)
             mod.load(path)
+            return mod
         else:
             return None
-
-        mod.folder = os.path.dirname(path)
-        if mod.logo is not None and '://' not in mod.logo:
-            mod.logo_path = os.path.join(os.path.dirname(path), mod.logo)
-
-        if mod.tile is not None and '://' not in mod.tile:
-            mod.tile_path = os.path.join(os.path.dirname(path), mod.tile)
-
-        return mod
 
     @staticmethod
     def convert(mod):
@@ -825,9 +785,10 @@ class InstalledMod(Mod):
         data['packages'] = []
 
         nmod = InstalledMod(data)
-        nmod.logo_path = mod.logo_path
-        nmod.tile_path = mod.tile_path
         nmod.generate_folder()
+
+        # Rebuild the image paths
+        nmod.set(data)
         return nmod
 
     def set(self, values):
@@ -839,11 +800,6 @@ class InstalledMod(Mod):
 
         if 'folder' in values:
             self.folder = values['folder']
-
-        self.logo = values.get('logo', None)
-        self.tile = values.get('tile', None)
-        self.logo_path = values.get('logo_path', None)
-        self.tile_path = values.get('tile_path', None)
 
         self.dev_mode = values.get('dev_mode', False)
         self.check_notes = values.get('check_notes', '')
@@ -862,9 +818,8 @@ class InstalledMod(Mod):
             'notes': self.notes,
             'folder': self.folder,
             'logo': self.logo,
-            'logo_path': self.logo_path,
             'tile': self.tile,
-            'tile_path': self.tile_path,
+            'banner': self.banner,
             'release_thread': self.release_thread,
             'videos': self.videos,
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
@@ -928,10 +883,9 @@ class InstalledMod(Mod):
         del info['folder']
 
         # Make sure we only store relative paths.
-        for prop in ('logo', 'tile'):
-            if info['%s_path' % prop]:
-                info[prop] = os.path.relpath(info['%s_path' % prop], modpath)
-                del info['%s_path' % prop]
+        for prop in ('logo', 'tile', 'banner'):
+            if info[prop]:
+                info[prop] = os.path.relpath(info[prop], modpath)
 
         with open(path, 'w') as stream:
             json.dump(info, stream)

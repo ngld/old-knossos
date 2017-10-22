@@ -690,12 +690,8 @@ class WebBridge(QtCore.QObject):
             return
 
         mod.description = data['description']
-
-        if data['logo_path'] != mod.logo_path:
-            mod.logo_path = data['logo_path']
-
-        if data['tile_path'] != mod.tile_path:
-            mod.tile_path = data['tile_path']
+        for prop in ('logo', 'tile', 'banner'):
+            setattr(mod, prop, data[prop])
 
         mod.release_thread = data['release_thread']
         mod.videos = []

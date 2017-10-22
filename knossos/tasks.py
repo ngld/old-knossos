@@ -688,7 +688,7 @@ class UninstallTask(progress.MultistepTask):
             elif len(mod.packages) == 0:
                 # Remove our files
 
-                my_files = (os.path.join(modpath, 'mod.json'), mod.logo_path)
+                my_files = (os.path.join(modpath, 'mod.json'), mod.logo, mod.tile, mod.banner)
                 for path in my_files:
                     if path and os.path.isfile(path):
                         os.unlink(path)
