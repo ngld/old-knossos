@@ -56,8 +56,8 @@ export default {
                     <img class="mod-logo-legacy img-responsive" v-if="mod.logo_path" :src="(mod.logo_path.indexOf('://') === -1 ? 'file://' : '') + mod.logo_path">
                 </div>
             </div>
-            <div class="mod-notifier" v-if="tab === 'home'">
-                <img :src="'images/modnotify_' + mod.status + '.png'" class="notifier">
+            <div class="mod-notifier" v-if="tab === 'home' || mod.versions[0].installed">
+                <img :src="'images/modnotify_' + (tab === 'home' ? mod.status : 'ready') + '.png'" class="notifier">
             </div>
             <div class="actions">
                 <div class="btn-wrapper">

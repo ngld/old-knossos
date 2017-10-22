@@ -197,10 +197,7 @@ class HellWindow(Window):
         if self._mod_filter in ('home', 'develop'):
             mods = center.installed.mods
         elif self._mod_filter == 'explore':
-            mods = {}
-            for mid, mvs in center.mods.mods.items():
-                if mid not in center.installed.mods:
-                    mods[mid] = mvs
+            mods = center.mods.mods
         # elif self._mod_filter == 'updates':
         #     mods = {}
         #     for mid in center.installed.get_updates():
@@ -218,10 +215,9 @@ class HellWindow(Window):
                 item['progress'] = 0
                 item['progress_info'] = {}
 
-                try:
-                    rmod = center.mods.query(mod)
-                except repo.ModNotFound:
-                    rmod = None
+                installed_versions = [str(m.version) for m in center.installed.mods.get(mid, [])]
+
+                rmod = center.mods.mods.get(mid, (None,))[0]
 
                 # TODO: Refactor (see also templates/kn-{details,devel}-page.vue)
                 if rmod and rmod.version > mod.version:
@@ -240,7 +236,9 @@ class HellWindow(Window):
 
                 item['versions'] = []
                 for mod in mvs:
-                    item['versions'].append(mod.get())
+                    mv = mod.get()
+                    mv['installed'] = mv['version'] in installed_versions
+                    item['versions'].append(mv)
 
                 result.append(item)
 

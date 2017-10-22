@@ -299,7 +299,7 @@ class InstallTask(progress.MultistepTask):
     _pkg_names = None
     _mods = None
     _dls = None
-    _steps = 2
+    _steps = 3
     _error = False
     _7z_lock = None
     _pkg_prog = None
@@ -375,14 +375,6 @@ class InstallTask(progress.MultistepTask):
                 'If you need more help, ask ngld or read the debug log!'
             )
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
-        else:
-            # Generate mod.json files.
-            for mod in self._mods:
-                try:
-                    mod.save()
-                    util.get(center.settings['nebula_link'] + 'api/1/track/install/' + mod.mid)
-                except Exception:
-                    logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
         if self.check_after:
             run_task(CheckTask())
@@ -625,8 +617,20 @@ class InstallTask(progress.MultistepTask):
                         if not os.path.lexists(dest_path):
                             linkto = os.readlink(src_path)
                             os.symlink(linkto, dest_path)
-        
+
             progress.update(1, 'Done.')
+
+    def init3(self):
+        self.add_work((None,))
+
+    def work3(self, _):
+        # Generate mod.json files.
+        for mod in self._mods:
+            try:
+                mod.save()
+                util.get(center.settings['nebula_link'] + 'api/1/track/install/' + mod.mid)
+            except Exception:
+                logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
@@ -718,64 +722,35 @@ class UninstallTask(progress.MultistepTask):
 
 class UpdateTask(InstallTask):
     _old_mod = None
-    _new_mod = None
-    _new_modpath = None
     __check_after = True
 
     def __init__(self, mod, check_after=True):
         self._old_mod = mod
-        self._new_mod = center.mods.query(mod.mid)
+        new_mod = center.mods.query(mod.mid)
         self.__check_after = check_after
 
         old_pkgs = [pkg.name for pkg in mod.packages]
         pkgs = []
 
-        for pkg in self._new_mod.packages:
+        for pkg in new_mod.packages:
             if pkg.name in old_pkgs or pkg.status == 'required':
                 pkgs.append(pkg)
 
-        super(UpdateTask, self).__init__(pkgs, self._new_mod, check_after=False)
+        super(UpdateTask, self).__init__(pkgs, new_mod, check_after=False)
 
     def finish(self):
-        self._new_modpath = self._new_mod.folder
         super(UpdateTask, self).finish()
 
         if not self.aborted and not self._error:
-            # TODO: Check if it's okay to uninstall the old version. Maybe there's still a mod that requires this one?
             # The new version has been succesfully installed, remove the old version.
-            next_task = UninstallTask(self._old_mod.packages, check_after=False)
-            next_task.done.connect(self._finish2)
-            run_task(next_task)
 
-    def _finish2(self):
-        modpath = self._old_mod.folder
-        temppath = self._new_modpath
-
-        if '_kv_' not in modpath:
-            # Move all files from the temporary directory to the new one.
-            try:
-                if not os.path.isdir(modpath):
-                    os.makedirs(modpath)
-
-                for item in os.listdir(temppath):
-                    shutil.move(os.path.join(temppath, item), os.path.join(modpath, item))
-            except Exception:
-                logging.exception('Failed to move a file!')
-                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr(
-                    'Failed to replace the old mod files with the updated files!'))
+            if len(self._old_mod.get_dependents()) == 0:
+                run_task(UninstallTask(self._old_mod.packages, check_after=self.__check_after))
+            else:
+                logging.debug('Not uninstalling %s after update because it still has dependents.', self._old_mod)
 
                 if self.__check_after:
                     run_task(CheckTask())
-                return
-
-            try:
-                # Remove the now empty temporary folder
-                os.rmdir(temppath)
-            except Exception:
-                logging.warning('Failed to remove supposedly empty folder "%s"!', temppath, exc_info=True)
-
-        if self.__check_after:
-            run_task(CheckTask())
 
 
 class UploadTask(progress.MultistepTask):
