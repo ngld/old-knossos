@@ -321,10 +321,8 @@ def run_mod_ex(mod, binpath, mod_flag):
 
     if mod.mtype == 'mod':
         basepath = mod.get_parent().folder
-    elif mod.mtype == 'tc':
+    elif mod.mtype:
         basepath = mod.folder
-    else:
-        basepath = ''
 
     if len(mod_flag) > 0:
         # The paths for -mod must be relative to the base path.
