@@ -582,6 +582,30 @@ input {
     right: 0px;
 }
 
+.mod-node .mod-installed { /* Places the overlay for installed mods on the Explore tab */
+    width: 150px;
+    height: 225px;
+    position: absolute;
+    top: 0;
+    background-color: rgba(0, 0, 0, 0.60);
+}
+
+.mod-node .mod-banner { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-green.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner span{ /* Places the overlay for installed mods on the Explore tab */
+    color: white;
+    position: relative;
+    top: 2px;
+    right: 9px;
+}
+
 .mod-node .actions { /* Div to detect mouse hover */
     position: absolute;
     top: 0;
