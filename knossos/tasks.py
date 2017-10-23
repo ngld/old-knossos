@@ -1129,29 +1129,7 @@ class GOGExtractTask(progress.Task):
         shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
         shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
 
-        with open(os.path.join(dest_path, 'kn_tile.png'), 'wb') as stream:
-            stream.write(read_file(':/html/images/mod-retail.png', decode=False))
-
-        mod = repo.InstalledMod({
-            'title': 'Retail FS2',
-            'id': 'FS2',
-            'version': '1.0',
-            'type': 'tc',
-            'folder': dest_path,
-            'tile': 'kn_tile.png'
-        })
-        mod.add_pkg(repo.InstalledPackage({
-            'name': 'Content',
-            'status': 'required',
-            'folder': '.',
-            'dependencies': [{
-                'id': 'FSO',
-                'version': '>=3.8.0-1'
-            }]
-        }))
-
-        center.installed.add_mod(mod)
-        mod.save()
+        create_retail_mod(dest_path)
 
         self.post(dest_path)
 
@@ -1212,29 +1190,7 @@ class GOGCopyTask(progress.Task):
         for item in glob.glob(os.path.join(gog_path, 'data3', '*.mve')):
             shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
-        with open(os.path.join(dest_path, 'kn_tile.png'), 'wb') as stream:
-            stream.write(read_file(':/html/images/mod-retail.png', decode=False))
-
-        mod = repo.InstalledMod({
-            'title': 'Retail FS2',
-            'id': 'FS2',
-            'version': '1.0',
-            'type': 'tc',
-            'folder': dest_path,
-            'tile': 'kn_tile.png'
-        })
-        mod.add_pkg(repo.InstalledPackage({
-            'name': 'Content',
-            'status': 'required',
-            'folder': '.',
-            'dependencies': [{
-                'id': 'FSO',
-                'version': '>=3.8.0-RC3'
-            }]
-        }))
-
-        center.installed.add_mod(mod)
-        mod.save()
+        create_retail_mod(dest_path)
 
         self.post(dest_path)
 
@@ -1373,3 +1329,41 @@ def run_task(task, cb=None):
     center.signals.task_launched.emit(task)
     center.pmaster.add_task(task)
     return task
+
+
+def create_retail_mod(dest_path):
+    # Remember to add any new files in html/images to configure.py, too!
+    files = {
+        'tile': ':/html/images/mod-retail.png'
+    }
+
+    mod = repo.InstalledMod({
+        'title': 'Retail FS2',
+        'id': 'FS2',
+        'version': '1.0',
+        'type': 'tc',
+        'folder': dest_path
+    })
+
+    mod.add_pkg(repo.InstalledPackage({
+        'name': 'Content',
+        'status': 'required',
+        'folder': '.',
+        'dependencies': [{
+            'id': 'FSO',
+            'version': '>=3.8.0-1'
+        }]
+    }))
+
+    for prop, path in files.items():
+        ext = os.path.splitext(path)[1]
+        im_path = os.path.join(dest_path, 'kn_' + prop + '.' + ext)
+        with open(im_path, 'wb') as stream:
+            stream.write(read_file(path, decode=False))
+
+        setattr(mod, prop, im_path)
+
+    center.installed.add_mod(mod)
+    mod.save()
+
+    return mod
