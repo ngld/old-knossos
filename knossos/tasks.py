@@ -424,7 +424,7 @@ class InstallTask(progress.MultistepTask):
             progress.update(i / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
 
             itempath = util.ipath(os.path.join(modpath, info['filename']))
-            if not os.path.isfile(itempath) or util.check_hash(info['checksum'], itempath):
+            if not os.path.isfile(itempath) or not util.check_hash(info['checksum'], itempath):
                 archives.add((mod.mid, info['package'], info['archive']))
                 logging.debug('%s is missing for %s.', itempath, mod)
 
@@ -432,7 +432,7 @@ class InstallTask(progress.MultistepTask):
 
         # Make sure the images are in the mod folder so that they won't be deleted during the next
         # FetchTask.
-        for prop in ('logo', 'tile'):
+        for prop in ('logo', 'tile', 'banner'):
             img_path = getattr(mod, prop)
             if img_path:
                 ext = os.path.splitext(img_path)[1]
@@ -445,7 +445,7 @@ class InstallTask(progress.MultistepTask):
                 else:
                     shutil.copyfile(img_path, dest)
 
-                setattr(mod, prop + '_path', dest)
+                setattr(mod, prop, dest)
 
     def init2(self):
         archives = set()
@@ -1138,8 +1138,7 @@ class GOGExtractTask(progress.Task):
             'version': '1.0',
             'type': 'tc',
             'folder': dest_path,
-            'tile': 'kn_tile.png',
-            'tile_path': os.path.join(dest_path, 'kn_tile.png')
+            'tile': 'kn_tile.png'
         })
         mod.add_pkg(repo.InstalledPackage({
             'name': 'Content',
@@ -1222,8 +1221,7 @@ class GOGCopyTask(progress.Task):
             'version': '1.0',
             'type': 'tc',
             'folder': dest_path,
-            'tile': 'kn_tile.png',
-            'tile_path': os.path.join(dest_path, 'kn_tile.png')
+            'tile': 'kn_tile.png'
         })
         mod.add_pkg(repo.InstalledPackage({
             'name': 'Content',

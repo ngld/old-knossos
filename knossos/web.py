@@ -937,7 +937,10 @@ class WebBridge(QtCore.QObject):
         mod = self._get_mod(mid, version)
 
         try:
-            flags = settings.get_fso_flags(mod.get_executables()[0]['file'])
+            flags = None
+            for exe in mod.get_executables():
+                if not exe['label']:
+                    flags = settings.get_fso_flags(exe['file'])
 
             if flags:
                 flags = flags.to_dict()

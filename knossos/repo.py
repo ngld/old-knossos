@@ -445,6 +445,9 @@ class Mod(object):
                         setattr(self, prop, os.path.abspath(os.path.join(base, values[prop])))
                     else:
                         setattr(self, prop, values[prop])
+        else:
+            for prop in ('logo', 'tile', 'banner'):
+                setattr(self, prop, values.get(prop))
 
         if self.first_release:
             self.first_release = datetime.strptime(self.first_release, '%Y-%m-%d')
@@ -786,9 +789,6 @@ class InstalledMod(Mod):
 
         nmod = InstalledMod(data)
         nmod.generate_folder()
-
-        # Rebuild the image paths
-        nmod.set(data)
         return nmod
 
     def set(self, values):
@@ -884,7 +884,7 @@ class InstalledMod(Mod):
 
         # Make sure we only store relative paths.
         for prop in ('logo', 'tile', 'banner'):
-            if info[prop]:
+            if info[prop] and '://' not in info[prop]:
                 info[prop] = os.path.relpath(info[prop], modpath)
 
         with open(path, 'w') as stream:
