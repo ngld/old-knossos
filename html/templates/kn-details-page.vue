@@ -66,6 +66,8 @@ export default {
 		    </div>
 		</div>
 
-		<p v-html="cur_mod.description"></p>
+		<div class="mod-desc">
+            <p v-html="cur_mod.description"></p>
+        </div>
 	</div>
 </template>

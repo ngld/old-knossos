@@ -584,7 +584,7 @@ input {
 
 .mod-node .mod-installed { /* Places the overlay for installed mods on the Explore tab */
     width: 150px;
-    height: 225px;
+    height: 268px;
     position: absolute;
     top: 0;
     background-color: rgba(0, 0, 0, 0.60);
@@ -1042,9 +1042,12 @@ input {
 
 /* Details page */
 #details-page .img-frame {
-    min-height: 300px;
+    max-height: 300px;
+    max-width: 1070px;
     background: rgb(100, 100, 100);
     position: relative;
+    text-align: center;
+    overflow: hidden;
 }
 
 #details-page .title-frame {
@@ -1064,10 +1067,18 @@ input {
 
 #details-page .date-frame {
     margin-left: 5px;
+    display: inline-block;
+    margin-top: 8px;
+    margin-right: 20px;
 }
 
 #details-page .short-frame {
-    margin-top: 5px;
+    margin-top: 0px;
+}
+
+#details-page .mod-desc {
+    margin: 8px;
+    margin-top: 12px;
 }
 
 /* Popup */
