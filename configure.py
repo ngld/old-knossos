@@ -15,6 +15,7 @@
 import sys
 import os.path
 import subprocess
+import json
 from codecs import open
 
 os.chdir(os.path.abspath(os.path.dirname(__file__)))
@@ -30,16 +31,6 @@ UI_FILES = [
 ]
 
 JS_FILES = [
-    'html/templates/kn-details-page.vue',
-    'html/templates/kn-dev-mod.vue',
-    'html/templates/kn-devel-page.vue',
-    'html/templates/kn-drawer.vue',
-    'html/templates/kn-dropdown.vue',
-    'html/templates/kn-flag-editor.vue',
-    'html/templates/kn-mod-buttons.vue',
-    'html/templates/kn-mod.vue',
-    'html/templates/kn-page.vue',
-    'html/templates/kn-settings-page.vue',
     'html/js/translations.js',
     'html/js/main.js',
     'webpack.config.js'
@@ -53,94 +44,22 @@ RCC_FILES = [
     'html/fonts/fontawesome-webfont.woff',
     'html/fonts/fontawesome-webfont.ttf',
     'html/dist/bundle.js',
-    'html/index.html',
-    'html/images/dropdown-h.png',
-    'html/images/modnotify_updating.png',
-    'html/images/btn-blue-a.png',
-    'html/images/icon-filter-a.png',
-    'html/images/iconbtn-develop-h.png',
-    'html/images/icon-update.png',
-    'html/images/mod-retail.png',
-    'html/images/icon-filter-h.png',
-    'html/images/btn-green-h.png',
-    'html/images/iconbtn-home-a.png',
-    'html/images/btn-blue.png',
-    'html/images/icon-settings.png',
-    'html/images/modnotify_error.png',
-    'html/images/scrollbtn-down-a.png',
-    'html/images/btn-yellow.png',
-    'html/images/scrollbtn-up-h.png',
-    'html/images/modnotify_update.png',
-    'html/images/btn-red-a.png',
-    'html/images/scrollbtn-up.png',
-    'html/images/btn-orange-a.png',
-    'html/images/btn-red-h.png',
-    'html/images/iconbtn-explore-h.png',
-    'html/images/modnotify_ready.png',
-    'html/images/iconbtn-explore-a.png',
-    'html/images/scrollbtn-down.png',
-    'html/images/btn-grey-a.png',
-    'html/images/icon-settings-h.png',
-    'html/images/btn-orange.png',
-    'html/images/btn-link-red.png',
-    'html/images/icon-help-h.png',
-    'html/images/scrollbtn-down-h.png',
-    'html/images/btn-link-blue-a.png',
-    'html/images/icon-update-a.png',
-    'html/images/iconbtn-home-h.png',
-    'html/images/icon-filter.png',
-    'html/images/btn-orange-h.png',
-    'html/images/iconbtn-home.png',
-    'html/images/iconbtn-develop.png',
-    'html/images/modstock.jpg',
-    'html/images/btn-link-red-a.png',
-    'html/images/icon-settings-a.png',
-    'html/images/icon-help.png',
-    'html/images/btn-link-blue-h.png',
-    'html/images/BG.png',
-    'html/images/btn-link-blue.png',
-    'html/images/icon-update-h.png',
-    'html/images/iconbtn-develop-a.png',
-    'html/images/dropdown.png',
-    'html/images/btn-red.png',
-    'html/images/dropdown-a.png',
-    'html/images/btn-grey.png',
-    'html/images/btn-link-red-h.png',
-    'html/images/btn-blue-h.png',
-    'html/images/btn-grey-h.png',
-    'html/images/btn-yellow-h.png',
-    'html/images/icon-help-a.png',
-    'html/images/btn-green.png',
-    'html/images/iconbtn-explore.png',
-    'html/images/btn-green-a.png',
-    'html/images/scrollbtn-up-a.png',
-    'html/images/btn-yellow-a.png'
+    'html/index.html'
 ]
 
 SRC_FILES = [
     'knossos/third_party/__init__.py',
     'knossos/third_party/cpuinfo.py',
-    'knossos/ui/__init__.py',
-    'knossos/__init__.py',
-    'knossos/__main__.py',
-    'knossos/bool_parser.py',
-    'knossos/center.py',
-    'knossos/clibs.py',
-    'knossos/integration.py',
-    'knossos/ipc.py',
-    'knossos/launcher.py',
-    'knossos/nebula.py',
-    'knossos/progress.py',
-    'knossos/py2_compat.py',
-    'knossos/qt.py',
-    'knossos/repo.py',
-    'knossos/runner.py',
-    'knossos/settings.py',
-    'knossos/tasks.py',
-    'knossos/util.py',
-    'knossos/web.py',
-    'knossos/windows.py'
+    'knossos/ui/__init__.py'
 ]
+
+with open('file_list.json', 'r') as stream:
+    files = json.load(stream)
+
+    JS_FILES.extend(files['templates'])
+    RCC_FILES.extend(files['images'])
+    SRC_FILES.extend(files['python'])
+
 
 info('Checking Python version...')
 if sys.hexversion < 0x20700 or (sys.hexversion > 0x30000 and sys.hexversion < 0x30200):
