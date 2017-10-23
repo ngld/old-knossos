@@ -7,7 +7,7 @@ export default {
     <div class="mod row">
         <div class="dev-mod-node">
             <div class="mod-image">
-                <img :src="mod.tile_path || 'images/modstock.jpg'" class="mod-stock">
+                <img :src="mod.tile ? ('file://' + mod.tile) : 'images/modstock.jpg'" class="mod-stock">
                 <div class="mod-logo-container">
                     <img class="mod-logo-legacy img-responsive" v-if="mod.logo" :src="'file://' + mod.logo">
                 </div>
