@@ -163,7 +163,7 @@ with open('build.ninja', 'w') as stream:
 
     n.comment('Scripts')
     n.rule('regen', py_script('configure.py', sys.argv[1:]), 'RECONFIGURE', generator=True)
-    n.build('build.ninja', 'regen', ['configure.py', 'knossos/center.py'])
+    n.build('build.ninja', 'regen', ['configure.py', 'knossos/center.py', 'file_list.json'])
 
     setup_args = ['sdist']
     if check_module('wheel', required=False):
