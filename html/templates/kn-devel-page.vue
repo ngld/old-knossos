@@ -443,7 +443,7 @@ export default {
                 <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
 
                 <p>
-                    <button @click.prevent="launchMod" class="mod-btn btn-green">Play</button>
+                    <button @click.prevent="launchMod" class="mod-btn btn-green"><p>Play</p></button>
                     <button v-for="tool in tools" @click.prevent="launchTool(tool)" :class="'mod-btn btn-' + (tool.toLowerCase().indexOf('fred') > -1 ? 'orange' : tool.toLowerCase().indexOf('debug') > -1 ? 'yellow' : 'grey')"><p>{{ tool }}</p></button>
 
                     <br><br>
@@ -598,7 +598,7 @@ export default {
                                     <img :src="'file://' + selected_mod.banner" v-if="selected_mod.banner"><br>
 
                                     <p class="help-block">
-                                        <!-- TODO -->
+                                        This image should be 1070x 300 pixels large.
                                     </p>
 
                                     <button class="btn btn-small btn-default" @click.prevent="changeImage('banner')">Select Image</button>

@@ -907,7 +907,6 @@ input {
 }
 
 .mod-btn p {
-    width: 85px;
     padding: 6px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1387,6 +1386,11 @@ input {
     bottom: 0;
 
     width: 100%;
+}
+
+.devel-page .form-group img {
+    max-width: 450px;
+    max-height: 150px;
 }
 
 .devel-page .dev-tabbar {
