@@ -38,7 +38,7 @@ export default {
 }
 </script>
 <template>
-	<div>
+	<div class="details-container">
 		<div class="img-frame">
 			<img v-if="mod.banner" :src="mod.banner.indexOf('://') === -1 ? 'file://' + mod.banner : mod.banner" class="mod-banner">
 		    <div class="title-frame">
@@ -50,19 +50,20 @@ export default {
 		    </div>
 		</div>
 
-		<div class="row">
+		<div class="row details-btns">
 		    <div class="col-sm-6">
 		        <kn-mod-buttons :tab="'details'" :mod="cur_mod"></kn-mod-buttons>
 		    </div>
 
 		    <div class="col-sm-6 short-frame">
-		        <button class="link-btn btn-link-red" v-if="cur_mod.release_thread" @click="openLink(cur_mod.release_thread)"><span class="btn-text">FORUM</span></button>
-		        <button class="link-btn btn-link-blue" v-if="cur_mod.videos.length > 0" @click="showVideos(cur_mod.videos)"><span class="btn-text">VIDEOS</span></button>
-
 		        <div class="date-frame pull-right">
 		            <div v-if="cur_mod.first_release">Release: {{ cur_mod.first_release }}</div>
 		            <div v-if="cur_mod.last_update"><em>Last Updated: {{ cur_mod.last_update }}</em></div>
 		        </div>
+
+                <!--<button class="link-btn btn-link-blue pull-right" v-if="cur_mod.videos.length > 0" @click="showVideos(cur_mod.videos)"><span class="btn-text">IMAGES</span></button>-->
+		        <button class="link-btn btn-link-blue pull-right" v-if="cur_mod.videos.length > 0" @click="showVideos(cur_mod.videos)"><span class="btn-text">VIDEOS</span></button>
+		        <button class="link-btn btn-link-red pull-right" v-if="cur_mod.release_thread" @click="openLink(cur_mod.release_thread)"><span class="btn-text">FORUM</span></button>
 		    </div>
 		</div>
 
