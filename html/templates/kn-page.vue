@@ -255,7 +255,7 @@ export default {
 <template>
     <div>
         <div class="main-menus">
-            <div class="pull-right">
+            <div class="pull-right top-right-btns">
                 <a href="#" class="top-btn" @click="showHelp"><span class="help-image"></span></a>
                 <a href="#" class="top-btn" @click="updateList"><span class="update-image"></span></a>
                 <a href="#" :class="{ 'top-btn': true, active: page === 'settings' }" @click="showSettings"><span class="settings-image"></span></a>
