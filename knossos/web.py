@@ -362,7 +362,12 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(str)
     def openExternal(self, link):
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(link))
+        if ':\\' in link:
+            link = QtCore.QUrl.fromLocalFile(link)
+        else:
+            link = QtCore.QUrl(link)
+
+        QtGui.QDesktopServices.openUrl(link)
 
     @QtCore.Slot(str, str, result=str)
     def browseFolder(self, title, path):

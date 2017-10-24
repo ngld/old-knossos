@@ -771,12 +771,12 @@ class InstalledMod(Mod):
                 data = json.load(stream)
 
             mod = InstalledMod(None)
-            mod.folder = os.path.dirname(path)
+            mod.folder = os.path.normpath(os.path.dirname(path))
             mod.set(data)
             return mod
         elif path.lower().endswith('.ini'):
             mod = IniMod()
-            mod.folder = os.path.dirname(path)
+            mod.folder = os.path.normpath(os.path.dirname(path))
             mod.load(path)
             return mod
         else:
