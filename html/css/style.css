@@ -1042,11 +1042,10 @@ input {
 
 /* Details page */
 #details-page .img-frame {
-    max-height: 300px;
+    height: 300px;
     max-width: 1070px;
     background: rgb(100, 100, 100);
     position: relative;
-    text-align: center;
     overflow: hidden;
 }
 

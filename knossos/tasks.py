@@ -1332,16 +1332,22 @@ def run_task(task, cb=None):
 
 
 def create_retail_mod(dest_path):
-    # Remember to add any new files in html/images to configure.py, too!
+    # Remember to run tools/common/update_file_list.py if you add new files!
     files = {
-        'tile': ':/html/images/mod-retail.png'
+        'tile': ':/html/images/mod-retail.png',
+        'banner': ':/html/images/banner-retail.png'
     }
 
     mod = repo.InstalledMod({
         'title': 'Retail FS2',
         'id': 'FS2',
-        'version': '1.0',
+        'version': '1.20',
         'type': 'tc',
+        'description': 'The year is 2367, thirty two years after the Great War. Or at least that is what YOU thought was the Great War. The endless line of Shivan capital ships, bombers and fighters with super advanced technology was nearly overwhelming.<br><br>As the Terran and Vasudan races finish rebuilding their decimated societies, a disturbance lurks in the not-so-far reaches of the Gamma Draconis system.<br><br>Your nemeses have arrived... and they are wondering what happened to their scouting party.<br><hr>FreeSpace 2 is a 1999 space combat simulation computer game developed by Volition as the sequel to Descent: FreeSpace – The Great War. It was completed ahead of schedule in less than a year, and released to very positive reviews.<br><br>The game continues on the story from Descent: FreeSpace, once again thrusting the player into the role of a pilot fighting against the mysterious aliens, the Shivans. While defending the human race and its alien Vasudan allies, the player also gets involved in putting down a rebellion. The game features large numbers of fighters alongside gigantic capital ships in a battlefield fraught with beams, shells and missiles in detailed star systems and nebulae.',
+        'release_thread': 'http://www.hard-light.net/forums/index.php',
+        'videos': ['https://www.youtube.com/watch?v=ufViyhrXzTE'],
+        'first_release': '1999-09-30',
+        'last_update': '1999-12-03',
         'folder': dest_path
     })
 
