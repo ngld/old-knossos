@@ -95,6 +95,9 @@ def double_zero_string(val):
 def init_sdl():
     global sdl, SDL2, get_modes, list_joysticks, get_config_path
 
+    if sdl:
+        return
+
     if center.settings['sdl2_path']:
         try:
             sdl = load_lib(center.settings['sdl2_path'])
@@ -229,7 +232,8 @@ def init_sdl():
             for i in range(sdl.SDL_NumJoysticks()):
                 joys.append(sdl.SDL_JoystickNameForIndex(i).decode(ENCODING))
 
-            sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
+            # Initializing the subsystem takes a while so make sure we don't have to reinit on every call.
+            # sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
             return joys
 
         def get_config_path():
@@ -289,6 +293,9 @@ ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER = 0x311
 
 def init_openal():
     global alc
+
+    if alc:
+        return
 
     # Load OpenAL
     if center.settings['openal_path']:

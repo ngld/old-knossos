@@ -435,24 +435,37 @@ def write_fso_config(sections):
 
 
 def get_deviceinfo():
-    try:
-        info = json.loads(util.check_output(launcher.get_cmd(['--deviceinfo'])).strip())
-    except Exception:
-        logging.exception('Failed to retrieve device info!')
-        return None
+    from knossos import clibs
 
-    return info
+    clibs.init_sdl()
+    clibs.init_openal()
+
+    if clibs.can_detect_audio():
+        audio_devs = clibs.list_audio_devs()
+    else:
+        audio_devs = None
+
+    return {
+        'modes': clibs.get_modes(),
+        'audio_devs': audio_devs,
+        'joysticks': clibs.list_joysticks()
+    }
 
 
+_flag_cache = {}
 def get_fso_flags(fs2_bin):
     global fso_flags
-
-    if center.fso_flags is not None and center.fso_flags[0] == fs2_bin:
-        return center.fso_flags[1]
 
     if not os.path.isfile(fs2_bin):
         logging.warn('Tried to get flags for missing executable "%s"!' % fs2_bin)
         return None
+
+    if fs2_bin in _flag_cache:
+        mtime, flags = _flag_cache[fs2_bin]
+
+        st = os.stat(fs2_bin)
+        if st.st_mtime == mtime:
+            return flags
 
     flags_path = os.path.join(center.settings['base_path'], 'flags.lch')
     rc = runner.run_fs2_silent([fs2_bin, '-get_flags', '-parse_cmdline_only'])
@@ -467,7 +480,8 @@ def get_fso_flags(fs2_bin):
         with open(flags_path, 'rb') as stream:
             flags = FlagsReader(stream)
 
-    center.fso_flags = (center.settings['fs2_bin'], flags)
+    st = os.stat(fs2_bin)
+    _flag_cache[fs2_bin] = (st.st_mtime, flags)
     return flags
 
 
@@ -476,13 +490,11 @@ def get_fso_profile_path():
     global _profile_path
 
     if _profile_path is None:
-        try:
-            _profile_path = util.check_output(launcher.get_cmd(['--fso-config-path'])).strip()
-        except Exception:
-            logging.exception('Failed to retrieve FSO profile path from SDL!')
-            _profile_path = None
-        else:
-            logging.info('Using profile path "%s".', _profile_path)
+        from knossos import clibs
+
+        clibs.init_sdl()
+
+        return clibs.get_config_path()
 
     return _profile_path
 
