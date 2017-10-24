@@ -123,26 +123,6 @@ def get_settings_p2(cb):
     dev_info = get_deviceinfo()
     fso = {}
 
-    fs2_bins = OrderedDict()
-    fred_bins = OrderedDict()
-
-    for mid, mvs in center.installed.mods.items():
-        if mvs[0].mtype == 'engine':
-            for v in mvs:
-                for pkg in v.packages:
-                    for exe in pkg.executables:
-                        name = '%s - %s' % (v.title, v.version)
-                        if exe.get('debug'):
-                            name += ' (Debug)'
-
-                        if exe.get('fred'):
-                            fred_bins[name] = os.path.join(v.folder, exe['file'])
-                        else:
-                            fs2_bins[name] = os.path.join(v.folder, exe['file'])
-
-    fso['fs2_bins'] = fs2_bins
-    fso['fred_bins'] = fred_bins
-
     # ---Read fs2_open.ini or the registry---
     # Be careful with any change, the keys are all case sensitive.
     config = parse_fso_config()
@@ -172,6 +152,16 @@ def get_settings_p2(cb):
 
     # joysticks
     joystick_id = section.get('CurrentJoystick', None)
+    joystick_enable_hit = section.get('EnableHitEffect', False)
+    joystick_ff_strength = config.get('ForceFeedback', {}).get('Strength', 100)
+
+    # speech
+    speech_vol = section.get('SpeechVolume', 100)
+    speech_voice = section.get('SpeechVoice', 0)
+    speech_techroom = section.get('SpeechTechroom', 0)
+    speech_briefings = section.get('SpeechBriefings', 0)
+    speech_ingame = section.get('SpeechIngame', 0)
+    speech_multi = section.get('SpeechMulti', 0)
 
     # network settings
     net_connection = section.get('NetworkConnection', None)
@@ -248,7 +238,9 @@ def get_settings_p2(cb):
 
     # ---Joystick settings---
     fso['joysticks'] = dev_info['joysticks'] if dev_info else []
-    
+    fso['joystick_enable_hit'] = joystick_enable_hit
+    fso['joystick_ff_strength'] = joystick_ff_strength
+
     # TODO: Implement UUID handling
     if util.is_number(joystick_id):
         if joystick_id == '99999':
@@ -257,6 +249,16 @@ def get_settings_p2(cb):
             fso['joystick_id'] = int(joystick_id)
     else:
         fso['joystick_id'] = 'No Joystick'
+
+    # Speech
+    fso['speech_vol'] = speech_vol
+    fso['speech_voice'] = speech_voice
+    fso['voice_list'] = dev_info['voices']
+
+    fso['speech_techroom'] = speech_techroom
+    fso['speech_briefings'] = speech_briefings
+    fso['speech_ingame'] = speech_ingame
+    fso['speech_multi'] = speech_multi
 
     # ---Network settings---
     net_connections_read = {'none': 0, 'dialup': 1, 'LAN': 2}
@@ -329,7 +331,19 @@ def save_fso_settings(new_settings):
         if new_settings.get('joystick_id', 'No Joystick') == 'No Joystick':
             section['CurrentJoystick'] = 99999
         else:
-            section['CurrentJoystick'] = new_settings['joystick_id']
+            section['CurrentJoystickGUID'] = new_settings['joystick_id']
+
+        section['EnableHitEffect'] = new_settings['joystick_enable_hit']
+        config['ForceFeedback'] = {'Strength': new_settings['joystick_ff_strength']}
+
+        # Speech
+        section['SpeechVolume'] = new_settings['speech_vol']
+        section['SpeechVoice'] = new_settings['speech_voice']
+
+        section['SpeechTechroom'] = new_settings['speech_techroom']
+        section['SpeechBriefings'] = new_settings['speech_briefings']
+        section['SpeechIngame'] = new_settings['speech_ingame']
+        section['SpeechMulti'] = new_settings['speech_multi']
 
         # networking
         # net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
@@ -448,7 +462,8 @@ def get_deviceinfo():
     return {
         'modes': clibs.get_modes(),
         'audio_devs': audio_devs,
-        'joysticks': clibs.list_joysticks()
+        'joysticks': clibs.list_joysticks(),
+        'voices': clibs.list_voices()
     }
 
 

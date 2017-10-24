@@ -1,4 +1,11 @@
 <script>
+/**
+ * Current state:
+ *  - Global flags are missing (see thread and chief's idea regarding this)
+ *  - Network isn't implemented (read / write)
+ *  - Joystick isn't finished (read / write) and the buttons aren't working
+ */
+
 export default {
     props: [],
 
@@ -6,9 +13,6 @@ export default {
         knossos: {},
         fso: {},
         old_settings: {},
-        default_fs2_bin: null,
-        default_fred_bin: null,
-        caps: null,
 
         neb_user: '',
         neb_password: '',
@@ -22,15 +26,10 @@ export default {
             this.knossos = Object.assign({}, settings.knossos);
             this.fso = Object.assign({}, settings.fso);
             this.old_settings = settings;
-            this.default_fs2_bin = settings.knossos.fs2_bin;
-            this.default_fred_bin = settings.knossos.fred_bin;
 
             this.neb_user = this.knossos.neb_user;
         });
         fs2mod.getSettings();
-        call(fs2mod.getDefaultFsoCaps, (caps) => {
-            this.caps = JSON.parse(caps);
-        });
     },
 
     methods: {
@@ -70,24 +69,10 @@ export default {
 
         resetPassword() {
             fs2mod.nebResetPassword(this.neb_user);
-        }
-    },
-
-    watch: {
-        default_fs2_bin(new_bin) {
-            if(this.default_fs2_bin === null) return;
-
-            call(fs2mod.saveSetting, 'fs2_bin', JSON.stringify(new_bin), () => {
-                call(fs2mod.getDefaultFsoCaps, (caps) => {
-                    this.caps = JSON.parse(caps);
-                });
-            });
         },
 
-        default_fred_bin(new_bin) {
-            if(this.default_fred_bin === null) return;
-
-            fs2mod.saveSetting('fred_bin', JSON.stringify(new_bin));
+        testVoice() {
+            fs2mod.testVoice(parseInt(this.fso.speech_voice), parseInt(this.fso.speech_vol), 'Test');
         }
     }
 };
@@ -125,29 +110,6 @@ export default {
                     </div>
                 </div>
             </kn-drawer>
-
-            <!--We're not using this anymore!
-            <kn-drawer label="Exec">
-                <div class="settings-exp drawer-exp">Manage the default executable Knossos will choose</div>
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">FSO Exec:</label>
-                    <div class="col-sm-8">
-                        <select v-model="default_fs2_bin">
-                            <option v-for="(bin, title) in fso.fs2_bins" :value="bin">{{ title }}</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">FRED Exec:</label>
-                    <div class="col-sm-8">
-                        <select v-model="default_fred_bin">
-                            <option v-for="(bin, title) in fso.fred_bins" :value="bin">{{ title }}</option>
-                        </select>
-                    </div>
-                </div>
-            </kn-drawer>
-            -->
 
             <kn-drawer label="Video">
                 <div class="settings-exp drawer-exp">Set your default video settings and resolution</div>
@@ -247,15 +209,17 @@ export default {
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Voice:</label>
                     <div class="col-sm-8">
-                        <select disabled></select>
+                        <select v-model="fso.speech_voice">
+                            <option v-for="voice, id in fso.voice_list" :value="id" :key="id">{{ voice }}</option>
+                        </select>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Volume:</label>
                     <div class="col-sm-8">
-                        <input type="range" min="0" max="100" style="width: calc(100% - 80px); display: inline-block;" disabled>
-                        <button disabled>Test</button>
+                        <input type="range" min="0" max="100" style="width: calc(100% - 80px); display: inline-block;" v-model="fso.speech_vol">
+                        <button @click.prevent="testVoice">Test</button>
                     </div>
                 </div>
 
@@ -263,21 +227,21 @@ export default {
                     <label class="col-sm-4 control-label">Use Speech In:</label>
                     <div class="col-sm-4">
                         Tech Room:
-                        <input type="checkbox" disabled>
+                        <input type="checkbox" v-model="fso.speech_techroom">
                     </div>
                     <div class="col-sm-4">
                         In-Game:
-                        <input type="checkbox" disabled>
+                        <input type="checkbox" v-model="fso.speech_ingame">
                     </div>
                 </div>
                 <div class="form-group">
                     <div class="col-sm-4 col-sm-offset-4">
                         Briefings:
-                        <input type="checkbox" disabled>
+                        <input type="checkbox" v-model="fso.speech_briefings">
                     </div>
                     <div class="col-sm-4">
                         Multiplayer:
-                        <input type="checkbox" disabled>
+                        <input type="checkbox" v-model="fso.speech_multi">
                     </div>
                 </div>
             </kn-drawer>
@@ -289,26 +253,29 @@ export default {
                     <div class="col-sm-8">
                         <select v-model="fso.joystick_id">
                             <option>No Joystick</option>
-                            <option v-for="(joy, i) in fso.joysticks" :value="i">{{ joy }}</option>
+                            <option v-for="(joy, id) in fso.joysticks" :value="id" :key="id">{{ joy }}</option>
                         </select>
                     </div>
                 </div>
 
+                <!--
                 <div class="form-group">
                     <div class="col-sm-8 col-sm-offset-5">
                         <button disabled>Detect</button>
                         <button disabled>Calibrate</button>
                     </div>
                 </div>
+                -->
 
                 <div class="form-group">
                     <div class="col-sm-4 col-sm-offset-4">
                         Force Feedback:
-                        <input type="checkbox" disabled>
+                        <!-- TODO: This should be a slider -->
+                        <input type="checkbox" v-model="fso.joystick_ff_strength" value="100">
                     </div>
                     <div class="col-sm-4">
                         Directional Hit:
-                        <input type="checkbox" disabled>
+                        <input type="checkbox" v-model="fso.joystick_enable_hit">
                     </div>
                 </div>
             </kn-drawer>
@@ -350,14 +317,6 @@ export default {
                     </div>
                 </div>
             </kn-drawer>
-            
-
-            <!--
-            <kn-drawer label="Flag Defaults">
-                <div class="settings-exp drawer-exp">Create the default flag set that Knossos will use if a mod or TC does not provide one</div>
-                <kn-flag-editor :caps="caps" :cmdline="''" ref="flagEditor"></kn-flag-editor>
-            </kn-drawer>
-            -->
         </div>
     </div>
 </template>

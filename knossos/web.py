@@ -23,8 +23,9 @@ import stat
 import sqlite3
 import semantic_version
 
+from threading import Thread
 from .qt import QtCore, QtGui, QtWidgets, QtWebChannel
-from . import center, runner, repo, windows, tasks, util, settings, nebula
+from . import center, runner, repo, windows, tasks, util, settings, nebula, clibs
 
 if not QtWebChannel:
     from .qt import QtWebKit
@@ -1022,6 +1023,10 @@ class WebBridge(QtCore.QObject):
         center.main_win.update_mod_list()
 
         return True
+
+    @QtCore.Slot(int, int, str)
+    def testVoice(self, voice, volume, text):
+        Thread(target=clibs.speak, args=(voice, volume, text)).start()
 
 
 if QtWebChannel:

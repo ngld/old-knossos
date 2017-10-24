@@ -18,6 +18,9 @@ import sys
 import logging
 import ctypes.util
 
+if sys.platform == 'win32':
+    from comtypes import client as cc
+
 from . import uhf
 uhf(__name__)
 
@@ -169,6 +172,12 @@ def init_sdl():
 
         sdl.SDL_JoystickNameForIndex.argtypes = [ctypes.c_int]
         sdl.SDL_JoystickNameForIndex.restype = ctypes.c_char_p
+
+        sdl.SDL_JoystickGetDeviceGUID.argtypes = [ctypes.c_int]
+        sdl.SDL_JoystickGetDeviceGUID.restype = c_any_pointer
+
+        sdl.SDL_JoystickGetGUIDString.argtypes = [c_any_pointer, ctypes.c_char_p, ctypes.c_int]
+        sdl.SDL_JoystickGetGUIDString.restype = None
 
         # SDL_filesystem.h
         sdl.SDL_GetPrefPath.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
@@ -409,6 +418,35 @@ def get_gtk_theme():
         return g_object_get_string(settings, 'gtk-theme-name')
     else:
         return None
+
+
+def list_voices():
+    if sys.platform != 'win32':
+        return []
+
+    try:
+        voice = cc.CreateObject('SAPI.SpVoice')
+        return [v.GetDescription() for v in voice.GetVoices()]
+    except Exception:
+        logging.exception('Failed to retrieve voices!')
+        return []
+
+
+def speak(voice, volume, text):
+    if sys.platform != 'win32':
+        return False
+
+    try:
+        hdl = cc.CreateObject('SAPI.SpVoice')
+        hdl.Voice = hdl.GetVoices()[voice]
+        hdl.Volume = volume
+        hdl.Speak(text, 19)
+        hdl.WaitUntilDone(10000)
+
+        return True
+    except Exception:
+        logging.exception('Failed to speak!')
+        return False
 
 
 if sys.platform == 'win32':
