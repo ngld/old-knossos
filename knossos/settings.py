@@ -238,7 +238,7 @@ def get_settings_p2(cb):
 
     # ---Joystick settings---
     fso['joysticks'] = dev_info['joysticks'] if dev_info else []
-    fso['joystick_enable_hit'] = joystick_enable_hit
+    fso['joystick_enable_hit'] = joystick_enable_hit == '1'
     fso['joystick_ff_strength'] = joystick_ff_strength
 
     # TODO: Implement UUID handling
@@ -255,10 +255,10 @@ def get_settings_p2(cb):
     fso['speech_voice'] = speech_voice
     fso['voice_list'] = dev_info['voices']
 
-    fso['speech_techroom'] = speech_techroom
-    fso['speech_briefings'] = speech_briefings
-    fso['speech_ingame'] = speech_ingame
-    fso['speech_multi'] = speech_multi
+    fso['speech_techroom'] = speech_techroom == '1'
+    fso['speech_briefings'] = speech_briefings == '1'
+    fso['speech_ingame'] = speech_ingame == '1'
+    fso['speech_multi'] = speech_multi == '1'
 
     # ---Network settings---
     net_connections_read = {'none': 0, 'dialup': 1, 'LAN': 2}
@@ -333,17 +333,17 @@ def save_fso_settings(new_settings):
         else:
             section['CurrentJoystickGUID'] = new_settings['joystick_id']
 
-        section['EnableHitEffect'] = new_settings['joystick_enable_hit']
+        section['EnableHitEffect'] = 1 if new_settings['joystick_enable_hit'] else 0
         config['ForceFeedback'] = {'Strength': new_settings['joystick_ff_strength']}
 
         # Speech
         section['SpeechVolume'] = new_settings['speech_vol']
         section['SpeechVoice'] = new_settings['speech_voice']
 
-        section['SpeechTechroom'] = new_settings['speech_techroom']
-        section['SpeechBriefings'] = new_settings['speech_briefings']
-        section['SpeechIngame'] = new_settings['speech_ingame']
-        section['SpeechMulti'] = new_settings['speech_multi']
+        section['SpeechTechroom'] = 1 if new_settings['speech_techroom'] else 0
+        section['SpeechBriefings'] = 1 if new_settings['speech_briefings'] else 0
+        section['SpeechIngame'] = 1 if new_settings['speech_ingame'] else 0
+        section['SpeechMulti'] = 1 if new_settings['speech_multi'] else 0
 
         # networking
         # net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
@@ -421,7 +421,7 @@ def parse_fso_config():
 
                 name = line[1:end]
                 sections[name] = current = {}
-            elif not line.startswith((';', '#')):
+            elif not line.startswith((';', '#')) and line.strip() != '':
                 middle = line.find('=')
 
                 if not middle:

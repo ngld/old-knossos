@@ -13,6 +13,7 @@ export default {
         knossos: {},
         fso: {},
         old_settings: {},
+        ff_enabled: false,
 
         neb_user: '',
         neb_password: '',
@@ -28,6 +29,7 @@ export default {
             this.old_settings = settings;
 
             this.neb_user = this.knossos.neb_user;
+            this.ff_enabled = settings.fso.joystick_ff_strength == 100;
         });
         fs2mod.getSettings();
     },
@@ -40,7 +42,8 @@ export default {
         },
 
         save() {
-            this.knossos['max_downloads'] = parseInt(this.knossos['max_downloads']);
+            this.fso.joystick_ff_strength = this.ff_enabled ? 100 : 0;
+
             for(let set of ['base_path', 'max_downloads', 'use_raven']) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
@@ -49,7 +52,7 @@ export default {
 
             let fso = Object.assign({}, this.fso);
             for(let key of Object.keys(this.old_settings.fso)) {
-                if(!fso[key]) fso[key] = this.old_settings.fso[key];
+                if(fso[key] === undefined) fso[key] = this.old_settings.fso[key];
             }
 
             fs2mod.saveFsoSettings(JSON.stringify(fso));
@@ -99,7 +102,7 @@ export default {
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Max Downloads:</label>
                     <div class="col-sm-8">
-                        <input type="number" style="width: 50px" v-model="knossos.max_downloads">
+                        <input type="number" style="width: 50px" v-model.number="knossos.max_downloads">
                     </div>
                 </div>
 
@@ -271,7 +274,7 @@ export default {
                     <div class="col-sm-4 col-sm-offset-4">
                         Force Feedback:
                         <!-- TODO: This should be a slider -->
-                        <input type="checkbox" v-model="fso.joystick_ff_strength" value="100">
+                        <input type="checkbox" v-model="ff_enabled">
                     </div>
                     <div class="col-sm-4">
                         Directional Hit:
@@ -279,8 +282,6 @@ export default {
                     </div>
                 </div>
             </kn-drawer>
-
-            
 
             <kn-drawer label="Network">
                 <div class="settings-exp drawer-exp">Manage your network settings for multiplayer</div>
