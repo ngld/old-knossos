@@ -538,6 +538,7 @@ class Package(object):
     status = 'recommended'
     dependencies = None
     environment = None
+    is_vp = False
     files = None
     filelist = None
     executables = None
@@ -560,6 +561,7 @@ class Package(object):
         self.status = values.get('status', 'recommended').lower()
         self.dependencies = values.get('dependencies', [])
         self.environment = values.get('environment', '')
+        self.is_vp = values.get('is_vp', False)
         self.files = {}
         self.filelist = values.get('filelist', [])
         self.executables = []
@@ -597,6 +599,7 @@ class Package(object):
             'status': self.status,
             'dependencies': self.dependencies,
             'environment': self.environment,
+            'is_vp': self.is_vp,
             'files': list(self.files.values()),
             'filelist': self.filelist,
             'executables': self.executables

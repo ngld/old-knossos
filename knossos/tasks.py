@@ -774,6 +774,7 @@ class UploadTask(progress.MultistepTask):
     _mod = None
     _dir = None
     _login_failed = False
+    _duplicate = False
     _reason = None
     _msg = None
     _success = False
@@ -783,6 +784,9 @@ class UploadTask(progress.MultistepTask):
         'unsupported archive checksum': 'your client sent an invalid checksum. You probably need to update.',
         'archive missing': 'one of your archives failed to upload.'
     }
+    _question = QtCore.Signal()
+    _question_result = False
+    _question_cond = None
 
     def __init__(self, mod):
         super(UploadTask, self).__init__()
@@ -798,6 +802,8 @@ class UploadTask(progress.MultistepTask):
         }
 
         self.done.connect(self.finish)
+        self._question.connect(self.show_question)
+        self._question_cond = threading.Condition()
 
     def _track_progress(self, prog, text):
         with self._progress_lock:
@@ -809,6 +815,20 @@ class UploadTask(progress.MultistepTask):
                 total += prog
 
             self.progress.emit((total / max(1, len(self._slot_prog)), self._slot_prog, 'Uploading mod...'))
+
+    def abort(self):
+        self._local.slot = 'total'
+        progress.update(1, 'Aborted')
+
+        super(UploadTask, self).abort()
+
+    def show_question(self):
+        res = QtWidgets.QMessageBox.question(None, 'Knossos', 'This mod has already been uploaded if you continue your' +
+            'changes will be uploaded but the files will be left unchanged. Continue?')
+
+        self._question_result = res == QtWidgets.QMessageBox.Yes
+        with self._question_cond:
+            self._question_cond.notify()
 
     def init1(self):
         self._local.slot = 'total'
@@ -836,67 +856,82 @@ class UploadTask(progress.MultistepTask):
                 client.update_mod(self._mod)
 
             progress.update(0.13, 'Performing pre-flight checks...')
-            client.preflight_release(self._mod)
+            try:
+                client.preflight_release(self._mod)
+            except nebula.RequestFailedException as exc:
+                if exc.args[0] == 'duplicated version':
+                    with self._question_cond:
+                        self._question.emit()
+                        self._question_cond.wait()
 
-            progress.update(0.15, 'Scanning files...')
-            archives = []
-            fnames = {}
-            conflicts = {}
-            for pkg in self._mod.packages:
-                ar_name = pkg.name + '.7z'
-                pkg_path = os.path.join(self._mod.folder, pkg.folder)
-                pkg.filelist = []
+                        if not self._question_result:
+                            self._reason = 'aborted'
+                            self.abort()
+                            return
 
-                for sub, dirs, files in os.walk(pkg_path):
-                    relsub = os.path.relpath(sub, pkg_path)
-                    for fn in files:
-                        path = os.path.join(sub, fn)
-                        relpath = os.path.join(relsub, fn)
+                    self._duplicate = True
+                else:
+                    raise
 
-                        pkg.filelist.append({
-                            'filename': relpath,
-                            'archive': ar_name,
-                            'orig_name': relpath,
-                            'checksum': None
-                        })
+            if not self._duplicate:
+                progress.update(0.15, 'Scanning files...')
+                archives = []
+                fnames = {}
+                conflicts = {}
+                for pkg in self._mod.packages:
+                    ar_name = pkg.name + '.7z'
+                    pkg_path = os.path.join(self._mod.folder, pkg.folder)
+                    pkg.filelist = []
 
-                        if relpath in fnames:
-                            l = conflicts.setdefault(relpath, [fnames[relpath].name])
-                            l.append(pkg.name)
+                    for sub, dirs, files in os.walk(pkg_path):
+                        relsub = os.path.relpath(sub, pkg_path)
+                        for fn in files:
+                            relpath = os.path.join(relsub, fn)
 
-                        fnames[relpath] = pkg
+                            pkg.filelist.append({
+                                'filename': relpath,
+                                'archive': ar_name,
+                                'orig_name': relpath,
+                                'checksum': None
+                            })
 
-                archives.append(pkg)
-                self._slot_prog[pkg.name] = (pkg.name + '.7z', 0, 'Waiting...')
+                            if relpath in fnames:
+                                l = conflicts.setdefault(relpath, [fnames[relpath].name])
+                                l.append(pkg.name)
 
-            if conflicts:
-                msg = ''
-                for name in sorted(conflicts.keys()):
-                    msg += '\n%s is in %s' % (name, util.human_list(conflicts[name]))
+                            fnames[relpath] = pkg
 
-                self._reason = 'conflict'
-                self._msg = msg
-                self.abort()
-                return
+                    archives.append(pkg)
+                    self._slot_prog[pkg.name] = (pkg.name + '.7z', 0, 'Waiting...')
 
-            self._slot_prog['#checksums'] = ('Checksums', 0, '')
-            self._local.slot = '#checksums'
+                if conflicts:
+                    msg = ''
+                    for name in sorted(conflicts.keys()):
+                        msg += '\n%s is in %s' % (name, util.human_list(conflicts[name]))
 
-            fc = float(len(fnames))
-            done = 0
-            for pkg in self._mod.packages:
-                pkg_path = os.path.join(self._mod.folder, pkg.folder)
+                    self._reason = 'conflict'
+                    self._msg = msg
+                    self.abort()
+                    return
 
-                for fn in pkg.filelist:
-                    progress.update(done / fc, fn['filename'])
-                    fn['checksum'] = util.gen_hash(os.path.join(pkg_path, fn['filename']))
-                    done += 1
+                self._slot_prog['#checksums'] = ('Checksums', 0, '')
+                self._local.slot = '#checksums'
 
-            progress.update(1, 'Done')
-            self._local.slot = 'total'
+                fc = float(len(fnames))
+                done = 0
+                for pkg in self._mod.packages:
+                    pkg_path = os.path.join(self._mod.folder, pkg.folder)
 
-            progress.update(0.2, 'Uploading...')
-            self.add_work(archives)
+                    for fn in pkg.filelist:
+                        progress.update(done / fc, fn['filename'])
+                        fn['checksum'] = util.gen_hash(os.path.join(pkg_path, fn['filename']))
+                        done += 1
+
+                progress.update(1, 'Done')
+                self._local.slot = 'total'
+
+                progress.update(0.2, 'Uploading...')
+                self.add_work(archives)
         except nebula.AccessDeniedException:
             self._reason = 'unauthorized'
             self.abort()
@@ -971,7 +1006,12 @@ class UploadTask(progress.MultistepTask):
 
         try:
             progress.update(0.8, 'Finishing...')
-            self._client.create_release(self._mod)
+
+            if self._duplicate:
+                self._client.update_release(self._mod)
+            else:
+                self._client.create_release(self._mod)
+
             progress.update(1, 'Done')
             self._success = True
         except nebula.AccessDeniedException:
@@ -1003,6 +1043,9 @@ class UploadTask(progress.MultistepTask):
         elif self._reason == 'conflict':
             QtWidgets.QMessageBox.critical(None, 'Knossos', "I can't upload this mod because at least one file is " +
                 "contained in multiple packages.\n" + self._msg)
+        elif self._reason == 'aborted':
+            # No message here
+            pass
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'An unexpected error occured! Sorry...')
 

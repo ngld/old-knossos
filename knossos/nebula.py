@@ -140,7 +140,7 @@ class NebulaClient(object):
 
         raise RequestFailedException(data.get('reason'))
 
-    def create_release(self, mod):
+    def _prepare_release(self, mod):
         meta = mod.get()
 
         for prop in ('screenshots', 'attachments'):
@@ -163,7 +163,26 @@ class NebulaClient(object):
                 meta['banner'] = util.gen_hash(image)[1]
                 self.upload_file('banner', image)
 
+        return meta
+
+    def create_release(self, mod):
+        meta = self._prepare_release(mod)
         result = self._call('mod/release', check_code=True, json=meta)
+        data = result.json()
+        if not data:
+            raise RequestFailedException('unknown')
+
+        if data['result']:
+            return True
+
+        if data.get('reason') == 'unauthorized':
+            raise AccessDeniedException(data['reason'])
+
+        raise RequestFailedException(data.get('reason'))
+
+    def update_release(self, mod):
+        meta = self._prepare_release(mod)
+        result = self._call('mod/release/update', check_code=True, json=meta)
         data = result.json()
         if not data:
             raise RequestFailedException('unknown')
