@@ -1395,6 +1395,8 @@ def create_retail_mod(dest_path):
         'banner': ':/html/images/banner-retail.png'
     }
 
+    screenshots = []
+
     mod = repo.InstalledMod({
         'title': 'Retail FS2',
         'id': 'FS2',
@@ -1436,6 +1438,14 @@ def create_retail_mod(dest_path):
             stream.write(read_file(path, decode=False))
 
         setattr(mod, prop, im_path)
+
+    for i, path in enumerate(screenshots):
+        ext = os.path.splitext(path)[1]
+        im_path = os.path.join(dest_path, 'kn_screen_' + str(i) + '.' + ext)
+        with open(im_path, 'wb') as stream:
+            stream.write(read_file(path, decode=False))
+
+        mod.screenshots.append(im_path)
 
     center.installed.add_mod(mod)
     mod.save()
