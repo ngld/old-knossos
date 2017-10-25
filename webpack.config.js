@@ -39,6 +39,14 @@ const config = {
       {
         test: /\.vue$/,
         use: ['vue-loader']
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader']
+      },
+      {
+        test: /\.(png|svg|gif|ttf|woff2?)$/,
+        use: ['file-loader']
       }
     ]
   }
@@ -48,7 +56,8 @@ module.exports = [
   Object.assign({}, config, {
     output: {
       filename: 'bundle.js',
-      path: path.resolve(__dirname, 'html/dist')
+      path: path.resolve(__dirname, 'html/dist'),
+      publicPath: 'dist/'
     },
     plugins: config.plugins.concat([
       new webpack.DefinePlugin({
@@ -65,7 +74,8 @@ module.exports = [
   Object.assign({}, config, {
     output: {
       filename: 'debug_bundle.js',
-      path: path.resolve(__dirname, 'html/dist')
+      path: path.resolve(__dirname, 'html/dist'),
+      publicPath: 'dist/'
     },
     plugins: config.plugins.concat([
       new webpack.DefinePlugin({

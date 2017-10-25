@@ -17,8 +17,11 @@
   },
   "homepage": "https://github.com/ngld/knossos#readme",
   "devDependencies": {
+    "blueimp-gallery": "^2.27.1",
     "buble-loader": "^0.4.1",
     "css-loader": "^0.28.7",
+    "file-loader": "^1.1.5",
+    "style-loader": "^0.19.0",
     "vue": "^2.4.2",
     "vue-loader": "^13.0.4",
     "vue-template-compiler": "^2.4.2",

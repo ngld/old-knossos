@@ -696,7 +696,7 @@ class WebBridge(QtCore.QObject):
             return
 
         mod.description = data['description']
-        for prop in ('logo', 'tile', 'banner'):
+        for prop in ('logo', 'tile', 'banner', 'screenshots', 'attachments'):
             setattr(mod, prop, data[prop])
 
         mod.release_thread = data['release_thread']

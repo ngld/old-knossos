@@ -384,6 +384,8 @@ class Mod(object):
     notes = ''
     release_thread = None
     videos = None
+    screenshots = None
+    attachments = None
     first_release = None
     last_update = None
     actions = None
@@ -418,6 +420,8 @@ class Mod(object):
         self.notes = values.get('notes', '')
         self.release_thread = values.get('release_thread', None)
         self.videos = values.get('videos', [])
+        self.screenshots = values.get('screenshots', [])
+        self.attachments = values.get('attachments', [])
         self.first_release = values.get('first_release', None)
         self.last_update = values.get('last_update', None)
         self.actions = values.get('actions', [])
@@ -445,6 +449,15 @@ class Mod(object):
                         setattr(self, prop, os.path.abspath(os.path.join(base, values[prop])))
                     else:
                         setattr(self, prop, values[prop])
+
+            for prop in ('screenshots', 'attachments'):
+                ims = getattr(self, prop)
+                for i, path in enumerate(ims):
+                    if '://' in base:
+                        ims[i] = util.url_join(base, path)
+                    elif '://' not in path:
+                        ims[i] = os.path.abspath(os.path.join(base, path))
+
         else:
             for prop in ('logo', 'tile', 'banner'):
                 setattr(self, prop, values.get(prop))
@@ -479,6 +492,8 @@ class Mod(object):
             'notes': self.notes,
             'release_thread': self.release_thread,
             'videos': self.videos,
+            'screenshots': self.screenshots,
+            'attachments': self.attachments,
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
             'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
             'actions': self.actions,
@@ -822,6 +837,8 @@ class InstalledMod(Mod):
             'banner': self.banner,
             'release_thread': self.release_thread,
             'videos': self.videos,
+            'screenshots': self.screenshots[:],
+            'attachments': self.attachments[:],
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
             'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
             'cmdline': self.cmdline,
@@ -886,6 +903,11 @@ class InstalledMod(Mod):
         for prop in ('logo', 'tile', 'banner'):
             if info[prop] and '://' not in info[prop]:
                 info[prop] = os.path.relpath(info[prop], modpath)
+
+        for prop in ('screenshots', 'attachments'):
+            paths = info[prop]
+            for i, p in enumerate(paths):
+                paths[i] = os.path.relpath(p, modpath)
 
         with open(path, 'w') as stream:
             json.dump(info, stream)

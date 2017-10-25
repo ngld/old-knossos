@@ -85,18 +85,18 @@ class NebulaClient(object):
         return result.json()['mods']
 
     def _upload_mod_logos(self, mod):
-        chks = []
+        chks = [None, None]
 
-        for prop in ('logo', 'tile', 'banner'):
+        for i, prop in enumerate(('logo', 'tile')):
             im = getattr(mod, prop)
             if im and os.path.isfile(im):
-                chks.append(util.gen_hash(im)[1])
+                chks[i] = util.gen_hash(im)[1]
                 self.upload_file(prop, im)
 
         return chks
 
     def create_mod(self, mod):
-        logo_chk, tile_chk, banner_chk = self._upload_mod_logos(mod)
+        logo_chk, tile_chk = self._upload_mod_logos(mod)
 
         self._call('mod/create', check_code=True, json={
             'id': mod.mid,
@@ -104,27 +104,30 @@ class NebulaClient(object):
             'type': mod.mtype,
             'logo': logo_chk,
             'tile': tile_chk,
-            'banner': banner_chk,
             'members': []
         })
         return True
 
     def update_mod(self, mod):
         # TODO: Check if these actually changed
-        logo_chk, tile_chk, banner_chk = self._upload_mod_logos(mod)
+        logo_chk, tile_chk = self._upload_mod_logos(mod)
 
         self._call('mod/update', check_code=True, json={
             'id': mod.mid,
             'title': mod.title,
             'logo': logo_chk,
             'tile': tile_chk,
-            'banner': banner_chk,
             'members': [center.settings['neb_user']]
         })
         return True
 
     def preflight_release(self, mod):
-        result = self._call('mod/release/preflight', check_code=True, json=mod.get())
+        meta = mod.get()
+        meta['screenshots'] = []
+        meta['attachments'] = []
+        meta['banner'] = ''
+
+        result = self._call('mod/release/preflight', check_code=True, json=meta)
         data = result.json()
         if not data:
             raise RequestFailedException()
@@ -138,7 +141,29 @@ class NebulaClient(object):
         raise RequestFailedException(data.get('reason'))
 
     def create_release(self, mod):
-        result = self._call('mod/release', check_code=True, json=mod.get())
+        meta = mod.get()
+
+        for prop in ('screenshots', 'attachments'):
+            sums = []
+            for fn in meta[prop]:
+                path = os.path.join(mod.folder, fn)
+
+                if os.path.isfile(path):
+                    chk = util.gen_hash(path)[1]
+
+                    self.upload_file(fn, path)
+                    sums.append(chk)
+
+            meta[prop] = sums
+
+        if meta['banner']:
+            image = os.path.join(mod.folder, meta['banner'])
+
+            if os.path.isfile(image):
+                meta['banner'] = util.gen_hash(image)[1]
+                self.upload_file('banner', image)
+
+        result = self._call('mod/release', check_code=True, json=meta)
         data = result.json()
         if not data:
             raise RequestFailedException('unknown')

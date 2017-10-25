@@ -206,6 +206,7 @@ export default {
         },
 
         saveDetails() {
+            console.log(this.selected_mod);
             let mod = Object.assign({}, this.selected_mod);
             delete mod.packages;
             delete mod.cmdline;
@@ -265,27 +266,6 @@ export default {
             return this.fso_build && this.fso_build.indexOf('#') > -1;
         },
 
-        swapFlagMod(idx, dir) {
-            let other = idx + dir;
-            let mod_flag = this.selected_mod.mod_flag;
-
-            if(other < 0) return;
-            if(other >= mod_flag.length) return;
-
-            // We have to create a new copy of the array and can't simply swap these in-place otherwise Vue.js gets confused
-            // and can't detect the change.
-            let new_mod_flag = mod_flag.slice(0, Math.min(other, idx));
-            if(dir === -1) {
-                new_mod_flag.push(mod_flag[idx]);
-                new_mod_flag.push(mod_flag[other]);
-            } else {
-                new_mod_flag.push(mod_flag[other]);
-                new_mod_flag.push(mod_flag[idx]);
-            }
-
-            this.selected_mod.mod_flag = new_mod_flag.concat(mod_flag.slice(Math.max(other, idx) + 1));
-        },
-
         saveModFlag() {
             fs2mod.saveModFlag(this.selected_mod.id, this.selected_mod.version, this.selected_mod.mod_flag);
         },
@@ -343,25 +323,44 @@ export default {
             this.edit_dep = false;
         },
 
-        swapDep(idx, dir) {
+        _swapHelper(list, idx, dir) {
             let other = idx + dir;
-            let deps = this.selected_pkg.dependencies;
 
-            if(other < 0) return;
-            if(other >= deps.length) return;
+            if(other < 0) return list;
+            if(other >= list.length) return list;
 
             // We have to create a new copy of the array and can't simply swap these in-place otherwise Vue.js gets confused
             // and can't detect the change.
-            let new_deps = deps.slice(0, Math.min(other, idx));
+            let new_list = list.slice(0, Math.min(other, idx));
             if(dir === -1) {
-                new_deps.push(deps[idx]);
-                new_deps.push(deps[other]);
+                new_list.push(list[idx]);
+                new_list.push(list[other]);
             } else {
-                new_deps.push(deps[other]);
-                new_deps.push(deps[idx]);
+                new_list.push(list[other]);
+                new_list.push(list[idx]);
             }
 
-            this.selected_pkg.dependencies = new_deps.concat(deps.slice(Math.max(other, idx) + 1));
+            return new_list.concat(list.slice(Math.max(other, idx) + 1));
+        },
+
+        swapFlagMod(idx, dir) {
+            this.selected_mod.mod_flag = this._swapHelper(this.selected_mod.mod_flag, idx, dir);
+        },
+
+        swapDep(idx, dir) {
+            this.selected_pkg.dependencies = this._swapHelper(this.selected_pkg.dependencies, idx, dir);
+        },
+
+        swapScreens(idx, dir) {
+            this.selected_mod.screenshots = this._swapHelper(this.selected_mod.screenshots, idx, dir);
+        },
+
+        addScreen() {
+            call(fs2mod.selectImage, this.selected_mod.folder + '/dummy', (new_path) => {
+                if(new_path !== '') {
+                    this.selected_mod.screenshots.push(new_path);
+                }
+            });
         },
 
         addExe() {
@@ -619,6 +618,21 @@ export default {
                                     <textarea class="form-control" v-model="video_urls"></textarea>
 
                                     <span class="help-block">You can put YouTube links here, one per line.</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="col-xs-3 control-label">Screenshots</label>
+                                <div class="col-xs-9">
+                                    <div v-for="img, i in selected_mod.screenshots">
+                                        <img :src="'file://' + img">
+                                        <button class="btn btn-small btn-default" @click.prevent="swapScreens(i, -1)"><i class="fa fa-chevron-up"></i></button>
+                                        <button class="btn btn-small btn-default" @click.prevent="swapScreens(i, 1)"><i class="fa fa-chevron-down"></i></button>
+                                        <button class="btn btn-small btn-default" @click.prevent="selected_mod.screenshots.splice(i, 1)"><i class="fa fa-times"></i></button>
+                                    </div>
+
+                                    <br>
+                                    <button class="btn btn-default" @click.prevent="addScreen">Add Screenshot</button>
                                 </div>
                             </div>
 

@@ -447,6 +447,20 @@ class InstallTask(progress.MultistepTask):
 
                 setattr(mod, prop, dest)
 
+        for prop in ('screenshots', 'attachments'):
+            im_paths = getattr(mod, prop)
+            for i, path in enumerate(im_paths):
+                ext = os.path.splitext(path)[1]
+                dest = os.path.join(mod.folder, 'kn_' + prop + '_' + str(i) + ext)
+
+                if '://' in path:
+                    with open(dest, 'wb') as fobj:
+                        util.download(path, fobj)
+                else:
+                    shutil.copyfile(path, dest)
+
+                im_paths[i] = dest
+
     def init2(self):
         archives = set()
         downloads = []
