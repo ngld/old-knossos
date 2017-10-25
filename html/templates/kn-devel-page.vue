@@ -748,6 +748,17 @@ export default {
                                 </div>
                             </div>
 
+                            <div class="form-group" v-if="selected_mod.type !== 'engine' && selected_mod.type !== 'engine'">
+                                <div class="col-xs-9 col-xs-offset-3">
+                                    <div class="checkbox">
+                                        <label>
+                                            <input type="checkbox" v-model="selected_pkg.is_vp">
+                                            Pack the contents as .VP
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="form-group">
                                 <label class="col-xs-3 control-label">Dependencies</label>
                                 <div class="col-xs-9">

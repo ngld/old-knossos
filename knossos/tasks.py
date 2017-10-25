@@ -29,7 +29,7 @@ import time
 import re
 import semantic_version
 
-from . import center, util, progress, nebula, repo
+from . import center, util, progress, nebula, repo, vplib
 from .repo import Repo
 from .qt import QtCore, QtWidgets, read_file
 
@@ -883,23 +883,24 @@ class UploadTask(progress.MultistepTask):
                     pkg_path = os.path.join(self._mod.folder, pkg.folder)
                     pkg.filelist = []
 
-                    for sub, dirs, files in os.walk(pkg_path):
-                        relsub = os.path.relpath(sub, pkg_path)
-                        for fn in files:
-                            relpath = os.path.join(relsub, fn)
+                    if not pkg.is_vp:
+                        for sub, dirs, files in os.walk(pkg_path):
+                            relsub = os.path.relpath(sub, pkg_path)
+                            for fn in files:
+                                relpath = os.path.join(relsub, fn)
 
-                            pkg.filelist.append({
-                                'filename': relpath,
-                                'archive': ar_name,
-                                'orig_name': relpath,
-                                'checksum': None
-                            })
+                                pkg.filelist.append({
+                                    'filename': relpath,
+                                    'archive': ar_name,
+                                    'orig_name': relpath,
+                                    'checksum': None
+                                })
 
-                            if relpath in fnames:
-                                l = conflicts.setdefault(relpath, [fnames[relpath].name])
-                                l.append(pkg.name)
+                                if relpath in fnames:
+                                    l = conflicts.setdefault(relpath, [fnames[relpath].name])
+                                    l.append(pkg.name)
 
-                            fnames[relpath] = pkg
+                                fnames[relpath] = pkg
 
                     archives.append(pkg)
                     self._slot_prog[pkg.name] = (pkg.name + '.7z', 0, 'Waiting...')
@@ -949,17 +950,48 @@ class UploadTask(progress.MultistepTask):
     def work1(self, pkg):
         self._local.slot = pkg.name
 
+        ar_name = pkg.name + '.7z'
+        ar_path = os.path.join(self._dir.name, ar_name)
+
         try:
             progress.update(0, 'Packing...')
-            progress.start_task(0.0, 0.4, '%s')
+            if pkg.is_vp:
+                vp_name = pkg.name + '.vp'
+                vp_path = os.path.join(self._dir.name, vp_name)
+                vp = vplib.VpWriter(vp_path)
+                pkg_path = os.path.join(self._mod.folder, pkg.folder)
 
-            ar_name = pkg.name + '.7z'
-            ar_path = os.path.join(self._dir.name, ar_name)
+                for sub, dirs, files in os.walk(pkg_path):
+                    relsub = os.path.relpath(sub, pkg_path)
+                    for fn in files:
+                        relpath = os.path.join(relsub, fn)
+                        vp.add_file(relpath, os.path.join(sub, fn))
+
+                progress.start_task(0.0, 0.1, '%s')
+                vp.write()
+
+                progress.update(1, 'Calculating checksum...')
+                progress.finish_task()
+
+                pkg.filelist = [{
+                    'filename': vp_name,
+                    'archive': ar_name,
+                    'orig_name': vp_name,
+                    'checksum': util.gen_hash(vp_path)
+                }]
+
+                progress.start_task(0.1, 0.3, '%s')
+            else:
+                progress.start_task(0.0, 0.4, '%s')
+
+            if pkg.is_vp:
+                p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, vp_name],
+                    cwd=self._dir.name, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            else:
+                p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, '.'],
+                    cwd=os.path.join(self._mod.folder, pkg.folder), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
             line_re = re.compile(r'^\s*([0-9]+)%')
-
-            p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, '.'],
-                cwd=os.path.join(self._mod.folder, pkg.folder), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
             buf = ''
             while p.poll() is None:
                 while '\b' not in buf:
@@ -974,7 +1006,7 @@ class UploadTask(progress.MultistepTask):
 
                 m = line_re.match(line)
                 if m:
-                    progress.update(int(m.group(1)) / 100., 'Packing...')
+                    progress.update(int(m.group(1)) / 100., 'Compressing...')
 
             if p.returncode != 0:
                 logging.error('Failed to build %s!' % ar_name)
@@ -999,6 +1031,11 @@ class UploadTask(progress.MultistepTask):
             logging.exception('Failed request to nebula during upload!')
 
             self._reason = 'archive missing'
+            self.abort()
+        except Exception:
+            logging.exception('Unknown error during package packing!')
+
+            self._reason = 'unknown'
             self.abort()
 
     def init2(self):

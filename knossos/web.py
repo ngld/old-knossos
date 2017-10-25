@@ -760,9 +760,11 @@ class WebBridge(QtCore.QObject):
         pkg.dependencies = data['dependencies']
 
         if mod.mtype in ('engine', 'tool'):
+            pkg.is_vp = False
             pkg.environment = data['environment']
             pkg.executables = data['executables']
         else:
+            pkg.is_vp = data['is_vp']
             pkg.environment = None
             pkg.executables = []
 
