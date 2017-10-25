@@ -142,7 +142,7 @@ function init() {
 
     // Open <a href="..." target="_blank">...</a> links in the system's default browser
     document.body.addEventListener('click', (e) => {
-        if(e.target && e.target.nodeName === 'A' && e.target.target === '_blank') {
+        if(e.target && e.target.nodeName === 'A' && e.target.target === '_blank' && e.className.indexOf('open-ext') > -1) {
             e.preventDefault();
             fs2mod.openExternal(e.target.href);
         }

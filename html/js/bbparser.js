@@ -18,7 +18,7 @@ const parser = XBBCode.create({
     img: '<img src="{option}">',
     url: tag => {
     	let target = (tag.getOption() || tag.getContent() || '#').replace(/"/g, '&quot;');
-    	return `<a href="${target}" target="_blank">${tag.getContent()}</a>`;
+    	return `<a href="${target}" target="_blank" class="open-ext">${tag.getContent()}</a>`;
     },
     sup: '<sup>{content}</sup>',
     sub: '<sub>{content}</sub>',
