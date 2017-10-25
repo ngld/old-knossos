@@ -559,6 +559,11 @@ export default {
                                 <label class="col-xs-3 control-label">Description</label>
                                 <div class="col-xs-9">
                                     <textarea class="form-control" v-model="selected_mod.description"></textarea>
+
+                                    <p class="help-block">
+                                        Please use BBCode here. To preview your description, save, go to your home tab
+                                        and go to this mod's detail page.
+                                    </p>
                                 </div>
                             </div>
 

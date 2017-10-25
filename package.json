@@ -25,6 +25,7 @@
     "vue": "^2.4.2",
     "vue-loader": "^13.0.4",
     "vue-template-compiler": "^2.4.2",
-    "webpack": "^3.5.6"
+    "webpack": "^3.5.6",
+    "xbbcode": "^2.0.4"
   }
 }

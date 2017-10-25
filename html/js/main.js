@@ -139,6 +139,14 @@ function init() {
 
         delete tasks[tid];
     });
+
+    // Open <a href="..." target="_blank">...</a> links in the system's default browser
+    document.body.addEventListener('click', (e) => {
+        if(e.target && e.target.nodeName === 'A' && e.target.target === '_blank') {
+            e.preventDefault();
+            fs2mod.openExternal(e.target.href);
+        }
+    });
 }
 
 if(window.qt) {

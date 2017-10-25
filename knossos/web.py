@@ -707,17 +707,19 @@ class WebBridge(QtCore.QObject):
             if line != '':
                 mod.videos.append(line)
 
-        try:
-            mod.first_release = datetime.strptime(data['first_release'], '%Y-%m-%d')
-        except ValueError:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The entered first release date is invalid!'))
-            return
+        if data['first_release']:
+            try:
+                mod.first_release = datetime.strptime(data['first_release'], '%Y-%m-%d')
+            except ValueError:
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The entered first release date is invalid!'))
+                return
 
-        try:
-            mod.last_update = datetime.strptime(data['last_update'], '%Y-%m-%d')
-        except ValueError:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The entered last update date is invalid!'))
-            return
+        if data['last_update']:
+            try:
+                mod.last_update = datetime.strptime(data['last_update'], '%Y-%m-%d')
+            except ValueError:
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The entered last update date is invalid!'))
+                return
 
         mod.save()
         center.main_win.update_mod_list()

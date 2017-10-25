@@ -1,7 +1,9 @@
 <script>
 import 'blueimp-gallery/css/blueimp-gallery.min.css';
 import Gallery from 'blueimp-gallery/js/blueimp-gallery.min.js';
-import '../js/gallery_yt.js';
+import '../js/gallery_yt';
+
+import bbparser from '../js/bbparser';
 
 export default {
     props: ['mod'],
@@ -28,6 +30,10 @@ export default {
             }
 
             return null;
+        },
+
+        rendered_desc() {
+            return bbparser(this.cur_mod.description);
         }
     },
 
@@ -37,12 +43,12 @@ export default {
         },
 
         showScreens(screens) {
-            this.lightbox = Gallery(this.mod.screenshots);
+            this.lightbox = Gallery(this.cur_mod.screenshots);
         },
 
         showVideos(videos) {
             let ytids = [];
-            for(let link of this.mod.videos) {
+            for(let link of this.cur_mod.videos) {
                 let id = /[\?&]v=([^&]+)/.exec(link);
 
                 if(id) {
@@ -65,8 +71,6 @@ export default {
                 onslideend: (idx, el) => {
                     // Make sure the videos start automatically.
                     let link = el.querySelector('.video-content a');
-                    console.log(link);
-
                     if(link) link.click();
                 }
             });
@@ -77,9 +81,9 @@ export default {
 <template>
     <div class="details-container">
         <div class="img-frame">
-            <img v-if="mod.banner" :src="mod.banner.indexOf('://') === -1 ? 'file://' + mod.banner : mod.banner" class="mod-banner">
+            <img v-if="cur_mod.banner" :src="cur_mod.banner.indexOf('://') === -1 ? 'file://' + cur_mod.banner : cur_mod.banner" class="mod-banner">
             <div class="title-frame">
-                <h1>{{ mod.title }}</h1>
+                <h1>{{ cur_mod.title }}</h1>
                 Version
                 <select v-model="version" class="form-control">
                     <option v-for="m in mod.versions" :value="m.version">{{ m.version }}</option>
@@ -105,7 +109,7 @@ export default {
         </div>
 
         <div class="mod-desc">
-            <p v-html="cur_mod.description"></p>
+            <p v-html="rendered_desc"></p>
         </div>
 
         <div id="blueimp-gallery" class="blueimp-gallery blueimp-gallery-controls">
