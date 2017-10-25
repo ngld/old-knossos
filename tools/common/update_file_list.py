@@ -20,7 +20,12 @@ os.chdir(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 
 def listdir(path):
-    entries = [path + '/' + p for p in os.listdir(path)]
+    entries = []
+
+    for sub, dirs, files in os.walk(path):
+        for name in files:
+            entries.append(os.path.relpath(os.path.join(sub, name), '.').replace('\\', '/'))
+
     entries.sort()
     return entries
 

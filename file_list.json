@@ -96,6 +96,7 @@
         "knossos/settings.py",
         "knossos/tasks.py",
         "knossos/util.py",
+        "knossos/vplib.py",
         "knossos/web.py",
         "knossos/windows.py"
     ],
