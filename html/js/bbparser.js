@@ -5,8 +5,6 @@ const parser = XBBCode.create({
     i: '<em>{content}</em>',
     u: '<u>{content}</u>',
     s: '<s>{content}</s>',
-    hr: '<hr>',
-    br: '<br>',
     list: tag => {
     	let name = tag.getAttribute('type') === 'decimal' ? 'ol': 'ul';
     	return '<' + name + '>' + tag.getContent() + '</' + name + '>';
@@ -38,5 +36,6 @@ const parser = XBBCode.create({
 
 export default (text) => {
 	text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\]\s*\n+\s*\[/g, '][').replace(/\n/g, '<br>');
+    text = text.replace(/\[hr\]/g, '<hr>').replace(/\[br\]/g, '<br>');
 	return parser(text);
 }
