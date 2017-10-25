@@ -1428,11 +1428,11 @@ def run_task(task, cb=None):
 def create_retail_mod(dest_path):
     # Remember to run tools/common/update_file_list.py if you add new files!
     files = {
-        'tile': ':/html/images/mod-retail.png',
-        'banner': ':/html/images/banner-retail.png'
+        'tile': ':/html/images/retail_data/mod-retail.png',
+        'banner': ':/html/images/retail_data/banner-retail.png',
     }
 
-    screenshots = []
+    screenshots = [':/html/images/retail_data/screen01.jpg', ':/html/images/retail_data/screen02.jpg', ':/html/images/retail_data/screen03.jpg', ':/html/images/retail_data/screen04.jpg', ':/html/images/retail_data/screen05.jpg', ':/html/images/retail_data/screen06.jpg', ':/html/images/retail_data/screen07.jpg', ':/html/images/retail_data/screen08.jpg', ':/html/images/retail_data/screen09.jpg', ':/html/images/retail_data/screen10.jpg', ':/html/images/retail_data/screen11.jpg', ':/html/images/retail_data/screen12.jpg']
 
     mod = repo.InstalledMod({
         'title': 'Retail FS2',
@@ -1440,11 +1440,11 @@ def create_retail_mod(dest_path):
         'version': '1.20',
         'type': 'tc',
         'description':
-'The year is 2367, thirty two years after the Great War. Or at least that is what YOU thought was the Great War. ' +
+'[b][i]The year is 2367, thirty two years after the Great War. Or at least that is what YOU thought was the Great War. ' +
 'The endless line of Shivan capital ships, bombers and fighters with super advanced technology was nearly overwhelming.\n\n' +
 'As the Terran and Vasudan races finish rebuilding their decimated societies, a disturbance lurks in the not-so-far ' +
 'reaches of the Gamma Draconis system.\n\nYour nemeses have arrived... and they are wondering what happened to ' +
-'their scouting party.[br][hr]FreeSpace 2 is a 1999 space combat simulation computer game developed by Volition as ' +
+'their scouting party.[/i][/b]\n\n[hr]FreeSpace 2 is a 1999 space combat simulation computer game developed by Volition as ' +
 'the sequel to Descent: FreeSpace – The Great War. It was completed ahead of schedule in less than a year, and ' +
 'released to very positive reviews.\n\nThe game continues on the story from Descent: FreeSpace, once again ' +
 'thrusting the player into the role of a pilot fighting against the mysterious aliens, the Shivans. While defending ' +
