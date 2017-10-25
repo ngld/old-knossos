@@ -349,6 +349,7 @@ class ModInstallWindow(Window):
         self.update_deps()
 
         self.win.treeWidget.itemChanged.connect(self.update_selection)
+        self.win.treeWidget.itemClicked.connect(self.update_notes)
 
         self.win.accepted.connect(self.install)
         self.win.rejected.connect(self.close)
@@ -383,6 +384,7 @@ class ModInstallWindow(Window):
             item = QtWidgets.QTreeWidgetItem(self.win.treeWidget, [mod.title, ''])
             item.setExpanded(True)
             item.setData(0, QtCore.Qt.UserRole, mod)
+            item.setData(0, QtCore.Qt.UserRole + 2, '')
             c = 0
 
             for pkg in mod.packages:
@@ -414,6 +416,7 @@ class ModInstallWindow(Window):
 
                 sub.setData(0, QtCore.Qt.UserRole, pkg)
                 sub.setData(0, QtCore.Qt.UserRole + 1, is_installed)
+                sub.setData(0, QtCore.Qt.UserRole + 2, pkg.notes)
                 self._pkg_checks.append(sub)
 
             if c == len(mod.packages):
@@ -465,9 +468,11 @@ class ModInstallWindow(Window):
 
         self.label_tpl(self.win.dlSizeLabel, DL_SIZE=util.format_bytes(dl_size))
 
+    def update_notes(self, item):
+        self.win.notesField.setPlainText(item.data(0, QtCore.Qt.UserRole + 2))
+
     def install(self):
         center.main_win.update_mod_buttons('home')
 
         run_task(InstallTask(self.get_selected_pkgs(), self._mod))
         self.close()
-

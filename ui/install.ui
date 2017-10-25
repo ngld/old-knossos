@@ -61,6 +61,13 @@
         </spacer>
        </item>
        <item>
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Please click on any entry to receive more information.</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QTreeWidget" name="treeWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
