@@ -1387,6 +1387,10 @@ iframe {
     margin-left: 5px;
 }
 
+.devel-page span.version-link {
+    word-wrap: break-word;
+}
+
 .devel-page .form-box {
     position: absolute;
     top: 0;
