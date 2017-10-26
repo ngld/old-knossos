@@ -415,6 +415,7 @@ export default {
 
             vm.sureCallback = () => {
                 fs2mod.nebDeleteMod(this.selected_mod.id, this.selected_mod.version);
+                vm.popup_visible = false;
             };
             vm.popup_visible = true;
         },

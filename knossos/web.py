@@ -924,16 +924,31 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return
 
+        fine = False
         client = nebula.NebulaClient()
         try:
             client.delete_release(mod)
+            fine = True
         except nebula.AccessDeniedException:
             QtWidgets.QMessageBox.critical(None, 'Knossos', "You can't do that!")
+        except nebula.RequestFailedException as exc:
+            if exc.args[0] == 'not found':
+                QtWidgets.QMessageBox.information(None, 'Knossos',
+                    "This mod hasn't been uploaded and thus can't be removed from the nebula.")
+                fine = True
+            else:
+                QtWidgets.QMessageBox.critical(None, 'Knossos', 'Request failed. Please contect ngld.')
         except Exception:
             logging.exception('Failed to send mod report!')
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Request failed. Please contect ngld.')
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                'Request failed. You might have problems connecting to fsnebula.org.')
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'The release was successfully deleted.')
+
+        if fine:
+            result = QtWidgets.QMessageBox.question(None, 'Knossos', 'Should the local files be deleted?')
+            if result == QtWidgets.QMessageBox.Yes:
+                tasks.run_task(tasks.UninstallTask(mod.packages))
 
     @QtCore.Slot(str, str, result=str)
     def getFsoBuild(self, mid, version):

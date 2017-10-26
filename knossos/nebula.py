@@ -43,7 +43,11 @@ class NebulaClient(object):
             raise RequestFailedException('connection')
 
         if check_code and result.status_code != 200:
-            raise RequestFailedException('unknown')
+            reason = 'unknown'
+            if result.status_code == 404:
+                reason = 'not found'
+
+            raise RequestFailedException(reason)
 
         return result
 
