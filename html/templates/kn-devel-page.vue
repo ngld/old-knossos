@@ -540,6 +540,17 @@ export default {
                                 </div>
                             </div>
 
+                            <div class="form-group" v-if="selected_mod.type === 'engine'">
+                                <label class="col-xs-3 control-label">Stability</label>
+                                <div class="col-xs-9">
+                                    <select v-model="selected_mod.stability" class="form-control">
+                                        <option value="stable">Stable</option>
+                                        <option value="rc">RCs</option>
+                                        <option value="nightly">Nightly</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div class="form-group">
                                 <label class="col-xs-3 control-label">Type</label>
                                 <div class="col-xs-9">

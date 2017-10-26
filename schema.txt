@@ -8,6 +8,7 @@
             "id": "...", // required, internal *unique* identifier, should be URL friendly, never shown to the user
             "title": "...", // required, a UTF-8 compatible string, displayed to the user
             "version": "...", // required, http://semver.org/
+            "stability": "<stable|rc|nightly>", // optional, only applies to type == engine and indicates whether this is a stable release, nightly or RC, default: stable
             "description": "...", // optional, should match the mod.ini's description
             "logo": "<path to image>", // optional, default: null, will be extracted from the archive if null
             "tile": "<path to image>", // optional, default: null, Used in the library view. If null, the logo is used instead
@@ -45,6 +46,7 @@
                         ...
                     ],
                     "environment": "", // optional, boolean expression like "X86_64 && (sse || sse2)"
+                    "is_vp": true, // optional, whether Knossos should pack the files in a VP on upload, default: false
                     "executables": [ // optional
                         {
                             "file": "...", // required, path to the executable (*.exe file on Windows), relative to the mod folder

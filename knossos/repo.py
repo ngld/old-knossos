@@ -32,6 +32,7 @@ from . import center, util, bool_parser
 
 # You have to fill this using https://github.com/workhorsy/py-cpuinfo .
 CPU_INFO = None
+STABILITES = ('nightly', 'rc', 'stable')
 
 
 class ModNotFound(Exception):
@@ -321,6 +322,7 @@ class Repo(object):
 
         # Check for conflicts (and try to resolve them if possible).
         dep_list = set()
+        pref_stable = center.settings['engine_stability']
         for mid, deps in dep_dict.items():
             for name, variants in deps.items():
                 if len(variants) == 1:
@@ -343,6 +345,26 @@ class Repo(object):
                         v = (list(variants.values())[0].name, ','.join([str(s) for s in specs]))
                         raise PackageNotFound('No version of package "%s" found for these constraints: %s' % v, mid, list(variants.values())[0].name)
                     else:
+                        if remains[0].mtype == 'engine':
+                            # Multiple versions qualify and this is an engine so we have to check the stability next
+                            stab = pref_stable
+                            if stab not in STABILITES:
+                                stab = STABILITES[-1]
+
+                            stab_idx = STABILITES.index(stab)
+                            candidates = []
+                            while stab_idx > 0:
+                                candidates = [m for m in remains if m.stability == stab]
+                                if len(candidates) == 0:
+                                    # Nothing found, try the next lower stability
+                                    stab_idx -= 1
+                                    stab = STABILITES[stab_idx]
+                                else:
+                                    # Found at least one result
+                                    break
+
+                            remains = candidates
+
                         # Pick the latest
                         remains.sort(key=lambda v: v.get_mod().version)
                         dep_list.add(remains[-1])
@@ -374,6 +396,7 @@ class Mod(object):
     title = ''
     mtype = 'mod'
     version = None
+    stability = None
     parent = None
     cmdline = ''
     mod_flag = None
@@ -413,6 +436,7 @@ class Mod(object):
         self.title = values['title']
         self.mtype = values.get('type', 'mod')  # Backwards compatibility
         self.version = semantic_version.Version(values['version'], partial=True)
+        self.stability = values.get('stability', 'stable')
         self.parent = values.get('parent', 'FS2')
         self.cmdline = values.get('cmdline', '')
         self.mod_flag = values.get('mod_flag', [])
@@ -482,6 +506,7 @@ class Mod(object):
             'title': self.title,
             'type': self.mtype,
             'version': str(self.version),
+            'stability': self.stability,
             'parent': self.parent,
             'cmdline': self.cmdline,
             'mod_flag': self.mod_flag,

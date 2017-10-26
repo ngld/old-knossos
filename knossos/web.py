@@ -696,6 +696,9 @@ class WebBridge(QtCore.QObject):
                 self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
             return
 
+        if mod.mtype == 'engine':
+            mod.stability = data['stability']
+
         mod.description = data['description']
         for prop in ('logo', 'tile', 'banner', 'screenshots', 'attachments'):
             setattr(mod, prop, data[prop])

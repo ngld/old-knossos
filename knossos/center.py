@@ -20,7 +20,7 @@ import json
 from . import uhf
 uhf(__name__)
 
-from .qt import QtCore
+from .qt import QtCore # noqa
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
@@ -61,7 +61,8 @@ settings = {
     'openal_path': None,
     'language': None,
     'neb_user': '',
-    'neb_password': ''
+    'neb_password': '',
+    'engine_stability': 'stable'
 }
 
 if sys.platform.startswith('win'):
@@ -98,4 +99,4 @@ def save_settings():
         json.dump(settings, stream)
 
 
-from . import util
+from . import util # noqa

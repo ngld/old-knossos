@@ -44,7 +44,7 @@ export default {
         save() {
             this.fso.joystick_ff_strength = this.ff_enabled ? 100 : 0;
 
-            for(let set of ['base_path', 'max_downloads', 'use_raven']) {
+            for(let set of ['base_path', 'max_downloads', 'use_raven', 'engine_stability']) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
                 }
@@ -110,6 +110,17 @@ export default {
                     <label class="col-sm-4 control-label">Send Error Reports:</label>
                     <div class="col-sm-8">
                         <input type="checkbox" v-model="knossos.use_raven">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Preferred Engine Stability:</label>
+                    <div class="col-sm-8">
+                        <select v-model="knossos.engine_stability">
+                            <option value="stable">Stable</option>
+                            <option value="rc">RCs</option>
+                            <option value="nightly">Nightlies</option>
+                        </select>
                     </div>
                 </div>
             </kn-drawer>
