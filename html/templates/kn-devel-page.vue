@@ -224,6 +224,13 @@ export default {
             fs2mod.saveModFsoDetails(mod.id, mod.version, this.fso_build, mod.cmdline);
         },
 
+        selectCustomBuild() {
+            call(fs2mod.selectCustomBuild, (result) => {
+                this.selected_mod.custom_build = result;
+                this.fso_build = 'custom#' + result;
+            });
+        },
+
         savePackage() {
             let pkg = Object.assign({}, this.selected_pkg);
             let mod = this.selected_mod;
@@ -424,7 +431,12 @@ export default {
         },
 
         launchMod() {
-            fs2mod.runMod(this.selected_mod.id, this.selected_mod.version);
+            let mod = this.selected_mod;
+
+            // Make sure the FSO settings are save before launching the mod.
+            call(fs2mod.saveModFsoDetails, mod.id, mod.version, this.fso_build, mod.cmdline, () => {
+                fs2mod.runMod(this.selected_mod.id, this.selected_mod.version);
+            });
         },
 
         launchTool(label) {
@@ -706,12 +718,18 @@ export default {
                             <div class="form-group">
                                 <label class="col-xs-3 control-label">FSO build</label>
                                 <div class="col-xs-9">
-                                    <select class="form-control" v-model="fso_build">
-                                        <option v-if="!isValidBuild()" :key="'invalid'" value="invalid">Please select a valid build</option>
-                                        <option v-for="mod in mods" v-if="mod.type === 'engine'" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
-                                            {{ mod.title }} {{ mod.version }}
-                                        </option>
-                                    </select>
+                                    <div class="input-group">
+                                        <select class="form-control" v-model="fso_build">
+                                            <option v-if="!isValidBuild()" :key="'invalid'" value="invalid">Please select a valid build</option>
+                                            <option v-for="mod in mods" v-if="mod.type === 'engine'" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
+                                                {{ mod.title }} {{ mod.version }}
+                                            </option>
+                                            <option v-if="selected_mod.custom_build" :value="'custom#' + selected_mod.custom_build">{{ selected_mod.custom_build.replace(/\\/g, '/').split('/').pop() }}</option>
+                                        </select>
+                                        <span class="input-group-btn">
+                                            <button class="btn btn-default" @click.prevent="selectCustomBuild">Browse...</button>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 

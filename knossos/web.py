@@ -792,41 +792,46 @@ class WebBridge(QtCore.QObject):
         if len(build) != 2:
             logging.error('saveModFsoDetails(): build is not correctly formatted! (%s)' % build)
         else:
-            try:
-                exes = mod.get_executables()
-            except repo.NoExecutablesFound:
-                done = False
-                for pkg in mod.packages:
-                    if pkg.status == 'required':
-                        pkg.dependencies.append({
-                            'id': build[0],
-                            'version': build[1]
-                        })
-                        done = True
-                        break
-
-                if not done:
-                    QtWidgets.QMessageBox.critical(None, 'Error',
-                        self.tr('Failed to save the selected FSO build. Make sure that you have at least one required' +
-                        ' package!'))
+            if build[0] == 'custom':
+                mod.custom_build = build[1]
             else:
-                old_build = exes[0]['mod']
-                done = False
+                mod.custom_build = None
 
-                for pkg in mod.packages:
-                    for dep in pkg.dependencies:
-                        if dep['id'] == old_build.mid:
-                            dep['id'] = build[0]
-                            dep['version'] = '>=' + build[1]
+                try:
+                    exes = mod.get_executables()
+                except repo.NoExecutablesFound:
+                    done = False
+                    for pkg in mod.packages:
+                        if pkg.status == 'required':
+                            pkg.dependencies.append({
+                                'id': build[0],
+                                'version': build[1]
+                            })
                             done = True
                             break
 
-                    if done:
-                        break
+                    if not done:
+                        QtWidgets.QMessageBox.critical(None, 'Error',
+                            self.tr('Failed to save the selected FSO build. Make sure that you have at least one required' +
+                            ' package!'))
+                else:
+                    old_build = exes[0]['mod']
+                    done = False
 
-                if not done:
-                    logging.error('Failed to update build dependency for "%s"! WHY?!?! (old_build = %s, new_build = %s)'
-                        % (mod, old_build, build[0]))
+                    for pkg in mod.packages:
+                        for dep in pkg.dependencies:
+                            if dep['id'] == old_build.mid:
+                                dep['id'] = build[0]
+                                dep['version'] = '>=' + build[1]
+                                done = True
+                                break
+
+                        if done:
+                            break
+
+                    if not done:
+                        logging.error('Failed to update build dependency for "%s"! WHY?!?! (old_build = %s, new_build = %s)'
+                            % (mod, old_build, build[0]))
 
         mod.cmdline = cmdline
         mod.save()
@@ -953,9 +958,25 @@ class WebBridge(QtCore.QObject):
             if result == QtWidgets.QMessageBox.Yes:
                 tasks.run_task(tasks.UninstallTask(mod.packages))
 
+    @QtCore.Slot(result=str)
+    def selectCustomBuild(self):
+        if sys.platform == 'win32':
+            filter_ = '*.exe'
+        else:
+            filter_ = '*'
+
+        res = QtWidgets.QFileDialog.getOpenFileNames(None, 'Please select your FSO build', None, filter_)
+        if res:
+            return res[0][0]
+        else:
+            return ''
+
     @QtCore.Slot(str, str, result=str)
     def getFsoBuild(self, mid, version):
         mod = self._get_mod(mid, version)
+
+        if mod.custom_build:
+            return 'custom#' + mod.custom_build
 
         try:
             for item in mod.get_executables():
@@ -972,6 +993,13 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str, result=str)
     def getFsoCaps(self, mid, version):
         flags = None
+        if mid == 'custom':
+            flags = settings.get_fso_flags(version)
+            if flags:
+                flags = flags.to_dict()
+
+            return json.dumps(flags)
+
         mod = self._get_mod(mid, version)
 
         try:

@@ -805,6 +805,7 @@ class InstalledMod(Mod):
     check_notes = ''
     folder = None
     dev_mode = False
+    custom_build = None
     _path = None
 
     @staticmethod
@@ -845,6 +846,7 @@ class InstalledMod(Mod):
             self.folder = values['folder']
 
         self.dev_mode = values.get('dev_mode', False)
+        self.custom_build = values.get('custom_build', None)
         self.check_notes = values.get('check_notes', '')
         for pkg in pkgs:
             self.packages.append(InstalledPackage(pkg, self))
@@ -872,6 +874,7 @@ class InstalledMod(Mod):
             'cmdline': self.cmdline,
             'mod_flag': self.mod_flag,
             'dev_mode': self.dev_mode,
+            'custom_build': self.custom_build,
             'packages': [pkg.get() for pkg in self.packages]
         }
 
@@ -1007,6 +1010,12 @@ class InstalledMod(Mod):
                 deps = []
 
         exes = []
+        if self.custom_build:
+            exes.append({
+                'file': self.custom_build,
+                'mod': self,
+                'label': None
+            })
 
         for pkg in deps:
             mod = pkg.get_mod()
