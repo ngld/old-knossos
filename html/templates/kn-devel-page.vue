@@ -798,7 +798,7 @@ export default {
                                     <select class="form-control" v-model="selected_pkg.status">
                                         <option value="required">Required</option>
                                         <option value="recommended">Recommended</option>
-                                        <option value="Optional">Optional</option>
+                                        <option value="optional">Optional</option>
                                     </select>
                                 </div>
                             </div>
