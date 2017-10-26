@@ -242,6 +242,7 @@ export default {
             }
 
             fs2mod.runModAdvanced(this.popup_mod_id, this.popup_mod_version, this.popup_mod_sel_exe, mod_flag);
+            this.popup_visible = false;
         },
 
         popupProposeFolder() {
