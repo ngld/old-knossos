@@ -887,7 +887,7 @@ class UploadTask(progress.MultistepTask):
                         for sub, dirs, files in os.walk(pkg_path):
                             relsub = os.path.relpath(sub, pkg_path)
                             for fn in files:
-                                relpath = os.path.join(relsub, fn)
+                                relpath = os.path.join(relsub, fn).replace('\\', '/')
 
                                 pkg.filelist.append({
                                     'filename': relpath,
