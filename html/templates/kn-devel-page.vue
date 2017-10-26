@@ -209,10 +209,10 @@ export default {
         },
 
         saveDetails() {
-            console.log(this.selected_mod);
             let mod = Object.assign({}, this.selected_mod);
             delete mod.packages;
             delete mod.cmdline;
+            delete mod.versions;
 
             mod.video_urls = this.video_urls;
             fs2mod.saveModDetails(JSON.stringify(mod));
