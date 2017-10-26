@@ -108,6 +108,7 @@ class NebulaClient(object):
             'type': mod.mtype,
             'logo': logo_chk,
             'tile': tile_chk,
+            'first_release': mod.first_release,
             'members': []
         })
         return True
@@ -121,6 +122,7 @@ class NebulaClient(object):
             'title': mod.title,
             'logo': logo_chk,
             'tile': tile_chk,
+            'first_release': mod.first_release,
             'members': [center.settings['neb_user']]
         })
         return True
