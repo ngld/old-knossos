@@ -21,7 +21,9 @@ export default {
         edit_dep_mod: null,
         edit_dep_version: null,
         edit_dep_pkgs: null,
-        edit_dep_pkg_sel: null
+        edit_dep_pkg_sel: null,
+
+        tab_scroll: -1
     }),
 
     created() {
@@ -78,6 +80,7 @@ export default {
             this.selected_pkg = null;
 
             if(sel_mod) {
+                this.tab_scroll = -1;
                 this.fso_build = null;
                 this.video_urls = sel_mod.videos.join("\n");
 
@@ -426,6 +429,17 @@ export default {
 
         launchTool(label) {
             fs2mod.runModTool(this.selected_mod.id, this.selected_mod.version, '', '', label);
+        },
+
+        tabScroll(diff) {
+            let val = this.tab_scroll + diff;
+            if(val < -1) {
+                val = -1;
+            } else if(val > this.selected_mod.packages.length - 2) {
+                val = this.selected_mod.packages.length - 2;
+            }
+
+            this.tab_scroll = val;
         }
     }
 };
@@ -477,7 +491,18 @@ export default {
                     </div>
 
                     <div class="dev-tabbar">
-                        <a href="#" v-for="pkg in selected_mod.packages" :class="{'active': (selected_pkg||{}).name === pkg.name }" @click.prevent="selectPkg(pkg)">{{ pkg.name }}</a>
+                        <a href="#"
+                            v-for="pkg, i in selected_mod.packages"
+                            v-show="i > tab_scroll"
+                            :class="{'active': (selected_pkg||{}).name === pkg.name }"
+                            @click.prevent="selectPkg(pkg)">
+                            {{ pkg.name }}
+                        </a>
+
+                        <div class="dev-tabbar-arrows">
+                            <a href="#" @click.prevent="tabScroll(-1)"><i class="fa fa-chevron-left"></i></a>
+                            <a href="#" @click.prevent="tabScroll(1)"><i class="fa fa-chevron-right"></i></a>
+                        </div>
                     </div>
                 </div>
 

@@ -1433,6 +1433,7 @@ iframe {
 
 .devel-page .dev-tabbar {
     overflow: hidden;
+    position: relative;
     height: 28px;
     background-color: #1c1c1c;
     box-shadow: inset 0px -1px 0px 0px rgba(0,0,0,1)
@@ -1452,6 +1453,16 @@ iframe {
 
 .devel-page .dev-tabbar > a.active {
     background-image: url(../images/tabedge-a.png);
+}
+
+.devel-page .dev-tabbar-arrows {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.devel-page .dev-tabbar-arrows a {
+    color: #fff;
 }
 
 .devel-page .table td {
