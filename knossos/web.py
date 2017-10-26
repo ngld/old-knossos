@@ -1078,6 +1078,9 @@ class WebBridge(QtCore.QObject):
         elif method == 'empty':
             os.mkdir(new_mod.folder)
 
+            for pkg in new_mod.packages:
+                os.mkdir(os.path.join(new_mod.folder, pkg.folder))
+
         new_mod.save()
         center.installed.add_mod(new_mod)
         center.main_win.update_mod_list()
