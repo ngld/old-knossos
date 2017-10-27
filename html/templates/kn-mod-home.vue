@@ -93,7 +93,7 @@ export default {
                     <kn-dropdown @open="updateTools(); open = true" @close="open = false">
                         <button v-for="tool in tools" @click="launchTool(tool)">Run {{ tool }}</button>
                         <button @click="uploadLog">Upload Debug Log</button>
-                        <button v-if="mod.status !== 'updating'" @click="install">Modify</button>
+                        <button v-if="mod.id !== 'FS2' && mod.status !== 'updating'" @click="install">Modify</button>
                         <button v-if="mod.id !== 'FS2' && mod.status !== 'updating' && !mod.dev_mode" @click="uninstallMod">Uninstall</button>
                     </kn-dropdown>
                 </div>
