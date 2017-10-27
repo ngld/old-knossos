@@ -106,6 +106,7 @@ class NebulaClient(object):
             'id': mod.mid,
             'title': mod.title,
             'type': mod.mtype,
+            'parent': mod.parent,
             'logo': logo_chk,
             'tile': tile_chk,
             'first_release': mod.first_release.strftime('%Y-%m-%d') if mod.first_release else None,
