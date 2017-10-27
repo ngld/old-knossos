@@ -21,6 +21,7 @@ import re
 import json
 import stat
 import sqlite3
+import shutil
 import semantic_version
 
 from threading import Thread
@@ -676,6 +677,40 @@ class WebBridge(QtCore.QObject):
 
         return [os.path.relpath(item, folder) for item in result]
 
+    def _store_mod_images(self, mod, img, imlist):
+        if isinstance(img, list):
+            for i, item in enumerate(img):
+                img[i] = self._store_mod_images(mod, item, imlist)
+
+            return img
+
+        path = os.path.join(mod.folder, 'kn_images')
+        if not os.path.isdir(path):
+            os.mkdir(path)
+
+        if os.path.abspath(img).startswith(path):
+            imlist.add(os.path.basename(img))
+            return img
+
+        name, ext = os.path.splitext(img)
+        dest = os.path.join(path, util.gen_hash(img)[1] + ext)
+
+        logging.debug('Copying image from %s to %s.', img, dest)
+        shutil.copyfile(img, dest)
+
+        imlist.add(os.path.basename(dest))
+        return dest
+
+    def _clean_mod_images(self, mod, images):
+        path = os.path.join(mod.folder, 'kn_images')
+        if not os.path.isdir(path):
+            return
+
+        for item in os.listdir(path):
+            if item not in images:
+                logging.debug('Removing %s from %s because it is no longer needed.', item, mod)
+                os.unlink(os.path.join(path, item))
+
     @QtCore.Slot(str)
     def saveModDetails(self, data):
         try:
@@ -700,8 +735,16 @@ class WebBridge(QtCore.QObject):
             mod.stability = data['stability']
 
         mod.description = data['description']
+        imlist = set()
         for prop in ('logo', 'tile', 'banner', 'screenshots', 'attachments'):
-            setattr(mod, prop, data[prop])
+            if data[prop]:
+                setattr(mod, prop, self._store_mod_images(mod, data[prop], imlist))
+            elif isinstance(data[prop], list):
+                setattr(mod, prop, [])
+            else:
+                setattr(mod, prop, None)
+
+        self._clean_mod_images(mod, imlist)
 
         mod.release_thread = data['release_thread']
         mod.videos = []
