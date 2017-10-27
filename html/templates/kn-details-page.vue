@@ -6,7 +6,7 @@ import '../js/gallery_yt';
 import bbparser from '../js/bbparser';
 
 export default {
-    props: ['mod'],
+    props: ['modbundle'],
 
     data: () => ({
         version: null,
@@ -17,17 +17,17 @@ export default {
     }),
 
     created() {
-        this.version = this.mod.version;
+        this.version = this.modbundle.version;
     },
 
     computed: {
-        cur_mod() {
-            for(let mod of this.mod.versions) {
+        mod() {
+            for(let mod of this.modbundle.versions) {
                 if(mod.version === this.version) {
                     return Object.assign(mod, {
-                        status: this.mod.status,
-                        progress: this.mod.progress,
-                        progress_info: this.mod.progress_info
+                        status: this.modbundle.status,
+                        progress: this.modbundle.progress,
+                        progress_info: this.modbundle.progress_info
                     });
                 }
             }
@@ -36,12 +36,12 @@ export default {
         },
 
         rendered_desc() {
-            return bbparser(this.cur_mod.description);
+            return bbparser(this.mod.description);
         }
     },
 
     watch: {
-        cur_mod(new_mod) {
+        mod(new_mod) {
             this.tools_built = false;
             if(this.open) this.updateTools(new_mod);
         }
@@ -55,12 +55,12 @@ export default {
         },
 
         showScreens(screens) {
-            this.lightbox = Gallery(this.cur_mod.screenshots);
+            this.lightbox = Gallery(this.mod.screenshots);
         },
 
         showVideos(videos) {
             let ytids = [];
-            for(let link of this.cur_mod.videos) {
+            for(let link of this.mod.videos) {
                 let id = /[\?&]v=([^&]+)/.exec(link);
 
                 if(id) {
@@ -88,19 +88,19 @@ export default {
             });
         },
 
-        updateTools(cur_mod) {
-            if(this.tools_built) return;
+        updateTools(mod) {
+            if(this.tools_built || !this.mod.installed) return;
             this.tools_built = true;
 
-            if(!cur_mod) cur_mod = this.cur_mod;
+            if(!mod) mod = this.mod;
 
-            call(fs2mod.getModTools, cur_mod.id, cur_mod.version, (tools) => {
+            call(fs2mod.getModTools, mod.id, mod.version, (tools) => {
                 this.tools = tools;
             });
         },
 
         launchTool(label) {
-            fs2mod.runModTool(this.cur_mod.id, this.cur_mod.version, '', '', label);
+            fs2mod.runModTool(this.mod.id, this.mod.version, '', '', label);
         },
 
         uploadLog() {
@@ -116,12 +116,12 @@ export default {
 <template>
     <div class="details-container">
         <div class="img-frame">
-            <img v-if="cur_mod.banner" :src="cur_mod.banner.indexOf('://') === -1 ? 'file://' + cur_mod.banner : cur_mod.banner" class="mod-banner">
+            <img v-if="mod.banner" :src="mod.banner.indexOf('://') === -1 ? 'file://' + mod.banner : mod.banner" class="mod-banner">
             <div class="title-frame">
-                <h1>{{ cur_mod.title }}</h1>
+                <h1>{{ mod.title }}</h1>
                 Version
                 <select v-model="version" class="form-control">
-                    <option v-for="m in mod.versions" :value="m.version">{{ m.version }}</option>
+                    <option v-for="m in modbundle.versions" :value="m.version">{{ m.version }}</option>
                 </select>
             </div>
         </div>
@@ -130,39 +130,39 @@ export default {
             <div class="col-sm-6">
                 <button
                     class="mod-btn btn-green"
-                    v-if="cur_mod.installed && (cur_mod.status === 'ready' || cur_mod.status === 'update') && (cur_mod.type === 'mod' || cur_mod.type === 'tc')"
+                    v-if="mod.installed && (mod.status === 'ready' || mod.status === 'update') && (mod.type === 'mod' || mod.type === 'tc')"
                     @click="play">
                     <span class="btn-text">PLAY</span>
                 </button>
 
-                <button class="mod-btn btn-yellow" v-if="cur_mod.installed && cur_mod.status === 'update'" @click="update">
+                <button class="mod-btn btn-yellow" v-if="mod.installed && mod.status === 'update'" @click="update">
                     <span class="btn-text">UPDATE</span>
                 </button>
 
-                <button class="mod-btn btn-red" v-if="cur_mod.status === 'error'" @click="showErrors">
+                <button class="mod-btn btn-red" v-if="mod.status === 'error'" @click="showErrors">
                     <span class="btn-text">ERROR</span>
                 </button>
 
-                <button class="mod-btn btn-blue" v-if="cur_mod.status !== 'updating' && !cur_mod.installed" @click="install">
+                <button class="mod-btn btn-blue" v-if="mod.status !== 'updating' && !mod.installed" @click="install">
                     <span class="btn-text">INSTALL</span>
                 </button>
 
-                <button class="mod-btn btn-blue" v-if="cur_mod.status === 'updating'" @click="showProgress">
+                <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" @click="showProgress">
                     <span class="small-btn-text">
                         INSTALLING...<br>
-                        {{ Math.round(cur_mod.progress) }}%
+                        {{ Math.round(mod.progress) }}%
                     </span>
                 </button>
 
-                <button class="mod-btn btn-orange" v-if="cur_mod.status === 'updating'" @click="cancel">
+                <button class="mod-btn btn-orange" v-if="mod.status === 'updating'" @click="cancel">
                     <span class="btn-text">CANCEL</span>
                 </button>
 
-                <button class="mod-btn btn-blue" v-if="cur_mod.installed" @click="reportMod">
+                <button class="mod-btn btn-blue" v-if="mod.installed" @click="reportMod">
                     <span class="btn-text">REPORT</span>
                 </button>
 
-                <kn-dropdown btn_style="options" @open="updateTools(); open = true" @close="open = false">
+                <kn-dropdown v-if="mod.installed" btn_style="options" @open="updateTools(); open = true" @close="open = false">
                     <button v-for="tool in tools" @click="launchTool(tool)">Run {{ tool }}</button>
                     <button @click="uploadLog">Upload Debug Log</button>
                     <button v-if="mod.status !== 'updating' && mod.installed" @click="install">Modify</button>
@@ -172,13 +172,13 @@ export default {
 
             <div class="col-sm-6 short-frame">
                 <div class="date-frame pull-right">
-                    <div v-if="cur_mod.first_release">Release: {{ cur_mod.first_release }}</div>
-                    <div v-if="cur_mod.last_update"><em>Last Updated: {{ cur_mod.last_update }}</em></div>
+                    <div v-if="mod.first_release">Release: {{ mod.first_release }}</div>
+                    <div v-if="mod.last_update"><em>Last Updated: {{ mod.last_update }}</em></div>
                 </div>
 
-                <button class="link-btn btn-link-blue pull-right" v-if="cur_mod.screenshots.length > 0" @click="showScreens(cur_mod.screenshots)"><span class="btn-text">IMAGES</span></button>
-                <button class="link-btn btn-link-blue pull-right" v-if="cur_mod.videos.length > 0" @click="showVideos(cur_mod.videos)"><span class="btn-text">VIDEOS</span></button>
-                <button class="link-btn btn-link-red pull-right" v-if="cur_mod.release_thread" @click="openLink(cur_mod.release_thread)"><span class="btn-text">FORUM</span></button>
+                <button class="link-btn btn-link-blue pull-right" v-if="mod.screenshots.length > 0" @click="showScreens(mod.screenshots)"><span class="btn-text">IMAGES</span></button>
+                <button class="link-btn btn-link-blue pull-right" v-if="mod.videos.length > 0" @click="showVideos(mod.videos)"><span class="btn-text">VIDEOS</span></button>
+                <button class="link-btn btn-link-red pull-right" v-if="mod.release_thread" @click="openLink(mod.release_thread)"><span class="btn-text">FORUM</span></button>
             </div>
         </div>
 

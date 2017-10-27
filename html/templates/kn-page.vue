@@ -347,7 +347,7 @@ export default {
 
     <!-------------------------------------------------------------------------------- Start the Details page ---------->
             <div class="info-page" id="details-page" v-if="page === 'details'">
-                <kn-details-page :mod="mod"></kn-details-page>
+                <kn-details-page :modbundle="mod"></kn-details-page>
             </div>
 
             <div class="info-page settings-page container-fluid" v-if="page === 'settings'">

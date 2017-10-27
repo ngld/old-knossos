@@ -222,7 +222,9 @@ class HellWindow(Window):
                 item['progress'] = 0
                 item['progress_info'] = {}
 
-                installed_versions = [str(m.version) for m in center.installed.mods.get(mid, [])]
+                installed_versions = {}
+                for m in center.installed.mods.get(mid, []):
+                    installed_versions[str(m.version)] = m.dev_mode
 
                 rmod = center.mods.mods.get(mid, (None,))[0]
 
@@ -246,6 +248,7 @@ class HellWindow(Window):
                 for mod in mvs:
                     mv = mod.get()
                     mv['installed'] = mv['version'] in installed_versions
+                    mv['dev_mode'] = installed_versions.get(mv['version'], False)
                     item['versions'].append(mv)
 
                 result.append(item)
