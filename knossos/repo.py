@@ -345,7 +345,7 @@ class Repo(object):
                         v = (list(variants.values())[0].name, ','.join([str(s) for s in specs]))
                         raise PackageNotFound('No version of package "%s" found for these constraints: %s' % v, mid, list(variants.values())[0].name)
                     else:
-                        if remains[0].mtype == 'engine':
+                        if remains[0].get_mod().mtype == 'engine':
                             # Multiple versions qualify and this is an engine so we have to check the stability next
                             stab = pref_stable
                             if stab not in STABILITES:
@@ -354,7 +354,7 @@ class Repo(object):
                             stab_idx = STABILITES.index(stab)
                             candidates = []
                             while stab_idx > 0:
-                                candidates = [m for m in remains if m.stability == stab]
+                                candidates = [m for m in remains if m.get_mod().stability == stab]
                                 if len(candidates) == 0:
                                     # Nothing found, try the next lower stability
                                     stab_idx -= 1

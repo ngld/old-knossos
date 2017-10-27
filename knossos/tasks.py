@@ -823,8 +823,8 @@ class UploadTask(progress.MultistepTask):
         super(UploadTask, self).abort()
 
     def show_question(self):
-        res = QtWidgets.QMessageBox.question(None, 'Knossos', 'This mod has already been uploaded if you continue your' +
-            'changes will be uploaded but the files will be left unchanged. Continue?')
+        res = QtWidgets.QMessageBox.question(None, 'Knossos', 'This mod has already been uploaded. If you continue, ' +
+            'your metadata changes will be uploaded but the files will not be updated. Continue?')
 
         self._question_result = res == QtWidgets.QMessageBox.Yes
         with self._question_cond:

@@ -115,11 +115,14 @@ class FlagsReader(object):
 
 
 def get_settings(cb):
-    t = Thread(target=get_settings_p2, args=(cb,))
+    def wrapper():
+        cb(get_settings_p2())
+
+    t = Thread(target=wrapper)
     t.start()
 
 
-def get_settings_p2(cb):
+def get_settings_p2():
     dev_info = get_deviceinfo()
     fso = {}
 
@@ -284,12 +287,12 @@ def get_settings_p2(cb):
 
     fso['has_voice'] = sys.platform == 'win32'
 
-    cb({
+    return {
         'knossos': kn_settings,
         'languages': center.LANGUAGES,
         'has_log': launcher.log_path is not None,
         'fso': fso
-    })
+    }
 
 
 def save_fso_settings(new_settings):
@@ -446,6 +449,13 @@ def write_fso_config(sections):
                 stream.write('%s = %s\n' % (k, v))
 
             stream.write('\n')
+
+
+def ensure_fso_config():
+    config_file = os.path.join(get_fso_profile_path(), 'fs2_open.ini')
+    if not os.path.isfile(config_file):
+        settings = get_settings_p2()
+        save_fso_settings(settings['fso'])
 
 
 def get_deviceinfo():

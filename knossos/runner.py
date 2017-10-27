@@ -95,6 +95,7 @@ class Fs2Watcher(threading.Thread):
                 env['LD_LIBRARY_PATH'] = ld_path
 
             logging.debug('Launching FS2: %s in %s', repr([fs2_bin] + self._params[1:]), self._cwd)
+            settings.ensure_fso_config()
 
             fail = False
             rc = -999
