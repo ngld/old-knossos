@@ -336,6 +336,9 @@ class InstallTask(progress.MultistepTask):
             self._mods.add(pmod)
             self._pkg_names.append((pmod.mid, ins_pkg.name))
 
+            for item in ins_pkg.files.values():
+                self._pkg_prog[id(item)] = ('%s: %s' % (pmod.title, item['filename']), 0, 'Checking...')
+
         for m in self._mods:
             if m not in self.mods:
                 self.mods.append(m)
@@ -387,9 +390,11 @@ class InstallTask(progress.MultistepTask):
         modpath = mod.folder
         mfiles = mod.get_files()
         mnames = [f['filename'] for f in mfiles] + ['knossos.bmp', 'mod.json']
-        self._local.pkg = None
+        self._local.pkg = id(mod)
+        self._pkg_prog[id(mod)] = (mod.title, 0, '')
 
         archives = set()
+        progress.start_task(0, 0.9, '%s')
         progress.update(0, 'Checking %s...' % mod.title)
 
         kpath = os.path.join(modpath, 'mod.json')
@@ -429,6 +434,8 @@ class InstallTask(progress.MultistepTask):
                 logging.debug('%s is missing for %s.', itempath, mod)
 
         self.post(archives)
+        progress.finish_task()
+        progress.start_task(0.9, 0, 'Downloading logos...')
 
         # Make sure the images are in the mod folder so that they won't be deleted during the next
         # FetchTask.
@@ -442,8 +449,6 @@ class InstallTask(progress.MultistepTask):
                     # That's a URL
                     with open(dest, 'wb') as fobj:
                         util.download(img_path, fobj)
-                else:
-                    shutil.copyfile(img_path, dest)
 
                 setattr(mod, prop, dest)
 
@@ -456,10 +461,11 @@ class InstallTask(progress.MultistepTask):
                 if '://' in path:
                     with open(dest, 'wb') as fobj:
                         util.download(path, fobj)
-                else:
-                    shutil.copyfile(path, dest)
 
                 im_paths[i] = dest
+
+        progress.finish_task()
+        progress.update(1, 'Done')
 
     def init2(self):
         archives = set()
@@ -470,14 +476,15 @@ class InstallTask(progress.MultistepTask):
 
         for pkg in self._pkgs:
             mod = pkg.get_mod()
-            for item in pkg.files.values():
-                if (mod.mid, pkg.name, item['filename']) in archives:
-                    item = item.copy()
+            for oitem in pkg.files.values():
+                if (mod.mid, pkg.name, oitem['filename']) in archives:
+                    item = oitem.copy()
                     item['mod'] = mod
                     item['pkg'] = pkg
+                    item['_id'] = id(oitem)
                     downloads.append(item)
-
-                    self._pkg_prog[id(item)] = ('%s: %s' % (mod.title, item['filename']), 0, 'Checking...')
+                else:
+                    del self._pkg_prog[id(oitem)]
 
         if len(archives) == 0:
             logging.info('Nothing to do for this InstallTask!')
@@ -489,7 +496,7 @@ class InstallTask(progress.MultistepTask):
         self.add_work(downloads)
 
     def work2(self, archive):
-        self._local.pkg = id(archive)
+        self._local.pkg = archive['_id']
 
         with tempfile.TemporaryDirectory() as tpath:
             arpath = os.path.join(tpath, archive['filename'])

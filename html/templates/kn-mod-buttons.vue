@@ -66,7 +66,7 @@ export default {
             <span class="btn-text">UNINSTALL</span>
         </button>
 
-        <button class="mod-btn btn-blue" v-if="!mod.installed" @click="install">
+        <button class="mod-btn btn-blue" v-if="!mod.installed && mod.status !== 'updating'" @click="install">
             <span class="btn-text">INSTALL</span>
         </button>
 

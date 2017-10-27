@@ -375,6 +375,10 @@ export default {
                 </div>
 
                 <div v-if="popup_mode === 'mod_progress'">
+                    <p v-if="popup_content.progress_info.length === 0">
+                        Preparing...
+                    </p>
+
                     <div v-for="row in popup_content.progress_info" class="row">
                         <div class="col-xs-4 mod-prog-label">{{ row[0] }}</div>
                         <div class="col-xs-5">
