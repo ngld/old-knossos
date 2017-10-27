@@ -120,8 +120,8 @@
         "html/templates/kn-drawer.vue",
         "html/templates/kn-dropdown.vue",
         "html/templates/kn-flag-editor.vue",
-        "html/templates/kn-mod-buttons.vue",
-        "html/templates/kn-mod.vue",
+        "html/templates/kn-mod-explore.vue",
+        "html/templates/kn-mod-home.vue",
         "html/templates/kn-page.vue",
         "html/templates/kn-settings-page.vue"
     ]

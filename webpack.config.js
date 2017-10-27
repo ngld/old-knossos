@@ -9,6 +9,7 @@ const config = {
     new webpack.LoaderOptionsPlugin({
       options: {
         buble: {
+          objectAssign: 'Object.assign',
           transforms: (use_webkit ? {
             arrow: true,
             classes: true,

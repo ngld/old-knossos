@@ -305,7 +305,12 @@ export default {
     <!-------------------------------------------------------------------------------- Build the Main View container ---------->
         <div class="main-container scroll-style">
             <div class="container-fluid" v-if="page === 'modlist'">
-                <kn-mod v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod>
+                <div v-if="tab === 'home'">
+                    <kn-mod-home v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-home>
+                </div>
+                <div v-else>
+                    <kn-mod-explore v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-explore>
+                </div>
                 <div v-if="mods.length === 0" class="main-notice">No mods found.</div>
             </div>
 

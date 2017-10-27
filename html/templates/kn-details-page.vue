@@ -38,6 +38,8 @@ export default {
     },
 
     methods: {
+        ...require('../js/mod_button_methods.js').default,
+
         openLink(url) {
             fs2mod.openExternal(url);
         },
@@ -93,7 +95,43 @@ export default {
 
         <div class="row details-btns">
             <div class="col-sm-6">
-                <kn-mod-buttons :tab="'details'" :mod="cur_mod"></kn-mod-buttons>
+                <button
+                    class="mod-btn btn-green"
+                    v-if="cur_mod.installed && (cur_mod.status === 'ready' || cur_mod.status === 'update') && (cur_mod.type === 'mod' || cur_mod.type === 'tc')"
+                    @click="play">
+                    <span class="btn-text">PLAY</span>
+                </button>
+
+                <button class="mod-btn btn-yellow" v-if="cur_mod.installed && cur_mod.status === 'update'" @click="update">
+                    <span class="btn-text">UPDATE</span>
+                </button>
+
+                <button class="mod-btn btn-red" v-if="cur_mod.status === 'error'" @click="showErrors">
+                    <span class="btn-text">ERROR</span>
+                </button>
+
+                <button class="mod-btn btn-orange" v-if="cur_mod.installed && cur_mod.status !== 'updating' && cur_mod.id !== 'FS2' && !cur_mod.dev_mode" @click="uninstall">
+                    <span class="btn-text">UNINSTALL</span>
+                </button>
+
+                <button class="mod-btn btn-blue" v-if="cur_mod.status !== 'updating'" @click="install">
+                    <span class="btn-text">{{ cur_mod.installed ? 'MODFIY' : 'INSTALL' }}</span>
+                </button>
+
+                <button class="mod-btn btn-blue" v-if="cur_mod.status === 'updating'" @click="showProgress">
+                    <span class="small-btn-text">
+                        INSTALLING...<br>
+                        {{ Math.round(cur_mod.progress) }}%
+                    </span>
+                </button>
+
+                <button class="mod-btn btn-orange" v-if="cur_mod.status === 'updating'" @click="cancel">
+                    <span class="btn-text">CANCEL</span>
+                </button>
+
+                <button class="mod-btn btn-blue" v-if="cur_mod.installed" @click="reportMod">
+                    <span class="btn-text">REPORT</span>
+                </button>
             </div>
 
             <div class="col-sm-6 short-frame">

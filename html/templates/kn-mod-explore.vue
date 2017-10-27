@@ -19,6 +19,8 @@ export default {
     },
 
     methods: {
+        ...require('../js/mod_button_methods.js').default,
+
         showDetails() {
             vm.mod = this.mod;
             vm.page = 'details';
@@ -56,28 +58,40 @@ export default {
                     <img class="mod-logo-legacy img-responsive" v-if="mod.logo" :src="(mod.logo.indexOf('://') === -1 ? 'file://' : '') + mod.logo">
                 </div>
             </div>
-            <div class="mod-installed" v-if="tab === 'explore' && mod.installed">
+            <div class="mod-installed" v-if="mod.installed">
                 <div class="mod-banner">
                     <span v-if="!mod.versions[0].installed">Older Version</span>
                     <span v-else>Installed!</span>
                 </div>
             </div>
-            <div class="mod-notifier" v-if="tab === 'home'">
-                <img :src="'images/modnotify_' + (tab === 'home' ? mod.status : 'ready') + '.png'" class="notifier">
-            </div>
             <div class="actions">
                 <div class="btn-wrapper">
-                    <kn-mod-buttons :tab="tab" :mod="mod"></kn-mod-buttons>
+                    <button class="mod-btn btn-yellow" v-if="mod.installed && mod.status === 'update'" @click="update">
+                        <span class="btn-text">UPDATE</span>
+                    </button>
+
+                    <button class="mod-btn btn-red" v-if="mod.status === 'error'" @click="showErrors">
+                        <span class="btn-text">ERROR</span>
+                    </button>
+
+                    <button class="mod-btn btn-blue" v-if="mod.status !== 'updating'" @click="install">
+                        <span class="btn-text">{{ mod.installed ? 'MODFIY' : 'INSTALL' }}</span>
+                    </button>
+
+                    <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" @click="showProgress">
+                        <span class="small-btn-text">
+                            INSTALLING...<br>
+                            {{ Math.round(mod.progress) }}%
+                        </span>
+                    </button>
+
+                    <button class="mod-btn btn-orange" v-if="mod.status === 'updating'" @click="cancel">
+                        <span class="btn-text">CANCEL</span>
+                    </button>
 
                     <button class="mod-btn btn-grey" v-if="tab !== 'develop'" v-on:click="showDetails">
                         <span class="btn-text">DETAILS</span>
                     </button>
-
-                    <kn-dropdown v-if="tab === 'home'" @open="updateTools(); open = true" @close="open = false">
-                        <button v-for="tool in tools" @click="launchTool(tool)">Run {{ tool }}</button>
-                        <button @click="uploadLog">Upload Debug Log</button>
-                        <button v-if="mod.id !== 'FS2' && mod.status !== 'updating' && !mod.dev_mode" @click="uninstallMod">Uninstall</button>
-                    </kn-dropdown>
                 </div>
             </div>
             <div class="mod-progress"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>

@@ -25,14 +25,16 @@ from ninja_syntax import Writer
 from configlib import *
 
 UI_FILES = [
-    'ui/flags.ui',
     'ui/hell.ui',
     'ui/install.ui'
 ]
 
 JS_FILES = [
-    'html/js/translations.js',
+    'html/js/bbparser.js',
+    'html/js/gallery_yt.js',
     'html/js/main.js',
+    'html/js/mod_button_methods.js',
+    'html/js/translations.js',
     'webpack.config.js'
 ]
 

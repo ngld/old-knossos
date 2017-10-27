@@ -37,8 +37,8 @@ function init() {
         'kn-drawer',
         'kn-dropdown',
         'kn-flag-editor',
-        'kn-mod-buttons',
-        'kn-mod',
+        'kn-mod-home',
+        'kn-mod-explore',
         'kn-settings-page'
     ];
     window.tt = [];
