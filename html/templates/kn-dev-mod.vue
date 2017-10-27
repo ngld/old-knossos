@@ -12,11 +12,6 @@ export default {
                     <img class="mod-logo-legacy img-responsive" v-if="mod.logo" :src="'file://' + mod.logo">
                 </div>
             </div>
-            <div class="actions">
-                <div class="btn-wrapper">
-                    <kn-mod-buttons tab="develop" :mod="mod"></kn-mod-buttons>
-                </div>
-            </div>
             <div class="mod-progress"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>
             <div class="mod-title"><p>{{ mod.title }}</p></div>
         </div>

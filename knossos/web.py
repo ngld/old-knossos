@@ -44,6 +44,7 @@ class WebBridge(QtCore.QObject):
     modProgress = QtCore.Signal(str, float, str)
     settingsArrived = QtCore.Signal(str)
     hidePopup = QtCore.Signal()
+    applyDevDesc = QtCore.Signal(str)
 
     taskStarted = QtCore.Signal(float, str, list)
     taskProgress = QtCore.Signal(float, float, str)
@@ -1135,6 +1136,10 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(int, int, str)
     def testVoice(self, voice, volume, text):
         Thread(target=clibs.speak, args=(voice, volume, text)).start()
+
+    @QtCore.Slot(str)
+    def showDescEditor(self, text):
+        windows.DescriptionEditorWindow(text)
 
 
 if QtWebChannel:

@@ -33,6 +33,12 @@ export default {
         for(let mod of this.mods) {
             this.mod_map[mod.id] = mod;
         }
+
+        fs2mod.applyDevDesc.connect(this.applyDevDesc);
+    },
+
+    beforeDestroy() {
+        fs2mod.applyDevDesc.disconnect(this.applyDevDesc);
     },
 
     watch: {
@@ -453,6 +459,16 @@ export default {
             }
 
             this.tab_scroll = val;
+        },
+
+        openDescEditor() {
+            fs2mod.showDescEditor(this.selected_mod.description);
+        },
+
+        applyDevDesc(desc) {
+            if(this.selected_mod) {
+                this.selected_mod.description = desc;
+            }
         }
     }
 };
@@ -609,6 +625,8 @@ export default {
                                 <label class="col-xs-3 control-label">Description</label>
                                 <div class="col-xs-9">
                                     <textarea class="form-control" v-model="selected_mod.description"></textarea>
+
+                                    <button class="btn btn-small btn-default" @click.prevent="openDescEditor">Open Editor</button>
 
                                     <p class="help-block">
                                         Please use BBCode here. To preview your description, save, go to your home tab

@@ -27,6 +27,7 @@ from . import center, util, integration, web, repo
 from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.install import Ui_InstallDialog
+from .ui.edit_description import Ui_Dialog as Ui_DescEditor
 from .tasks import run_task, CheckTask, GOGExtractTask, InstallTask, UninstallTask, WindowsUpdateTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
@@ -508,4 +509,22 @@ class ModInstallWindow(Window):
 
         run_task(InstallTask(to_install, self._mod))
         run_task(UninstallTask(to_remove, mods=[self._mod]))
+        self.close()
+
+
+class DescriptionEditorWindow(Window):
+
+    def __init__(self, text):
+        super(DescriptionEditorWindow, self).__init__()
+
+        self._create_win(Ui_DescEditor)
+        self.win.descEdit.setPlainText(text)
+
+        self.win.applyButton.clicked.connect(self.apply_text)
+        self.win.cancelButton.clicked.connect(self.close)
+
+        self.open()
+
+    def apply_text(self):
+        center.main_win.browser_ctrl.bridge.applyDevDesc.emit(self.win.descEdit.toPlainText())
         self.close()

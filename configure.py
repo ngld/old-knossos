@@ -26,7 +26,8 @@ from configlib import *
 
 UI_FILES = [
     'ui/hell.ui',
-    'ui/install.ui'
+    'ui/install.ui',
+    'ui/edit_description.ui'
 ]
 
 JS_FILES = [
