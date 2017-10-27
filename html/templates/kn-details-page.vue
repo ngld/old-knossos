@@ -10,7 +10,10 @@ export default {
 
     data: () => ({
         version: null,
-        lightbox: null
+        lightbox: null,
+        tools: [],
+        tools_built: false,
+        open: false
     }),
 
     created() {
@@ -34,6 +37,13 @@ export default {
 
         rendered_desc() {
             return bbparser(this.cur_mod.description);
+        }
+    },
+
+    watch: {
+        cur_mod(new_mod) {
+            this.tools_built = false;
+            if(this.open) this.updateTools(new_mod);
         }
     },
 
@@ -76,6 +86,29 @@ export default {
                     if(link) link.click();
                 }
             });
+        },
+
+        updateTools(cur_mod) {
+            if(this.tools_built) return;
+            this.tools_built = true;
+
+            if(!cur_mod) cur_mod = this.cur_mod;
+
+            call(fs2mod.getModTools, cur_mod.id, cur_mod.version, (tools) => {
+                this.tools = tools;
+            });
+        },
+
+        launchTool(label) {
+            fs2mod.runModTool(this.cur_mod.id, this.cur_mod.version, '', '', label);
+        },
+
+        uploadLog() {
+            alert('Not yet implemented!');
+        },
+
+        uninstallMod() {
+            fs2mod.uninstall(this.mod.id, this.mod.version, []);
         }
     }
 }
@@ -110,12 +143,8 @@ export default {
                     <span class="btn-text">ERROR</span>
                 </button>
 
-                <button class="mod-btn btn-orange" v-if="cur_mod.installed && cur_mod.status !== 'updating' && cur_mod.id !== 'FS2' && !cur_mod.dev_mode" @click="uninstall">
-                    <span class="btn-text">UNINSTALL</span>
-                </button>
-
-                <button class="mod-btn btn-blue" v-if="cur_mod.status !== 'updating'" @click="install">
-                    <span class="btn-text">{{ cur_mod.installed ? 'MODFIY' : 'INSTALL' }}</span>
+                <button class="mod-btn btn-blue" v-if="cur_mod.status !== 'updating' && !cur_mod.installed" @click="install">
+                    <span class="btn-text">INSTALL</span>
                 </button>
 
                 <button class="mod-btn btn-blue" v-if="cur_mod.status === 'updating'" @click="showProgress">
@@ -132,6 +161,13 @@ export default {
                 <button class="mod-btn btn-blue" v-if="cur_mod.installed" @click="reportMod">
                     <span class="btn-text">REPORT</span>
                 </button>
+
+                <kn-dropdown btn_style="options" @open="updateTools(); open = true" @close="open = false">
+                    <button v-for="tool in tools" @click="launchTool(tool)">Run {{ tool }}</button>
+                    <button @click="uploadLog">Upload Debug Log</button>
+                    <button v-if="mod.status !== 'updating' && mod.installed" @click="install">Modify</button>
+                    <button v-if="mod.id !== 'FS2' && mod.status !== 'updating' && !mod.dev_mode" @click="uninstallMod">Uninstall</button>
+                </kn-dropdown>
             </div>
 
             <div class="col-sm-6 short-frame">

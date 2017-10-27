@@ -1,5 +1,11 @@
 <script>
 export default {
+    props: {
+        btn_style: {
+            default: 'icon'
+        }
+    },
+
     data: () => ({
         active: false
     }),
@@ -29,8 +35,9 @@ export default {
 };
 </script>
 <template>
-	<div class="dropdown">
-	    <button class="dropbtn" @click="active = !active"></button>
+	<div :class="{ 'dropdown-mod-btn': btn_style === 'options', dropdown: true }">
+        <button v-if="btn_style === 'options'" class="mod-btn btn-grey" @click="active = !active">Options</button>
+	    <button v-else class="dropbtn" @click="active = !active"></button>
 	    <div class="dropdown-content" v-if="active">
 	        <slot>No menu items!</slot>
 	    </div>

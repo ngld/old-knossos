@@ -852,6 +852,18 @@ iframe {
     color: rgb(220, 220, 220);
 }
 
+.dropdown-mod-btn {
+    display: inline-block;
+    position: relative;
+    right: 0;
+    width: 100px;
+    height: 43px;
+}
+
+.dropdown-mod-btn .dropdown-content {
+    top: 43px;
+}
+
 .show {
     display: block;
 }
