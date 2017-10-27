@@ -56,9 +56,10 @@ export default {
                     <img class="mod-logo-legacy img-responsive" v-if="mod.logo" :src="(mod.logo.indexOf('://') === -1 ? 'file://' : '') + mod.logo">
                 </div>
             </div>
-            <div class="mod-installed" v-if="tab === 'explore' && mod.versions[0].installed">
+            <div class="mod-installed" v-if="tab === 'explore' && mod.installed">
                 <div class="mod-banner">
-                    <span>Installed!</span>
+                    <span v-if="!mod.versions[0].installed">Older Version</span>
+                    <span v-else>Installed!</span>
                 </div>
             </div>
             <div class="mod-notifier" v-if="tab === 'home'">
@@ -66,7 +67,7 @@ export default {
             </div>
             <div class="actions">
                 <div class="btn-wrapper">
-                    <kn-mod-buttons :tab="tab" :mod="mod"></kn-mod-buttons>
+                    <kn-mod-buttons :tab="tab" :mod="mod.versions[0]"></kn-mod-buttons>
 
                     <button class="mod-btn btn-grey" v-if="tab !== 'develop'" v-on:click="showDetails">
                         <span class="btn-text">DETAILS</span>

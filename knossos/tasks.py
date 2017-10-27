@@ -648,6 +648,9 @@ class InstallTask(progress.MultistepTask):
                                     remaining -= bufsize
 
                             done += 1
+
+                        # Avoid confusing CheckTask with a missing VP file.
+                        archive['pkg'].filelist = []
                     else:
                         # This move might fail on Windows with Permission Denied errors.
                         # "[WinError 32] The process cannot access the file because it is being used by another process"
@@ -720,7 +723,7 @@ class UninstallTask(progress.MultistepTask):
         super(UninstallTask, self).__init__()
 
         self._pkgs = []
-        self._mods = mods
+        self._mods = []
         self.check_after = check_after
 
         for pkg in pkgs:
@@ -728,6 +731,12 @@ class UninstallTask(progress.MultistepTask):
                 self._pkgs.append(center.installed.query(pkg))
             except repo.ModNotFound:
                 logging.exception('Someone tried to uninstall a non-existant package (%s, %s)! Skipping it...', pkg.get_mod().mid, pkg.name)
+
+        for mod in mods:
+            try:
+                self._mods.append(center.installed.query(mod))
+            except repo.ModNotFound:
+                logging.exception('Someone tried to uninstall a non-existant %s!', mod)
 
         self.done.connect(self.finish)
         self.title = 'Uninstalling mods...'
@@ -764,7 +773,8 @@ class UninstallTask(progress.MultistepTask):
             elif len(mod.packages) == 0:
                 # Remove our files
 
-                my_files = (os.path.join(modpath, 'mod.json'), mod.logo, mod.tile, mod.banner)
+                my_files = [os.path.join(modpath, 'mod.json'), mod.logo, mod.tile, mod.banner]
+                my_files += mod.screenshots + mod.attachments
                 for path in my_files:
                     if path and os.path.isfile(path):
                         os.unlink(path)

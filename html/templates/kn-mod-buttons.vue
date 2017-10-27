@@ -66,8 +66,8 @@ export default {
             <span class="btn-text">UNINSTALL</span>
         </button>
 
-        <button class="mod-btn btn-blue" v-if="!mod.installed && mod.status !== 'updating'" @click="install">
-            <span class="btn-text">INSTALL</span>
+        <button class="mod-btn btn-blue" v-if="mod.status !== 'updating'" @click="install">
+            <span class="btn-text">{{ mod.installed ? 'MODFIY' : 'INSTALL' }}</span>
         </button>
 
         <button class="mod-btn btn-blue" v-if="mod.status === 'updating'" @click="showProgress">

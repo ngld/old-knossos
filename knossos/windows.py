@@ -27,7 +27,7 @@ from . import center, util, integration, web, repo
 from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.install import Ui_InstallDialog
-from .tasks import run_task, CheckTask, GOGExtractTask, InstallTask, WindowsUpdateTask
+from .tasks import run_task, CheckTask, GOGExtractTask, InstallTask, UninstallTask, WindowsUpdateTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -241,6 +241,7 @@ class HellWindow(Window):
                                 item['status'] = 'error'
                                 break
 
+                item['installed'] = len(installed_versions) > 0
                 item['versions'] = []
                 for mod in mvs:
                     mv = mod.get()
@@ -393,6 +394,7 @@ class ModInstallWindow(Window):
             item.setData(0, QtCore.Qt.UserRole, mod)
             item.setData(0, QtCore.Qt.UserRole + 2, '')
             c = 0
+            mod_installed = center.installed.is_installed(mod)
 
             for pkg in mod.packages:
                 fsize = 0
@@ -406,20 +408,29 @@ class ModInstallWindow(Window):
 
                 sub = QtWidgets.QTreeWidgetItem(item, [pkg.name, fsize])
                 is_installed = center.installed.is_installed(pkg)
+                is_required = len(center.installed.get_dependents([pkg])) > 0
 
                 if is_installed:
                     sub.setText(1, self.tr('Installed'))
 
-                if pkg.status == 'required' or pkg in needed_pkgs or is_installed:
+                if pkg.status == 'required' or pkg in needed_pkgs or is_required:
                     sub.setCheckState(0, QtCore.Qt.Checked)
                     sub.setDisabled(True)
 
                     c += 1
                 elif pkg.status == 'recommended':
-                    sub.setCheckState(0, QtCore.Qt.Checked)
-                    c += 1
-                if pkg.status == 'optional':
-                    sub.setCheckState(0, QtCore.Qt.Unchecked)
+                    if not mod_installed or is_installed:
+                        sub.setCheckState(0, QtCore.Qt.Checked)
+                        c += 1
+                    else:
+                        sub.setCheckState(0, QtCore.Qt.Unchecked)
+
+                elif pkg.status == 'optional':
+                    if is_installed:
+                        sub.setCheckState(0, QtCore.Qt.Checked)
+                        c += 1
+                    else:
+                        sub.setCheckState(0, QtCore.Qt.Unchecked)
 
                 sub.setData(0, QtCore.Qt.UserRole, pkg)
                 sub.setData(0, QtCore.Qt.UserRole + 1, is_installed)
@@ -448,16 +459,25 @@ class ModInstallWindow(Window):
         self.update_deps()
 
     def get_selected_pkgs(self):
-        pkgs = []
-        for item in self._pkg_checks:
-            if item.checkState(0) == QtCore.Qt.Checked:
-                pkgs.append(item.data(0, QtCore.Qt.UserRole))
+        to_install = []
+        to_remove = []
 
-        pkgs = center.mods.process_pkg_selection(pkgs)
-        return pkgs
+        for item in self._pkg_checks:
+            selected = item.checkState(0) == QtCore.Qt.Checked
+            installed = item.data(0, QtCore.Qt.UserRole + 1)
+            name = item.data(0, QtCore.Qt.UserRole)
+
+            if selected != installed:
+                if installed:
+                    to_remove.append(name)
+                else:
+                    to_install.append(name)
+
+        to_install = center.mods.process_pkg_selection(to_install)
+        return to_install, to_remove
 
     def update_deps(self):
-        pkg_sel = self.get_selected_pkgs()
+        pkg_sel, rem_sel = self.get_selected_pkgs()
         dl_size = 0
         for item in self._pkg_checks:
             pkg = item.data(0, QtCore.Qt.UserRole)
@@ -481,5 +501,8 @@ class ModInstallWindow(Window):
     def install(self):
         center.main_win.update_mod_buttons('home')
 
-        run_task(InstallTask(self.get_selected_pkgs(), self._mod))
+        to_install, to_remove = self.get_selected_pkgs()
+
+        run_task(InstallTask(to_install, self._mod))
+        run_task(UninstallTask(to_remove, mods=[self._mod]))
         self.close()
