@@ -597,12 +597,57 @@ iframe {
     background-color: rgba(0, 0, 0, 0.60);
 }
 
-.mod-node .mod-banner { /* Places the overlay for installed mods on the Explore tab */
+.mod-node .mod-banner-green { /* Places the overlay for installed mods on the Explore tab */
     width: 100px;
     height: 26px;
     position: absolute;
     top: 25px;
     background-image: url(../images/mod-banner-green.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner-blue { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-blue.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner-grey { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-grey.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner-orange { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-orange.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner-red { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-red.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner-yellow { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-yellow.png);
     text-align: right;
 }
 

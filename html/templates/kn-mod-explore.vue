@@ -59,9 +59,11 @@ export default {
                 </div>
             </div>
             <div class="mod-installed" v-if="mod.installed">
-                <div class="mod-banner">
-                    <span v-if="!mod.versions[0].installed">Older Version</span>
-                    <span v-else>Installed!</span>
+                 <div class="mod-banner mod-banner-blue" v-if="!mod.versions[0].installed">
+                    <span>Update Avail!</span>
+                </div>
+                <div class="mod-banner mod-banner-green" v-else>
+                    <span>Installed!</span>
                 </div>
             </div>
             <div class="actions">
