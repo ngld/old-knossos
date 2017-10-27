@@ -27,6 +27,8 @@ if variant not in ('PyQt5', 'headless', default_variant):
     variant = default_variant
 
 if variant in ('PyQt5', 'auto'):
+    os.environ['DBUS_FATAL_WARNINGS'] = '0'
+
     try:
         from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork
 
