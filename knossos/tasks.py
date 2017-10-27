@@ -1476,7 +1476,7 @@ def create_retail_mod(dest_path):
 
     for prop, path in files.items():
         ext = os.path.splitext(path)[1]
-        im_path = os.path.join(dest_path, 'kn_' + prop + '.' + ext)
+        im_path = os.path.join(dest_path, 'kn_' + prop + ext)
         with open(im_path, 'wb') as stream:
             stream.write(read_file(path, decode=False))
 
@@ -1484,7 +1484,7 @@ def create_retail_mod(dest_path):
 
     for i, path in enumerate(screenshots):
         ext = os.path.splitext(path)[1]
-        im_path = os.path.join(dest_path, 'kn_screen_' + str(i) + '.' + ext)
+        im_path = os.path.join(dest_path, 'kn_screen_' + str(i) + ext)
         with open(im_path, 'wb') as stream:
             stream.write(read_file(path, decode=False))
 
