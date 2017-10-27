@@ -637,7 +637,15 @@ class InstallTask(progress.MultistepTask):
                                 os.makedirs(sub_par)
 
                             with open(sub_dest, 'wb') as dest_hdl:
-                                shutil.copyfileobj(hdl, dest_hdl, length=meta['size'])
+                                remaining = meta['size']
+                                bufsize = 16 * 1024  # 16 KiB
+                                while remaining > 0:
+                                    buf = hdl.read(min(remaining, bufsize))
+                                    if not buf:
+                                        break
+
+                                    dest_hdl.write(buf)
+                                    remaining -= bufsize
 
                             done += 1
                     else:
