@@ -26,7 +26,7 @@ import stat
 import json
 
 from . import center, repo, util, settings
-from .qt import QtCore, QtWidgets
+from .qt import QtCore, QtWidgets, run_in_qt
 
 # TODO: What happens if a SONAME contains a space?
 FILE_PATH_RE = r'[a-zA-Z0-9\./\-\_\+]+'
@@ -37,25 +37,6 @@ _LIB_CACHE = None
 
 watchers = []
 translate = QtCore.QCoreApplication.translate
-
-
-class SignalContainer(QtCore.QObject):
-    signal = QtCore.Signal(list)
-
-
-# This wrapper makes sure that the wrapped function is always run in the QT main thread.
-def run_in_qt(func):
-    cont = SignalContainer()
-
-    def dispatcher(*args):
-        cont.signal.emit(list(args))
-
-    def listener(params):
-        func(*params)
-
-    cont.signal.connect(listener)
-
-    return dispatcher
 
 
 class Fs2Watcher(threading.Thread):

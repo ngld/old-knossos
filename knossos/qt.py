@@ -192,6 +192,13 @@ if variant == 'headless':
     QtWebEngineWidgets = None
 
 
+from knossos import center  # noqa
+
+
+class SignalContainer(QtCore.QObject):
+    signal = QtCore.Signal(list)
+
+
 def read_file(path, decode=True):
     fd = QtCore.QFile(path)
     if not fd.open(QtCore.QIODevice.ReadOnly):
@@ -220,4 +227,22 @@ def load_styles(*names):
     return data
 
 
-__all__ = ['QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtWebChannel', 'QtWebEngineWidgets', 'QtWebKit', 'variant', 'read_file', 'load_styles']
+# This wrapper makes sure that the wrapped function is always run in the QT main thread.
+def run_in_qt(func):
+    cont = SignalContainer()
+
+    def dispatcher(*args):
+        cont.signal.emit(list(args))
+
+    def listener(params):
+        func(*params)
+
+    cont.signal.connect(listener)
+
+    return dispatcher
+
+
+__all__ = [
+    'QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtWebChannel', 'QtWebEngineWidgets', 'QtWebKit', 'variant',
+    'read_file', 'load_styles', 'run_in_qt'
+]

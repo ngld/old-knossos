@@ -67,7 +67,7 @@ if six.PY2:
 
 from .qt import QtCore, QtGui, QtWidgets, variant as qt_variant
 from .tasks import run_task, CheckUpdateTask, CheckTask
-from . import util, ipc
+from . import util, ipc, auto_fetch
 
 
 app = None
@@ -177,6 +177,7 @@ def run_knossos():
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()
+    center.auto_fetcher = auto_fetch.AutoFetcher()
 
     # This has to run before we can load any mods!
     repo.CPU_INFO = util.get_cpuinfo()
@@ -191,11 +192,6 @@ def run_knossos():
 
     if center.settings['update_notify'] and '-dev' not in center.VERSION:
         run_task(CheckUpdateTask())
-
-    if center.settings['base_path']:
-        # This task scans the base path for mods and checks them. We need to run this because
-        # center.installed would be empty otherwise.
-        run_task(CheckTask())
 
     ipc.setup()
     app.exec_()

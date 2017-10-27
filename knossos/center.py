@@ -38,6 +38,7 @@ app = None
 main_win = None
 fs2_watcher = None
 pmaster = None
+auto_fetcher = None
 mods = None
 installed = None
 fso_flags = None

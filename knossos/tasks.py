@@ -83,8 +83,7 @@ class FetchTask(progress.Task):
 
             modlist.save_json(os.path.join(center.settings_path, 'mods.json'))
             center.save_settings()
-
-        run_task(CheckTask())
+            center.main_win.update_mod_list()
 
 
 class CheckTask(progress.MultistepTask):
@@ -99,7 +98,7 @@ class CheckTask(progress.MultistepTask):
 
     def init1(self):
         if center.settings['base_path'] is None:
-            logging.error('A CheckTask was launched even though no base path was set!')
+            logging.warn('A CheckTask was launched even though no base path was set!')
         else:
             center.installed.clear()
             self.add_work((center.settings['base_path'],))
@@ -202,7 +201,7 @@ class CheckTask(progress.MultistepTask):
                 pkg.files_ok = s
                 pkg.files_checked = c
 
-        center.signals.repo_updated.emit()
+        center.main_win.update_mod_list()
 
 
 class CheckFilesTask(progress.MultistepTask):

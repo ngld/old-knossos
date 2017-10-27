@@ -27,7 +27,7 @@ from . import center, util, integration, web, repo
 from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.install import Ui_InstallDialog
-from .tasks import run_task, GOGExtractTask, InstallTask, WindowsUpdateTask
+from .tasks import run_task, CheckTask, GOGExtractTask, InstallTask, WindowsUpdateTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -53,8 +53,12 @@ class QMainWindow(QtWidgets.QMainWindow):
         center.app.quit()
 
     def changeEvent(self, event):
-        if event.type() == QtCore.QEvent.ActivationChange and integration.current is not None:
-            integration.current.annoy_user(False)
+        if event.type() == QtCore.QEvent.ActivationChange:
+            if integration.current is not None:
+                integration.current.annoy_user(False)
+
+            if center.main_win and center.main_win.win.isActiveWindow():
+                center.auto_fetcher.trigger()
 
         return super(QMainWindow, self).changeEvent(event)
 
@@ -172,6 +176,9 @@ class HellWindow(Window):
     def finish_init(self):
         # The delay is neccessary to make sure that QtWebkit doesn't swallow the resulting event.
         QtCore.QTimer.singleShot(300, self.check_fso)
+        center.auto_fetcher.start()
+
+        run_task(CheckTask())
 
     def check_fso(self):
         if 'KN_WELCOME' not in os.environ and center.settings['base_path'] is not None:

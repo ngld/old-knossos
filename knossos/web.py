@@ -138,6 +138,7 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot()
     def fetchModlist(self):
         tasks.run_task(tasks.FetchTask())
+        tasks.run_task(tasks.CheckTask())
 
     @QtCore.Slot(bool, result='QVariantList')
     def requestModlist(self, async=False):
@@ -391,7 +392,7 @@ class WebBridge(QtCore.QObject):
         else:
             center.settings['base_path'] = os.path.abspath(path)
             center.save_settings()
-            tasks.run_task(tasks.FetchTask())
+            tasks.run_task(tasks.CheckTask())
             center.main_win.check_fso()
 
     @QtCore.Slot()
