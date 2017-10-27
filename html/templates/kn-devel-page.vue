@@ -404,6 +404,7 @@ export default {
         },
 
         uploadMod()  {
+            vm.popup_progress_message = null;
             vm.popup_mode = 'are_you_sure';
             vm.popup_title = 'Upload mod';
             vm.popup_sure_question = `Are you sure that you want to upload ${this.selected_mod.title} ${this.selected_mod.version}?`;

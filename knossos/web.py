@@ -48,6 +48,7 @@ class WebBridge(QtCore.QObject):
     taskStarted = QtCore.Signal(float, str, list)
     taskProgress = QtCore.Signal(float, float, str)
     taskFinished = QtCore.Signal(float)
+    taskMessage = QtCore.Signal(str)
 
     def __init__(self, webView=None):
         super(WebBridge, self).__init__()

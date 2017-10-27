@@ -67,7 +67,7 @@ export default {
             </div>
             <div class="actions">
                 <div class="btn-wrapper">
-                    <kn-mod-buttons :tab="tab" :mod="mod.versions[0]"></kn-mod-buttons>
+                    <kn-mod-buttons :tab="tab" :mod="mod"></kn-mod-buttons>
 
                     <button class="mod-btn btn-grey" v-if="tab !== 'develop'" v-on:click="showDetails">
                         <span class="btn-text">DETAILS</span>

@@ -24,6 +24,8 @@ export default {
         popup_mode: '',
         popup_content: null,
 
+        popup_progress_message: null,
+
         popup_mod_name: '',
         popup_mod_id: '',
         popup_mod_version: '1.0.0',
@@ -186,6 +188,7 @@ export default {
         },
 
         showModProgress() {
+            this.popup_progress_message = null;
             this.popup_content = this.mod;
             this.popup_title = 'Installation Details';
             this.popup_mode = 'mod_progress';
@@ -375,6 +378,8 @@ export default {
                 </div>
 
                 <div v-if="popup_mode === 'mod_progress'">
+                    <p v-if="popup_progress_message">{{ popup_progress_message }}</p>
+
                     <p v-if="popup_content.progress_info.length === 0">
                         Preparing...
                     </p>

@@ -140,6 +140,10 @@ function init() {
         delete tasks[tid];
     });
 
+    fs2mod.taskMessage.connect((msg) => {
+        vm.popup_progress_message = msg;
+    });
+
     // Open <a href="..." target="_blank">...</a> links in the system's default browser
     document.body.addEventListener('click', (e) => {
         if(e.target && e.target.nodeName === 'A' && e.target.target === '_blank' && e.className && e.className.indexOf('open-ext') > -1) {

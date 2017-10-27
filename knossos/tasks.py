@@ -1141,22 +1141,22 @@ class UploadTask(progress.MultistepTask):
         self._dir.cleanup()
 
         if self._login_failed:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to login!')
+            message = 'Failed to login!'
         elif self._reason == 'unauthorized':
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'You are not authorized to edit this mod!')
+            message = 'You are not authorized to edit this mod!'
         elif self._success:
-            QtWidgets.QMessageBox.information(None, 'Knossos', 'Successfully uploaded mod!')
+            message = 'Successfully uploaded mod!'
         elif self._reason in self._msg_table:
-            QtWidgets.QMessageBox.critical(None, 'Knossos',
-                "Your mod couldn't be uploaded because %s" % self._msg_table[self._reason])
+            message = "Your mod couldn't be uploaded because %s" % self._msg_table[self._reason]
         elif self._reason == 'conflict':
-            QtWidgets.QMessageBox.critical(None, 'Knossos', "I can't upload this mod because at least one file is " +
-                "contained in multiple packages.\n" + self._msg)
+            message = "I can't upload this mod because at least one file is contained in multiple packages.\n"
+            message += self._msg
         elif self._reason == 'aborted':
-            # No message here
-            pass
+            return
         else:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'An unexpected error occured! Sorry...')
+            message = 'An unexpected error occured! Sorry...'
+
+        center.main_win.browser_ctrl.bridge.taskMessage.emit(message)
 
 
 class GOGExtractTask(progress.Task):
