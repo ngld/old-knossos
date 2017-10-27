@@ -563,6 +563,7 @@ class Package(object):
     status = 'recommended'
     dependencies = None
     environment = None
+    folder = None
     is_vp = False
     files = None
     filelist = None
@@ -586,10 +587,14 @@ class Package(object):
         self.status = values.get('status', 'recommended').lower()
         self.dependencies = values.get('dependencies', [])
         self.environment = values.get('environment', '')
+        self.folder = values.get('folder', self.name)
         self.is_vp = values.get('is_vp', False)
         self.files = {}
         self.filelist = values.get('filelist', [])
         self.executables = []
+
+        if self.folder is None:
+            self.folder = self.name
 
         for exe in values.get('executables', []):
             self.executables.append({
@@ -624,6 +629,7 @@ class Package(object):
             'status': self.status,
             'dependencies': self.dependencies,
             'environment': self.environment,
+            'folder': self.folder,
             'is_vp': self.is_vp,
             'files': list(self.files.values()),
             'filelist': self.filelist,
@@ -1098,7 +1104,6 @@ class IniMod(InstalledMod):
 
 
 class InstalledPackage(Package):
-    folder = None
     check_notes = ''
     files_ok = -1
     files_checked = -1
@@ -1111,10 +1116,8 @@ class InstalledPackage(Package):
         super(InstalledPackage, self).set(values.copy())
 
         self.check_notes = values.get('check_notes', '')
-        self.folder = values.get('folder', None)
 
     def get(self):
         data = super(InstalledPackage, self).get()
         data['check_notes'] = self.check_notes
-        data['folder'] = self.folder
         return data

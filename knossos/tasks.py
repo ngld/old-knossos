@@ -154,8 +154,13 @@ class CheckTask(progress.MultistepTask):
         archives = set()
         msgs = []
 
+        if mod.dev_mode:
+            pkgpath = os.path.join(mod.folder, pkg.folder)
+        else:
+            pkgpath = mod.folder
+
         for info in pkg_files:
-            mypath = util.ipath(os.path.join(mod.folder, info['filename']))
+            mypath = util.ipath(os.path.join(pkgpath, info['filename']))
             fix = False
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
@@ -382,6 +387,14 @@ class InstallTask(progress.MultistepTask):
             run_task(CheckTask())
 
     def init1(self):
+        if center.settings['neb_user']:
+            neb = nebula.NebulaClient()
+            editable = neb.get_editable_mods()
+
+            for mod in self._mods:
+                if mod.mid in editable:
+                    mod.dev_mode = True
+
         self._threads = 3
         self.add_work(self._mods)
 
@@ -406,28 +419,37 @@ class InstallTask(progress.MultistepTask):
                 info = None
 
             if info is not None and info['version'] != str(mod.version):
-                # TODO: Remove old files
-                logging.info('Overwriting "%s" (%s) with version %s.' % (mod.mid, info['version'], mod.version))
+                logging.error('Overwriting "%s" (%s) with version %s.' % (mod.mid, info['version'], mod.version))
 
         if os.path.isdir(modpath):
+            # TODO: Figure out if we want to handle these files (i.e. remove them)
             for path, dirs, files in os.walk(modpath):
                 relpath = path[len(modpath):].lstrip('/\\')
                 for item in files:
                     itempath = util.pjoin(relpath, item)
-                    if not itempath.startswith('__k_plibs') and itempath not in mnames:
+                    if not itempath.startswith('kn_') and itempath not in mnames:
                         logging.info('File "%s" is left over.', itempath)
         else:
             logging.debug('Folder %s for %s does not yet exist.', mod, modpath)
             os.makedirs(modpath)
 
         amount = float(len(mfiles))
+        if mod.dev_mode:
+            pkg_folders = {}
+            for pkg in mod.packages:
+                pkg_folders[pkg.name] = pkg.folder
+
         for i, info in enumerate(mfiles):
             if (mod.mid, info['package']) not in self._pkg_names:
                 continue
 
             progress.update(i / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
 
-            itempath = util.ipath(os.path.join(modpath, info['filename']))
+            if mod.dev_mode:
+                itempath = util.ipath(os.path.join(modpath, pkg_folders[info['package']], info['filename']))
+            else:
+                itempath = util.ipath(os.path.join(modpath, info['filename']))
+
             if not os.path.isfile(itempath) or not util.check_hash(info['checksum'], itempath):
                 archives.add((mod.mid, info['package'], info['archive']))
                 logging.debug('%s is missing for %s.', itempath, mod)
@@ -555,7 +577,7 @@ class InstallTask(progress.MultistepTask):
                 progress.update(0.98, 'Waiting...')
                 self._7z_lock.acquire()
 
-            progress.update(0.98, 'Extracting %s...' % archive['filename'])
+            progress.update(0.98, 'Extracting...')
             logging.debug('Extracting %s into %s', archive['filename'], modpath)
 
             if util.extract_archive(arpath, cpath):
@@ -581,34 +603,60 @@ class InstallTask(progress.MultistepTask):
                 self._error = True
                 return
 
+            dev_mode = archive['pkg'].get_mod().dev_mode
+
             for item in archive['pkg'].filelist:
                 if item['archive'] != archive['filename']:
                     continue
 
                 src_path = os.path.join(cpath, item['orig_name'])
-                dest_path = util.ipath(os.path.join(modpath, item['filename']))
+                if dev_mode:
+                    dest_path = util.ipath(os.path.join(modpath, archive['pkg'].folder, item['filename']))
+                else:
+                    dest_path = util.ipath(os.path.join(modpath, item['filename']))
 
                 try:
                     dparent = os.path.dirname(dest_path)
                     if not os.path.isdir(dparent):
                         os.makedirs(dparent)
 
-                    # This move might fail on Windows with Permission Denied errors.
-                    # "[WinError 32] The process cannot access the file because it is being used by another process"
-                    # Just try it again several times to account of AV scanning and similar problems.
-                    tries = 5
-                    while tries > 0:
-                        try:
-                            shutil.move(src_path, dest_path)
-                            break
-                        except Exception as e:
-                            logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
-                            tries -= 1
+                    if dev_mode and archive['pkg'].is_vp:
+                        vp = vplib.VpReader(src_path)
 
-                            if tries == 0:
-                                raise
-                            else:
-                                time.sleep(1)
+                        fc = float(len(vp.files))
+                        done = 0
+                        progress.start_task(0.98, 0.02, '%s')
+                        for path, meta in vp.files.items():
+                            progress.update(done / fc, path)
+                            hdl = vp.open_file(path)
+
+                            sub_dest = util.ipath(os.path.join(modpath, archive['pkg'].folder, path))
+                            sub_par = os.path.dirname(sub_dest)
+
+                            if not os.path.isdir(sub_par):
+                                os.makedirs(sub_par)
+
+                            with open(sub_dest, 'wb') as dest_hdl:
+                                shutil.copyfileobj(hdl, dest_hdl, length=meta['size'])
+
+                            done += 1
+                    else:
+                        # This move might fail on Windows with Permission Denied errors.
+                        # "[WinError 32] The process cannot access the file because it is being used by another process"
+                        # Just try it again several times to account of AV scanning and similar problems.
+                        tries = 5
+                        while tries > 0:
+                            try:
+                                shutil.move(src_path, dest_path)
+                                break
+                            except Exception as e:
+                                logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
+                                tries -= 1
+
+                                if tries == 0:
+                                    raise
+                                else:
+                                    time.sleep(1)
                 except Exception:
                     logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
                                       src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)

@@ -67,7 +67,7 @@ class DataReader(object):
 
     def unpack_string(self):
         length = self.unpack('i')
-        return self.unpack(str(length) + 's')[0].rstrip('\x00')
+        return self.unpack(str(length) + 's')[0].decode('utf8').rstrip('\x00')
 
 
 class DataWriter(object):
@@ -93,10 +93,10 @@ class DataWriter(object):
 
 class VpReader(DataReader):
     fs = None
-    _files = None
+    files = None
 
     def cut_str(self, string):
-        length = string.find('\x00')
+        length = string.find(b'\x00')
         if length == -1:
             return string
 
@@ -105,7 +105,7 @@ class VpReader(DataReader):
     def read(self):
         header, version, diroffset, direntries = self.unpack('4siii')
 
-        if header != 'VPVP':
+        if header != b'VPVP':
             logging.error('Invalid VP file!')
             self._file.close()
             return
@@ -114,12 +114,11 @@ class VpReader(DataReader):
         files = 0
 
         self._file.seek(diroffset)
-        self.fs = {}
-        self._files = {}
+        self.files = {}
         cur_path = []
         for n in range(direntries):
             offset, size, name, timestamp = self.unpack('ii32si')
-            name = self.cut_str(name).lower()
+            name = self.cut_str(name).decode('utf8').lower()
 
             if timestamp == 0:
                 if size != 0:
@@ -130,65 +129,22 @@ class VpReader(DataReader):
                     cur_path.pop()
                 else:
                     cur_path.append(name)
-                    self.set(cur_path, {})
                     dirs += 1
             else:
                 cur_path.append(name)
-                self.add_file(cur_path, {
+                self.files['/'.join(cur_path)] = {
                     'offset': offset,
                     'size': size,
                     'timestamp': timestamp
-                })
+                }
                 cur_path.pop()
                 files += 1
 
         logging.info('Found {0} files and {1} directories in "{2}".'.format(files, dirs, self._file.name))
 
-    def get(self, path):
-        if type(path) == str:
-            if path == '':
-                path = []
-            else:
-                path = path.strip('/').split('/')
-
-        item = self.fs
-        for part in path:
-            part = part.lower()
-            if part not in item:
-                return None
-
-            item = item[part]
-
-        return item
-
-    def set(self, path, value):
-        if type(path) == str:
-            path = path.strip('/').split('/')
-        else:
-            # Copy the given path to avoid surprising the caller with a modified list!
-            path = path[:]
-
-        last_part = path.pop()
-        item = self.fs
-        for part in path:
-            part = part.lower()
-            if part not in item:
-                item[part] = {}
-
-            item = item[part]
-
-        item[last_part.lower()] = value
-
-    def add_file(self, path, data):
-        self.set(path, None)
-
-        if type(path) != str:
-            path = '/'.join(path)
-
-        self._files[path.lower()] = data
-
-    def file_exists(self, path):
-        return path in self._files
+    def open_file(self, path):
+        self._file.seek(self.files[path]['offset'])
+        return self._file
 
 
 class VpWriter(DataWriter):
