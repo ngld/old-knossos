@@ -114,7 +114,7 @@ class Worker(threading.Thread):
                 task[0].work(*task[1])
             except SystemExit:
                 return
-            except:
+            except Exception:
                 logging.exception('Exception in Thread!')
 
             task[0]._deinit()
@@ -289,6 +289,7 @@ class Task(QtCore.QObject):
 
     def abort(self):
         if not self.can_abort:
+            logging.debug("Abort request failed for task %s because it can't abort!" % self)
             return False
 
         # Empty the work queue, this won't stop running workers but it will
@@ -360,7 +361,7 @@ class MultistepTask(Task):
 
     def _get_work(self):
         with self._work_lock:
-            if (self._threads > 0 and self._running >= self._threads) or self._sdone or self.aborted:
+            if (self._threads > 0 and self._pending >= self._threads) or self._sdone or self.aborted:
                 return None
             elif len(self._work) == 0 or self._cur_step < 0:
                 if self._pending == 0 and self._running == 0:
@@ -378,7 +379,7 @@ class MultistepTask(Task):
             # Maybe we need to advance to the next step.
             self._work_lock.acquire()
 
-            if self._pending == 1 and self._running == 1 and len(self._work) == 0:
+            if (self._pending == 1 and self._running == 1 and len(self._work) == 0) or self._cur_step < 0:
                 self._work_lock.release()
                 self._next_step()
             else:
@@ -575,5 +576,5 @@ def init_curses(cb, log=None):
         attr = termios.tcgetattr(sys.stdout)
         attr[1] = attr[1] | termios.ONLCR
         termios.tcsetattr(sys.stdout, termios.TCSAFLUSH, attr)
-    except:
+    except Exception:
         pass

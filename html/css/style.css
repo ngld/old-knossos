@@ -1,34 +1,21 @@
 @import url(./bootstrap.min.css);
 @import url(./font-awesome.min.css);
 
-/* -------------------------- Stuff that existed before MJN, probably won't be used long term. ----------------------------------*/
+/* -------------------------- Basic stuff -----------------------------------------------------*/
 
-.info-page {
-    padding: 15px;
-    color: #fff;
-}
-
-#last-played .run-btn {
+select {
     width: 100%;
+    color: #000;
 }
 
-#last-played .mod-logo {
-    margin: auto;
+input {
+    max-width: 100%;
 }
 
-.mod .top-actions {
-    position: absolute;
-    top: 0;
-    right: 0;
-
-    padding: 0 10px;
+iframe {
+    border: 0;
 }
 
-.progress-bar.simple {
-    -webkit-transition: width 0s;
-         -o-transition: width 0s;
-            transition: width 0s;
-}
 /* -------------------------- Settings for container elements ----------------------------------*/
 
 .body-container {
@@ -43,6 +30,30 @@
     color: #fff;
 }
 
+.info-page {
+    padding: 15px;
+    color: #fff;
+}
+
+.settings-container {
+    max-width: 98%;
+}
+
+.settings-exp {
+    padding: 5px;
+    width: 80%;
+    font-size: smaller;
+    color: grey;
+
+}
+
+.dev-instructions {
+    margin:0 auto;
+    margin-top: 10%;
+    width: 80%;
+    text-align: center;
+    color: grey;
+}
 
 /* -------------------------- Settings for top bar elements ----------------------------------*/
 
@@ -56,6 +67,10 @@
                 0px 7px 15px 0px rgba(0,0,0,1);
 }
 
+.top-right-btns {
+    position: absolute;
+}
+
 .mod-search {
     padding-top: 8px;
     padding-left: 8px;
@@ -64,7 +79,6 @@
 
 .pull-right {
     vertical-align: middle;
-    position: absolute;
     right: 10px;
     z-index: 1;
 }
@@ -89,7 +103,7 @@
     text-decoration: none;
 }
 
-.top-btn:active {
+.top-btn.active {
     outline: none;
     text-decoration: none;
 }
@@ -109,12 +123,8 @@
     content: url(../images/icon-help-h.png);
 }
 
-.top-btn:active .help-image {
+.top-btn.active .help-image {
     content: url(../images/icon-help-a.png);
-}
-
-.top-btn:focus .help-image {
-    content: url(../images/icon-help.png);
 }
 
 .update-image {
@@ -128,12 +138,8 @@
     content: url(../images/icon-update-h.png);
 }
 
-.top-btn:active .update-image {
+.top-btn.active .update-image {
     content: url(../images/icon-update-a.png);
-}
-
-.top-btn:focus .update-image {
-    content: url(../images/icon-update.png);
 }
 
 .settings-image {
@@ -147,12 +153,8 @@
     content: url(../images/icon-settings-h.png);
 }
 
-.top-btn:active .settings-image {
+.top-btn.active .settings-image {
     content: url(../images/icon-settings-a.png);
-}
-
-.top-btn:focus .settings-image {
-    content: url(../images/icon-settings.png);
 }
 
 /* ----------------------------- This is the filter rollout button section. ------------------------------- */
@@ -369,7 +371,7 @@
     background-image: url(../images/iconbtn-develop-h.png);
 }
 
-.main-btn:active .develop-image {
+.main-btn.active .develop-image {
     background-image: url(../images/iconbtn-develop-a.png);
 }
 
@@ -402,7 +404,11 @@
     color: #000;
 }
 
-/* -------------------------- Settings for the scroll bar style ----------------------------------*/
+/* -------------------------- Settings for the main container scroll bar style ----------------------------------*/
+
+.scroll-style {
+    overflow-y: auto;
+}
 
 .scroll-style::-webkit-scrollbar {
     width: 25px;
@@ -446,6 +452,53 @@
     background-image: url(../images/scrollbtn-up-a.png);
 }
 
+/* -------------------------- Settings for the general scroll bar style ----------------------------------*/
+
+.gen-scroll-style {
+    overflow-y: auto;
+}
+
+.gen-scroll-style::-webkit-scrollbar {
+    width: 25px;
+}
+.gen-scroll-style::-webkit-scrollbar-track {
+    background-color: #1c1c1c;    
+}
+.gen-scroll-style::-webkit-scrollbar-thumb {
+    background-color: #515151;
+    border: 9px solid transparent;
+    border-radius: 18px;
+    background-clip: content-box;
+}
+.gen-scroll-style::-webkit-scrollbar-thumb:hover {
+    background-color: #7c7c7c;
+}
+.gen-scroll-style::-webkit-scrollbar-thumb:active {
+    background-color: #a6a6a6;
+}
+.gen-scroll-style::-webkit-scrollbar-button {
+    background: #1c1c1c center no-repeat;
+    height: 15px;
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:increment {
+    background-image: url(../images/scrollbtn-down.png);
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:increment:hover {
+    background-image: url(../images/scrollbtn-down-h.png);
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:increment:active {
+    background-image: url(../images/scrollbtn-down-a.png);
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:decrement {
+    background-image: url(../images/scrollbtn-up.png);
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:decrement:hover {
+    background-image: url(../images/scrollbtn-up-h.png);
+}
+.gen-scroll-style::-webkit-scrollbar-button:vertical:decrement:active {
+    background-image: url(../images/scrollbtn-up-a.png);
+}
+
 /* -------------------------- Settings that govern the mod node displays ----------------------------------*/
 
 .mod { /* Base settings for a single mod node */
@@ -464,7 +517,7 @@
     background-color: #422626;
     width: 150px;
     height: 40px;
-    text-align: center;
+
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -476,9 +529,33 @@
     transition: all 0.3s ease-in-out;
 }
 
+.mod-node .mod-title p { /* This creates the mod title's red background box. */
+
+
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+
+    margin: 0;
+    color: white;
+    font: Arial, Helvetica, sans-serif;
+    transition: all 0.3s ease-in-out;
+}
+
 .mod-node .mod-image { /* Div sets up the portait mod image properties. */
     width: 150px;
     height: 225px;
+}
+
+.mod-node .mod-image img {
+    max-width: 150px;
+    max-height: 225px;
+}
+
+.mod-node .mod-image .mod-logo-legacy {
+    max-height: 100px;
 }
 
 .mod-node .mod-logo-container { /* Make sure any drop shadows for legacy mod images stays within the portrait node */
@@ -512,6 +589,75 @@
     right: 0px;
 }
 
+.mod-node .mod-installed { /* Places the overlay for installed mods on the Explore tab */
+    width: 150px;
+    height: 268px;
+    position: absolute;
+    top: 0;
+    background-color: rgba(0, 0, 0, 0.60);
+}
+
+.mod-node .mod-banner-green { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-green.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner-blue { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-blue.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner-grey { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-grey.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner-orange { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-orange.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner-red { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-red.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner-yellow { /* Places the overlay for installed mods on the Explore tab */
+    width: 100px;
+    height: 26px;
+    position: absolute;
+    top: 25px;
+    background-image: url(../images/mod-banner-yellow.png);
+    text-align: right;
+}
+
+.mod-node .mod-banner span{ /* Places the overlay for installed mods on the Explore tab */
+    color: white;
+    position: relative;
+    top: 2px;
+    right: 9px;
+}
+
 .mod-node .actions { /* Div to detect mouse hover */
     position: absolute;
     top: 0;
@@ -537,11 +683,11 @@
     cursor: pointer;
 }
 
-.mod-node .actions:hover { /* Display the buttons on mouseover */
+.mod-node .actions:hover, .mod-node.active .actions { /* Display the buttons on mouseover */
     opacity: 1;
 }
 
-.mod-node .actions:hover ~ .mod-title { /* Let's also lighten the red box around the mod title on mouseover */
+.mod-node .actions:hover ~ .mod-title, .mod-node.active .actions ~ .mod-title { /* Let's also lighten the red box around the mod title on mouseover */
     background-color: #856d6d;
     transition: all 0.3s ease-in-out;
 }
@@ -552,12 +698,131 @@
     transition: all 0.3s ease-in-out;
 }
 
-.mod-node .actions:hover ~ .mod-progress { /* Let's also lighten the red box for the progress area */
+.mod-node .actions:hover ~ .mod-progress, .mod-node.active .actions ~ .mod-progress { /* Let's also lighten the red box for the progress area */
     background-color: #856d6d;
     transition: all 0.3s ease-in-out;
 }
 
 .mod-node .mod-progress .bar {
+    position: relative;
+    height: 3px;
+    width: 0;
+
+    z-index: 999;
+    background: #fff;
+    box-shadow: 0 0 10px #fff;
+}
+
+/* -------------------------- Settings to create the mod nodes for the dev page ----------------------------------*/
+
+.dev-mod-node .mod-title { /* This creates the mod title's red background box. */
+    background-color: #422626;
+    width: 150px;
+    height: 40px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 11px;
+
+    font-size: 0.8em;
+    color: white;
+    font: Arial, Helvetica, sans-serif;
+    transition: all 0.3s ease-in-out;
+}
+
+.dev-mod-node .mod-title p { /* This creates the mod title's red background box. */
+
+
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+
+    margin: 0;
+    color: white;
+    font: Arial, Helvetica, sans-serif;
+    transition: all 0.3s ease-in-out;
+}
+
+.dev-mod-node .mod-image { /* Div sets up the portait mod image properties. */
+    width: 150px;
+    height: 225px;
+}
+
+.dev-mod-node .mod-image img {
+    max-width: 150px;
+    max-height: 225px;
+}
+
+.dev-mod-node .mod-image .mod-logo-legacy {
+    max-height: 100px;
+}
+
+.dev-mod-node .mod-logo-container { /* Make sure any drop shadows for legacy mod images stays within the portrait node */
+    position: absolute;
+    top: 25px;
+    overflow: hidden;
+}
+
+.dev-mod-node .mod-logo-legacy { /* Support for legacy (landscape) mod images and makes them look nice over the stock portrait background. */
+    vertical-align: middle;
+    margin-top: 50px;
+    margin-bottom: 50px;
+    box-shadow: 0px -4px 5px 1px rgba(255,252,222,1),
+        0px 4px 5px 1px rgba(255,252,222,1),
+        0px -23px 30px 5px rgba(0,0,0,1),
+        0px 23px 30px 5px rgba(0,0,0,1);
+}
+
+.dev-mod-node .no-logo { /* If a mod has no image, let's create a div for it anyway. */
+    display: inline-block;
+    max-width: 150px;
+    padding-bottom: 47.80%; /* 122px / 255px */
+    width: 100%;
+
+    background: rgb(100, 100, 100);
+}
+
+.dev-mod-node .mod-notifier { /* Places the top-right mod status notifier. */
+    position: absolute;
+    top: 0px;
+    right: 0px;
+}
+
+.dev-mod-node .actions { /* Div to detect mouse hover */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.dev-mod-node .btn-wrapper { /* CENTER THE BUTTONS DAMMIT and darken the mod image on mouseover */
+    width: 100%;
+    height: 225px;
+    background-color: rgba(0,0,0,0.7);
+
+    padding-top: 30px;
+    text-align: center;
+}
+
+.dev-mod-node .avail-cover {
+    background-color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+}
+
+.dev-mod-node .mod-progress {
+    height: 3px;
+    background-color: #422626;
+    transition: all 0.3s ease-in-out;
+}
+
+.dev-mod-node .mod-progress .bar {
     position: relative;
     height: 3px;
     width: 0;
@@ -590,7 +855,7 @@
     outline: none;
 }
 
-.debug-dropdown {
+.dropdown {
     position: absolute;
     bottom: 0;
     right: 10px;
@@ -600,7 +865,6 @@
 }
 
 .dropdown-content {
-    display: none;
     padding: 5px;
     position: absolute;
     background-color: #131313;
@@ -611,11 +875,7 @@
     top: 20px;
 }
 
-.dropbtn:focus ~ .dropdown-content {
-    display: block;
-}
-
-.drop-content-btn {
+.dropdown-content button {
     background-color: transparent;
     color: #828282;
     padding: 3px;
@@ -623,26 +883,30 @@
     border: none;
     cursor: pointer;
     width: 150px;
-    height: 19px;
     outline: none;
     text-align: left;
 }
 
-.drop-content-btn:active {
+.dropdown-content button:active {
     color: white;
 }
 
-.dropdown-lines {
-    width: 150px;
-}
-
-.dropdown-lines:hover {
+.dropdown-content button:hover {
     background-color: rgba(117,169,210,0.3);
     box-shadow: inset 0px 0px 16px 1px rgba(117,170,210,1);
+    color: rgb(220, 220, 220);
 }
 
-.dropdown-lines:hover * {
-    color: rgb(220, 220, 220);
+.dropdown-mod-btn {
+    display: inline-block;
+    position: relative;
+    right: 0;
+    width: 100px;
+    height: 43px;
+}
+
+.dropdown-mod-btn .dropdown-content {
+    top: 43px;
 }
 
 .show {
@@ -650,6 +914,39 @@
 }
 
 /* ----------------------------- Here there be BUTTONS. Let's make them pretty. ------------------------------- */
+
+.dev-btn {
+    margin: 8px;
+    box-shadow: 4px 4px 3px #000000;
+}
+
+.btn-text {
+    color: white;
+}
+
+.link-btn {
+    display: inline-block;
+    padding: 6px 12px;
+    margin: 0px;
+    margin-top: 5px;
+    margin-bottom: 0px;
+    font-weight: 400;
+    line-height: 1.42857143;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    width: 100px;
+    font-family: Arial, Tahoma, Verdana, FreeSans, sans-serif;
+    font-size: 14px;
+    color: white;
+    border: 0;
+
+    background: 3px 5px no-repeat;
+    background-position: center;
+    height: 43px;
+}
 
 .mod-btn {
     display: inline-block;
@@ -672,6 +969,12 @@
     background: 3px 5px no-repeat;
     background-position: center;
     height: 43px;
+}
+
+.mod-btn p {
+    padding: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .mod-btn:hover {
@@ -765,12 +1068,61 @@
     background-image: url(../images/btn-yellow-a.png);
 }
 
+.btn-link-red {
+    background-image: url(../images/btn-link-red.png);
+}
+
+.btn-link-red:hover {
+    background-image: url(../images/btn-link-red-h.png);
+}
+
+.btn-link-red:active {
+    background-image: url(../images/btn-link-red-a.png);
+}
+
+.btn-link-blue {
+    background-image: url(../images/btn-link-blue.png);
+}
+
+.btn-link-blue:hover {
+    background-image: url(../images/btn-link-blue-h.png);
+}
+
+.btn-link-blue:active {
+    background-image: url(../images/btn-link-blue-a.png);
+}
+
+.btn-link-grey {
+    background-image: url(../images/btn-link-grey.png);
+}
+
+.btn-link-grey:hover {
+    background-image: url(../images/btn-link-grey-h.png);
+}
+
+.btn-link-grey:active {
+    background-image: url(../images/btn-link-grey-a.png);
+}
+
 
 /* Details page */
+.details-container {
+    text-align: center;
+}
+
 #details-page .img-frame {
-    min-height: 300px;
+    height: 300px;
+    max-width: 1070px;
     background: rgb(100, 100, 100);
     position: relative;
+    overflow: hidden;
+    display: inline-block;
+    width: 100%;
+}
+
+#details-page .img-frame img{
+    height: 100%;
+    width: 100%;
 }
 
 #details-page .title-frame {
@@ -780,6 +1132,7 @@
     background: rgba(0, 0, 0, 0.5);
     padding: 5px;
     font-size: 14px;
+    text-align: left;
 }
 
 #details-page .title-frame h1 {
@@ -789,11 +1142,24 @@
 }
 
 #details-page .date-frame {
-    margin-left: 5px;
+    margin-left: 10px;
+    display: inline-block;
+    margin-top: 8px;
+    margin-right: 20px;
 }
 
 #details-page .short-frame {
-    margin-top: 5px;
+    margin-top: 0px;
+}
+
+#details-page .details-btns {
+    text-align: left;
+}
+
+#details-page .mod-desc {
+    margin: 8px;
+    margin-top: 12px;
+    text-align: left;
 }
 
 /* Popup */
@@ -901,8 +1267,21 @@
 }
 
 /* drawer */
+.settings-container .control-label {
+    padding-top: 0px;
+
+}
+
+.kn-drawer {
+    background-color: rgba(140, 140, 140, 0.37);
+
+}
+
 .kn-drawer .title {
     cursor: pointer;
+    padding-right: 10px;
+    background-color: #636262;
+    box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.75);
 }
 
 .kn-drawer .title .text {
@@ -933,13 +1312,40 @@
     visibility: visible;
 }
 
-.settings-page select {
-    width: 100%;
-    color: #000;
+.kn-drawer .drawer-exp {
+    visibility: visible;
+    position: fixed;
+    width: 495px;
+    text-align: center;
 }
 
-.settings-page input {
-    max-width: 100%;
+.kn-drawer .content.open .settings-exp.drawer-exp {
+    display: none;
+}
+
+.kn-drawer .content-wrapper {
+    margin-top: 10px;
+}
+
+.kn-drawer .form-group {
+    margin-left: -15px;
+    margin-right: -15px;
+    margin-bottom: 2px;
+    padding-bottom: 2px;
+    padding-right: 10px;
+}
+
+.kn-drawer .neb-input {
+    width: 100%;
+}
+
+.kn-drawer .neb-btns {
+    width: inherit;
+}
+
+.kn-drawer .neb-btns .mod-btn {
+    margin: 0 auto;
+    height: 50px;
 }
 
 .checklist {
@@ -949,4 +1355,175 @@
     overflow: auto;
 
     color: #000;
+}
+
+.devel-page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.devel-page .mlist {
+    position: fixed;
+    top: 80px;
+    left: 8px;
+    bottom: 8px;
+    width: 200px;
+
+    background: #2e2e2e;
+    padding: 10px 0;
+
+    box-shadow: inset 0px 13px 15px -10px rgba(0,0,0,1),
+                inset 0px -13px 15px -10px rgba(0,0,0,1),
+                inset 13px 0px 15px -10px rgba(0,0,0,1),
+                inset -13px 0px 15px -10px rgba(0,0,0,1);
+}
+
+.devel-page .mlist > a {
+    display: block;
+    padding: 3px 8px;
+    text-decoration: none;
+
+    color: #eee;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.devel-page .mlist > a:hover {
+    color: #fff;
+}
+
+.devel-page .mlist > a.active {
+    color: #fff;
+    background: rgb(110, 130, 200);
+    box-shadow: inset 0px 0px 15px -10px rgba(0,0,0,1),
+                inset 0px 0px 15px -10px rgba(0,0,0,1),
+                inset 13px 0px 15px -10px rgba(0,0,0,1),
+                inset -13px 0px 15px -10px rgba(0,0,0,1)
+}
+
+.devel-page .content-pane {
+    position: absolute;
+    top: 0;
+    left: 200px;
+    width: calc(100% - 200px);
+    height: 100%;
+
+    overflow: hidden;
+}
+
+.devel-page .logo-box {
+    position: absolute;
+    top: 0;
+    left: 0px;
+    width: 214px;
+
+    padding: 5px;
+}
+
+.logo-box .mod-btn {
+    margin: 0px;
+}
+
+.devel-page .mod-value {
+    margin-left: 10px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.devel-page select.form-control.mod-version {
+    height: 25px;
+    width: 100px;
+    border-radius: 0px;
+    padding: 0px;
+    display: inline;
+    margin-left: 5px;
+}
+
+.devel-page span.version-link {
+    word-wrap: break-word;
+}
+
+.devel-page .form-box {
+    position: absolute;
+    top: 0;
+    left: 220px;
+    bottom: 0;
+
+    width: calc(100% - 220px);
+}
+
+.devel-page .tabcorner {
+    background-image: url(../images/tabbox-corner.png);
+    height: 61px;
+    width: 61px;
+    position: fixed;
+    left: 366px;
+
+}
+
+.devel-page .dev-tabbox {
+    background-color: #1c1c1c;
+    height: 61px;
+    padding-left: 5px;
+    box-shadow: 0px 7px 15px 0px rgba(0,0,0,1);
+
+}
+
+.devel-page .form-content {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+.devel-page .form-group img {
+    max-width: 100%;
+    max-height: 150px;
+}
+
+.devel-page .dev-tabbar {
+    overflow: hidden;
+    position: relative;
+    height: 28px;
+    background-color: #1c1c1c;
+    box-shadow: inset 0px -1px 0px 0px rgba(0,0,0,1)
+}
+
+.devel-page .dev-tabbar > a {
+    text-decoration: none !important;
+    color: #fff !important;
+    background-image: url(../images/tabedge-i.png);
+    display: inline-block;
+    padding: 6px;
+    padding-left: 10px;
+
+    width: 150px;
+    height: 30px;
+}
+
+.devel-page .dev-tabbar > a.active {
+    background-image: url(../images/tabedge-a.png);
+}
+
+.devel-page .dev-tabbar-arrows {
+    position: absolute;
+    right: 0;
+    top: 0;
+    margin-top: 7px;
+    margin-right: 5px;
+}
+
+.devel-page .dev-tabbar-arrows a {
+    color: #fff;
+}
+
+.devel-page .table td {
+    padding: 2px;
 }

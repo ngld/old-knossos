@@ -16,14 +16,15 @@ from __future__ import absolute_import, print_function
 
 import os
 import sys
+import json
 from . import uhf
 uhf(__name__)
 
-from .qt import QtCore
+from .qt import QtCore # noqa
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.5.3'
+VERSION = '0.6.0'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
 DEBUG = os.getenv('KN_DEBUG', '0').strip() == '1'
@@ -37,6 +38,7 @@ app = None
 main_win = None
 fs2_watcher = None
 pmaster = None
+auto_fetcher = None
 mods = None
 installed = None
 fso_flags = None
@@ -51,14 +53,17 @@ settings = {
     'base_dirs': [],
     'hash_cache': None,
     'max_downloads': 3,
-    'repos': [('https://fsnebula.org/repo/master.json', 'FSNebula')],
-    'nebula_link': 'https://fsnebula.org/',
+    'repos': [('https://fsnebula.org/storage/repo.json', 'FSNebula')],
+    'nebula_link': 'https://fsnebula.org/api/1/',
     'update_notify': True,
     'use_raven': True,
     'mod_settings': {},
     'sdl2_path': None,
     'openal_path': None,
-    'language': None
+    'language': None,
+    'neb_user': '',
+    'neb_password': '',
+    'engine_stability': 'stable'
 }
 
 if sys.platform.startswith('win'):
@@ -82,3 +87,17 @@ class _SignalContainer(QtCore.QObject):
 
 
 signals = _SignalContainer()
+
+
+def save_settings():
+    settings['hash_cache'] = dict()
+    for path, info in util.HASH_CACHE.items():
+        # Skip deleted files
+        if os.path.exists(path):
+            settings['hash_cache'][path] = info
+
+    with open(os.path.join(settings_path, 'settings.json'), 'w') as stream:
+        json.dump(settings, stream)
+
+
+from . import util # noqa

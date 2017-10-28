@@ -112,90 +112,6 @@ _DL_CANCEL.clear()
 translate = QtCore.QCoreApplication.translate
 
 
-# See code/cmdline/cmdline.cpp (in the SCP source) for details on the data structure.
-class FlagsReader(object):
-    _stream = None
-    easy_flags = None
-    flags = None
-    build_caps = None
-
-    def __init__(self, stream):
-        self._stream = stream
-        self.read()
-
-    def unpack(self, fmt):
-        if isinstance(fmt, struct.Struct):
-            return fmt.unpack(self._stream.read(fmt.size))
-        else:
-            return struct.unpack(fmt, self._stream.read(struct.calcsize(fmt)))
-
-    def read(self):
-        # Explanation of unpack() and Struct() parameters: http://docs.python.org/3/library/struct.html#format-characters
-        self.easy_flags = OrderedDict()
-        self.flags = OrderedDict()
-
-        easy_size, flag_size = self.unpack('2i')
-
-        easy_struct = struct.Struct('32s')
-        flag_struct = struct.Struct('20s40s?ii16s256s')
-
-        if easy_size != easy_struct.size:
-            logging.error('EasyFlags size is %d but I expected %d!', easy_size, easy_struct.size)
-            return
-
-        if flag_size != flag_struct.size:
-            logging.error('Flag size is %d but I expected %d!', flag_size, flag_struct.size)
-            return
-
-        for i in range(self.unpack('i')[0]):
-            self.easy_flags[1 << i] = self.unpack(easy_struct)[0].decode('utf8').strip('\x00')
-
-        for i in range(self.unpack('i')[0]):
-            flag = self.unpack(flag_struct)
-            flag = {
-                'name': flag[0].decode('utf8').strip('\x00'),
-                'desc': flag[1].decode('utf8').strip('\x00'),
-                'fso_only': flag[2],
-                'on_flags': flag[3],
-                'off_flags': flag[4],
-                'type': flag[5].decode('utf8').strip('\x00'),
-                'web_url': flag[6].decode('utf8').strip('\x00')
-            }
-
-            if flag['type'] not in self.flags:
-                self.flags[flag['type']] = []
-
-            self.flags[flag['type']].append(flag)
-
-        self.build_caps = self.unpack('b')[0]
-
-    @property
-    def openal(self):
-        return self.build_caps & 1
-
-    @property
-    def no_d3d(self):
-        return self.build_caps & (1 << 1)
-
-    @property
-    def new_snd(self):
-        return self.build_caps & (1 << 2)
-
-    @property
-    def sdl(self):
-        return self.build_caps & (1 << 3)
-
-    def to_dict(self):
-        return {
-            'easy_flags': self.easy_flags,
-            'flags': self.flags,
-            'openal': self.openal,
-            'no_d3d': self.no_d3d,
-            'new_snd': self.new_snd,
-            'sdl': self.sdl
-        }
-
-
 class ResizableSemaphore(object):
     _capacity = 0
     _free = 0
@@ -307,6 +223,23 @@ def call(*args, **kwargs):
     return subprocess.call(*args, **kwargs)
 
 
+def Popen(*args, **kwargs):
+    if sys.platform.startswith('win') and not center.DEBUG:
+        # Provide the called program with proper I/O on Windows.
+        kwargs.setdefault('stdin', subprocess.DEVNULL)
+        kwargs.setdefault('stdout', subprocess.DEVNULL)
+        kwargs.setdefault('stderr', subprocess.DEVNULL)
+
+        si = subprocess.STARTUPINFO()
+        si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = subprocess.SW_HIDE
+
+        kwargs['startupinfo'] = si
+
+    logging.debug('Running %s', args[0])
+    return subprocess.Popen(*args, **kwargs)
+
+
 def check_output(*args, **kwargs):
     if sys.platform.startswith('win'):
         # Provide the called program with proper I/O on Windows.
@@ -359,7 +292,7 @@ def get(link, headers=None, random_ua=False, raw=False):
             return 304
         elif result.status_code != 200:
             result.raise_for_status()
-    except:
+    except Exception:
         if result is None:
             logging.exception('Failed to load "%s"!', link)
         else:
@@ -386,7 +319,7 @@ def post(link, data, headers=None, random_ua=False):
         result = HTTP_SESSION.post(link, data=data, headers=headers)
         if result.status_code != 200:
             result.raise_for_status()
-    except:
+    except Exception:
         if result is None:
             logging.exception('Failed to load "%s"!', link)
         else:
@@ -428,7 +361,7 @@ def download(link, dest, headers=None, random_ua=False):
 
         try:
             size = float(result.headers.get('content-length', 0))
-        except:
+        except Exception:
             logging.exception('Failed to parse Content-Length header!')
             size = 1024 ** 4  # = 1 TB
 
@@ -452,7 +385,7 @@ def download(link, dest, headers=None, random_ua=False):
 
                 if _DL_CANCEL.is_set():
                     return False
-        except:
+        except Exception:
             logging.exception('Download of "%s" was interrupted!', link)
             return False
 
@@ -543,17 +476,17 @@ def url_join(a, b):
     return pjoin(a, b)
 
 
-def gen_hash(path, algo='md5'):
+def gen_hash(path, algo='sha256'):
     global HASH_CACHE
 
     path = os.path.abspath(path)
     info = os.stat(path)
 
-    if algo == 'md5' and path in HASH_CACHE:
+    if algo == 'sha256' and path in HASH_CACHE:
         chksum, mtime = HASH_CACHE[path]
         if mtime == info.st_mtime:
             # logging.debug('Found checksum for %s in cache.', path)
-            return chksum
+            return algo, chksum
 
     logging.debug('Calculating checksum for %s...', path)
 
@@ -567,10 +500,20 @@ def gen_hash(path, algo='md5'):
             h.update(chunk)
 
     chksum = h.hexdigest()
-    if algo == 'md5':
+    if algo == 'sha256':
         HASH_CACHE[path] = (chksum, info.st_mtime)
 
-    return chksum
+    return algo, chksum
+
+
+def check_hash(value, path):
+    algo, csum = value
+
+    if algo != 'sha256':
+        logging.warning("Comparing checksums which aren't sha256! (%s, %s)" % (csum, path))
+
+    _, path_sum = gen_hash(path, algo)
+    return csum == path_sum
 
 
 def test_7z():
@@ -578,8 +521,8 @@ def test_7z():
 
     try:
         return call([SEVEN_PATH, '-h'], stdout=subprocess.DEVNULL) == 0
-    except:
-        logging.exception('Call to 7z failed!')
+    except Exception as exc:
+        logging.error('Call to 7z failed! (%s)' % exc)
 
         if SEVEN_PATH == '7za':
             return False
@@ -590,7 +533,7 @@ def test_7z():
                 return True
             else:
                 return False
-        except:
+        except Exception:
             return False
 
 
@@ -614,7 +557,7 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
         if _HAS_TAR:
             cmd = ['tar', '-xf', archive, '-C', outpath]
 
-            if archive.endswith('.gz'):
+            if archive.endswith(('.gz', '.tgz')):
                 cmd.append('-z')
             elif archive.endswith('.xz'):
                 cmd.append('-J')
@@ -740,26 +683,13 @@ def merge_dicts(a, b):
 
 
 def get_cpuinfo():
-    from .launcher import get_cmd
+    from .third_party import cpuinfo
 
-    # Try the cpuid method first but do so in a seperate process in case it segfaults.
     try:
-        info = json.loads(check_output(get_cmd(['--cpuinfo'])).strip())
-    except subprocess.CalledProcessError:
+        info = cpuinfo.get_cpu_info()
+    except Exception:
+        logging.exception('Exception in the cpuinfo module!')
         info = None
-        logging.exception('The CPUID method failed!')
-    except:
-        info = None
-        logging.exception('Failed to process my CPUID output.')
-
-    if info is None:
-        from .third_party import cpuinfo
-
-        try:
-            info = cpuinfo.get_cpu_info()
-        except:
-            logging.exception('Exception in the cpuinfo module!')
-            info = None
 
     return info
 
@@ -798,6 +728,57 @@ def connect(sig, cb, *args):
 
     sig._pyl.append(cb)
     sig.connect(cb)
+
+
+def is_fs2_retail_directory(path):
+    if os.path.isdir(path):
+        for item in os.listdir(path):
+            if item.lower() == 'root_fs2.vp':
+                return True
+
+    return False
+
+
+def enable_raven():
+    try:
+        from raven import Client
+    except ImportError:
+        logging.exception('Failed to import raven!')
+        return False
+
+    from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
+    from raven.handlers.logging import SentryHandler
+
+    if hasattr(sys, 'frozen'):
+        if sys.platform == 'darwin':
+            cacert_path = os.path.join(sys._MEIPASS, '..', 'Resources', 'certifi', 'cacert.pem')
+        else:
+            cacert_path = os.path.join(sys._MEIPASS, 'certifi', 'cacert.pem')
+
+        from six.moves.urllib.parse import quote as urlquote
+        center.SENTRY_DSN += '&ca_certs=' + urlquote(cacert_path)
+
+    center.raven = Client(
+        center.SENTRY_DSN,
+        release=center.VERSION,
+        environment='debug' if center.DEBUG else 'production',
+        transport=ThreadedRequestsHTTPTransport
+    )
+    center.raven.tags_context({
+        'os': sys.platform
+    })
+    center.raven_handler = SentryHandler(center.raven, level=logging.ERROR)
+    logging.getLogger().addHandler(center.raven_handler)
+
+    return True
+
+
+def disable_raven():
+    if center.raven_handler:
+        logging.getLogger().removeHandler(center.raven_handler)
+
+    center.raven = None
+    center.raven_handler = None
 
 
 class Spec(semantic_version.Spec):

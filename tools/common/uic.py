@@ -25,7 +25,8 @@ data = re.sub(r'\n.*?setContentsMargins\(0, 0, 0, 0\)[^\n]*', '', data)
 
 # Use our shim instead of PyQt5 directly
 data = data.replace('from PyQt5 import', 'from ..qt import')
-data = data.replace('from QtWebEngineWidgets import QWebEngineView', 'from ..qt import QtWebEngineWidgets#g')
+data = data.replace('from QtWebEngineWidgets.QWebEngineView import QWebEngineView', 'from ..qt import QtWebEngineWidgets')
+data = data.replace('from QtWebEngineWidgets import QWebEngineView', 'from ..qt import QtWebEngineWidgets')
 
 # Correct references to QWebEngineView
 data = data.replace(' QWebEngineView', ' QtWebEngineWidgets.QWebEngineView')

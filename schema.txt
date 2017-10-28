@@ -1,0 +1,88 @@
+/* mod.json schema */
+// Created by ngld, m!m and Hellzed
+// Inspired by Goober's text files (http://www.hard-light.net/wiki/index.php/FSO_Installer_Text_Files)
+
+{
+    "mods": [
+        {
+            "id": "...", // required, internal *unique* identifier, should be URL friendly, never shown to the user
+            "title": "...", // required, a UTF-8 compatible string, displayed to the user
+            "version": "...", // required, http://semver.org/
+            "stability": "<stable|rc|nightly>", // optional, only applies to type == engine and indicates whether this is a stable release, nightly or RC, default: stable
+            "description": "...", // optional, should match the mod.ini's description
+            "logo": "<path to image>", // optional, default: null, will be extracted from the archive if null
+            "tile": "<path to image>", // optional, default: null, Used in the library view. If null, the logo is used instead
+            "release_thread": "<link>", // optional, default: null, Will display a button in the launcher which opens the given link
+            "videos": ["<link>", "..."], // optional, default: [], A list of video links (the links will be loaded in an iframe to display the videos)
+            "notes": "...", // optional, these will be displayed during the installation.
+            "folder": "<mod folder>", // optional, This folder will be created in the FS2 directory. default: mod ID
+            "first_release": "YYYY-MM-DD", // optional, default: null, the first release formatted in ISO 8601
+            "last_update": "YYYY-MM-DD", // optional, default: null, the latest update formatted in ISO 8601
+            "cmdline": "<flags>", // optional, allows the modder to specify a default cmdline for this mod
+            /*
+                optional, default: mod
+                Tells the client if this mod depends on retail files (mod), contains executables (engine / tool) or is a
+                Total Conversion (tc). ext is not yet finished.
+            */
+            "type": "<mod|tc|engine|tool|ext>",
+            "packages": [ // optional
+                {
+                    "name": "...", // required
+                    "notes": "...", // optional
+                    /*
+                        optional, default: "recommended"
+                        A feature can be:
+                        - "required" (always installed with the mod, in fact these are the base files of the mod),
+                        - "recommended" (automatically selected for installation, but the user can skip them),
+                        - "optional" (not automatically selected, but user can add them during the install process)
+                    */
+                    "status": "<required|recommended|optional>",
+                    "dependencies": [ // optional
+                        {
+                            "id": "<mod ID>", // required
+                            "version": "1.2.*", // required, https://getcomposer.org/doc/01-basic-usage.md#package-versions
+                            "packages": [] // optional, specifies which optional and recommended packages are also required
+                        },
+                        ...
+                    ],
+                    "environment": "", // optional, boolean expression like "X86_64 && (sse || sse2)"
+                    "is_vp": true, // optional, whether Knossos should pack the files in a VP on upload, default: false
+                    "executables": [ // optional
+                        {
+                            "file": "...", // required, path to the executable (*.exe file on Windows), relative to the mod folder
+                            "label": "" // optional, should be empty for release builds and contain the name for others (i.e. "Fast Debug" or "FRED")
+                        }
+                    ],
+                    "files": [
+                        {
+                            "filename": "...",
+                            "dest": "<destination path>",
+                            "checksum": ["sha256", "..."],
+                            "filesize": "<size in bytes>",
+                            "urls": ["<URL1>", "<URL2>"], // The URLs are full URLs (they contain the filename).
+                        }
+                    ],
+                    "filelist": [
+                        {
+                            "filename": "<file path>",
+                            "archive": "...",
+                            "orig_name": "<name in archive>",
+                            "checksum": ["sha256", "..."]
+                        },
+                        ...
+                    ]
+                },
+                ...
+            ]
+        },
+        ...
+    ],
+    "includes": [ // optional, These will be processed when generating repo files and should be relative paths.
+        "<repo file 1>",
+        "..."
+    ],
+    "remote_includes": [ // optional, These will be kept and should be full URLs.
+        "<URL1>",
+        "..."
+    ]
+}

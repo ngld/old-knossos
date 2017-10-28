@@ -130,11 +130,17 @@ githubrelease release ngld/knossos edit "v$VERSION" --body "$(cat "$rel_text")"
 
 echo "==> Announcing update..."
 curl "https://dev.tproxy.de/knossos/stable/update_version.php"
+echo ""
 
 if [ "${#failed[@]}" -gt 0 ]; then
 	echo "WARNING: ${failed[@]} failed!"
 fi
 
 rm "$rel_text"
+
+
+if [ "$switched" = "yes" ]; then
+	git checkout develop
+fi
 
 echo "==> Done."

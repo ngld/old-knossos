@@ -26,11 +26,12 @@ import tempfile
 import threading
 import random
 import time
+import re
 import semantic_version
 
-from . import center, util, progress, repo, api
+from . import center, util, progress, nebula, repo, vplib
 from .repo import Repo
-from .qt import QtCore, QtWidgets
+from .qt import QtCore, QtWidgets, read_file
 
 
 translate = QtCore.QCoreApplication.translate
@@ -41,42 +42,25 @@ class FetchTask(progress.Task):
     def __init__(self):
         super(FetchTask, self).__init__()
         self.title = 'Fetching mod list...'
-
-        # Remove all logos.
-        for path in glob.glob(os.path.join(center.settings_path, 'logo*.*')):
-            if os.path.isfile(path):
-                logging.info('Removing old logo "%s"...', path)
-                os.unlink(path)
-
         self.done.connect(self.finish)
-
-        if repo.CPU_INFO is None:
-            self.add_work([('init',)])
-        else:
-            self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
+        self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
 
     def work(self, params):
-        if params[0] == 'init':
-            progress.update(0, 'Checking CPU...')
-
-            # We're doing this here because we don't want to block the UI.
-            repo.CPU_INFO = util.get_cpuinfo()
-
-            self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
-            return
-        elif params[0] == 'repo':
+        if params[0] == 'repo':
             _, prio, link = params
 
             progress.update(0.1, 'Fetching "%s"...' % link)
 
             try:
                 raw_data = util.get(link, raw=True)
+                if not raw_data:
+                    return
 
                 data = Repo()
                 data.is_link = True
                 data.base = os.path.dirname(raw_data.url)
                 data.parse(raw_data.text)
-            except:
+            except Exception:
                 logging.exception('Failed to decode "%s"!', link)
                 return
 
@@ -87,9 +71,6 @@ class FetchTask(progress.Task):
 
             self.add_work(wl)
             self.post((prio, data))
-        else:
-            mod = params[1]
-            mod.save_logo(center.settings_path)
 
     def finish(self):
         if not self.aborted:
@@ -101,9 +82,8 @@ class FetchTask(progress.Task):
                 modlist.merge(part[1])
 
             modlist.save_json(os.path.join(center.settings_path, 'mods.json'))
-            api.save_settings()
-
-        run_task(CheckTask())
+            center.save_settings()
+            center.main_win.update_mod_list()
 
 
 class CheckTask(progress.MultistepTask):
@@ -118,40 +98,37 @@ class CheckTask(progress.MultistepTask):
 
     def init1(self):
         if center.settings['base_path'] is None:
-            logging.error('A CheckTask was launched even though no base path was set!')
+            logging.warn('A CheckTask was launched even though no base path was set!')
         else:
             center.installed.clear()
-            self.add_work(((center.settings['base_path'], None),))
-            self.add_work([(p, None) for p in center.settings['base_dirs']])
+            self.add_work((center.settings['base_path'],))
+            self.add_work(center.settings['base_dirs'])
 
-    def work1(self, p):
+    def work1(self, path):
         mods = center.installed
-        path, base_mod = p
 
         subs = []
         mod_file = None
 
-        for base in os.listdir(path):
-            sub = os.path.join(path, base)
+        try:
+            for base in os.listdir(path):
+                sub = os.path.join(path, base)
 
-            if os.path.isdir(sub):
-                subs.append(sub)
-            elif base.lower() == 'mod.json' or (base.lower() == 'mod.ini' and not mod_file):
-                mod_file = sub
+                if os.path.isdir(sub) and not sub.endswith('.dis'):
+                    subs.append(sub)
+                elif base.lower() == 'mod.json':
+                    mod_file = sub
+        except FileNotFoundError:
+            logging.warn('The directory "%s" does not exist anymore!' % path)
 
         if mod_file:
             try:
                 mod = repo.InstalledMod.load(mod_file)
-                if base_mod and mod:
-                    mod.set_base(base_mod)
-                else:
-                    base_mod = mod
-
                 mods.add_mod(mod)
-            except:
+            except Exception:
                 logging.exception('Failed to parse "%s"!', sub)
 
-        self.add_work([(p, base_mod) for p in subs])
+        self.add_work(subs)
 
     def init2(self):
         pkgs = []
@@ -177,13 +154,18 @@ class CheckTask(progress.MultistepTask):
         archives = set()
         msgs = []
 
+        if mod.dev_mode:
+            pkgpath = os.path.join(mod.folder, pkg.folder)
+        else:
+            pkgpath = mod.folder
+
         for info in pkg_files:
-            mypath = util.ipath(os.path.join(mod.folder, info['filename']))
+            mypath = util.ipath(os.path.join(pkgpath, info['filename']))
             fix = False
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
 
-                if util.gen_hash(mypath) == info['md5sum']:
+                if util.check_hash(info['checksum'], mypath):
                     success += 1
                 else:
                     msgs.append('File "%s" is corrupted. (checksum mismatch)' % (info['filename']))
@@ -204,7 +186,7 @@ class CheckTask(progress.MultistepTask):
         results = self.get_results()
 
         # Make sure that the calculated checksums are saved.
-        api.save_settings()
+        center.save_settings()
 
         for pkg, archives, s, m, c, msg in results:
             mod = pkg.get_mod()
@@ -224,7 +206,7 @@ class CheckTask(progress.MultistepTask):
                 pkg.files_ok = s
                 pkg.files_checked = c
 
-        center.signals.repo_updated.emit()
+        center.main_win.update_mod_list()
 
 
 class CheckFilesTask(progress.MultistepTask):
@@ -267,7 +249,7 @@ class CheckFilesTask(progress.MultistepTask):
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
 
-                if util.gen_hash(mypath) == info['md5sum']:
+                if util.check_hash(info['checksum'], mypath):
                     success += 1
                     summary['ok'].append(info['filename'])
                 else:
@@ -321,7 +303,7 @@ class InstallTask(progress.MultistepTask):
     _pkg_names = None
     _mods = None
     _dls = None
-    _steps = 2
+    _steps = 3
     _error = False
     _7z_lock = None
     _pkg_prog = None
@@ -344,11 +326,22 @@ class InstallTask(progress.MultistepTask):
             self.mods = [mod]
 
         for pkg in pkgs:
+            try:
+                pmod = center.installed.query(pkg.get_mod())
+                if pmod.dev_mode:
+                    # Don't modify mods which are in dev mode!
+                    continue
+            except repo.ModNotFound:
+                pass
+
             ins_pkg = center.installed.add_pkg(pkg)
             pmod = ins_pkg.get_mod()
             self._pkgs.append(ins_pkg)
             self._mods.add(pmod)
             self._pkg_names.append((pmod.mid, ins_pkg.name))
+
+            for item in ins_pkg.files.values():
+                self._pkg_prog[id(item)] = ('%s: %s' % (pmod.title, item['filename']), 0, 'Checking...')
 
         for m in self._mods:
             if m not in self.mods:
@@ -381,7 +374,7 @@ class InstallTask(progress.MultistepTask):
                 for ar in self.get_results():
                     try:
                         shutil.rmtree(ar['tpath'])
-                    except:
+                    except Exception:
                         logging.exception('Failed to remove "%s"!' % ar['tpath'])
         elif self._error:
             msg = self.tr(
@@ -389,19 +382,19 @@ class InstallTask(progress.MultistepTask):
                 'If you need more help, ask ngld or read the debug log!'
             )
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
-        else:
-            # Generate mod.json files.
-            for mod in self._mods:
-                try:
-                    mod.save()
-                    util.get(center.settings['nebula_link'] + 'api/track/install/' + mod.mid)
-                except:
-                    logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
         if self.check_after:
             run_task(CheckTask())
 
     def init1(self):
+        if center.settings['neb_user']:
+            neb = nebula.NebulaClient()
+            editable = neb.get_editable_mods()
+
+            for mod in self._mods:
+                if mod.mid in editable:
+                    mod.dev_mode = True
+
         self._threads = 3
         self.add_work(self._mods)
 
@@ -409,9 +402,11 @@ class InstallTask(progress.MultistepTask):
         modpath = mod.folder
         mfiles = mod.get_files()
         mnames = [f['filename'] for f in mfiles] + ['knossos.bmp', 'mod.json']
-        self._local.pkg = None
+        self._local.pkg = id(mod)
+        self._pkg_prog[id(mod)] = (mod.title, 0, '')
 
         archives = set()
+        progress.start_task(0, 0.9, '%s')
         progress.update(0, 'Checking %s...' % mod.title)
 
         kpath = os.path.join(modpath, 'mod.json')
@@ -419,37 +414,79 @@ class InstallTask(progress.MultistepTask):
             try:
                 with open(kpath, 'r') as stream:
                     info = json.load(stream)
-            except:
+            except Exception:
                 logging.exception('Failed to parse mod.json!')
                 info = None
 
             if info is not None and info['version'] != str(mod.version):
-                # TODO: Remove old files
-                logging.info('Overwriting "%s" (%s) with version %s.' % (mod.mid, info['version'], mod.version))
+                logging.error('Overwriting "%s" (%s) with version %s.' % (mod.mid, info['version'], mod.version))
 
         if os.path.isdir(modpath):
+            # TODO: Figure out if we want to handle these files (i.e. remove them)
             for path, dirs, files in os.walk(modpath):
                 relpath = path[len(modpath):].lstrip('/\\')
                 for item in files:
                     itempath = util.pjoin(relpath, item)
-                    if not itempath.startswith('__k_plibs') and itempath not in mnames:
+                    if not itempath.startswith('kn_') and itempath not in mnames:
                         logging.info('File "%s" is left over.', itempath)
         else:
             logging.debug('Folder %s for %s does not yet exist.', mod, modpath)
+            os.makedirs(modpath)
 
         amount = float(len(mfiles))
+        if mod.dev_mode:
+            pkg_folders = {}
+            for pkg in mod.packages:
+                pkg_folders[pkg.name] = pkg.folder
+
         for i, info in enumerate(mfiles):
             if (mod.mid, info['package']) not in self._pkg_names:
                 continue
 
             progress.update(i / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
 
-            itempath = util.ipath(os.path.join(modpath, info['filename']))
-            if not os.path.isfile(itempath) or util.gen_hash(itempath) != info['md5sum']:
+            if mod.dev_mode:
+                itempath = util.ipath(os.path.join(modpath, pkg_folders[info['package']], info['filename']))
+            else:
+                itempath = util.ipath(os.path.join(modpath, info['filename']))
+
+            if not os.path.isfile(itempath) or not util.check_hash(info['checksum'], itempath):
                 archives.add((mod.mid, info['package'], info['archive']))
                 logging.debug('%s is missing for %s.', itempath, mod)
 
         self.post(archives)
+        progress.finish_task()
+        progress.start_task(0.9, 0, 'Downloading logos...')
+
+        # Make sure the images are in the mod folder so that they won't be deleted during the next
+        # FetchTask.
+        for prop in ('logo', 'tile', 'banner'):
+            img_path = getattr(mod, prop)
+            if img_path:
+                ext = os.path.splitext(img_path)[1]
+                dest = os.path.join(mod.folder, 'kn_' + prop + ext)
+
+                if '://' in img_path:
+                    # That's a URL
+                    with open(dest, 'wb') as fobj:
+                        util.download(img_path, fobj)
+
+                setattr(mod, prop, dest)
+
+        for prop in ('screenshots', 'attachments'):
+            im_paths = getattr(mod, prop)
+            for i, path in enumerate(im_paths):
+                ext = os.path.splitext(path)[1]
+                dest = os.path.join(mod.folder, 'kn_' + prop + '_' + str(i) + ext)
+
+                if '://' in path:
+                    with open(dest, 'wb') as fobj:
+                        util.download(path, fobj)
+
+                im_paths[i] = dest
+
+        progress.finish_task()
+        progress.update(1, 'Done')
 
     def init2(self):
         archives = set()
@@ -460,14 +497,15 @@ class InstallTask(progress.MultistepTask):
 
         for pkg in self._pkgs:
             mod = pkg.get_mod()
-            for item in pkg.files.values():
-                if (mod.mid, pkg.name, item['filename']) in archives:
-                    item = item.copy()
+            for oitem in pkg.files.values():
+                if (mod.mid, pkg.name, oitem['filename']) in archives:
+                    item = oitem.copy()
                     item['mod'] = mod
                     item['pkg'] = pkg
+                    item['_id'] = id(oitem)
                     downloads.append(item)
-
-                    self._pkg_prog[id(item)] = ('%s: %s' % (mod.title, item['filename']), 0, 'Checking...')
+                else:
+                    del self._pkg_prog[id(oitem)]
 
         if len(archives) == 0:
             logging.info('Nothing to do for this InstallTask!')
@@ -476,11 +514,10 @@ class InstallTask(progress.MultistepTask):
             self._error = True
 
         self._threads = 0
-        print(downloads)
         self.add_work(downloads)
 
     def work2(self, archive):
-        self._local.pkg = id(archive)
+        self._local.pkg = archive['_id']
 
         with tempfile.TemporaryDirectory() as tpath:
             arpath = os.path.join(tpath, archive['filename'])
@@ -510,7 +547,7 @@ class InstallTask(progress.MultistepTask):
                     progress.finish_task()
                     progress.update(0.97, 'Checking "%s"...' % archive['filename'])
 
-                    if util.gen_hash(arpath) == archive['md5sum']:
+                    if util.check_hash(archive['checksum'], arpath):
                         done = True
                         retries = 0
                         break
@@ -525,60 +562,96 @@ class InstallTask(progress.MultistepTask):
             if self.aborted:
                 return
 
-            if archive['is_archive']:
-                cpath = os.path.join(tpath, 'content')
-                os.mkdir(cpath)
+            cpath = os.path.join(tpath, 'content')
+            os.mkdir(cpath)
 
-                needed_files = filter(lambda item: item['archive'] == archive['filename'], archive['pkg'].filelist)
-                done = False
+            needed_files = filter(lambda item: item['archive'] == archive['filename'], archive['pkg'].filelist)
+            done = False
 
-                if sys.platform == 'win32':
-                    # Apparently I can't run multiple 7z instances on Windows. If I do, I always get the error
-                    # "The archive can't be opened because it is still in use by another process."
-                    # I have no idea why. It works fine on Linux and Mac OS.
-                    # TODO: Is there a better solution?
+            if sys.platform == 'win32':
+                # Apparently I can't run multiple 7z instances on Windows. If I do, I always get the error
+                # "The archive can't be opened because it is still in use by another process."
+                # I have no idea why. It works fine on Linux and Mac OS.
+                # TODO: Is there a better solution?
 
-                    progress.update(0.98, 'Waiting...')
-                    self._7z_lock.acquire()
+                progress.update(0.98, 'Waiting...')
+                self._7z_lock.acquire()
 
-                progress.update(0.98, 'Extracting %s...' % archive['filename'])
-                logging.debug('Extracting %s into %s', archive['filename'], modpath)
+            progress.update(0.98, 'Extracting...')
+            logging.debug('Extracting %s into %s', archive['filename'], modpath)
 
-                if util.extract_archive(arpath, cpath):
-                    done = True
-                    # Look for missing files
-                    for item in needed_files:
-                        src_path = os.path.join(cpath, item['orig_name'])
-
-                        if not os.path.isfile(src_path):
-                            logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)!',
-                                            item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
-
-                            done = False
-                            break
-
-                if sys.platform == 'win32':
-                    self._7z_lock.release()
-
-                if not done:
-                    logging.error('Failed to unpack archive "%s" for package "%s" (%s)!',
-                                  archive['filename'], archive['pkg'].name, archive['mod'].title)
-                    shutil.rmtree(cpath, ignore_errors=True)
-                    self._error = True
-                    return
-
-                for item in archive['pkg'].filelist:
-                    if item['archive'] != archive['filename']:
-                        continue
-
+            if util.extract_archive(arpath, cpath):
+                done = True
+                # Look for missing files
+                for item in needed_files:
                     src_path = os.path.join(cpath, item['orig_name'])
+
+                    if not os.path.isfile(src_path):
+                        logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)!',
+                                        item['orig_name'], archive['filename'], archive['pkg'].name, archive['mod'].title)
+
+                        done = False
+                        break
+
+            if sys.platform == 'win32':
+                self._7z_lock.release()
+
+            if not done:
+                logging.error('Failed to unpack archive "%s" for package "%s" (%s)!',
+                              archive['filename'], archive['pkg'].name, archive['mod'].title)
+                shutil.rmtree(cpath, ignore_errors=True)
+                self._error = True
+                return
+
+            dev_mode = archive['pkg'].get_mod().dev_mode
+
+            for item in archive['pkg'].filelist:
+                if item['archive'] != archive['filename']:
+                    continue
+
+                src_path = os.path.join(cpath, item['orig_name'])
+                if dev_mode:
+                    dest_path = util.ipath(os.path.join(modpath, archive['pkg'].folder, item['filename']))
+                else:
                     dest_path = util.ipath(os.path.join(modpath, item['filename']))
 
-                    try:
-                        dparent = os.path.dirname(dest_path)
-                        if not os.path.isdir(dparent):
-                            os.makedirs(dparent)
+                try:
+                    dparent = os.path.dirname(dest_path)
+                    if not os.path.isdir(dparent):
+                        os.makedirs(dparent)
 
+                    if dev_mode and archive['pkg'].is_vp:
+                        vp = vplib.VpReader(src_path)
+
+                        fc = float(len(vp.files))
+                        done = 0
+                        progress.start_task(0.98, 0.02, '%s')
+                        for path, meta in vp.files.items():
+                            progress.update(done / fc, path)
+                            hdl = vp.open_file(path)
+
+                            sub_dest = util.ipath(os.path.join(modpath, archive['pkg'].folder, path))
+                            sub_par = os.path.dirname(sub_dest)
+
+                            if not os.path.isdir(sub_par):
+                                os.makedirs(sub_par)
+
+                            with open(sub_dest, 'wb') as dest_hdl:
+                                remaining = meta['size']
+                                bufsize = 16 * 1024  # 16 KiB
+                                while remaining > 0:
+                                    buf = hdl.read(min(remaining, bufsize))
+                                    if not buf:
+                                        break
+
+                                    dest_hdl.write(buf)
+                                    remaining -= bufsize
+
+                            done += 1
+
+                        # Avoid confusing CheckTask with a missing VP file.
+                        archive['pkg'].filelist = []
+                    else:
                         # This move might fail on Windows with Permission Denied errors.
                         # "[WinError 32] The process cannot access the file because it is being used by another process"
                         # Just try it again several times to account of AV scanning and similar problems.
@@ -595,75 +668,62 @@ class InstallTask(progress.MultistepTask):
                                     raise
                                 else:
                                     time.sleep(1)
-                    except:
-                        logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
-                                          src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
-                        self._error = True
+                except Exception:
+                    logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
+                                      src_path, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
+                    self._error = True
 
-                # Copy the remaining empty dirs and symlinks.
-                for path, dirs, files in os.walk(cpath):
-                    path = os.path.relpath(path, cpath)
+            # Copy the remaining empty dirs and symlinks.
+            for path, dirs, files in os.walk(cpath):
+                path = os.path.relpath(path, cpath)
 
-                    for name in dirs:
-                        src_path = os.path.join(cpath, path, name)
+                for name in dirs:
+                    src_path = os.path.join(cpath, path, name)
+                    dest_path = util.ipath(os.path.join(modpath, path, name))
+
+                    if os.path.islink(src_path):
+                        if not os.path.lexists(dest_path):
+                            linkto = os.readlink(src_path)
+                            os.symlink(linkto, dest_path)
+                    elif not os.path.exists(dest_path):
+                        os.makedirs(dest_path)
+
+                for name in files:
+                    src_path = os.path.join(cpath, path, name)
+
+                    if os.path.islink(src_path):
                         dest_path = util.ipath(os.path.join(modpath, path, name))
-
-                        if os.path.islink(src_path):
-                            if not os.path.lexists(dest_path):
-                                linkto = os.readlink(src_path)
-                                os.symlink(linkto, dest_path)
-                        elif not os.path.exists(dest_path):
-                            os.makedirs(dest_path)
-
-                    for name in files:
-                        src_path = os.path.join(cpath, path, name)
-
-                        if os.path.islink(src_path):
-                            dest_path = util.ipath(os.path.join(modpath, path, name))
-                            if not os.path.lexists(dest_path):
-                                linkto = os.readlink(src_path)
-                                os.symlink(linkto, dest_path)
-            else:
-                for item in archive['pkg'].filelist:
-                    if item['archive'] != archive['filename']:
-                        continue
-
-                    dest_path = util.ipath(os.path.join(modpath, archive['filename']))
-
-                    try:
-                        dparent = os.path.dirname(dest_path)
-                        if not os.path.isdir(dparent):
-                            os.makedirs(dparent)
-
-                        tries = 3
-                        while tries > 0:
-                            try:
-                                shutil.move(arpath, dest_path)
-                                break
-                            except Exception as e:
-                                logging.warning('Initial move for "%s" failed (%s)!' % (src_path, str(e)))
-                                tries -= 1
-
-                                if tries == 0:
-                                    raise
-                                else:
-                                    time.sleep(1)
-                    except:
-                        logging.exception('Failed to move file "%s" from archive "%s" for package "%s" (%s) to its destination %s!',
-                                          arpath, archive['filename'], archive['pkg'].name, archive['mod'].title, dest_path)
-                        self._error = True
+                        if not os.path.lexists(dest_path):
+                            linkto = os.readlink(src_path)
+                            os.symlink(linkto, dest_path)
 
             progress.update(1, 'Done.')
+
+    def init3(self):
+        self.add_work((None,))
+
+    def work3(self, _):
+        # Generate mod.json files.
+        for mod in self._mods:
+            try:
+                mod.save()
+                util.get(center.settings['nebula_link'] + 'api/1/track/install/' + mod.mid)
+            except Exception:
+                logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
 class UninstallTask(progress.MultistepTask):
     _pkgs = None
+    _mods = None
     _steps = 2
     check_after = True
 
-    def __init__(self, pkgs, check_after=True):
+    def __init__(self, pkgs, check_after=True, mods=[]):
+        super(UninstallTask, self).__init__()
+
         self._pkgs = []
+        self._mods = []
         self.check_after = check_after
 
         for pkg in pkgs:
@@ -672,7 +732,11 @@ class UninstallTask(progress.MultistepTask):
             except repo.ModNotFound:
                 logging.exception('Someone tried to uninstall a non-existant package (%s, %s)! Skipping it...', pkg.get_mod().mid, pkg.name)
 
-        super(UninstallTask, self).__init__()
+        for mod in mods:
+            try:
+                self._mods.append(center.installed.query(mod))
+            except repo.ModNotFound:
+                logging.exception('Someone tried to uninstall a non-existant %s!', mod)
 
         self.done.connect(self.finish)
         self.title = 'Uninstalling mods...'
@@ -691,7 +755,7 @@ class UninstallTask(progress.MultistepTask):
                 os.unlink(path)
 
     def init2(self):
-        mods = set()
+        mods = set(self._mods)
 
         # Unregister uninstalled pkgs.
         for pkg in self._pkgs:
@@ -709,7 +773,8 @@ class UninstallTask(progress.MultistepTask):
             elif len(mod.packages) == 0:
                 # Remove our files
 
-                my_files = (os.path.join(modpath, 'mod.json'), mod.logo_path)
+                my_files = [os.path.join(modpath, 'mod.json'), mod.logo, mod.tile, mod.banner]
+                my_files += mod.screenshots + mod.attachments
                 for path in my_files:
                     if path and os.path.isfile(path):
                         os.unlink(path)
@@ -727,7 +792,7 @@ class UninstallTask(progress.MultistepTask):
                 center.installed.del_mod(mod)
             else:
                 mod.save()
-        except:
+        except Exception:
             logging.exception('Failed to uninstall mod from "%s"!' % modpath)
             self._error = True
 
@@ -743,64 +808,355 @@ class UninstallTask(progress.MultistepTask):
 
 class UpdateTask(InstallTask):
     _old_mod = None
-    _new_mod = None
-    _new_modpath = None
     __check_after = True
 
     def __init__(self, mod, check_after=True):
         self._old_mod = mod
-        self._new_mod = center.mods.query(mod.mid)
+        new_mod = center.mods.query(mod.mid)
         self.__check_after = check_after
 
         old_pkgs = [pkg.name for pkg in mod.packages]
         pkgs = []
 
-        for pkg in self._new_mod.packages:
+        for pkg in new_mod.packages:
             if pkg.name in old_pkgs or pkg.status == 'required':
                 pkgs.append(pkg)
 
-        super(UpdateTask, self).__init__(pkgs, self._new_mod, check_after=False)
+        super(UpdateTask, self).__init__(pkgs, new_mod, check_after=False)
 
     def finish(self):
-        self._new_modpath = self._new_mod.folder
         super(UpdateTask, self).finish()
 
         if not self.aborted and not self._error:
-            # TODO: Check if it's okay to uninstall the old version. Maybe there's still a mod that requires this one?
             # The new version has been succesfully installed, remove the old version.
-            next_task = UninstallTask(self._old_mod.packages, check_after=False)
-            next_task.done.connect(self._finish2)
-            run_task(next_task)
 
-    def _finish2(self):
-        modpath = self._old_mod.folder
-        temppath = self._new_modpath
-
-        if '_kv_' not in modpath:
-            # Move all files from the temporary directory to the new one.
-            try:
-                if not os.path.isdir(modpath):
-                    os.makedirs(modpath)
-
-                for item in os.listdir(temppath):
-                    shutil.move(os.path.join(temppath, item), os.path.join(modpath, item))
-            except:
-                logging.exception('Failed to move a file!')
-                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr(
-                    'Failed to replace the old mod files with the updated files!'))
+            if len(self._old_mod.get_dependents()) == 0:
+                run_task(UninstallTask(self._old_mod.packages, check_after=self.__check_after))
+            else:
+                logging.debug('Not uninstalling %s after update because it still has dependents.', self._old_mod)
 
                 if self.__check_after:
                     run_task(CheckTask())
-                return
+
+
+class UploadTask(progress.MultistepTask):
+    can_abort = True
+    _steps = 2
+    _client = None
+    _mod = None
+    _dir = None
+    _login_failed = False
+    _duplicate = False
+    _reason = None
+    _msg = None
+    _success = False
+    _msg_table = {
+        'invalid version': 'the version number specified for this release is invalid!',
+        'outdated version': 'there is already a release with the same or newer version on the nebula.',
+        'unsupported archive checksum': 'your client sent an invalid checksum. You probably need to update.',
+        'archive missing': 'one of your archives failed to upload.'
+    }
+    _question = QtCore.Signal()
+    _question_result = False
+    _question_cond = None
+
+    def __init__(self, mod):
+        super(UploadTask, self).__init__()
+
+        self.title = 'Uploading mod...'
+        self.mods = [mod]
+        self._mod = mod.copy()
+
+        self._threads = 2
+        self._local = threading.local()
+        self._slot_prog = {
+            'total': ('Status', 0, 'Waiting...')
+        }
+
+        self.done.connect(self.finish)
+        self._question.connect(self.show_question)
+        self._question_cond = threading.Condition()
+
+    def _track_progress(self, prog, text):
+        with self._progress_lock:
+            if self._local.slot:
+                self._slot_prog[self._local.slot] = (self._slot_prog[self._local.slot][0], prog, text)
+
+            total = 0
+            for label, prog, text in self._slot_prog.values():
+                total += prog
+
+            self.progress.emit((total / max(1, len(self._slot_prog)), self._slot_prog, 'Uploading mod...'))
+
+    def abort(self):
+        self._local.slot = 'total'
+        progress.update(1, 'Aborted')
+
+        super(UploadTask, self).abort()
+
+    def show_question(self):
+        res = QtWidgets.QMessageBox.question(None, 'Knossos', 'This mod has already been uploaded. If you continue, ' +
+            'your metadata changes will be uploaded but the files will not be updated. Continue?')
+
+        self._question_result = res == QtWidgets.QMessageBox.Yes
+        with self._question_cond:
+            self._question_cond.notify()
+
+    def init1(self):
+        self._local.slot = 'total'
+
+        try:
+            progress.update(0.1, 'Logging in...')
+
+            self._dir = tempfile.TemporaryDirectory()
+            self._client = client = nebula.NebulaClient()
 
             try:
-                # Remove the now empty temporary folder
-                os.rmdir(temppath)
-            except:
-                logging.warning('Failed to remove supposedly empty folder "%s"!', temppath, exc_info=True)
+                mods = client.get_editable_mods()
+            except nebula.InvalidLoginException:
+                self._login_failed = True
+                self.abort()
 
-        if self.__check_after:
-            run_task(CheckTask())
+                progress.update(0.1, 'Failed to login!')
+                return
+
+            progress.update(0.11, 'Updating metadata...')
+
+            if self._mod.mid not in mods:
+                client.create_mod(self._mod)
+            else:
+                client.update_mod(self._mod)
+
+            progress.update(0.13, 'Performing pre-flight checks...')
+            try:
+                client.preflight_release(self._mod)
+            except nebula.RequestFailedException as exc:
+                if exc.args[0] == 'duplicated version':
+                    with self._question_cond:
+                        self._question.emit()
+                        self._question_cond.wait()
+
+                        if not self._question_result:
+                            self._reason = 'aborted'
+                            self.abort()
+                            return
+
+                    self._duplicate = True
+                else:
+                    raise
+
+            if not self._duplicate:
+                progress.update(0.15, 'Scanning files...')
+                archives = []
+                fnames = {}
+                conflicts = {}
+                for pkg in self._mod.packages:
+                    ar_name = pkg.name + '.7z'
+                    pkg_path = os.path.join(self._mod.folder, pkg.folder)
+                    pkg.filelist = []
+
+                    if not pkg.is_vp:
+                        for sub, dirs, files in os.walk(pkg_path):
+                            relsub = os.path.relpath(sub, pkg_path)
+                            for fn in files:
+                                relpath = os.path.join(relsub, fn).replace('\\', '/')
+
+                                pkg.filelist.append({
+                                    'filename': relpath,
+                                    'archive': ar_name,
+                                    'orig_name': relpath,
+                                    'checksum': None
+                                })
+
+                                if relpath in fnames:
+                                    l = conflicts.setdefault(relpath, [fnames[relpath].name])
+                                    l.append(pkg.name)
+
+                                fnames[relpath] = pkg
+
+                    archives.append(pkg)
+                    self._slot_prog[pkg.name] = (pkg.name + '.7z', 0, 'Waiting...')
+
+                if conflicts:
+                    msg = ''
+                    for name in sorted(conflicts.keys()):
+                        msg += '\n%s is in %s' % (name, util.human_list(conflicts[name]))
+
+                    self._reason = 'conflict'
+                    self._msg = msg
+                    self.abort()
+                    return
+
+                self._slot_prog['#checksums'] = ('Checksums', 0, '')
+                self._local.slot = '#checksums'
+
+                fc = float(len(fnames))
+                done = 0
+                for pkg in self._mod.packages:
+                    pkg_path = os.path.join(self._mod.folder, pkg.folder)
+
+                    for fn in pkg.filelist:
+                        progress.update(done / fc, fn['filename'])
+                        fn['checksum'] = util.gen_hash(os.path.join(pkg_path, fn['filename']))
+                        done += 1
+
+                progress.update(1, 'Done')
+                self._local.slot = 'total'
+
+                progress.update(0.2, 'Uploading...')
+                self.add_work(archives)
+        except nebula.AccessDeniedException:
+            self._reason = 'unauthorized'
+            self.abort()
+        except nebula.RequestFailedException as exc:
+            if exc.args[0] not in self._msg_table:
+                logging.exception('Failed request to nebula during upload!')
+
+            self._reason = exc.args[0]
+            self.abort()
+        except Exception:
+            logging.exception('Error during upload initalisation!')
+            self._reason = 'unknown'
+            self.abort()
+
+    def work1(self, pkg):
+        self._local.slot = pkg.name
+
+        ar_name = pkg.name + '.7z'
+        ar_path = os.path.join(self._dir.name, ar_name)
+
+        try:
+            progress.update(0, 'Packing...')
+            if pkg.is_vp:
+                vp_name = pkg.name + '.vp'
+                vp_path = os.path.join(self._dir.name, vp_name)
+                vp = vplib.VpWriter(vp_path)
+                pkg_path = os.path.join(self._mod.folder, pkg.folder)
+
+                for sub, dirs, files in os.walk(pkg_path):
+                    relsub = os.path.relpath(sub, pkg_path)
+                    for fn in files:
+                        relpath = os.path.join(relsub, fn)
+                        vp.add_file(relpath, os.path.join(sub, fn))
+
+                progress.start_task(0.0, 0.1, '%s')
+                vp.write()
+
+                progress.update(1, 'Calculating checksum...')
+                progress.finish_task()
+
+                pkg.filelist = [{
+                    'filename': vp_name,
+                    'archive': ar_name,
+                    'orig_name': vp_name,
+                    'checksum': util.gen_hash(vp_path)
+                }]
+
+                progress.start_task(0.1, 0.3, '%s')
+            else:
+                progress.start_task(0.0, 0.4, '%s')
+
+            if pkg.is_vp:
+                p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, vp_name],
+                    cwd=self._dir.name, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            else:
+                p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, '.'],
+                    cwd=os.path.join(self._mod.folder, pkg.folder), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            line_re = re.compile(r'^\s*([0-9]+)%')
+            buf = ''
+            while p.poll() is None:
+                while '\b' not in buf:
+                    line = p.stdout.read(10)
+                    if not line:
+                        break
+                    buf += line.decode('utf8', 'replace')
+
+                buf = buf.split('\b')
+                line = buf.pop(0)
+                buf = '\b'.join(buf)
+
+                m = line_re.match(line)
+                if m:
+                    progress.update(int(m.group(1)) / 100., 'Compressing...')
+
+            if p.returncode != 0:
+                logging.error('Failed to build %s!' % ar_name)
+                self.abort()
+                return
+
+            progress.finish_task()
+            progress.start_task(0.4, 0.6, '%s')
+            progress.update(0, 'Preparing upload...')
+
+            pkg.files[ar_name] = {
+                'filename': ar_name,
+                'dest': '',
+                'checksum': util.gen_hash(ar_path),
+                'filesize': os.stat(ar_path).st_size
+            }
+
+            self._client.upload_file(ar_name, ar_path)
+            progress.finish_task()
+            progress.update(1, 'Done!')
+        except nebula.RequestFailedException:
+            logging.exception('Failed request to nebula during upload!')
+
+            self._reason = 'archive missing'
+            self.abort()
+        except Exception:
+            logging.exception('Unknown error during package packing!')
+
+            self._reason = 'unknown'
+            self.abort()
+
+    def init2(self):
+        self._local.slot = 'total'
+
+        try:
+            progress.update(0.8, 'Finishing...')
+
+            if self._duplicate:
+                self._client.update_release(self._mod)
+            else:
+                self._client.create_release(self._mod)
+
+            progress.update(1, 'Done')
+            self._success = True
+        except nebula.AccessDeniedException:
+            self._reason = 'unauthorized'
+            self.abort()
+
+        except nebula.RequestFailedException as exc:
+            if exc.args[0] not in self._msg_table:
+                logging.exception('Failed request to nebula during upload!')
+
+            self._reason = exc.args[0]
+            self.abort()
+
+    def work2(self):
+        pass
+
+    def finish(self):
+        self._dir.cleanup()
+
+        if self._login_failed:
+            message = 'Failed to login!'
+        elif self._reason == 'unauthorized':
+            message = 'You are not authorized to edit this mod!'
+        elif self._success:
+            message = 'Successfully uploaded mod!'
+        elif self._reason in self._msg_table:
+            message = "Your mod couldn't be uploaded because %s" % self._msg_table[self._reason]
+        elif self._reason == 'conflict':
+            message = "I can't upload this mod because at least one file is contained in multiple packages.\n"
+            message += self._msg
+        elif self._reason == 'aborted':
+            return
+        else:
+            message = 'An unexpected error occured! Sorry...'
+
+        center.main_win.browser_ctrl.bridge.taskMessage.emit(message)
 
 
 class GOGExtractTask(progress.Task):
@@ -813,6 +1169,13 @@ class GOGExtractTask(progress.Task):
         self.add_work([(gog_path, dest_path)])
         self.title = 'Installing FS2 from GOG...'
 
+        if not center.installed.has('FSO'):
+            try:
+                fso = center.mods.query('FSO')
+                run_task(InstallTask(fso.resolve_deps()))
+            except repo.ModNotFound:
+                logging.warn('Installing retail files but FSO is missing!')
+
     def work(self, paths):
         gog_path, dest_path = paths
 
@@ -821,7 +1184,7 @@ class GOGExtractTask(progress.Task):
 
         try:
             data = json.loads(data)
-        except:
+        except Exception:
             logging.exception('Failed to read JSON data!')
             return
 
@@ -829,12 +1192,15 @@ class GOGExtractTask(progress.Task):
         path = None
         for plat, info in data.items():
             if sys.platform.startswith(plat):
-                link, path = info
+                link, path = info[:2]
                 break
 
         if link is None:
             logging.error('Couldn\'t find an innoextract download for "%s"!', sys.platform)
             return
+
+        if not os.path.exists(dest_path):
+            os.makedirs(dest_path)
 
         inno = os.path.join(dest_path, os.path.basename(path))
         with tempfile.TemporaryDirectory() as tempdir:
@@ -894,7 +1260,7 @@ class GOGExtractTask(progress.Task):
                         percent = float(line.split('%')[0]) / 100
 
                         progress.update(percent, line)
-                    except:
+                    except Exception:
                         logging.exception('Failed to process InnoExtract output!')
                 else:
                     if line.strip() == 'not a supported Inno Setup installer':
@@ -902,7 +1268,7 @@ class GOGExtractTask(progress.Task):
                         return
 
                     logging.info('InnoExtract: %s', line)
-        except:
+        except Exception:
             logging.exception('InnoExtract failed!')
             return
 
@@ -929,6 +1295,8 @@ class GOGExtractTask(progress.Task):
         shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
         shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
 
+        create_retail_mod(dest_path)
+
         self.post(dest_path)
 
     def _makedirs(self, path):
@@ -949,7 +1317,7 @@ class GOGExtractTask(progress.Task):
             QtWidgets.QMessageBox.information(None, translate('tasks', 'Done'), self.tr(
                 'FS2 has been successfully installed.'))
 
-        center.main_win.check_fso()
+            center.main_win.update_mod_list()
 
 
 class GOGCopyTask(progress.Task):
@@ -961,6 +1329,13 @@ class GOGCopyTask(progress.Task):
         self.done.connect(self.finish)
         self.add_work([(gog_path, dest_path)])
         self.title = 'Copying retail files...'
+
+        if not center.installed.has('FSO'):
+            try:
+                fso = center.mods.query('FSO')
+                run_task(InstallTask(fso.resolve_deps()))
+            except repo.ModNotFound:
+                logging.warn('Installing retail files but FSO is missing!')
 
     def work(self, paths):
         gog_path, dest_path = paths
@@ -981,6 +1356,8 @@ class GOGCopyTask(progress.Task):
         for item in glob.glob(os.path.join(gog_path, 'data3', '*.mve')):
             shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
+        create_retail_mod(dest_path)
+
         self.post(dest_path)
 
     def _makedirs(self, path):
@@ -988,7 +1365,7 @@ class GOGCopyTask(progress.Task):
             os.makedirs(path)
 
     def finish(self):
-        center.main_win.check_fso()
+        center.main_win.update_mod_list()
 
 
 class CheckUpdateTask(progress.Task):
@@ -1012,7 +1389,7 @@ class CheckUpdateTask(progress.Task):
 
         try:
             version = semantic_version.Version(version)
-        except:
+        except Exception:
             logging.exception('Failed to parse remote version!')
             return
 
@@ -1032,7 +1409,7 @@ class WindowsUpdateTask(progress.Task):
 
     def work(self, item):
         # Download it.
-        update_base = util.pjoin(center.UPDATE_LINK, center.settings['update_channel'])
+        update_base = util.pjoin(center.UPDATE_LINK, 'stable')
 
         dir_name = tempfile.mkdtemp()
         updater = os.path.join(dir_name, 'knossos_updater.exe')
@@ -1047,7 +1424,7 @@ class WindowsUpdateTask(progress.Task):
         try:
             import win32api
             win32api.ShellExecute(0, 'open', updater, '/D=' + os.getcwd(), os.path.dirname(updater), 1)
-        except:
+        except Exception:
             logging.exception('Failed to launch updater!')
             self.post(False)
         else:
@@ -1061,6 +1438,53 @@ class WindowsUpdateTask(progress.Task):
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to launch the update!'))
 
 
+class CopyFolderTask(progress.Task):
+
+    def __init__(self, src_path, dest_path):
+        super(CopyFolderTask, self).__init__()
+
+        self.add_work(((src_path, dest_path),))
+        self.title = 'Copying folder...'
+
+    def work(self, p):
+        src_path, dest_path = p
+
+        if not os.path.isdir(src_path):
+            logging.error('CopyFolderTask(): The src_path "%s" is not a folder!' % src_path)
+            return
+
+        progress.update(0, 'Scanning...')
+
+        dest_base = os.path.dirname(dest_path)
+        if not os.path.isdir(dest_base):
+            os.makedirs(dest_base)
+
+        files = []
+        total_size = 0.0
+        for src_prefix, dirs, files in os.walk(src_path):
+            dest_prefix = os.path.join(dest_path, os.path.relpath(src_prefix, src_path))
+
+            for sub in dirs:
+                sdest = os.path.join(dest_prefix, sub)
+                try:
+                    os.mkdir(sdest)
+                except OSError:
+                    logging.exception('Failed to mkdir %s.' % sdest)
+
+            for sub in files:
+                sdest = os.path.join(dest_prefix, sub)
+                ssrc = os.path.join(src_prefix, sub)
+                files.append((ssrc, sdest))
+                total_size += os.stat(ssrc).st_size
+
+        bytes_done = 0
+        for src, dest in files:
+            progress.update(bytes_done / total_size, os.path.relpath(src, src_path))
+            shutil.copyfile(src, dest)
+
+            bytes_done += os.stat(src).st_size
+
+
 def run_task(task, cb=None):
     def wrapper():
         cb(task.get_results())
@@ -1071,3 +1495,68 @@ def run_task(task, cb=None):
     center.signals.task_launched.emit(task)
     center.pmaster.add_task(task)
     return task
+
+
+def create_retail_mod(dest_path):
+    # Remember to run tools/common/update_file_list.py if you add new files!
+    files = {
+        'tile': ':/html/images/retail_data/mod-retail.png',
+        'banner': ':/html/images/retail_data/banner-retail.png',
+    }
+
+    screenshots = [':/html/images/retail_data/screen01.jpg', ':/html/images/retail_data/screen02.jpg', ':/html/images/retail_data/screen03.jpg', ':/html/images/retail_data/screen04.jpg', ':/html/images/retail_data/screen05.jpg', ':/html/images/retail_data/screen06.jpg', ':/html/images/retail_data/screen07.jpg', ':/html/images/retail_data/screen08.jpg', ':/html/images/retail_data/screen09.jpg', ':/html/images/retail_data/screen10.jpg', ':/html/images/retail_data/screen11.jpg', ':/html/images/retail_data/screen12.jpg']
+
+    mod = repo.InstalledMod({
+        'title': 'Retail FS2',
+        'id': 'FS2',
+        'version': '1.20',
+        'type': 'tc',
+        'description':
+'[b][i]The year is 2367, thirty two years after the Great War. Or at least that is what YOU thought was the Great War. ' +
+'The endless line of Shivan capital ships, bombers and fighters with super advanced technology was nearly overwhelming.\n\n' +
+'As the Terran and Vasudan races finish rebuilding their decimated societies, a disturbance lurks in the not-so-far ' +
+'reaches of the Gamma Draconis system.\n\nYour nemeses have arrived... and they are wondering what happened to ' +
+'their scouting party.[/i][/b]\n\n[hr]FreeSpace 2 is a 1999 space combat simulation computer game developed by Volition as ' +
+'the sequel to Descent: FreeSpace – The Great War. It was completed ahead of schedule in less than a year, and ' +
+'released to very positive reviews.\n\nThe game continues on the story from Descent: FreeSpace, once again ' +
+'thrusting the player into the role of a pilot fighting against the mysterious aliens, the Shivans. While defending ' +
+'the human race and its alien Vasudan allies, the player also gets involved in putting down a rebellion. The game ' +
+'features large numbers of fighters alongside gigantic capital ships in a battlefield fraught with beams, shells and ' +
+'missiles in detailed star systems and nebulae.',
+        'release_thread': 'http://www.hard-light.net/forums/index.php',
+        'videos': ['https://www.youtube.com/watch?v=ufViyhrXzTE'],
+        'first_release': '1999-09-30',
+        'last_update': '1999-12-03',
+        'folder': dest_path
+    })
+
+    mod.add_pkg(repo.InstalledPackage({
+        'name': 'Content',
+        'status': 'required',
+        'folder': '.',
+        'dependencies': [{
+            'id': 'FSO',
+            'version': '>=3.8.0-1'
+        }]
+    }))
+
+    for prop, path in files.items():
+        ext = os.path.splitext(path)[1]
+        im_path = os.path.join(dest_path, 'kn_' + prop + ext)
+        with open(im_path, 'wb') as stream:
+            stream.write(read_file(path, decode=False))
+
+        setattr(mod, prop, im_path)
+
+    for i, path in enumerate(screenshots):
+        ext = os.path.splitext(path)[1]
+        im_path = os.path.join(dest_path, 'kn_screen_' + str(i) + ext)
+        with open(im_path, 'wb') as stream:
+            stream.write(read_file(path, decode=False))
+
+        mod.screenshots.append(im_path)
+
+    center.installed.add_mod(mod)
+    mod.save()
+
+    return mod

@@ -85,6 +85,17 @@ def main():
     with open(os.path.basename(manifest), 'r') as hdl:
         meta = json.load(hdl)
 
+    chk_file = os.path.basename(manifest) + '.chk'
+    last_chk = None
+    if os.path.isfile(chk_file):
+        with open(chk_file, 'r') as stream:
+            last_chk = stream.read().strip()
+
+        if last_chk == '#'.join(meta['checksum']):
+            return
+
+    print('%s has changed or has not been downloaded, yet. Downloading...' % manifest)
+
     response = requests.get(meta['url'], stream=True)
     content_length = None if meta.get('ignore_length', False) else int(response.headers.get('Content-Length'))
     progress_bar = ProgressBarWget(content_length, eta_every=4)
@@ -113,6 +124,9 @@ def main():
         error('The download failed because the download was incomplete or corrupted!')
 
     thread.join()
+
+    with open(chk_file, 'w') as stream:
+        stream.write('#'.join(meta['checksum']))
 
 
 if __name__ == '__main__':

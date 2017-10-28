@@ -1,11 +1,11 @@
 Vagrant.configure("2") do |config|
   config.vm.define "knossos-builder"
-  config.vm.box = "AndrewDryga/vagrant-box-osx"
+  config.vm.box = "macosx"
 
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.synced_folder "../..", "/opt/knossos", group: "wheel", type: "rsync",
-  	rsync__args: ["--verbose", "--archive", "-z", "--copy-links"],
-    rsync__exclude: ["dist", "build", "packer", ".vagrant"]
+  	rsync__args: ["--verbose", "--archive", "-z", "--copy-links", "-u"],
+    rsync__exclude: ["dist", "build", "packer", ".vagrant", "node_modules"]
 
   config.vm.provision :shell, inline: "sudo -Hu vagrant sh /opt/knossos/releng/macos/provision.sh"
 end

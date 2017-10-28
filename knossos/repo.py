@@ -28,10 +28,11 @@ from semantic_version import SpecItem
 from . import uhf
 uhf(__name__)
 
-from . import center, util
+from . import center, util, bool_parser
 
 # You have to fill this using https://github.com/workhorsy/py-cpuinfo .
 CPU_INFO = None
+STABILITES = ('nightly', 'rc', 'stable')
 
 
 class ModNotFound(Exception):
@@ -52,6 +53,10 @@ class PackageNotFound(ModNotFound):
         super(PackageNotFound, self).__init__(message, mid, spec)
 
         self.package = package
+
+
+class NoExecutablesFound(Exception):
+    pass
 
 
 class Repo(object):
@@ -144,7 +149,7 @@ class Repo(object):
     def add_mod(self, mod):
         mid = mod.mid
 
-        if len(mod.packages) == 0:
+        if len(mod.packages) == 0 and not isinstance(mod, InstalledMod):
             logging.warning('Mod %s is empty, ignoring it!', mod)
             return
 
@@ -176,7 +181,7 @@ class Repo(object):
         mid = mod.mid
 
         if mid not in self.mods:
-            raise ModNotFound('Mod "%s" (%s) could not be removed from %s!' % (mid, mod.version, self.base))
+            raise ModNotFound('Mod "%s" (%s) could not be removed from %s!' % (mid, mod.version, self.base), mid=mid)
 
         idx = None
         for i, item in enumerate(self.mods[mid]):
@@ -185,7 +190,7 @@ class Repo(object):
                 break
 
         if not idx:
-            raise ModNotFound('Mod "%s" (%s) could not be removed from %s because the exact version was missing!' % (mid, mod.version, self.base))
+            raise ModNotFound('Mod "%s" (%s) could not be removed from %s because the exact version was missing!' % (mid, mod.version, self.base), mid=mid)
 
         del self.mods[mid][idx]
 
@@ -296,7 +301,7 @@ class Repo(object):
             yield mod[0]
 
     # TODO: Is this overcomplicated?
-    def process_pkg_selection(self, pkgs):
+    def process_pkg_selection(self, pkgs, recursive=True):
         dep_dict = {}
         ndeps = pkgs
 
@@ -307,20 +312,17 @@ class Repo(object):
 
             for pkg in _nd:
                 for dep, version in pkg.resolve_deps():
-                    mid = dep.get_mod().mid
+                    dd = dep_dict.setdefault(dep.get_mod().mid, {})
+                    dd = dd.setdefault(dep.name, {})
 
-                    if mid not in dep_dict:
-                        dep_dict[mid] = {}
-
-                    if dep.name not in dep_dict[mid]:
-                        dep_dict[mid][dep.name] = {}
-
-                    if version not in dep_dict[mid][dep.name]:
-                        dep_dict[mid][dep.name][version] = dep
-                        ndeps.append(dep)
+                    if version not in dd:
+                        dd[version] = dep
+                        if recursive:
+                            ndeps.append(dep)
 
         # Check for conflicts (and try to resolve them if possible).
         dep_list = set()
+        pref_stable = center.settings['engine_stability']
         for mid, deps in dep_dict.items():
             for name, variants in deps.items():
                 if len(variants) == 1:
@@ -343,6 +345,26 @@ class Repo(object):
                         v = (list(variants.values())[0].name, ','.join([str(s) for s in specs]))
                         raise PackageNotFound('No version of package "%s" found for these constraints: %s' % v, mid, list(variants.values())[0].name)
                     else:
+                        if remains[0].get_mod().mtype == 'engine':
+                            # Multiple versions qualify and this is an engine so we have to check the stability next
+                            stab = pref_stable
+                            if stab not in STABILITES:
+                                stab = STABILITES[-1]
+
+                            stab_idx = STABILITES.index(stab)
+                            candidates = []
+                            while stab_idx > 0:
+                                candidates = [m for m in remains if m.get_mod().stability == stab]
+                                if len(candidates) == 0:
+                                    # Nothing found, try the next lower stability
+                                    stab_idx -= 1
+                                    stab = STABILITES[stab_idx]
+                                else:
+                                    # Found at least one result
+                                    break
+
+                            remains = candidates
+
                         # Pick the latest
                         remains.sort(key=lambda v: v.get_mod().version)
                         dep_list.add(remains[-1])
@@ -350,10 +372,22 @@ class Repo(object):
         dep_list |= set(pkgs)
         return dep_list
 
-    def save_logos(self, path):
+    def get_dependents(self, pkgs):
+        deps = set()
+        mids = set([p.get_mod().mid for p in pkgs])
+
         for mid, mvs in self.mods.items():
-            for mod in mvs:
-                mod.save_logo(path)
+            # Ignore self-references
+            if mid not in mids:
+                for mod in mvs:
+                    try:
+                        for dp in self.process_pkg_selection(mod.packages, False):
+                            if dp in pkgs:
+                                deps.add(mod)
+                    except ModNotFound:
+                        pass
+
+        return deps
 
 
 class Mod(object):
@@ -362,22 +396,25 @@ class Mod(object):
     title = ''
     mtype = 'mod'
     version = None
+    stability = None
     parent = None
     cmdline = ''
+    mod_flag = None
     logo = None
-    logo_path = None
     tile = None
-    tile_path = None
+    banner = None
     description = ''
     notes = ''
     release_thread = None
     videos = None
+    screenshots = None
+    attachments = None
     first_release = None
     last_update = None
     actions = None
     packages = None
 
-    __fields__ = ('mid', 'title', 'type', 'version', 'parent', 'cmdline', 'logo', 'tile',
+    __fields__ = ('mid', 'title', 'type', 'version', 'parent', 'cmdline', 'logo', 'tile', 'banner',
         'description', 'notes', 'actions', 'packages')
 
     def __init__(self, values=None, repo=None):
@@ -399,36 +436,55 @@ class Mod(object):
         self.title = values['title']
         self.mtype = values.get('type', 'mod')  # Backwards compatibility
         self.version = semantic_version.Version(values['version'], partial=True)
+        self.stability = values.get('stability', 'stable')
         self.parent = values.get('parent', 'FS2')
         self.cmdline = values.get('cmdline', '')
-        self.logo = values.get('logo', None)
-        self.tile = values.get('tile', None)
+        self.mod_flag = values.get('mod_flag', [])
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
         self.release_thread = values.get('release_thread', None)
         self.videos = values.get('videos', [])
+        self.screenshots = values.get('screenshots', [])
+        self.attachments = values.get('attachments', [])
         self.first_release = values.get('first_release', None)
         self.last_update = values.get('last_update', None)
         self.actions = values.get('actions', [])
 
         self.packages = []
+
+        installed = isinstance(self, InstalledMod)
         for pkg in values.get('packages', []):
-            pkg = Package(pkg, self)
-            if pkg.check_env():
-                self.packages.append(pkg)
+            p = Package(pkg, self)
+            if installed or p.check_env():
+                self.packages.append(p)
 
-        if self._repo is not None and self._repo.base is not None:
-            if self.logo is not None:
-                if '://' in self._repo.base:
-                    self.logo = util.url_join(self._repo.base, self.logo)
-                else:
-                    self.logo = os.path.abspath(os.path.join(self._repo.base, self.logo))
+        base = None
+        if hasattr(self, 'folder'):
+            base = self.folder
+        elif self._repo is not None:
+            base = self._repo.base
 
-            if self.tile is not None:
-                if '://' in self._repo.base:
-                    self.tile = util.url_join(self._repo.base, self.tile)
-                else:
-                    self.tile = os.path.abspath(os.path.join(self._repo.base, self.tile))
+        if base:
+            for prop in ('logo', 'tile', 'banner'):
+                if values.get(prop) is not None:
+                    if '://' in base:
+                        setattr(self, prop, util.url_join(base, values[prop]))
+                    elif '://' not in values[prop]:
+                        setattr(self, prop, os.path.abspath(os.path.join(base, values[prop])))
+                    else:
+                        setattr(self, prop, values[prop])
+
+            for prop in ('screenshots', 'attachments'):
+                ims = getattr(self, prop)
+                for i, path in enumerate(ims):
+                    if '://' in base:
+                        ims[i] = util.url_join(base, path)
+                    elif '://' not in path:
+                        ims[i] = os.path.abspath(os.path.join(base, path))
+
+        else:
+            for prop in ('logo', 'tile', 'banner'):
+                setattr(self, prop, values.get(prop))
 
         if self.first_release:
             self.first_release = datetime.strptime(self.first_release, '%Y-%m-%d')
@@ -450,16 +506,19 @@ class Mod(object):
             'title': self.title,
             'type': self.mtype,
             'version': str(self.version),
+            'stability': self.stability,
             'parent': self.parent,
             'cmdline': self.cmdline,
+            'mod_flag': self.mod_flag,
             'logo': self.logo,
-            'logo_path': self.logo,
             'tile': self.tile,
-            'tile_path': self.tile,
+            'banner': self.banner,
             'description': self.description,
             'notes': self.notes,
             'release_thread': self.release_thread,
             'videos': self.videos,
+            'screenshots': self.screenshots,
+            'attachments': self.attachments,
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
             'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
             'actions': self.actions,
@@ -467,7 +526,7 @@ class Mod(object):
         }
 
     def copy(self):
-        return Mod(self.get(), self._repo)
+        return self.__class__(self.get(), self._repo)
 
     def get_files(self):
         files = []
@@ -487,34 +546,14 @@ class Mod(object):
 
         return self._repo.process_pkg_selection(pkgs)
 
-    def save_logo(self, dest):
-        if self.logo is not None:
-            suffix = '.' + self.logo.split('.')[-1]
-            path = os.path.join(dest, 'logo_' + hashlib.md5(self.logo.encode('utf8')).hexdigest() + suffix)
+    def get_parent(self):
+        if self.parent:
+            return self._repo.query(self.parent)
+        else:
+            return None
 
-            if not os.path.isfile(path):
-                if '://' in self.logo:
-                    # That's a URL
-                    with open(path, 'wb') as fobj:
-                        util.download(self.logo, fobj)
-                else:
-                    shutil.copyfile(self.logo, path)
-
-            self.logo_path = self.logo = os.path.abspath(path)
-
-        if self.tile is not None:
-            suffix = '.' + self.tile.split('.')[-1]
-            path = os.path.join(dest, 'tile_' + hashlib.md5(self.tile.encode('utf8')).hexdigest() + suffix)
-
-            if not os.path.isfile(path):
-                if '://' in self.tile:
-                    # That's a URL
-                    with open(path, 'wb') as fobj:
-                        util.download(self.tile, fobj)
-                else:
-                    shutil.copyfile(self.tile, path)
-
-            self.tile_path = self.tile = os.path.abspath(path)
+    def get_dependents(self):
+        return self._repo.get_dependents(self.packages)
 
 
 class Package(object):
@@ -524,6 +563,8 @@ class Package(object):
     status = 'recommended'
     dependencies = None
     environment = None
+    folder = None
+    is_vp = False
     files = None
     filelist = None
     executables = None
@@ -545,10 +586,21 @@ class Package(object):
         self.notes = values.get('notes', '')
         self.status = values.get('status', 'recommended').lower()
         self.dependencies = values.get('dependencies', [])
-        self.environment = values.get('environment', [])
+        self.environment = values.get('environment', '')
+        self.folder = values.get('folder', self.name)
+        self.is_vp = values.get('is_vp', False)
         self.files = {}
         self.filelist = values.get('filelist', [])
-        self.executables = values.get('executables', [])
+        self.executables = []
+
+        if self.folder is None:
+            self.folder = self.name
+
+        for exe in values.get('executables', []):
+            self.executables.append({
+                'file': exe['file'],
+                'label': exe.get('label', None)
+            })
 
         _files = values.get('files', [])
 
@@ -565,23 +617,10 @@ class Package(object):
         else:
             logging.warning('"%s"\'s file list has an unknown type.', self.name)
 
-        has_mod_dep = False
-        mid = self._mod.mid
-
-        if mid == '':
-            raise Exception('Package "%s" initialized with Mod %s which has no ID!' % (self.name, self._mod.title))
-
-        for info in self.dependencies:
-            if info['id'] == mid:
-                has_mod_dep = True
-                break
-
-        if not has_mod_dep:
-            self.dependencies.append({
-                'id': self.get_mod().mid,
-                'version': '==' + str(self.get_mod().version),
-                'packages': []
-            })
+        if self._mod:
+            mid = self._mod.mid
+            if mid == '':
+                raise Exception('Package "%s" initialized with Mod %s which has no ID!' % (self.name, self._mod.title))
 
     def get(self):
         return {
@@ -590,6 +629,8 @@ class Package(object):
             'status': self.status,
             'dependencies': self.dependencies,
             'environment': self.environment,
+            'folder': self.folder,
+            'is_vp': self.is_vp,
             'files': list(self.files.values()),
             'filelist': self.filelist,
             'executables': self.executables
@@ -601,18 +642,15 @@ class Package(object):
     def get_files(self):
         files = {}
         for name, item in self.files.items():
-            if item['is_archive']:
-                for path, csum in item['contents'].items():
-                    files[os.path.join(item['dest'], path)] = (csum, name)
-            else:
-                files[os.path.join(item['dest'], name)] = (item['md5sum'], name)
+            for path, csum in item['contents'].items():
+                files[os.path.join(item['dest'], path)] = (csum, name)
 
         return files
 
     def resolve_deps(self):
         result = []
         for dep in self.dependencies:
-            version = dep['version']
+            version = dep.get('version', '*') or '*'
             if version != '*' and not SpecItem.re_spec.match(version):
                 # Make a spec out of this version
                 version = '==' + version
@@ -634,70 +672,36 @@ class Package(object):
         return result
 
     def check_env(self):
-        bvars = None
+        if self.environment in ('', None):
+            return True
 
-        for check in self.environment:
-            value = check['value'].lower()
-            c_type = check['type'].lower()
+        if not isinstance(self.environment, str):
+            logging.warn('Invalid value for environment check in mod %s (%s)!' % (self._mod.mid, self._mod.version))
+            return True
 
-            if c_type == 'os':
-                if value == 'windows':
-                    if sys.platform not in ('win32', 'cygwin'):
-                        return False
-                elif value == 'linux':
-                    if not sys.platform.startswith('linux'):
-                        return False
-                elif value == 'macos':
-                    if sys.platform != 'darwin':
-                        return False
-                else:
-                    return False
+        bvars = {}
+        bvars[CPU_INFO['arch'].lower()] = True  # this is either X86_32 or X86_64
 
-            elif c_type == 'cpu_feature':
-                if CPU_INFO is None:
-                    # We don't have any information on the current CPU so we just ignore this check.
-                    return True
-
-                if value in CPU_INFO['flags']:
-                    return True
-
-                if value.upper() == CPU_INFO['arch']:
-                    return True
-
-                return False
-            elif c_type == 'bool':
-                if bvars is None:
-                    bvars = {}
-                    bvars[CPU_INFO['arch']] = True  # this is either X86_32 or X86_64
-
-                    if sys.platform in ('win32', 'cygwin'):
-                        bvars['windows'] = True
-                    elif sys.platform.startswith('linux'):
-                        bvars['linux'] = True
-                    elif sys.platform == 'darwin':
-                        bvars['macosx'] = True
-                    else:
-                        logging.error('You are using an unrecognized OS! (%s)' % sys.platform)
-
-                    for flag in CPU_INFO['flags']:
-                        bvars[flag] = True
-
-                return self._solve_bool(value, bvars)
-
-        return True
-
-    @classmethod
-    def _solve_bool(cls, expr, vars):
-        if expr[0] == 'var':
-            return vars.get(expr[1])
-        elif expr[0] == 'not':
-            return not cls._solve_bool(expr[1], vars)
-        elif expr[0] == 'and':
-            return cls._solve_bool(expr[1], vars) and cls._solve_bool(expr[2], vars)
-        elif expr[0] == 'or':
-            return cls._solve_bool(expr[1], vars) or cls._solve_bool(expr[2], vars)
+        if sys.platform in ('win32', 'cygwin'):
+            bvars['windows'] = True
+        elif sys.platform.startswith('linux'):
+            bvars['linux'] = True
+        elif sys.platform == 'darwin':
+            bvars['macosx'] = True
         else:
-            raise Exception('Unknown operation %s! (%s)' % (expr[0], expr))
+            logging.error('You are using an unrecognized OS! (%s)' % sys.platform)
+
+        for flag in CPU_INFO['flags']:
+            bvars[flag.lower()] = True
+
+        try:
+            return bool_parser.eval_string(self.environment, bvars)
+        except Exception:
+            logging.exception('Failed to evaluate expression "%s"!' % self.environment)
+
+            # Since we can't perform this check, just assume that it returns True as otherwise this mod would be
+            # inaccessible.
+            return True
 
 
 # Keeps track of installed mods
@@ -785,11 +789,11 @@ class InstalledRepo(Repo):
                 my_pkgs = [pkg.name for pkg in mods[0].packages]
 
                 for item in mods[0].get_files():
-                    my_files[item['filename']] = item['md5sum']
+                    my_files[item['filename']] = item['checksum']
 
                 for item in rem_mod.get_files():
                     if item['package'] in my_pkgs:
-                        rem_files[item['filename']] = item['md5sum']
+                        rem_files[item['filename']] = item['checksum']
 
                 if rem_files == my_files:
                     logging.warning('Detected an empty update for mod "%s"! (%s -> %s)', mods[0].title, str(mods[0].version), str(rem_mod.version))
@@ -806,6 +810,8 @@ class InstalledRepo(Repo):
 class InstalledMod(Mod):
     check_notes = ''
     folder = None
+    dev_mode = False
+    custom_build = None
     _path = None
 
     @staticmethod
@@ -814,43 +820,26 @@ class InstalledMod(Mod):
             with open(path, 'r') as stream:
                 data = json.load(stream)
 
-            mod = InstalledMod(data)
-            mod._path = path
+            mod = InstalledMod(None)
+            mod.folder = os.path.normpath(os.path.dirname(path))
+            mod.set(data)
+            return mod
         elif path.lower().endswith('.ini'):
             mod = IniMod()
+            mod.folder = os.path.normpath(os.path.dirname(path))
             mod.load(path)
+            return mod
         else:
             return None
-
-        mod.folder = os.path.dirname(path)
-        if mod.logo is not None and '://' not in mod.logo:
-            mod.logo_path = os.path.join(os.path.dirname(path), mod.logo)
-
-        if mod.tile is not None and '://' not in mod.tile:
-            mod.tile_path = os.path.join(os.path.dirname(path), mod.tile)
-
-        return mod
 
     @staticmethod
     def convert(mod):
         data = mod.get()
         data['packages'] = []
 
-        # IMPORTANT: This code decides where newly installed mods are stored.
-        base = center.settings['base_path']
-        if data['type'] == 'engine':
-            data['folder'] = os.path.join(base, 'bin', data['id']) + '-' + data['version']
-        elif data['type'] == 'tc':
-            data['folder'] = os.path.join(base, data['id'])
-        else:
-            data['folder'] = os.path.join(base, data['parent'], data['id'])
-
         nmod = InstalledMod(data)
-        nmod.logo_path = mod.logo_path
+        nmod.generate_folder()
         return nmod
-
-    def __init__(self, values=None):
-        super(InstalledMod, self).__init__(values)
 
     def set(self, values):
         pkgs = values.get('packages', [])
@@ -858,10 +847,12 @@ class InstalledMod(Mod):
         values['packages'] = []
 
         super(InstalledMod, self).set(values)
-        
+
         if 'folder' in values:
             self.folder = values['folder']
 
+        self.dev_mode = values.get('dev_mode', False)
+        self.custom_build = values.get('custom_build', None)
         self.check_notes = values.get('check_notes', '')
         for pkg in pkgs:
             self.packages.append(InstalledPackage(pkg, self))
@@ -875,20 +866,39 @@ class InstalledMod(Mod):
             'parent': self.parent,
             'version': str(self.version),
             'description': self.description,
+            'notes': self.notes,
+            'folder': self.folder,
             'logo': self.logo,
-            'logo_path': self.logo_path,
             'tile': self.tile,
-            'tile_path': self.tile_path,
+            'banner': self.banner,
             'release_thread': self.release_thread,
             'videos': self.videos,
+            'screenshots': self.screenshots[:],
+            'attachments': self.attachments[:],
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
             'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
             'cmdline': self.cmdline,
+            'mod_flag': self.mod_flag,
+            'dev_mode': self.dev_mode,
+            'custom_build': self.custom_build,
             'packages': [pkg.get() for pkg in self.packages]
         }
 
-    def set_base(self, base):
-        pass
+    def copy(self):
+        return InstalledMod(self.get(), self._repo)
+
+    def generate_folder(self):
+        # IMPORTANT: This code decides where newly installed mods are stored.
+        base = center.settings['base_path']
+
+        if self.mtype in ('engine', 'tool'):
+            self.folder = os.path.join(base, 'bin', self.mid)
+        elif self.mtype == 'tc':
+            self.folder = os.path.join(base, self.mid)
+        else:
+            self.folder = os.path.join(base, self.parent, self.mid)
+
+        self.folder += '-' + str(self.version)
 
     def add_pkg(self, pkg):
         pkg = InstalledPackage.convert(pkg, self)
@@ -923,54 +933,113 @@ class InstalledMod(Mod):
         path = os.path.join(modpath, 'mod.json')
         info = self.get()
 
-        if self.logo is not None and not self.logo.startswith('knossos.'):
-            logo = os.path.join(modpath, 'knossos.' + self.logo.split('.')[-1])
+        # Storing the folder of the JSON file inside the file would be silly.
+        del info['folder']
 
-            if os.path.abspath(logo) != os.path.abspath(self.logo):
-                # Copy the logo right next to the json file.
-                shutil.copy(self.logo, logo)
+        # Make sure we only store relative paths.
+        for prop in ('logo', 'tile', 'banner'):
+            if info[prop] and '://' not in info[prop]:
+                info[prop] = os.path.relpath(info[prop], modpath)
 
-            info['logo'] = os.path.basename(logo)
+        for prop in ('screenshots', 'attachments'):
+            paths = info[prop]
+            for i, p in enumerate(paths):
+                paths[i] = os.path.relpath(p, modpath)
 
         with open(path, 'w') as stream:
             json.dump(info, stream)
 
+    def update_mod_flag(self):
+        old_list = self.mod_flag
+        new_list = set([self.mid])
+
+        # Collect all dependency IDs
+        for pkg in self.packages:
+            for dep in pkg.dependencies:
+                mod = self._repo.query(dep['id'])
+                if mod and mod.mtype not in ('tool', 'engine'):
+                    new_list.add(dep['id'])
+
+        # Remove old IDs which have been removed from our dependencies
+        for i, mid in reversed(list(enumerate(old_list))):
+            if mid not in new_list:
+                del old_list[i]
+
+        # Add new IDs which have been added to our dependencies
+        for mid in new_list:
+            if mid not in old_list:
+                old_list.append(mid)
+
+        self.mod_flag = old_list
+
     def get_mod_flag(self):
-        return []
+        # Since mod_flag is just a list of IDs, we have to look up their paths here.
+        paths = []
+        dev_involved = False
+        mods = {}
+
+        # We have to retrieve the mods this way to honor the version constraints
+        for pkg in self._repo.process_pkg_selection(self.packages):
+            mod = pkg.get_mod()
+
+            if mod.mid not in mods:
+                mods[mod.mid] = mod
+
+        for mid in self.mod_flag:
+            if mid not in mods:
+                # We don't know if this is an optional dependency; ignore it for now.
+                logging.debug('Skipping mod "%s" during -mod generation because it\'s missing.' % mid)
+                continue
+
+            mod = mods[mid]
+            if mod.dev_mode:
+                for pkg in mod.packages:
+                    if pkg.check_env():
+                        paths.append((os.path.join(mod.folder, pkg.folder), '%s - %s' % (mod.title, pkg.name)))
+                        dev_involved = True
+
+            else:
+                paths.append((mod.folder, mod.title))
+
+        return paths, dev_involved
 
     def get_executables(self):
-        deps = self.resolve_deps(True)
-        skipped = set()
+        if self.mtype in ('engine', 'tool'):
+            deps = self.packages
+        else:
+            try:
+                deps = self.resolve_deps(True)
+                if not deps:
+                    deps = self.resolve_deps()
+            except ModNotFound:
+                logging.exception('Error during dep resolve for executables!')
+                deps = []
+
         exes = []
+        if self.custom_build:
+            exes.append({
+                'file': self.custom_build,
+                'mod': self,
+                'label': None
+            })
 
         for pkg in deps:
             mod = pkg.get_mod()
-            if mod.mid in skipped:
-                continue
-
-            if mod.mtype != 'engine':
-                skipped.add(mod.mid)
+            if mod.mtype != 'engine' or (mod.dev_mode and not pkg.check_env()):
                 continue
 
             for exe in pkg.executables:
                 exe = exe.copy()
-                exe['file'] = os.path.join(mod.folder, exe['file'])
+                pkgpath = mod.folder
+                if mod.dev_mode:
+                    pkgpath = os.path.join(pkgpath, pkg.folder)
+
+                exe['file'] = os.path.join(pkgpath, exe['file'])
+                exe['mod'] = mod
                 exes.append(exe)
 
         if not exes:
-            # I'll enable this part once all mods are migrated (i.e. have FSO or another engine added to their dependencies).
-            # raise Exception('No engine found for "%s"!' % self.title)
-            
-            # For now we just use FSO.
-            mod = center.installed.query('FSO')
-            if not mod:
-                raise Exception('No engine found for "%s"!' % self.title)
-
-            for pkg in mod.packages:
-                for exe in pkg.executables:
-                    exe = exe.copy()
-                    exe['file'] = os.path.join(mod.folder, exe['file'])
-                    exes.append(exe)
+            raise NoExecutablesFound('No engine found for "%s"!' % self.title)
 
         return exes
 

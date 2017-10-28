@@ -23,11 +23,10 @@ import subprocess
 import time
 import ctypes.util
 import stat
-import shutil
-import six
+import json
 
-from . import center, repo, api, util
-from .qt import QtCore, QtWidgets
+from . import center, repo, util, settings
+from .qt import QtCore, QtWidgets, run_in_qt
 
 # TODO: What happens if a SONAME contains a space?
 FILE_PATH_RE = r'[a-zA-Z0-9\./\-\_\+]+'
@@ -36,164 +35,94 @@ LIB_RE = re.compile(r'lib([a-zA-Z0-9\.\-\_\+]+)\.so(?:\..*)?')
 LDCONF_RE = re.compile(r'\s*(' + FILE_PATH_RE + r') \([^\)]+\) => (' + FILE_PATH_RE + r')')
 _LIB_CACHE = None
 
-fs2_watcher = None
-fred_watcher = None
+watchers = []
 translate = QtCore.QCoreApplication.translate
-
-
-class SignalContainer(QtCore.QObject):
-    signal = QtCore.Signal(list)
-
-
-# This wrapper makes sure that the wrapped function is always run in the QT main thread.
-def run_in_qt(func):
-    cont = SignalContainer()
-
-    def dispatcher(*args):
-        cont.signal.emit(list(args))
-
-    def listener(params):
-        func(*params)
-
-    cont.signal.connect(listener)
-
-    return dispatcher
 
 
 class Fs2Watcher(threading.Thread):
     _params = None
-    _fred = False
-    _key_layout = None
+    _cwd = None
 
-    def __init__(self, params, fred=False):
+    def __init__(self, params, cwd):
         super(Fs2Watcher, self).__init__()
 
         self._params = params
-        self._fred = fred
+        self._cwd = cwd
         self.daemon = True
         self.start()
 
+        watchers.append(self)
+
     def run(self):
-        global fs2_watcher
+        try:
+            fs2_bin = os.path.normpath(self._params[0])
 
-        old_path = None
-        fs2_bin = self._params[0]
-        basepath = os.path.join(center.settings['base_path'], 'FSO')
-
-        if not os.path.isfile(fs2_bin):
-            self.fs2_missing_msg(fs2_bin)
-            return
-
-        mode = os.stat(fs2_bin).st_mode
-        if mode & stat.S_IXUSR != stat.S_IXUSR:
-            # Make it executable.
-            os.chmod(fs2_bin, mode | stat.S_IXUSR)
-
-        env = os.environ.copy()
-        if sys.platform.startswith('linux'):
-            ld_path, missing = fix_missing_libs(fs2_bin)
-            if len(missing) > 0:
-                self.complain_missing(missing)
+            if not os.path.isfile(fs2_bin):
+                self.fs2_missing_msg(fs2_bin)
                 return
 
-            env['LD_LIBRARY_PATH'] = ld_path
+            mode = os.stat(fs2_bin).st_mode
+            if mode & stat.S_IXUSR != stat.S_IXUSR:
+                # Make it executable.
+                os.chmod(fs2_bin, mode | stat.S_IXUSR)
 
-        if center.settings['keyboard_setxkbmap']:
-            self.set_us_layout()
+            env = os.environ.copy()
+            if sys.platform.startswith('linux'):
+                ld_path, missing = fix_missing_libs(fs2_bin)
+                if len(missing) > 0:
+                    self.complain_missing(missing)
+                    return
 
-        logging.debug('Launching FS2: %s', [fs2_bin] + self._params[1:])
+                env['LD_LIBRARY_PATH'] = ld_path
 
-        if sys.platform.startswith('win'):
-            if os.path.basename(fs2_bin) != fs2_bin:
-                # On Windows, the FSO engine changes the CWD to the directory the EXE file is in.
-                # Since the fs2_bin is in a subdirectory we'll have to copy it!
-                old_path = fs2_bin
-                fs2_bin = os.path.join(basepath, '__tmp_' + os.path.basename(old_path))
+            logging.debug('Launching FS2: %s in %s', repr([fs2_bin] + self._params[1:]), self._cwd)
+            settings.ensure_fso_config()
 
-                shutil.copy2(old_path, fs2_bin)
+            fail = False
+            rc = -999
+            reason = '???'
+            try:
+                p = subprocess.Popen([fs2_bin] + self._params[1:], cwd=self._cwd, env=env)
 
-                # Make sure FSO still finds any DLL files located in the original EXE's folder.
-                old_parent = os.path.abspath(os.path.dirname(old_path))
-                if 'PATH' in env:
-                    env['PATH'] = old_parent + os.pathsep + env['PATH']
-                else:
-                    env['PATH'] = old_parent
-
-                if six.PY2:
-                    env['PATH'] = env['PATH'].encode('utf8')
-
-        fail = False
-        rc = -999
-        reason = '???'
-        try:
-            p = subprocess.Popen([fs2_bin] + self._params[1:], cwd=basepath, env=env)
-
-            time.sleep(0.3)
-            if p.poll() is not None:
-                rc = p.returncode
-                reason = 'return code: %d' % rc
+                time.sleep(0.3)
+                if p.poll() is not None:
+                    rc = p.returncode
+                    reason = 'return code: %d' % rc
+                    fail = True
+            except OSError as exc:
+                logging.exception('Failed to launch FS2!')
+                reason = str(exc).decode('utf8', 'replace')
                 fail = True
-        except OSError as exc:
-            logging.exception('Failed to launch FS2!')
-            reason = str(exc).decode('utf8', 'replace')
-            fail = True
 
-        if fail:
-            self.cleanup(fs2_bin, old_path)
-            center.signals.fs2_failed.emit(rc)
-            self.failed_msg(reason)
-            return
+            if fail:
+                center.signals.fs2_failed.emit(rc)
+                self.failed_msg(reason, fs2_bin)
+                return
 
-        center.signals.fs2_launched.emit()
-        p.wait()
-        self.cleanup(fs2_bin, old_path)
-        center.signals.fs2_quit.emit()
+            center.signals.fs2_launched.emit()
+            p.wait()
+            center.signals.fs2_quit.emit()
+        finally:
+            watchers.remove(self)
 
     @run_in_qt
-    def failed_msg(self, reason):
-        msg = translate('runner', 'Starting FS2 Open (%s) failed! (%s)') % (
-            os.path.join(center.settings['fs2_path'], center.settings['fs2_bin']), reason)
-        QtWidgets.QMessageBox.critical(center.app.activeWindow(), translate('runner', 'Failed'), msg)
+    def failed_msg(self, reason, fs2_bin):
+        msg = translate('runner', 'Starting %s failed! (%s)') % (fs2_bin, reason)
+        QtWidgets.QMessageBox.critical(None, translate('runner', 'Failed'), msg)
 
     @run_in_qt
     def fs2_missing_msg(self, fs2_bin):
         QtWidgets.QMessageBox.critical(None, 'Knossos',
-            translate('runner', 'I can\'t find FSO! (The file "%s" is missing!)') % fs2_bin)
+            translate('runner', 'I can\'t find the selected executable! (The file "%s" is missing!)') % fs2_bin)
 
     @run_in_qt
     def complain_missing(self, missing):
         if len(missing) > 1:
-            msg = translate('runner', "I can't start FSO because the libraries %s are missing!")
+            msg = translate('runner', "I can't start because the libraries %s are missing!")
         else:
-            msg = translate('runner', "I can't start FSO because the library %s is missing!")
+            msg = translate('runner', "I can't start because the library %s is missing!")
 
         QtWidgets.QMessageBox.critical(None, 'Knossos', msg % util.human_list(missing))
-
-    def set_us_layout(self):
-        key_layout = util.check_output(['setxkbmap', '-query'])
-        self._key_layout = key_layout.splitlines()[2].split(':')[1].strip()
-
-        util.call(['setxkbmap', '-layout', 'us'])
-
-    def cleanup(self, fs2_bin, old_path=None):
-        if self._key_layout is not None:
-            util.call(['setxkbmap', '-layout', self._key_layout])
-
-        if sys.platform.startswith('win') and old_path is not None:
-            # Cleanup
-            retries = 3
-
-            while retries > 0:
-                try:
-                    os.unlink(fs2_bin)
-                except:
-                    logging.exception('Failed to delete FSO file "%s"!', fs2_bin)
-
-                if os.path.isfile(fs2_bin):
-                    time.sleep(1)
-                    retries -= 1
-                else:
-                    break
 
 
 def check_elf_libs(fpath):
@@ -282,41 +211,9 @@ def fix_missing_libs(fpath, augment_ldpath=True):
     return patch_dir, missing
 
 
-def run_fs2(params=None):
-    global fs2_watcher
-
-    if fs2_watcher is None or not fs2_watcher.is_alive():
-        fs2_watcher = Fs2Watcher(params)
-        return True
-    else:
-        return False
-
-
-def run_fred(params=None):
-    global fred_watcher
-
-    if not center.settings['fred_bin']:
-        QtWidgets.QMessageBox.critical(None, 'Knossos',
-            translate('runner', 'No FRED executable selected. Please go to Settings > Game settings and select one.'))
-        return
-
-    fred_path = os.path.join(center.settings['fs2_path'], center.settings['fred_bin'])
-    if not os.path.isfile(fred_path):
-        QtWidgets.QMessageBox.critical(None, 'Knossos',
-            translate('runner', 'The selected FRED executable was not found!' +
-                ' Please go to Settings > Game settings and select one.'))
-        return
-
-    if fred_watcher is None or not fred_watcher.is_alive():
-        fred_watcher = Fs2Watcher(params, fred=True)
-        return True
-    else:
-        return False
-
-
 def run_fs2_silent(params):
     base_path = center.settings['base_path']
-    fs2_bin = os.path.join(base_path, 'bin', center.settings['fs2_bin'])
+    fs2_bin = params[0]
 
     if not os.path.isfile(fs2_bin):
         return -128
@@ -335,7 +232,7 @@ def run_fs2_silent(params):
         env['LD_LIBRARY_PATH'] = ld_path
 
     try:
-        rc = util.call([fs2_bin] + params, cwd=base_path, env=env)
+        rc = util.call(params, cwd=base_path, env=env)
     except OSError:
         return -129
 
@@ -343,14 +240,14 @@ def run_fs2_silent(params):
         # We're missing a DLL
         return -127
 
+    return rc
 
-def run_mod(mod, fred=False, debug=False):
+
+def run_mod(mod, tool=None, exe_label=None):
     global installed
 
     if mod is None:
         mod = repo.Mod()
-
-    mods = []
 
     try:
         inst_mod = center.installed.query(mod)
@@ -362,43 +259,63 @@ def run_mod(mod, fred=False, debug=False):
             translate('runner', 'The mod "%s" could not be found!') % mod)
         return
 
-    try:
-        mods = mod.get_mod_flag()
-    except repo.ModNotFound as exc:
-        QtWidgets.QMessageBox.critical(None, 'Knossos',
-            translate('runner', 'Sorry, I can\'t start this mod because its dependency "%s" is missing!') % exc.mid)
-        return
+    if tool:
+        try:
+            exes = tool.get_executables()
+        except Exception:
+            logging.exception('Failed to retrieve binaries for "%s"!' % tool.mid)
+            QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
+                translate('runner', "I couldn't find the tool's executables! Aborted."))
+            return
+    else:
+        try:
+            exes = mod.get_executables()
+        except Exception:
+            logging.exception('Failed to retrieve binaries for "%s"!' % mod.mid)
+            QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
+                translate('runner', "I couldn't find an executable. Aborted."))
+            return
 
-    if mods is None:
-        return
-
-    try:
-        exes = mod.get_executables()
-    except Exception:
-        logging.exception('Failed to retrieve binaries for "%s"!' % mod.mid)
-        QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
-            translate('runner', 'I couldn\'t find a FS2 executable. Can\'t run FS2!!'))
-        return
-
-    binpath = None
-    for item in exes:
-        if item.get('fred', False) == fred and item['debug'] == debug:
-            binpath = item['file']
-            break
-
-    if not binpath:
+    exes = [item for item in exes if item.get('label', None) == exe_label]
+    if len(exes) == 0:
+        logging.error('"%s" provided no valid executable.' % (tool or mod).mid)
         QtWidgets.QMessageBox.critical(None, 'Knossos',
             translate('runner', 'No matching executable was found!'))
         return
 
-    # Look for the cmdline path.
-    path = os.path.join(api.get_fso_profile_path(), 'data/cmdline_fso.cfg')
+    mod_flag, mod_choice = mod.get_mod_flag()
+    if mod_choice or len(exes) > 1:
+        # We have to ask the user
+        center.main_win.browser_ctrl.bridge.showLaunchPopup.emit(json.dumps({
+            'id': mod.mid,
+            'version': str(mod.version),
+            'title': mod.title,
+            'exes': [(x['file'], '%s - %s' % (x['mod'].title, os.path.basename(x['file']))) for x in exes],
+            'mod_flag': mod_flag
+        }))
+    else:
+        run_mod_ex(mod, exes[0]['file'], [path for path, label in mod_flag])
+
+
+def run_mod_ex(mod, binpath, mod_flag):
+    # Put the cmdline together
     cmdline = mod.cmdline
 
-    if len(mods) > 0 and '-mod' not in cmdline:
-        cmdline.append('-mod')
-        cmdline.append(','.join(mods))
+    if mod.mtype == 'mod':
+        basepath = mod.get_parent().folder
+    elif mod.mtype:
+        basepath = mod.folder
 
+    if len(mod_flag) > 0:
+        # The paths for -mod must be relative to the base path.
+        # TODO: Do we have to make sure that there are no special characters here or are the rules for mod.folder and
+        #       pkg.folder enough to assure that?
+        cmdline += ' -mod ' + ','.join([os.path.relpath(p, basepath) for p in mod_flag])
+
+    # Look for the cmdline path.
+    path = os.path.join(settings.get_fso_profile_path(), 'data/cmdline_fso.cfg')
+
+    # Create the containing folders if they are missing.
     if not os.path.isfile(path):
         basep = os.path.dirname(path)
         if not os.path.isdir(basep):
@@ -406,15 +323,15 @@ def run_mod(mod, fred=False, debug=False):
 
     try:
         with open(path, 'w') as stream:
-            stream.write(stringify_cmdline(cmdline))
-    except:
-        logging.exception('Failed to modify "%s". Not starting FS2!!', path)
+            stream.write(cmdline)
+    except Exception:
+        logging.exception('Failed to modify "%s". Not starting!!', path)
 
         QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
             translate('runner', 'Failed to edit "%s"! I can\'t change the current mod!') % path)
     else:
-        logging.info('Starting mod "%s" with cmdline "%s".', mod.title, cmdline)
-        run_fs2([binpath])
+        logging.info('Starting mod "%s" with cmdline "%s" and tool "%s".', mod.title, cmdline, binpath)
+        Fs2Watcher([binpath], cwd=basepath)
 
 
 def stringify_cmdline(line):

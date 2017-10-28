@@ -179,8 +179,8 @@ def cmdenv(cmd, env):
 
     prefix = ''
     if sys.platform == 'win32':
-        prefix = 'cmd /C '
-        cmd = escape_for_cmd_exe(cmd)
+        prefix = 'cmd /C "'
+        cmd += '"'
 
         for n, v in env.items():
             prefix += 'set %s && ' % quote('%s=%s' % (n, v))

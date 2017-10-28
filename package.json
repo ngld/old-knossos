@@ -1,0 +1,31 @@
+{
+  "name": "knossos",
+  "version": "0.0.0",
+  "description": "A modern mod manager and launcher for FreeSpace Open",
+  "main": "html/js/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ngld/knossos.git"
+  },
+  "author": "ngld",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/ngld/knossos/issues"
+  },
+  "homepage": "https://github.com/ngld/knossos#readme",
+  "devDependencies": {
+    "blueimp-gallery": "^2.27.1",
+    "buble-loader": "^0.4.1",
+    "css-loader": "^0.28.7",
+    "file-loader": "^1.1.5",
+    "style-loader": "^0.19.0",
+    "vue": "^2.4.2",
+    "vue-loader": "^13.0.4",
+    "vue-template-compiler": "^2.4.2",
+    "webpack": "^3.5.6",
+    "xbbcode": "^2.0.4"
+  }
+}

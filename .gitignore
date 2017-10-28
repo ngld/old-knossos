@@ -36,3 +36,8 @@ ssh_config
 /releng/arch/pkg/
 /html/js/modlist.*.js
 /node_modules/
+/html/js/translations.js
+/releng/windows/support/
+/releng/ubuntu/cache/
+/knossos/parser.out
+/knossos/parsetab.py

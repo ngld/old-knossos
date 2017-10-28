@@ -17,11 +17,12 @@ from __future__ import absolute_import, print_function
 import sys
 import os.path
 import json
+import struct
 import logging
 from collections import OrderedDict
 from threading import Thread
 
-from . import center, util, api, launcher, runner
+from . import center, util, launcher, runner
 from .tasks import run_task, CheckTask
 from .qt import QtCore, QtWidgets, QtGui
 
@@ -29,39 +30,101 @@ from .qt import QtCore, QtWidgets, QtGui
 tr = QtCore.QCoreApplication.translate
 
 
+# See code/cmdline/cmdline.cpp (in the SCP source) for details on the data structure.
+class FlagsReader(object):
+    _stream = None
+    easy_flags = None
+    flags = None
+    build_caps = None
+
+    def __init__(self, stream):
+        self._stream = stream
+        self.read()
+
+    def unpack(self, fmt):
+        if isinstance(fmt, struct.Struct):
+            return fmt.unpack(self._stream.read(fmt.size))
+        else:
+            return struct.unpack(fmt, self._stream.read(struct.calcsize(fmt)))
+
+    def read(self):
+        # Explanation of unpack() and Struct() parameters: http://docs.python.org/3/library/struct.html#format-characters
+        self.easy_flags = OrderedDict()
+        self.flags = OrderedDict()
+
+        easy_size, flag_size = self.unpack('2i')
+
+        easy_struct = struct.Struct('32s')
+        flag_struct = struct.Struct('20s40s?ii16s256s')
+
+        if easy_size != easy_struct.size:
+            logging.error('EasyFlags size is %d but I expected %d!', easy_size, easy_struct.size)
+            return
+
+        if flag_size != flag_struct.size:
+            logging.error('Flag size is %d but I expected %d!', flag_size, flag_struct.size)
+            return
+
+        for i in range(self.unpack('i')[0]):
+            self.easy_flags[1 << i] = self.unpack(easy_struct)[0].decode('utf8').strip('\x00')
+
+        for i in range(self.unpack('i')[0]):
+            flag = self.unpack(flag_struct)
+            flag = {
+                'name': flag[0].decode('utf8').strip('\x00'),
+                'desc': flag[1].decode('utf8').strip('\x00'),
+                'fso_only': flag[2],
+                'on_flags': flag[3],
+                'off_flags': flag[4],
+                'type': flag[5].decode('utf8').strip('\x00'),
+                'web_url': flag[6].decode('utf8').strip('\x00')
+            }
+
+            if flag['type'] not in self.flags:
+                self.flags[flag['type']] = []
+
+            self.flags[flag['type']].append(flag)
+
+        self.build_caps = self.unpack('b')[0]
+
+    @property
+    def openal(self):
+        return self.build_caps & 1
+
+    @property
+    def no_d3d(self):
+        return self.build_caps & (1 << 1)
+
+    @property
+    def new_snd(self):
+        return self.build_caps & (1 << 2)
+
+    @property
+    def sdl(self):
+        return self.build_caps & (1 << 3)
+
+    def to_dict(self):
+        return {
+            'easy_flags': self.easy_flags,
+            'flags': self.flags,
+            'openal': self.openal,
+            'no_d3d': self.no_d3d,
+            'new_snd': self.new_snd,
+            'sdl': self.sdl
+        }
+
+
 def get_settings(cb):
-    t = Thread(target=get_settings_p2, args=(cb,))
+    def wrapper():
+        cb(get_settings_p2())
+
+    t = Thread(target=wrapper)
     t.start()
 
 
-def get_settings_p2(cb):
+def get_settings_p2():
     dev_info = get_deviceinfo()
-
-    if not dev_info:
-        cb(None)
-        return
-
     fso = {}
-
-    fs2_bins = OrderedDict()
-    fred_bins = OrderedDict()
-
-    for mid, mvs in center.installed.mods.items():
-        if mvs[0].mtype == 'engine':
-            for v in mvs:
-                for pkg in v.packages:
-                    for exe in pkg.executables:
-                        name = '%s - %s' % (v.title, exe['version'])
-                        if exe.get('debug'):
-                            name += ' (Debug)'
-
-                        if exe.get('fred'):
-                            fred_bins[name] = os.path.join(v.folder, exe['file'])
-                        else:
-                            fs2_bins[name] = os.path.join(v.folder, exe['file'])
-
-    fso['fs2_bins'] = fs2_bins
-    fso['fred_bins'] = fred_bins
 
     # ---Read fs2_open.ini or the registry---
     # Be careful with any change, the keys are all case sensitive.
@@ -92,6 +155,16 @@ def get_settings_p2(cb):
 
     # joysticks
     joystick_id = section.get('CurrentJoystick', None)
+    joystick_enable_hit = section.get('EnableHitEffect', False)
+    joystick_ff_strength = config.get('ForceFeedback', {}).get('Strength', 100)
+
+    # speech
+    speech_vol = section.get('SpeechVolume', 100)
+    speech_voice = section.get('SpeechVoice', 0)
+    speech_techroom = section.get('SpeechTechroom', 0)
+    speech_briefings = section.get('SpeechBriefings', 0)
+    speech_ingame = section.get('SpeechIngame', 0)
+    speech_multi = section.get('SpeechMulti', 0)
 
     # network settings
     net_connection = section.get('NetworkConnection', None)
@@ -168,7 +241,9 @@ def get_settings_p2(cb):
 
     # ---Joystick settings---
     fso['joysticks'] = dev_info['joysticks'] if dev_info else []
-    
+    fso['joystick_enable_hit'] = joystick_enable_hit == '1'
+    fso['joystick_ff_strength'] = joystick_ff_strength
+
     # TODO: Implement UUID handling
     if util.is_number(joystick_id):
         if joystick_id == '99999':
@@ -177,6 +252,16 @@ def get_settings_p2(cb):
             fso['joystick_id'] = int(joystick_id)
     else:
         fso['joystick_id'] = 'No Joystick'
+
+    # Speech
+    fso['speech_vol'] = speech_vol
+    fso['speech_voice'] = speech_voice
+    fso['voice_list'] = dev_info['voices']
+
+    fso['speech_techroom'] = speech_techroom == '1'
+    fso['speech_briefings'] = speech_briefings == '1'
+    fso['speech_ingame'] = speech_ingame == '1'
+    fso['speech_multi'] = speech_multi == '1'
 
     # ---Network settings---
     net_connections_read = {'none': 0, 'dialup': 1, 'LAN': 2}
@@ -202,12 +287,12 @@ def get_settings_p2(cb):
 
     fso['has_voice'] = sys.platform == 'win32'
 
-    cb({
+    return {
         'knossos': kn_settings,
         'languages': center.LANGUAGES,
         'has_log': launcher.log_path is not None,
         'fso': fso
-    })
+    }
 
 
 def save_fso_settings(new_settings):
@@ -249,7 +334,19 @@ def save_fso_settings(new_settings):
         if new_settings.get('joystick_id', 'No Joystick') == 'No Joystick':
             section['CurrentJoystick'] = 99999
         else:
-            section['CurrentJoystick'] = new_settings['joystick_id']
+            section['CurrentJoystickGUID'] = new_settings['joystick_id']
+
+        section['EnableHitEffect'] = 1 if new_settings['joystick_enable_hit'] else 0
+        config['ForceFeedback'] = {'Strength': new_settings['joystick_ff_strength']}
+
+        # Speech
+        section['SpeechVolume'] = new_settings['speech_vol']
+        section['SpeechVoice'] = new_settings['speech_voice']
+
+        section['SpeechTechroom'] = 1 if new_settings['speech_techroom'] else 0
+        section['SpeechBriefings'] = 1 if new_settings['speech_briefings'] else 0
+        section['SpeechIngame'] = 1 if new_settings['speech_ingame'] else 0
+        section['SpeechMulti'] = 1 if new_settings['speech_multi'] else 0
 
         # networking
         # net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
@@ -285,7 +382,7 @@ def save_fso_settings(new_settings):
 
         # Save the new configuration.
         write_fso_config(config)
-    except:
+    except Exception:
         logging.exception('Failed to save the configuration!')
         QtWidgets.QMessageBox.critical(None, 'Knossos', tr('SettingsWindow', 'Failed to save the configuration!'))
 
@@ -311,7 +408,7 @@ def get_ratio(w, h):
 
 
 def parse_fso_config():
-    config_file = os.path.join(api.get_fso_profile_path(), 'fs2_open.ini')
+    config_file = os.path.join(get_fso_profile_path(), 'fs2_open.ini')
     if not os.path.isfile(config_file):
         return {}
 
@@ -327,7 +424,7 @@ def parse_fso_config():
 
                 name = line[1:end]
                 sections[name] = current = {}
-            elif not line.startswith((';', '#')):
+            elif not line.startswith((';', '#')) and line.strip() != '':
                 middle = line.find('=')
 
                 if not middle:
@@ -342,7 +439,7 @@ def parse_fso_config():
 
 
 def write_fso_config(sections):
-    config_file = os.path.join(api.get_fso_profile_path(), 'fs2_open.ini')
+    config_file = os.path.join(get_fso_profile_path(), 'fs2_open.ini')
 
     with open(config_file, 'w') as stream:
         for name, pairs in sections.items():
@@ -354,18 +451,77 @@ def write_fso_config(sections):
             stream.write('\n')
 
 
-def get_deviceinfo():
-    try:
-        info = json.loads(util.check_output(launcher.get_cmd(['--deviceinfo'])).strip())
-    except:
-        logging.exception('Failed to retrieve device info!')
+def ensure_fso_config():
+    config_file = os.path.join(get_fso_profile_path(), 'fs2_open.ini')
+    if not os.path.isfile(config_file):
+        settings = get_settings_p2()
+        save_fso_settings(settings['fso'])
 
-        QtWidgets.QMessageBox.critical(None, 'Knossos', tr('SettingsWindow',
-            'There was an error trying to retrieve your device info (screen resolution, joysticks and audio' +
-            ' devices). Please try again or report this error on the HLP thread.'))
+
+def get_deviceinfo():
+    from knossos import clibs
+
+    clibs.init_sdl()
+    clibs.init_openal()
+
+    if clibs.can_detect_audio():
+        audio_devs = clibs.list_audio_devs()
+    else:
+        audio_devs = None
+
+    return {
+        'modes': clibs.get_modes(),
+        'audio_devs': audio_devs,
+        'joysticks': clibs.list_joysticks(),
+        'voices': clibs.list_voices()
+    }
+
+
+_flag_cache = {}
+def get_fso_flags(fs2_bin):
+    global fso_flags
+
+    if not os.path.isfile(fs2_bin):
+        logging.warn('Tried to get flags for missing executable "%s"!' % fs2_bin)
         return None
 
-    return info
+    if fs2_bin in _flag_cache:
+        mtime, flags = _flag_cache[fs2_bin]
+
+        st = os.stat(fs2_bin)
+        if st.st_mtime == mtime:
+            return flags
+
+    flags_path = os.path.join(center.settings['base_path'], 'flags.lch')
+    rc = runner.run_fs2_silent([fs2_bin, '-get_flags', '-parse_cmdline_only'])
+
+    flags = None
+
+    if rc != 1 and rc != 0:
+        logging.error('Failed to run FSO! (Exit code was %d)', rc)
+    elif not os.path.isfile(flags_path):
+        logging.error('Could not find the flags file "%s"!', flags_path)
+    else:
+        with open(flags_path, 'rb') as stream:
+            flags = FlagsReader(stream)
+
+    st = os.stat(fs2_bin)
+    _flag_cache[fs2_bin] = (st.st_mtime, flags)
+    return flags
+
+
+_profile_path = None
+def get_fso_profile_path():
+    global _profile_path
+
+    if _profile_path is None:
+        from knossos import clibs
+
+        clibs.init_sdl()
+
+        return clibs.get_config_path()
+
+    return _profile_path
 
 
 def test_libs():
@@ -374,7 +530,7 @@ def test_libs():
 
     try:
         info = json.loads(util.check_output(launcher.get_cmd(['--lib-paths', sdl_path, oal_path])).strip())
-    except:
+    except Exception:
         QtWidgets.QMessageBox.critical(None, 'Knossos',
             tr('SettingsWindow', 'An unknown error (a crash?) occurred while trying to load the libraries!'))
     else:
@@ -409,7 +565,7 @@ def save_setting(name, value):
         old_bin = center.settings['fs2_bin']
         center.settings['fs2_bin'] = value
 
-        if not api.get_fso_flags():
+        if not get_fso_flags(value):
             # We failed to run FSO but why?
             rc = runner.run_fs2_silent(['-help'])
             if rc == -128:
@@ -434,16 +590,16 @@ def save_setting(name, value):
             return
     elif name == 'use_raven':
         if value:
-            api.enable_raven()
+            util.enable_raven()
         else:
-            api.disable_raven()
+            util.disable_raven()
 
     center.settings[name] = value
-    api.save_settings()
+    center.save_settings()
 
 
 def get_fso_log(self):
-    logpath = os.path.join(api.get_fso_profile_path(), 'data/fs2_open.log')
+    logpath = os.path.join(get_fso_profile_path(), 'data/fs2_open.log')
 
     if not os.path.isfile(logpath):
         QtWidgets.QMessageBox.warning(None, 'Knossos',
@@ -459,7 +615,7 @@ def get_knossos_log(self):
 
 
 def show_fso_cfg_folder(self):
-    path = api.get_fso_profile_path()
+    path = get_fso_profile_path()
     QtGui.QDesktopServices.openUrl(QtCore.QUrl('file://' + path))
 
 

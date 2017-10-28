@@ -4,24 +4,34 @@ set -eo pipefail
 
 cd /build
 sudo chown packager .
-rsync -a --exclude=dist --exclude=build --exclude=packer --exclude=.vagrant src/ work/
-cd work
+rsync -a --exclude=releng --exclude=node_modules src/ work/
 
+cd src
 . releng/config/config.sh
 import_key
+
+if [ ! -d releng/ubuntu/cache ]; then
+	mkdir -p releng/ubuntu/cache
+fi
+
+cd releng/ubuntu/cache
+cp ../../../package.json .
+python3 ../../../tools/common/npm_wrapper.py
+if [ ! -d node_modules/es6-shim ]; then
+	npm install es6-shim
+fi
+
+cd ../../../../work
 
 export QT_SELECT=5
 VERSION="$(python3 setup.py get_version)"
 UBUNTU_VERSION="xenial"
 
-echo "Installing Babel..."
-rm -rf node_modules
-cp -r /build/node_modules .
-
+rsync -au ../src/releng/ubuntu/cache/node_modules/ node_modules/
 python3 configure.py
 ninja resources
 
-tar -czf ../"knossos_$VERSION.orig.tar.gz" knossos html setup.* DESCRIPTION.rst MANIFEST.in LICENSE NOTICE
+tar -czf ../"knossos_$VERSION.orig.tar.gz" knossos setup.* DESCRIPTION.rst MANIFEST.in LICENSE NOTICE
 
 mkdir ../knossos
 cd ../knossos

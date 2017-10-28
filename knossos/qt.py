@@ -26,11 +26,9 @@ if variant not in ('PyQt5', 'headless', default_variant):
     logging.warning('Unknown QT_API "%s"! Using default...', variant)
     variant = default_variant
 
-if variant != 'headless':
-    # Make sure we initialize Xlib before we load Qt.
-    from . import clibs
-
 if variant in ('PyQt5', 'auto'):
+    os.environ['DBUS_FATAL_WARNINGS'] = '0'
+
     try:
         from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork
 
@@ -194,13 +192,25 @@ if variant == 'headless':
     QtWebEngineWidgets = None
 
 
-def read_file(path):
+from knossos import center  # noqa
+
+
+class SignalContainer(QtCore.QObject):
+    signal = QtCore.Signal(list)
+
+
+def read_file(path, decode=True):
     fd = QtCore.QFile(path)
-    fd.open(QtCore.QIODevice.ReadOnly)
-    data = str(fd.readAll())
+    if not fd.open(QtCore.QIODevice.ReadOnly):
+        return None
+
+    data = fd.readAll().data()
     fd.close()
 
-    return data
+    if decode:
+        return data.decode('utf-8')
+    else:
+        return data
 
 
 def load_styles(*names):
@@ -217,4 +227,22 @@ def load_styles(*names):
     return data
 
 
-__all__ = ['QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtWebChannel', 'QtWebEngineWidgets', 'QtWebKit', 'variant', 'read_file', 'load_styles']
+# This wrapper makes sure that the wrapped function is always run in the QT main thread.
+def run_in_qt(func):
+    cont = SignalContainer()
+
+    def dispatcher(*args):
+        cont.signal.emit(list(args))
+
+    def listener(params):
+        func(*params)
+
+    cont.signal.connect(listener)
+
+    return dispatcher
+
+
+__all__ = [
+    'QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtWebChannel', 'QtWebEngineWidgets', 'QtWebKit', 'variant',
+    'read_file', 'load_styles', 'run_in_qt'
+]

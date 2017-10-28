@@ -18,6 +18,9 @@ import sys
 import logging
 import ctypes.util
 
+if sys.platform == 'win32':
+    from comtypes import client as cc
+
 from . import uhf
 uhf(__name__)
 
@@ -95,11 +98,14 @@ def double_zero_string(val):
 def init_sdl():
     global sdl, SDL2, get_modes, list_joysticks, get_config_path
 
+    if sdl:
+        return
+
     if center.settings['sdl2_path']:
         try:
             sdl = load_lib(center.settings['sdl2_path'])
             SDL2 = True
-        except:
+        except Exception:
             logging.exception('Failed to load user-supplied SDL2!')
 
     if not sdl:
@@ -108,13 +114,13 @@ def init_sdl():
             try:
                 sdl = load_lib('../Frameworks/SDL2.framework/SDL2')
                 SDL2 = True
-            except:
+            except Exception:
                 logging.exception('Failed to load bundled SDL2!')
 
         try:
             sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
             SDL2 = True
-        except:
+        except Exception:
             # Try SDL 1.2
             sdl = load_lib('libSDL-1.2.so.0', 'SDL', 'SDL.dll', 'libSDL.dylib')
             SDL2 = False
@@ -166,6 +172,12 @@ def init_sdl():
 
         sdl.SDL_JoystickNameForIndex.argtypes = [ctypes.c_int]
         sdl.SDL_JoystickNameForIndex.restype = ctypes.c_char_p
+
+        sdl.SDL_JoystickGetDeviceGUID.argtypes = [ctypes.c_int]
+        sdl.SDL_JoystickGetDeviceGUID.restype = c_any_pointer
+
+        sdl.SDL_JoystickGetGUIDString.argtypes = [c_any_pointer, ctypes.c_char_p, ctypes.c_int]
+        sdl.SDL_JoystickGetGUIDString.restype = None
 
         # SDL_filesystem.h
         sdl.SDL_GetPrefPath.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
@@ -229,7 +241,8 @@ def init_sdl():
             for i in range(sdl.SDL_NumJoysticks()):
                 joys.append(sdl.SDL_JoystickNameForIndex(i).decode(ENCODING))
 
-            sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
+            # Initializing the subsystem takes a while so make sure we don't have to reinit on every call.
+            # sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
             return joys
 
         def get_config_path():
@@ -255,7 +268,7 @@ def init_sdl():
 
                 sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
                 return my_modes
-            except:
+            except Exception:
                 logging.exception('Failed to call SDL_ListModes()!')
                 return []
 
@@ -272,7 +285,7 @@ def init_sdl():
 
                 sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
                 return joys
-            except:
+            except Exception:
                 logging.exception('Failed to ask SDL for joysticks!')
                 return []
 
@@ -290,17 +303,20 @@ ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER = 0x311
 def init_openal():
     global alc
 
+    if alc:
+        return
+
     # Load OpenAL
     if center.settings['openal_path']:
         try:
             alc = load_lib(center.settings['openal_path'])
-        except:
+        except Exception:
             logging.exception('Failed to load user-supplied OpenAL!')
 
     if not alc:
         try:
-            alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL')
-        except:
+            alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL', 'OpenAL32.dll')
+        except Exception:
             logging.exception('Failed to load OpenAL!')
 
     if alc:
@@ -325,7 +341,7 @@ def init_gtk():
     try:
         gtk = load_lib('libgtk-x11-2.0.so.0', 'gtk-x11-2.0')
         gobject = load_lib('libgobject-2.0.so.0', 'gobject-2.0')
-    except:
+    except Exception:
         logging.exception('Failed to load GTK!')
 
         # Maybe GTK isn't used.
@@ -362,6 +378,9 @@ def can_detect_audio():
 
 
 def list_audio_devs():
+    if not alc:
+        return [], '', [], ''
+
     devs = double_zero_string(alc.alcGetString(None, ALC_DEVICE_SPECIFIER))
     default = alc.alcGetString(None, ALC_DEFAULT_DEVICE_SPECIFIER)
 
@@ -399,6 +418,35 @@ def get_gtk_theme():
         return g_object_get_string(settings, 'gtk-theme-name')
     else:
         return None
+
+
+def list_voices():
+    if sys.platform != 'win32':
+        return []
+
+    try:
+        voice = cc.CreateObject('SAPI.SpVoice')
+        return [v.GetDescription() for v in voice.GetVoices()]
+    except Exception:
+        logging.exception('Failed to retrieve voices!')
+        return []
+
+
+def speak(voice, volume, text):
+    if sys.platform != 'win32':
+        return False
+
+    try:
+        hdl = cc.CreateObject('SAPI.SpVoice')
+        hdl.Voice = hdl.GetVoices()[voice]
+        hdl.Volume = volume
+        hdl.Speak(text, 19)
+        hdl.WaitUntilDone(10000)
+
+        return True
+    except Exception:
+        logging.exception('Failed to speak!')
+        return False
 
 
 if sys.platform == 'win32':

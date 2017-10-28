@@ -1,11 +1,10 @@
-# A simple mod manager
+# A mod manager
 
-The original idea and prototype were created by Hellzed.
-ngld rewrote the manager in Python and extended it.
+A modern mod manager and launcher for FreeSpace Open
 
 ## Website
 
-There's a small website with installation instructions at https://dev.tproxy.de/knossos/.
+[**Installation instructions**](https://dev.tproxy.de/knossos/)
 
 ## Dependencies
 
@@ -28,6 +27,9 @@ After your first checkout you will have to run `python configure.py` once. If it
 If it complains that ```rcc``` is missing, you will need to install the developer packages for Qt5.
 
 Now you can use `ninja run` to launch Knossos in release mode and `ninja debug` to launch it in debug mode. In debug mode you can use a chromium-based browser to access the DevTools by navigating to http://localhost:4006/.
+
+If you delete or add files in `html/images` or `html/templates` you have to run
+`configure.py` again because it needs to rebuild the file list.
 
 The converter is a console-only script. Use ```python converter.py -h``` to read its help.
 

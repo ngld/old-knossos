@@ -4,7 +4,7 @@ set -eo pipefail
 
 cd /build
 sudo chown packager .
-rsync -a --exclude=dist --exclude=build --exclude=packer --exclude=.vagrant src/ work/
+rsync -au --exclude=dist --exclude=build --exclude=packer --exclude=.vagrant --exclude=node_modules src/ work/
 cd work
 
 install -Dm600 releng/config/aur_key ~/.ssh/id_rsa
@@ -31,6 +31,7 @@ if [ "$RELEASE" = "y" ]; then
 	git commit -m 'New upstream release'
 	git push
 else
+	python tools/common/npm_wrapper.py
 	python configure.py
 	ninja resources
 fi
