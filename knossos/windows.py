@@ -258,10 +258,11 @@ class HellWindow(Window):
         return result, self._mod_filter
 
     def update_mod_list(self):
-        result, filter_ = self.search_mods()
+        if center.settings['base_path'] is not None:
+            result, filter_ = self.search_mods()
 
-        if filter_ in ('home', 'explore', 'develop'):
-            self.browser_ctrl.bridge.updateModlist.emit(json.dumps(result), filter_)
+            if filter_ in ('home', 'explore', 'develop'):
+                self.browser_ctrl.bridge.updateModlist.emit(json.dumps(result), filter_)
 
     def show_settings(self):
         pass
