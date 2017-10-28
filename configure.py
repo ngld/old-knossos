@@ -165,8 +165,9 @@ with open('build.ninja', 'w') as stream:
     n.build('resources', 'phony', ui_targets + ['knossos/data/resources.rcc', 'html/js/translations.js'])
 
     n.comment('Scripts')
-    n.rule('regen', py_script('configure.py', sys.argv[1:]), 'RECONFIGURE', generator=True)
-    n.build('build.ninja', 'regen', ['configure.py', 'knossos/center.py', 'file_list.json'])
+    if 'SKIP_RECONF' not in os.environ:
+        n.rule('regen', py_script('configure.py', sys.argv[1:]), 'RECONFIGURE', generator=True)
+        n.build('build.ninja', 'regen', ['configure.py', 'knossos/center.py', 'file_list.json'])
 
     setup_args = ['sdist']
     if check_module('wheel', required=False):
