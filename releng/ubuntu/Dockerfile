@@ -1,4 +1,4 @@
-FROM ubuntu:xenial
+FROM ubuntu:artful
 
 RUN apt-get update && apt-get upgrade -y && \
 	apt-get install -y build-essential sudo gnupg debhelper pbuilder apt-file \

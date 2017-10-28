@@ -17,6 +17,9 @@ if [ -d dist ]; then
 	rm -rf dist/*
 fi
 
+npm install
+npm install es6-shim
+
 python3 configure.py
 ninja dist
 
