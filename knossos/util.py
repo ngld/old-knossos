@@ -29,6 +29,7 @@ import functools
 import glob
 import semantic_version
 import requests
+import token_bucket
 from collections import OrderedDict
 from threading import Condition, Event, Thread
 from collections import deque
@@ -109,7 +110,37 @@ _HAS_TAR = None
 DL_POOL = None
 _DL_CANCEL = Event()
 _DL_CANCEL.clear()
+SPEED_LIMIT_BUCKET = None
 translate = QtCore.QCoreApplication.translate
+
+
+class BlockingTokenBucket(object):
+    def __init__(self, rate):
+        self.limiter = None
+        self.rate = None
+
+        self.set_rate(rate)
+
+    def set_rate(self, rate):
+        self.limiter = token_bucket.Limiter(rate, rate, token_bucket.MemoryStorage())
+        self.rate = rate
+
+    def wait_for_consume(self, tokens, cancel_event):
+        while tokens > 0:
+            # If the number of tokens is more than what is available in the bucket then we would never be able to
+            # consume the tokens. This will retrieve the tokens in smaller steps if the number of requested tokens
+            # is larger than the available token rate
+            consuming = min(tokens, self.rate)
+
+            # Busy waiting is not optimal but our token bucket does not support anything else
+            while not self.limiter.consume(b"default", consuming):
+                if cancel_event.is_set():
+                    return False
+                time.sleep(0.01)
+
+            tokens -= consuming
+
+        return True
 
 
 class ResizableSemaphore(object):
@@ -329,6 +360,34 @@ def post(link, data, headers=None, random_ua=False):
     return result.text
 
 
+def _limited_request_iter(result, chunk_size):
+    iterator = result.iter_content(chunk_size)
+    while True:
+        if not SPEED_LIMIT_BUCKET.wait_for_consume(chunk_size, _DL_CANCEL):
+            return
+
+        yield next(iterator)
+
+
+def _get_download_iterator(result, chunk_size):
+    if center.settings['download_bandwidth'] < 0.0:
+        # There is no bandwidth limit so just use the normal download method
+        return result.iter_content(chunk_size)
+    else:
+        return _limited_request_iter(result, chunk_size)
+
+
+def _get_download_chunk_size():
+    DEFAULT_CHUNK_SIZE = 512 * 1024
+    if center.settings['download_bandwidth'] < 0.0:
+        # If there is no bandwidth limit then this should work reasonably well
+        return DEFAULT_CHUNK_SIZE
+    else:
+        # If there is a bandwidth limit then for small limits a too large chunk size will make the GUI appear frozen
+        # while the chunk is being downloaded. This will make sure that the GUI is updated twice a second
+        return min(int(center.settings['download_bandwidth'] / 2), DEFAULT_CHUNK_SIZE)
+
+
 def download(link, dest, headers=None, random_ua=False):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
@@ -368,7 +427,7 @@ def download(link, dest, headers=None, random_ua=False):
         try:
             start = dest.tell()
             sc = SpeedCalc()
-            for chunk in result.iter_content(512 * 1024):
+            for chunk in _get_download_iterator(result, _get_download_chunk_size()):
                 dest.write(chunk)
 
                 if sc.push(dest.tell()) != -1:
@@ -807,6 +866,7 @@ class Spec(semantic_version.Spec):
 
 DL_POOL = ResizableSemaphore(10)
 HTTP_SESSION.headers['User-Agent'] = get_user_agent()
+SPEED_LIMIT_BUCKET = BlockingTokenBucket(3 * 1024 * 1024)
 
 if not center.DEBUG:
     logging.getLogger('requests.packages.urllib3.connectionpool').propagate = False

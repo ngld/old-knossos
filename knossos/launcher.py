@@ -171,6 +171,8 @@ def run_knossos():
         return
 
     util.DL_POOL.set_capacity(center.settings['max_downloads'])
+    if center.settings['download_bandwidth'] > 0.0:
+        util.SPEED_LIMIT_BUCKET.set_rate(center.settings['download_bandwidth'])
 
     center.app = app
     center.installed = repo.InstalledRepo()
