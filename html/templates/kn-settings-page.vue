@@ -131,16 +131,16 @@ export default {
                     <label class="col-sm-4 control-label">Download bandwidth limit:</label>
                     <div class="col-sm-8">
                         <select v-model="knossos.download_bandwidth">
-                            <option v-bind:value="-1 ">No limit</option>
-                            <option v-bind:value="128 * 1024">128 KB/s</option>
-                            <option v-bind:value="512 * 1024">512 KB/s</option>
-                            <option v-bind:value="1 * 1024 * 1024">1 MB/s</option>
-                            <option v-bind:value="2 * 1024 * 1024">2 MB/s</option>
-                            <option v-bind:value="3 * 1024 * 1024">3 MB/s</option>
-                            <option v-bind:value="5 * 1024 * 1024">5 MB/s</option>
-                            <option v-bind:value="10 * 1024 * 1024">10 MB/s</option>
-                            <option v-bind:value="20 * 1024 * 1024">20 MB/s</option>
-                            <option v-bind:value="50 * 1024 * 1024">50 MB/s</option>
+                            <option :value="-1 ">No limit</option>
+                            <option :value="128 * 1024">128 KB/s</option>
+                            <option :value="512 * 1024">512 KB/s</option>
+                            <option :value="1 * 1024 * 1024">1 MB/s</option>
+                            <option :value="2 * 1024 * 1024">2 MB/s</option>
+                            <option :value="3 * 1024 * 1024">3 MB/s</option>
+                            <option :value="5 * 1024 * 1024">5 MB/s</option>
+                            <option :value="10 * 1024 * 1024">10 MB/s</option>
+                            <option :value="20 * 1024 * 1024">20 MB/s</option>
+                            <option :value="50 * 1024 * 1024">50 MB/s</option>
                         </select>
                     </div>
                 </div>
