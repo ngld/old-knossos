@@ -53,6 +53,7 @@ settings = {
     'base_dirs': [],
     'hash_cache': None,
     'max_downloads': 3,
+    'download_bandwidth': -1.0,  # negative numbers are used to specify no limit
     'repos': [('https://fsnebula.org/storage/repo.json', 'FSNebula')],
     'nebula_link': 'https://fsnebula.org/api/1/',
     'update_notify': True,
