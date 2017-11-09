@@ -219,6 +219,13 @@ class HellWindow(Window):
         for mid, mvs in mods.items():
             if query in mvs[0].title.lower():
                 mod = mvs[0]
+                if mod.mtype == 'engine' and self._mod_filter != 'develop':
+                    mvs = [mv for mv in mvs if mv.stability == center.settings['engine_stability']]
+                    if len(mvs) == 0:
+                        mvs = mods[mid]
+
+                    mod = mvs[0]
+
                 item = mod.get()
                 item['progress'] = 0
                 item['progress_info'] = {}
@@ -227,7 +234,20 @@ class HellWindow(Window):
                 for m in center.installed.mods.get(mid, []):
                     installed_versions[str(m.version)] = m.dev_mode
 
-                rmod = center.mods.mods.get(mid, (None,))[0]
+                rmod = center.mods.mods.get(mid, (None,))
+                if mod.mtype == 'engine':
+                    rm_sel = None
+                    for m in rmod:
+                        if m.stability == center.settings['engine_stability']:
+                            rm_sel = m
+                            break
+
+                    if rm_sel:
+                        rmod = rm_sel
+                    else:
+                        rmod = rmod[0]
+                else:
+                    rmod = rmod[0]
 
                 # TODO: Refactor (see also templates/kn-{details,devel}-page.vue)
                 if rmod and rmod.version > mod.version:

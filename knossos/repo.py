@@ -305,6 +305,12 @@ class Repo(object):
         dep_dict = {}
         ndeps = pkgs
 
+        for pkg in pkgs:
+            mod = pkg.get_mod()
+            dd = dep_dict.setdefault(mod.mid, {})
+            dd = dd.setdefault(pkg.name, {})
+            dd[mod.version] = pkg
+
         # Resolve the pkgs' dependencies
         while len(ndeps) > 0:
             _nd = ndeps
@@ -369,7 +375,6 @@ class Repo(object):
                         remains.sort(key=lambda v: v.get_mod().version)
                         dep_list.add(remains[-1])
 
-        dep_list |= set(pkgs)
         return dep_list
 
     def get_dependents(self, pkgs):
@@ -869,6 +874,7 @@ class InstalledMod(Mod):
             'type': self.mtype,
             'parent': self.parent,
             'version': str(self.version),
+            'stability': self.stability,
             'description': self.description,
             'notes': self.notes,
             'folder': self.folder,
