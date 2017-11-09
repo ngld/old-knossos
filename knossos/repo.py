@@ -855,7 +855,11 @@ class InstalledMod(Mod):
         self.custom_build = values.get('custom_build', None)
         self.check_notes = values.get('check_notes', '')
         for pkg in pkgs:
-            self.packages.append(InstalledPackage(pkg, self))
+            installed_pkg = InstalledPackage(pkg, self)
+            # If the user installed packages on multiple platforms into the same directory then an installed package
+            # may be present that is not valid for the current environment so we need to check that here
+            if installed_pkg.check_env():
+                self.packages.append(installed_pkg)
 
     def get(self):
         return {
