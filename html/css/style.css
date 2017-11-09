@@ -387,12 +387,43 @@ iframe {
     bottom: 7px;
     width: calc(100% - 14px);
     overflow-y: auto;
-    background-image: url(../images/BG.png);
+    /*background-image: url(../images/BG.png);
     background-repeat: repeat;
     box-shadow: inset 0px 13px 15px -10px rgba(0,0,0,1),
                 inset 0px -13px 15px -10px rgba(0,0,0,1),
                 inset 13px 0px 15px -10px rgba(0,0,0,1),
+                inset -13px 0px 15px -10px rgba(0,0,0,1);*/
+}
+
+#main-shadow-effect {
+    position: fixed;
+    top: 78px;
+    bottom: 7px;
+    left: 7px;
+    right: 7px;
+    box-shadow: inset 0px 13px 15px -10px rgba(0,0,0,1),
+                inset 0px -13px 15px -10px rgba(0,0,0,1),
+                inset 13px 0px 15px -10px rgba(0,0,0,1),
                 inset -13px 0px 15px -10px rgba(0,0,0,1);
+    pointer-events: none;
+    z-index: -1;
+}
+
+#main-background {
+    position: fixed;
+    top: 78px;
+    bottom: 7px;
+    left: 7px;
+    right: 7px;
+    background-image: url(../images/BG.png);
+    background-repeat: repeat;
+    pointer-events: none;
+    z-index: -3;
+}
+
+.mod-container {
+    position: inherit;
+    z-index: -2;
 }
 
 .main-notice {
