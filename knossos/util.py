@@ -34,6 +34,7 @@ from collections import OrderedDict
 from threading import Condition, Event, Thread
 from collections import deque
 
+from .vplib import VpReader
 from . import center, progress
 from .qt import QtCore
 
@@ -796,6 +797,38 @@ def is_fs2_retail_directory(path):
                 return True
 
     return False
+
+
+def extract_vp_file(vp_path, dest_path):
+    if not os.path.isdir(dest_path):
+        os.makedirs(dest_path)
+
+    vp_reader = VpReader(vp_path)
+
+    fc = float(len(vp_reader.files))
+    done = 0
+    for path, meta in vp_reader.files.items():
+        progress.update(done / fc, path)
+        hdl = vp_reader.open_file(path)
+
+        sub_dest = ipath(os.path.join(dest_path, path))
+        sub_par = os.path.dirname(sub_dest)
+
+        if not os.path.isdir(sub_par):
+            os.makedirs(sub_par)
+
+        with open(sub_dest, 'wb') as dest_hdl:
+            remaining = meta['size']
+            bufsize = 16 * 1024  # 16 KiB
+            while remaining > 0:
+                buf = hdl.read(min(remaining, bufsize))
+                if not buf:
+                    break
+
+                dest_hdl.write(buf)
+                remaining -= bufsize
+
+        done += 1
 
 
 def enable_raven():

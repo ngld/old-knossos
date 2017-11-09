@@ -829,11 +829,6 @@ class InstalledMod(Mod):
             mod.folder = os.path.normpath(os.path.dirname(path))
             mod.set(data)
             return mod
-        elif path.lower().endswith('.ini'):
-            mod = IniMod()
-            mod.folder = os.path.normpath(os.path.dirname(path))
-            mod.load(path)
-            return mod
         else:
             return None
 
@@ -1064,7 +1059,7 @@ class IniMod(InstalledMod):
         self._pr_list = []
         self._sc_list = []
 
-        self.version = semantic_version.Version('1.0.0+ini')
+        self.version = semantic_version.Version('1.0.0')
 
     def load(self, path):
         with open(path, 'r') as stream:
@@ -1081,7 +1076,7 @@ class IniMod(InstalledMod):
                     continue
 
                 if name == 'modname':
-                    self.title = value + ' (ini)'
+                    self.title = value
                 elif name == 'infotext':
                     self.description = value
                 elif name.startswith('image'):
@@ -1091,11 +1086,11 @@ class IniMod(InstalledMod):
                 elif name in ('secondarylist', 'secondrylist'):
                     self._sc_list = value.split(',')
 
-        self.folder = os.path.basename(os.path.dirname(path))
+        self.folder = os.path.dirname(path)
         if self.title == '':
-            self.title = self.folder + ' (ini)'
+            self.title = os.path.basename(self.folder)
 
-        self.mid = '##INI_COMPAT#' + self.folder
+        self.mid = os.path.basename(self.folder)
         if self.logo:
             self.logo_path = os.path.join(path, self.logo)
 
@@ -1103,6 +1098,11 @@ class IniMod(InstalledMod):
             'name': 'Content',
             'status': 'required'
         }, self)
+
+        # Set some default values
+        self.screenshots = []
+        self.attachments = []
+
         self.add_pkg(pkg)
 
     def get_mod_flag(self):
@@ -1111,6 +1111,12 @@ class IniMod(InstalledMod):
         mods.extend(self._sc_list)
 
         return mods
+
+    def get_primary_list(self):
+        return self._pr_list
+
+    def get_secondary_list(self):
+        return self._sc_list
 
 
 class InstalledPackage(Package):

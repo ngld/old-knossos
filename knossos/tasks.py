@@ -622,33 +622,8 @@ class InstallTask(progress.MultistepTask):
                         os.makedirs(dparent)
 
                     if dev_mode and archive['pkg'].is_vp:
-                        vp = vplib.VpReader(src_path)
-
-                        fc = float(len(vp.files))
-                        done = 0
                         progress.start_task(0.98, 0.02, '%s')
-                        for path, meta in vp.files.items():
-                            progress.update(done / fc, path)
-                            hdl = vp.open_file(path)
-
-                            sub_dest = util.ipath(os.path.join(modpath, archive['pkg'].folder, path))
-                            sub_par = os.path.dirname(sub_dest)
-
-                            if not os.path.isdir(sub_par):
-                                os.makedirs(sub_par)
-
-                            with open(sub_dest, 'wb') as dest_hdl:
-                                remaining = meta['size']
-                                bufsize = 16 * 1024  # 16 KiB
-                                while remaining > 0:
-                                    buf = hdl.read(min(remaining, bufsize))
-                                    if not buf:
-                                        break
-
-                                    dest_hdl.write(buf)
-                                    remaining -= bufsize
-
-                            done += 1
+                        util.extract_vp_file(src_path, os.path.join(modpath, archive['pkg'].folder))
 
                         # Avoid confusing CheckTask with a missing VP file.
                         archive['pkg'].filelist = []
@@ -1520,6 +1495,40 @@ class CopyFolderTask(progress.Task):
             shutil.copyfile(src, dest)
 
             bytes_done += os.stat(src).st_size
+
+
+class VpExtractionTask(progress.Task):
+    def __init__(self, installed_mod, ini_mod):
+        super(VpExtractionTask, self).__init__()
+
+        self.mod = installed_mod
+        self.ini_mod = ini_mod
+
+        self.title = 'Extracting VP files...'
+
+        self._threads = 1  # VP extraction does not benefit from multiple threads
+
+        for vp_file in os.listdir(ini_mod.folder):
+            # We only look at vp files
+            if not vp_file.lower().endswith(".vp"):
+                continue
+
+            vp_path = os.path.join(ini_mod.folder, vp_file)
+
+            self.add_work((vp_path,))
+
+    def work(self, vp_file):
+        base_filename = os.path.basename(vp_file).replace(".vp", "")
+
+        dest_folder = os.path.join(self.mod.folder, base_filename)
+
+        progress.start_task(0.0, 1.0, 'Extracting %s')
+
+        util.extract_vp_file(vp_file, dest_folder)
+
+        progress.finish_task()
+        # Collect the extracted vp files so we can use that once extraction has finished
+        self.post(vp_file)
 
 
 def run_task(task, cb=None):

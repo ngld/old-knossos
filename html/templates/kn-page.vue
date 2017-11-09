@@ -46,6 +46,8 @@ export default {
         popup_pkg_name: '',
         popup_pkg_folder: '',
 
+        popup_ini_path: '',
+
         popup_sure_question: '',
         sureCallback: null,
 
@@ -145,6 +147,30 @@ export default {
             });
         },
 
+        importIniMod() {
+            if (this.popup_ini_path === '') {
+                alert('You need to enter the path to the mod.ini file!');
+            }
+
+            if(this.popup_mod_id === '') {
+                alert('You need to enter a mod ID!');
+                return;
+            }
+
+
+            if(this.popup_mod_name === '') {
+                alert('You need to enter a mod name!');
+                return;
+            }
+
+            call(fs2mod.importIniMod, this.popup_ini_path, this.popup_mod_name, this.popup_mod_id,
+                this.popup_mod_version, this.popup_mod_type, this.popup_mod_parent, (result) => {
+                    if (result) {
+                        this.popup_visible = false;
+                    }
+                });
+        },
+
         addPackage() {
             if(this.popup_pkg_name === '') {
                 alert('You need to enter a package name!');
@@ -233,6 +259,20 @@ export default {
             call(fs2mod.browseFiles, 'Please select your setup_freespace2_...exe', this.retail_data_path, '*.exe', (files) => {
                 if(files.length > 0) {
                     this.retail_data_path = files[0];
+                }
+            });
+        },
+
+        selectModIni() {
+            call(fs2mod.browseFiles, 'Please select the desired mod.ini', this.retail_data_path, 'mod.ini', (files) => {
+                if(files.length > 0) {
+                    this.popup_ini_path = files[0];
+                    call(fs2mod.parseIniMod, this.popup_ini_path, (mod) => {
+                        let ini_mod = JSON.parse(mod);
+
+                        this.popup_mod_id = ini_mod.id;
+                        this.popup_mod_name = ini_mod.title;
+                    });
                 }
             });
         },
@@ -435,8 +475,18 @@ export default {
                     <p><button class="btn btn-primary" @click="finishRetailPrompt">Continue</button></p>
                 </div>
 
-                <div v-if="popup_mode === 'create_mod'">
+                <div v-if="popup_mode === 'create_mod' || popup_mode === 'import_ini_mod'">
                     <form class="form-horizontal">
+                        <div class="form-group" v-if="popup_mode === 'import_ini_mod'">
+                            <label class="col-xs-3 control-label">Mod.ini path</label>
+                            <div class="col-xs-6">
+                                <input type="text" class="form-control" v-model="popup_ini_path">
+                            </div>
+                            <div class="col-xs-3">
+                                <button class="btn btn-default" @click.prevent="selectModIni">Select mod.ini</button>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label class="col-xs-3 control-label">Name</label>
                             <div class="col-xs-9">
@@ -469,9 +519,9 @@ export default {
                             <div class="col-xs-9">
                                 <select class="form-control" v-model="popup_mod_type">
                                     <option value="mod">Mod</option>
-                                    <option value="tc">Total Conversion</option>
-                                    <option value="engine">FSO build</option>
-                                    <option value="tool">Tool</option>
+                                    <option value="tc" v-if="popup_mode === 'create_mod'">Total Conversion</option>
+                                    <option value="engine" v-if="popup_mode === 'create_mod'">FSO build</option>
+                                    <option value="tool" v-if="popup_mode === 'create_mod'">Tool</option>
                                     <option value="ext">Extension</option>
                                 </select>
 
@@ -511,7 +561,8 @@ export default {
                             </div>
                         </div>
 
-                        <button class="mod-btn btn-green" @click.prevent="createMod">CREATE</button>
+                        <button class="mod-btn btn-green" @click.prevent="createMod" v-if="popup_mode === 'create_mod'">CREATE</button>
+                        <button class="mod-btn btn-green" @click.prevent="importIniMod" v-if="popup_mode === 'import_ini_mod'">IMPORT</button>
                         <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">CANCEL</button>
                     </form>
                 </div>
