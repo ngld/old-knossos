@@ -304,7 +304,9 @@ export default {
 
     <!-------------------------------------------------------------------------------- Build the Main View container ---------->
         <div class="main-container scroll-style">
-            <div class="container-fluid" v-if="page === 'modlist'">
+            <div id="main-shadow-effect"></div>
+            <div id="main-background"></div>
+            <div class="container-fluid mod-container" v-if="page === 'modlist'">
                 <div v-if="tab === 'home'">
                     <kn-mod-home v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-home>
                 </div>
