@@ -457,7 +457,7 @@ class WebBridge(QtCore.QObject):
         else:
             steam_config = os.path.join(steam_path, 'config/config.vdf')
             if not os.path.isfile(steam_config):
-                logging.warn('config.vdf is not where I expected it!')
+                logging.warning('config.vdf is not where I expected it!')
             else:
                 folders.append(os.path.join(steam_config, 'steamapps', 'common', 'Freespace 2'))
 

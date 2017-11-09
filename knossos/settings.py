@@ -482,7 +482,7 @@ def get_fso_flags(fs2_bin):
     global fso_flags
 
     if not os.path.isfile(fs2_bin):
-        logging.warn('Tried to get flags for missing executable "%s"!' % fs2_bin)
+        logging.warning('Tried to get flags for missing executable "%s"!' % fs2_bin)
         return None
 
     if fs2_bin in _flag_cache:

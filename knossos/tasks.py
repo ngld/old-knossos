@@ -98,7 +98,7 @@ class CheckTask(progress.MultistepTask):
 
     def init1(self):
         if center.settings['base_path'] is None:
-            logging.warn('A CheckTask was launched even though no base path was set!')
+            logging.warning('A CheckTask was launched even though no base path was set!')
         else:
             center.installed.clear()
             self.add_work((center.settings['base_path'],))
@@ -119,7 +119,7 @@ class CheckTask(progress.MultistepTask):
                 elif base.lower() == 'mod.json':
                     mod_file = sub
         except FileNotFoundError:
-            logging.warn('The directory "%s" does not exist anymore!' % path)
+            logging.warning('The directory "%s" does not exist anymore!' % path)
 
         if mod_file:
             try:
@@ -1174,7 +1174,7 @@ class GOGExtractTask(progress.Task):
                 fso = center.mods.query('FSO')
                 run_task(InstallTask(fso.resolve_deps()))
             except repo.ModNotFound:
-                logging.warn('Installing retail files but FSO is missing!')
+                logging.warning('Installing retail files but FSO is missing!')
 
     def work(self, paths):
         gog_path, dest_path = paths
@@ -1335,7 +1335,7 @@ class GOGCopyTask(progress.Task):
                 fso = center.mods.query('FSO')
                 run_task(InstallTask(fso.resolve_deps()))
             except repo.ModNotFound:
-                logging.warn('Installing retail files but FSO is missing!')
+                logging.warning('Installing retail files but FSO is missing!')
 
     def work(self, paths):
         gog_path, dest_path = paths

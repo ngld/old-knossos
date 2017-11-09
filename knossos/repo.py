@@ -676,7 +676,7 @@ class Package(object):
             return True
 
         if not isinstance(self.environment, str):
-            logging.warn('Invalid value for environment check in mod %s (%s)!' % (self._mod.mid, self._mod.version))
+            logging.warning('Invalid value for environment check in mod %s (%s)!' % (self._mod.mid, self._mod.version))
             return True
 
         bvars = {}
