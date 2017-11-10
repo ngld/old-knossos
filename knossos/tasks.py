@@ -974,6 +974,12 @@ class UploadTask(progress.MultistepTask):
 
                                 fnames[relpath] = pkg
 
+                        if len(pkg.filelist) == 0:
+                            self._reason = 'empty pkg'
+                            self._msg = pkg.name
+                            self.abort()
+                            return
+
                     archives.append(pkg)
                     self._slot_prog[pkg.name] = (pkg.name + '.7z', 0, 'Waiting...')
 
@@ -1038,6 +1044,12 @@ class UploadTask(progress.MultistepTask):
                     for fn in files:
                         relpath = os.path.join(relsub, fn)
                         vp.add_file(relpath, os.path.join(sub, fn))
+
+                if vp.get_file_count() == 0:
+                    self._reason = 'empty pkg'
+                    self._msg = pkg.name
+                    self.abort()
+                    return
 
                 progress.start_task(0.0, 0.1, '%s')
                 vp.write()
@@ -1151,6 +1163,8 @@ class UploadTask(progress.MultistepTask):
         elif self._reason == 'conflict':
             message = "I can't upload this mod because at least one file is contained in multiple packages.\n"
             message += self._msg
+        elif self._reason == 'empty pkg':
+            message = 'The package %s is empty!' % self._msg
         elif self._reason == 'aborted':
             return
         else:
