@@ -1108,7 +1108,15 @@ class UploadTask(progress.MultistepTask):
                 'filesize': os.stat(ar_path).st_size
             }
 
-            self._client.upload_file(ar_name, ar_path)
+            retries = 3
+            while retries > 0:
+                retries -= 1
+                try:
+                    self._client.upload_file(ar_name, ar_path)
+                    break
+                except nebula.RequestFailedException:
+                    logging.exception('Failed upload, retrying...')
+
             progress.finish_task()
             progress.update(1, 'Done!')
         except nebula.RequestFailedException:
