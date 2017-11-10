@@ -195,7 +195,6 @@ def run_knossos():
     if center.settings['update_notify'] and '-dev' not in center.VERSION:
         run_task(CheckUpdateTask())
 
-    ipc.setup()
     app.exec_()
 
     center.save_settings()

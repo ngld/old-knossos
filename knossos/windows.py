@@ -23,7 +23,7 @@ import json
 from . import uhf
 uhf(__name__)
 
-from . import center, util, integration, web, repo
+from . import center, util, integration, web, repo, ipc
 from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.install import Ui_InstallDialog
@@ -141,6 +141,7 @@ class HellWindow(Window):
     _mod_filter = 'home'
     _search_text = ''
     _updating_mods = None
+    _init_done = False
     browser_ctrl = None
     progress_win = None
 
@@ -175,9 +176,15 @@ class HellWindow(Window):
         # super(HellWindow, self)._del()
 
     def finish_init(self):
+        if self._init_done:
+            return
+
+        self._init_done = True
+
         # The delay is neccessary to make sure that QtWebkit doesn't swallow the resulting event.
         QtCore.QTimer.singleShot(300, self.check_fso)
         center.auto_fetcher.start()
+        ipc.setup()
 
         run_task(CheckTask())
 

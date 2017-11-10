@@ -40,6 +40,7 @@ class WebBridge(QtCore.QObject):
     showDetailsPage = QtCore.Signal('QVariant')
     showRetailPrompt = QtCore.Signal()
     showLaunchPopup = QtCore.Signal(str)
+    showModDetails = QtCore.Signal(str)
     updateModlist = QtCore.Signal(str, str)
     modProgress = QtCore.Signal(str, float, str)
     settingsArrived = QtCore.Signal(str)
