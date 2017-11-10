@@ -27,6 +27,7 @@ import threading
 import random
 import time
 import re
+import hashlib
 import semantic_version
 
 from . import center, util, progress, nebula, repo, vplib
@@ -955,30 +956,29 @@ class UploadTask(progress.MultistepTask):
                     pkg_path = os.path.join(self._mod.folder, pkg.folder)
                     pkg.filelist = []
 
-                    if not pkg.is_vp:
-                        for sub, dirs, files in os.walk(pkg_path):
-                            relsub = os.path.relpath(sub, pkg_path)
-                            for fn in files:
-                                relpath = os.path.join(relsub, fn).replace('\\', '/')
+                    for sub, dirs, files in os.walk(pkg_path):
+                        relsub = os.path.relpath(sub, pkg_path)
+                        for fn in files:
+                            relpath = os.path.join(relsub, fn).replace('\\', '/')
 
-                                pkg.filelist.append({
-                                    'filename': relpath,
-                                    'archive': ar_name,
-                                    'orig_name': relpath,
-                                    'checksum': None
-                                })
+                            pkg.filelist.append({
+                                'filename': relpath,
+                                'archive': ar_name,
+                                'orig_name': relpath,
+                                'checksum': None
+                            })
 
-                                if relpath in fnames:
-                                    l = conflicts.setdefault(relpath, [fnames[relpath].name])
-                                    l.append(pkg.name)
+                            if relpath in fnames:
+                                l = conflicts.setdefault(relpath, [fnames[relpath].name])
+                                l.append(pkg.name)
 
-                                fnames[relpath] = pkg
+                            fnames[relpath] = pkg
 
-                        if len(pkg.filelist) == 0:
-                            self._reason = 'empty pkg'
-                            self._msg = pkg.name
-                            self.abort()
-                            return
+                    if len(pkg.filelist) == 0:
+                        self._reason = 'empty pkg'
+                        self._msg = pkg.name
+                        self.abort()
+                        return
 
                     archives.append(pkg)
                     self._slot_prog[pkg.name] = (pkg.name + '.7z', 0, 'Waiting...')
@@ -1032,6 +1032,27 @@ class UploadTask(progress.MultistepTask):
         ar_path = os.path.join(self._dir.name, ar_name)
 
         try:
+            progress.update(0, 'Comparing...')
+
+            hasher = hashlib.new('sha512')
+            for item in sorted(pkg.filelist, key=lambda a: a['filename']):
+                line = '%s#%s\n' % (item['filename'], item['checksum'])
+                hasher.update(line.encode('utf8'))
+
+            content_ck = hasher.hexdigest()
+            result, meta = self._client.is_uploaded(content_checksum=content_ck)
+            if result:
+                # The file is already uploaded
+                pkg.files[ar_name] = {
+                    'filename': ar_name,
+                    'dest': '',
+                    'checksum': ('sha256', meta['checksum']),
+                    'filesize': meta['filesize']
+                }
+
+                progress.update(1, 'Done!')
+                return
+
             progress.update(0, 'Packing...')
             if pkg.is_vp:
                 vp_name = pkg.name + '.vp'
@@ -1044,12 +1065,6 @@ class UploadTask(progress.MultistepTask):
                     for fn in files:
                         relpath = os.path.join(relsub, fn)
                         vp.add_file(relpath, os.path.join(sub, fn))
-
-                if vp.get_file_count() == 0:
-                    self._reason = 'empty pkg'
-                    self._msg = pkg.name
-                    self.abort()
-                    return
 
                 progress.start_task(0.0, 0.1, '%s')
                 vp.write()
