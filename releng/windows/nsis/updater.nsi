@@ -19,9 +19,10 @@
 !include nsProcess.nsh
 
 Name Knossos
+SetShellVarContext all  # Install for all users
+RequestExecutionLevel admin
 InstallDir "$PROGRAMFILES\Knossos"
 InstallDirRegKey HKLM "Software\Knossos" "Install Dir"
-RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 OutFile ${KNOSSOS_ROOT}releng\windows\dist\update-${KNOSSOS_VERSION}.exe
 

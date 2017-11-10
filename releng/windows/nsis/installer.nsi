@@ -15,9 +15,10 @@
 !include MUI2.nsh
 
 Name "Knossos ${KNOSSOS_VERSION}"
+SetShellVarContext all  # Install for all users
+RequestExecutionLevel admin  # We need admin for the "fso:// Support" section
 InstallDir "$PROGRAMFILES\Knossos"
 InstallDirRegKey HKLM "Software\Knossos" "Install Dir"
-RequestExecutionLevel admin  # We need admin for the "fso:// Support" section
 SetCompressor /SOLID lzma
 OutFile ${KNOSSOS_ROOT}releng\windows\dist\Knossos-${KNOSSOS_VERSION}.exe
 
