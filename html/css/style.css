@@ -406,7 +406,7 @@ iframe {
                 inset 13px 0px 15px -10px rgba(0,0,0,1),
                 inset -13px 0px 15px -10px rgba(0,0,0,1);
     pointer-events: none;
-    z-index: -1;
+    /*z-index: -1;*/
 }
 
 #main-background {
@@ -423,7 +423,7 @@ iframe {
 
 .mod-container {
     position: inherit;
-    z-index: -2;
+    /*z-index: -2;*/
 }
 
 .main-notice {

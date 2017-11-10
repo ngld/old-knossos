@@ -304,7 +304,6 @@ export default {
 
     <!-------------------------------------------------------------------------------- Build the Main View container ---------->
         <div class="main-container scroll-style">
-            <div id="main-shadow-effect"></div>
             <div id="main-background"></div>
             <div class="container-fluid mod-container" v-if="page === 'modlist'">
                 <div v-if="tab === 'home'">
@@ -315,6 +314,7 @@ export default {
                 </div>
                 <div v-if="mods.length === 0" class="main-notice">No mods found.</div>
             </div>
+            <div id="main-shadow-effect"></div>
 
     <!-------------------------------------------------------------------------------- Start the Welcome page ---------->
             <div data-tr class="info-page" v-if="page === 'welcome'">
