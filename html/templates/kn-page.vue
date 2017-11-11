@@ -80,6 +80,11 @@ export default {
         },
 
         showTab(tab) {
+            if(this.page === 'settings') {
+                this.tab = tab;
+                this.page = tab === 'develop' ? 'develop' : 'modlist';
+            }
+
             if(window.qt) {
                 fs2mod.showTab(tab);
             } else {
