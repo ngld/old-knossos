@@ -309,7 +309,14 @@ class Repo(object):
             mod = pkg.get_mod()
             dd = dep_dict.setdefault(mod.mid, {})
             dd = dd.setdefault(pkg.name, {})
-            dd[mod.version] = pkg
+
+            version = str(mod.version)
+            if version != '*' and not SpecItem.re_spec.match(version):
+                # Make a spec out of this version
+                version = '==' + version
+
+            version = util.Spec(version)
+            dd[version] = pkg
 
         # Resolve the pkgs' dependencies
         while len(ndeps) > 0:
