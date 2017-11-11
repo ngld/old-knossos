@@ -292,6 +292,7 @@ export default {
                 <div class="mod-search">
                     <input v-model="search_text" type="text" placeholder="Search">
                 </div>
+                <div class="text-marquee"><span>Announcements go here!</span></div>
             </div>
         </div>
     <!-------------------------------------------------------------------------------- Start the Tab Menus ---------->

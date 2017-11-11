@@ -157,6 +157,33 @@ iframe {
     content: url(../images/icon-settings-a.png);
 }
 
+.text-marquee {
+    float: left;
+    width: calc(100% - 320px);
+    height: 25px;
+    margin-top: 8px;
+    margin-left: 10px;
+    margin-right: 10px;
+    padding-left: 4px;
+    padding-right: 4px;
+    line-height: 25px;
+    white-space: nowrap;
+    text-overflow: clip;
+    overflow: hidden;
+    color: #ababab;
+    box-shadow: inset 0px 12px 5px -12px rgba(0,0,0,1),
+                inset 0px -12px 5px -12px rgba(0,0,0,1),
+                inset 12px 0px 5px -12px rgba(0,0,0,1),
+                inset -12px 0px 5px -12px rgba(0,0,0,1);
+}
+
+.text-marquee span {
+    position: relative;
+    right: -101% /*Can translate this property by % to scroll the text from right to left.
+                The difficulty will be calculating the % at which the entire span will
+                have scrolled out of view before we reset and start it again.*/
+}
+
 /* ----------------------------- This is the filter rollout button section. ------------------------------- */
 
 .filter-container {
