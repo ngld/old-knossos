@@ -1471,7 +1471,7 @@ class CopyFolderTask(progress.Task):
         if not os.path.isdir(dest_base):
             os.makedirs(dest_base)
 
-        files = []
+        plan = []
         total_size = 0.0
         for src_prefix, dirs, files in os.walk(src_path):
             dest_prefix = os.path.join(dest_path, os.path.relpath(src_prefix, src_path))
@@ -1486,11 +1486,11 @@ class CopyFolderTask(progress.Task):
             for sub in files:
                 sdest = os.path.join(dest_prefix, sub)
                 ssrc = os.path.join(src_prefix, sub)
-                files.append((ssrc, sdest))
+                plan.append((ssrc, sdest))
                 total_size += os.stat(ssrc).st_size
 
         bytes_done = 0
-        for src, dest in files:
+        for src, dest in plan:
             progress.update(bytes_done / total_size, os.path.relpath(src, src_path))
             shutil.copyfile(src, dest)
 
