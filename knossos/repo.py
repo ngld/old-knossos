@@ -259,7 +259,29 @@ class Repo(object):
                 logging.warning('Repo.query(): Expected Spec but got Version instead! (%s)' % repr(spec))
                 spec = util.Spec.from_version(spec)
 
-            version = spec.select([mod.version for mod in candidates])
+            if candidates[0].mtype == 'engine':
+                # Multiple versions qualify and this is an engine so we have to check the stability next
+                stab = center.settings['engine_stability']
+                if stab not in STABILITES:
+                    stab = STABILITES[-1]
+
+                stab_idx = STABILITES.index(stab)
+                version = None
+                while stab_idx > -1:
+                    version = spec.select([mod.version for mod in candidates if mod.stability == stab])
+                    if not version:
+                        # Nothing found, try the next lower stability
+                        stab_idx -= 1
+                        stab = STABILITES[stab_idx]
+                    else:
+                        # Found at least one result
+                        break
+
+                if not version:
+                    version = spec.select([mod.version for mod in candidates])
+            else:
+                version = spec.select([mod.version for mod in candidates])
+
             if not version:
                 raise ModNotFound('Mod "%s" %s wasn\'t found!' % (mid, spec), mid, spec)
 

@@ -40,8 +40,6 @@ tar -xzf ../"knossos_$VERSION.orig.tar.gz"
 cp -a ../src/releng/ubuntu/debian .
 
 if [ "$RELEASE" = "y" ]; then
-	gpg-agent --daemon
-
 	for ubuntu in $UBUNTU_VERSIONS; do
 		cat > debian/changelog <<EOF
 knossos ($VERSION-1~${ubuntu}1) $ubuntu; urgency=medium
