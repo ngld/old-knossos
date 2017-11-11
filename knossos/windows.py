@@ -426,7 +426,11 @@ class ModInstallWindow(Window):
             item.setData(0, QtCore.Qt.UserRole, mod)
             item.setData(0, QtCore.Qt.UserRole + 2, '')
             c = 0
-            mod_installed = center.installed.is_installed(mod)
+
+            try:
+                local_mod = center.installed.query(mod)
+            except repo.ModNotFound:
+                local_mod = None
 
             for pkg in mod.packages:
                 fsize = 0
@@ -445,13 +449,13 @@ class ModInstallWindow(Window):
                 if is_installed:
                     sub.setText(1, self.tr('Installed'))
 
-                if pkg.status == 'required' or pkg in needed_pkgs or is_required:
+                if pkg.status == 'required' or pkg in needed_pkgs or is_required or (local_mod and local_mod.dev_mode):
                     sub.setCheckState(0, QtCore.Qt.Checked)
                     sub.setDisabled(True)
 
                     c += 1
                 elif pkg.status == 'recommended':
-                    if not mod_installed or is_installed:
+                    if not local_mod or is_installed:
                         sub.setCheckState(0, QtCore.Qt.Checked)
                         c += 1
                     else:
