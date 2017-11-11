@@ -13,7 +13,7 @@ RUN pacman -Sy --noconfirm archlinux-keyring && \
 	useradd -mG wheel packager && \
 	echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers && \
 	install -do packager /scratch && \
-	sudo -u packager aur -sci --noconfirm --noprogress python-semantic-version && \
+	sudo -u packager aur -sci --noconfirm --noprogress python-semantic-version python-token-bucket && \
 	rm -r /scratch/* && \
 	sudo -u packager git config --global user.name "$AUR_USER" && \
 	sudo -u packager git config --global user.email "$AUR_EMAIL"

@@ -20,7 +20,7 @@ if [ "$RELEASE" = "y" ]; then
 	git clone aur@aur.archlinux.org:fs2-knossos.git pkg
 	cd pkg
 
-	sed -i -e 's#^pkgver=.*#pkgver='"$VERSION"'#' -e 's#^pkrel=.*#pkgrel=1#' PKGBUILD
+	sed -e 's#^pkgver=.*#pkgver='"$VERSION"'#' -e 's#^pkrel=.*#pkgrel=1#' < ../PKGBUILD > PKGBUILD
 	updpkgsums
 	mksrcinfo
 
