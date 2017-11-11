@@ -168,6 +168,9 @@ class VpWriter(DataWriter):
         lvl[name] = ('file', content)
         self._count += 1
 
+    def get_file_count(self):
+        return self._count
+
     def write_file(self, name, content, toc):
         progress.update(self._written / float(self._count), 'Packing "%s"...' % name)
         self._written += 1

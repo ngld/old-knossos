@@ -44,7 +44,7 @@ export default {
         save() {
             this.fso.joystick_ff_strength = this.ff_enabled ? 100 : 0;
 
-            for(let set of ['base_path', 'max_downloads', 'use_raven', 'engine_stability']) {
+            for(let set of ['base_path', 'max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth']) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
                 }
@@ -90,19 +90,12 @@ export default {
             <div class="settings-exp">Click the arrows to reveal each group's options. Click SAVE when done.</div>
 
             <kn-drawer label="Knossos">
-                <div class="settings-exp drawer-exp">Basic Knossos settings for downloads, errors, and data</div>
+                <div class="settings-exp drawer-exp">Settings for basic Knossos options, errors, and data</div>
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Data Path:</label>
                     <div class="col-sm-8">
                         <small>{{ knossos.base_path }}</small>
                         <button @click.prevent="changeBasePath">Browse</button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">Max Downloads:</label>
-                    <div class="col-sm-8">
-                        <input type="number" style="width: 50px" v-model.number="knossos.max_downloads">
                     </div>
                 </div>
 
@@ -120,6 +113,34 @@ export default {
                             <option value="stable">Stable</option>
                             <option value="rc">RCs</option>
                             <option value="nightly">Nightlies</option>
+                        </select>
+                    </div>
+                </div>
+            </kn-drawer>
+
+            <kn-drawer label="Downloads">
+                <div class="settings-exp drawer-exp">Configuration of how Knossos handles downloads</div>
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Max Downloads:</label>
+                    <div class="col-sm-8">
+                        <input type="number" style="width: 50px" v-model.number="knossos.max_downloads">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Download bandwidth limit:</label>
+                    <div class="col-sm-8">
+                        <select v-model="knossos.download_bandwidth">
+                            <option :value="-1 ">No limit</option>
+                            <option :value="128 * 1024">128 KB/s</option>
+                            <option :value="512 * 1024">512 KB/s</option>
+                            <option :value="1 * 1024 * 1024">1 MB/s</option>
+                            <option :value="2 * 1024 * 1024">2 MB/s</option>
+                            <option :value="3 * 1024 * 1024">3 MB/s</option>
+                            <option :value="5 * 1024 * 1024">5 MB/s</option>
+                            <option :value="10 * 1024 * 1024">10 MB/s</option>
+                            <option :value="20 * 1024 * 1024">20 MB/s</option>
+                            <option :value="50 * 1024 * 1024">50 MB/s</option>
                         </select>
                     </div>
                 </div>

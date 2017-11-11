@@ -27,6 +27,7 @@ import threading
 import random
 import time
 import re
+import hashlib
 import semantic_version
 
 from . import center, util, progress, nebula, repo, vplib
@@ -98,7 +99,7 @@ class CheckTask(progress.MultistepTask):
 
     def init1(self):
         if center.settings['base_path'] is None:
-            logging.warn('A CheckTask was launched even though no base path was set!')
+            logging.warning('A CheckTask was launched even though no base path was set!')
         else:
             center.installed.clear()
             self.add_work((center.settings['base_path'],))
@@ -119,7 +120,7 @@ class CheckTask(progress.MultistepTask):
                 elif base.lower() == 'mod.json':
                     mod_file = sub
         except FileNotFoundError:
-            logging.warn('The directory "%s" does not exist anymore!' % path)
+            logging.warning('The directory "%s" does not exist anymore!' % path)
 
         if mod_file:
             try:
@@ -621,33 +622,8 @@ class InstallTask(progress.MultistepTask):
                         os.makedirs(dparent)
 
                     if dev_mode and archive['pkg'].is_vp:
-                        vp = vplib.VpReader(src_path)
-
-                        fc = float(len(vp.files))
-                        done = 0
                         progress.start_task(0.98, 0.02, '%s')
-                        for path, meta in vp.files.items():
-                            progress.update(done / fc, path)
-                            hdl = vp.open_file(path)
-
-                            sub_dest = util.ipath(os.path.join(modpath, archive['pkg'].folder, path))
-                            sub_par = os.path.dirname(sub_dest)
-
-                            if not os.path.isdir(sub_par):
-                                os.makedirs(sub_par)
-
-                            with open(sub_dest, 'wb') as dest_hdl:
-                                remaining = meta['size']
-                                bufsize = 16 * 1024  # 16 KiB
-                                while remaining > 0:
-                                    buf = hdl.read(min(remaining, bufsize))
-                                    if not buf:
-                                        break
-
-                                    dest_hdl.write(buf)
-                                    remaining -= bufsize
-
-                            done += 1
+                        util.extract_vp_file(src_path, os.path.join(modpath, archive['pkg'].folder))
 
                         # Avoid confusing CheckTask with a missing VP file.
                         archive['pkg'].filelist = []
@@ -955,24 +931,29 @@ class UploadTask(progress.MultistepTask):
                     pkg_path = os.path.join(self._mod.folder, pkg.folder)
                     pkg.filelist = []
 
-                    if not pkg.is_vp:
-                        for sub, dirs, files in os.walk(pkg_path):
-                            relsub = os.path.relpath(sub, pkg_path)
-                            for fn in files:
-                                relpath = os.path.join(relsub, fn).replace('\\', '/')
+                    for sub, dirs, files in os.walk(pkg_path):
+                        relsub = os.path.relpath(sub, pkg_path)
+                        for fn in files:
+                            relpath = os.path.join(relsub, fn).replace('\\', '/')
 
-                                pkg.filelist.append({
-                                    'filename': relpath,
-                                    'archive': ar_name,
-                                    'orig_name': relpath,
-                                    'checksum': None
-                                })
+                            pkg.filelist.append({
+                                'filename': relpath,
+                                'archive': ar_name,
+                                'orig_name': relpath,
+                                'checksum': None
+                            })
 
-                                if relpath in fnames:
-                                    l = conflicts.setdefault(relpath, [fnames[relpath].name])
-                                    l.append(pkg.name)
+                            if relpath in fnames:
+                                l = conflicts.setdefault(relpath, [fnames[relpath].name])
+                                l.append(pkg.name)
 
-                                fnames[relpath] = pkg
+                            fnames[relpath] = pkg
+
+                    if len(pkg.filelist) == 0:
+                        self._reason = 'empty pkg'
+                        self._msg = pkg.name
+                        self.abort()
+                        return
 
                     archives.append(pkg)
                     self._slot_prog[pkg.name] = (pkg.name + '.7z', 0, 'Waiting...')
@@ -1026,6 +1007,27 @@ class UploadTask(progress.MultistepTask):
         ar_path = os.path.join(self._dir.name, ar_name)
 
         try:
+            progress.update(0, 'Comparing...')
+
+            hasher = hashlib.new('sha512')
+            for item in sorted(pkg.filelist, key=lambda a: a['filename']):
+                line = '%s#%s\n' % (item['filename'], item['checksum'])
+                hasher.update(line.encode('utf8'))
+
+            content_ck = hasher.hexdigest()
+            result, meta = self._client.is_uploaded(content_checksum=content_ck)
+            if result:
+                # The file is already uploaded
+                pkg.files[ar_name] = {
+                    'filename': ar_name,
+                    'dest': '',
+                    'checksum': ('sha256', meta['checksum']),
+                    'filesize': meta['filesize']
+                }
+
+                progress.update(1, 'Done!')
+                return
+
             progress.update(0, 'Packing...')
             if pkg.is_vp:
                 vp_name = pkg.name + '.vp'
@@ -1096,7 +1098,15 @@ class UploadTask(progress.MultistepTask):
                 'filesize': os.stat(ar_path).st_size
             }
 
-            self._client.upload_file(ar_name, ar_path)
+            retries = 3
+            while retries > 0:
+                retries -= 1
+                try:
+                    self._client.upload_file(ar_name, ar_path)
+                    break
+                except nebula.RequestFailedException:
+                    logging.exception('Failed upload, retrying...')
+
             progress.finish_task()
             progress.update(1, 'Done!')
         except nebula.RequestFailedException:
@@ -1151,6 +1161,8 @@ class UploadTask(progress.MultistepTask):
         elif self._reason == 'conflict':
             message = "I can't upload this mod because at least one file is contained in multiple packages.\n"
             message += self._msg
+        elif self._reason == 'empty pkg':
+            message = 'The package %s is empty!' % self._msg
         elif self._reason == 'aborted':
             return
         else:
@@ -1174,7 +1186,7 @@ class GOGExtractTask(progress.Task):
                 fso = center.mods.query('FSO')
                 run_task(InstallTask(fso.resolve_deps()))
             except repo.ModNotFound:
-                logging.warn('Installing retail files but FSO is missing!')
+                logging.warning('Installing retail files but FSO is missing!')
 
     def work(self, paths):
         gog_path, dest_path = paths
@@ -1335,7 +1347,7 @@ class GOGCopyTask(progress.Task):
                 fso = center.mods.query('FSO')
                 run_task(InstallTask(fso.resolve_deps()))
             except repo.ModNotFound:
-                logging.warn('Installing retail files but FSO is missing!')
+                logging.warning('Installing retail files but FSO is missing!')
 
     def work(self, paths):
         gog_path, dest_path = paths
@@ -1459,7 +1471,7 @@ class CopyFolderTask(progress.Task):
         if not os.path.isdir(dest_base):
             os.makedirs(dest_base)
 
-        files = []
+        plan = []
         total_size = 0.0
         for src_prefix, dirs, files in os.walk(src_path):
             dest_prefix = os.path.join(dest_path, os.path.relpath(src_prefix, src_path))
@@ -1474,15 +1486,49 @@ class CopyFolderTask(progress.Task):
             for sub in files:
                 sdest = os.path.join(dest_prefix, sub)
                 ssrc = os.path.join(src_prefix, sub)
-                files.append((ssrc, sdest))
+                plan.append((ssrc, sdest))
                 total_size += os.stat(ssrc).st_size
 
         bytes_done = 0
-        for src, dest in files:
+        for src, dest in plan:
             progress.update(bytes_done / total_size, os.path.relpath(src, src_path))
             shutil.copyfile(src, dest)
 
             bytes_done += os.stat(src).st_size
+
+
+class VpExtractionTask(progress.Task):
+    def __init__(self, installed_mod, ini_mod):
+        super(VpExtractionTask, self).__init__()
+
+        self.mod = installed_mod
+        self.ini_mod = ini_mod
+
+        self.title = 'Extracting VP files...'
+
+        self._threads = 1  # VP extraction does not benefit from multiple threads
+
+        for vp_file in os.listdir(ini_mod.folder):
+            # We only look at vp files
+            if not vp_file.lower().endswith(".vp"):
+                continue
+
+            vp_path = os.path.join(ini_mod.folder, vp_file)
+
+            self.add_work((vp_path,))
+
+    def work(self, vp_file):
+        base_filename = os.path.basename(vp_file).replace(".vp", "")
+
+        dest_folder = os.path.join(self.mod.folder, base_filename)
+
+        progress.start_task(0.0, 1.0, 'Extracting %s')
+
+        util.extract_vp_file(vp_file, dest_folder)
+
+        progress.finish_task()
+        # Collect the extracted vp files so we can use that once extraction has finished
+        self.post(vp_file)
 
 
 def run_task(task, cb=None):

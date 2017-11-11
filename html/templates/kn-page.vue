@@ -46,6 +46,8 @@ export default {
         popup_pkg_name: '',
         popup_pkg_folder: '',
 
+        popup_ini_path: '',
+
         popup_sure_question: '',
         sureCallback: null,
 
@@ -80,6 +82,11 @@ export default {
         },
 
         showTab(tab) {
+            if(this.page === 'settings') {
+                this.tab = tab;
+                this.page = tab === 'develop' ? 'develop' : 'modlist';
+            }
+
             if(window.qt) {
                 fs2mod.showTab(tab);
             } else {
@@ -133,11 +140,14 @@ export default {
                 return;
             }
 
-            call(fs2mod.createMod, this.popup_mod_name, this.popup_mod_id, this.popup_mod_version, this.popup_mod_type, this.popup_mod_parent, (result) => {
-                if(result) {
-                    this.popup_visible = false;
+            call(fs2mod.createMod, this.popup_ini_path, this.popup_mod_name, this.popup_mod_id, this.popup_mod_version,
+                this.popup_mod_type, this.popup_mod_parent,
+                (result) => {
+                    if(result) {
+                        this.popup_visible = false;
+                    }
                 }
-            });
+            );
         },
 
         addPackage() {
@@ -232,6 +242,20 @@ export default {
             });
         },
 
+        selectModIni() {
+            call(fs2mod.browseFiles, 'Please select the desired mod.ini', this.retail_data_path, 'mod.ini', (files) => {
+                if(files.length > 0) {
+                    this.popup_ini_path = files[0];
+                    call(fs2mod.parseIniMod, this.popup_ini_path, (mod) => {
+                        let ini_mod = JSON.parse(mod);
+
+                        this.popup_mod_id = ini_mod.id;
+                        this.popup_mod_name = ini_mod.title;
+                    });
+                }
+            });
+        },
+
         finishRetailPrompt() {
             call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
                 if(result) this.popup_visible = false;
@@ -304,7 +328,8 @@ export default {
 
     <!-------------------------------------------------------------------------------- Build the Main View container ---------->
         <div class="main-container scroll-style">
-            <div class="container-fluid" v-if="page === 'modlist'">
+            <div id="main-background"></div>
+            <div class="container-fluid mod-container" v-if="page === 'modlist'">
                 <div v-if="tab === 'home'">
                     <kn-mod-home v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-home>
                 </div>
@@ -313,6 +338,7 @@ export default {
                 </div>
                 <div v-if="mods.length === 0" class="main-notice">No mods found.</div>
             </div>
+            <div id="main-shadow-effect"></div>
 
     <!-------------------------------------------------------------------------------- Start the Welcome page ---------->
             <div data-tr class="info-page" v-if="page === 'welcome'">
@@ -447,6 +473,20 @@ export default {
                         </div>
 
                         <div class="form-group">
+                            <label class="col-xs-3 control-label">Mod.ini path</label>
+                            <div class="col-xs-9">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" v-model="popup_ini_path">
+                                    <span class="input-group-btn">
+                                        <button class="btn btn-default" @click.prevent="selectModIni">Select mod.ini</button>
+                                    </span>
+                                </div>
+
+                                <p class="help-block">Only use this if you want to convert a legacy mod! Will update Name and ID fields above.</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
                             <label class="col-xs-3 control-label">Version</label>
                             <div class="col-xs-9">
                                 <input type="text" class="form-control" v-model="popup_mod_version" pattern="^([0-9]+\.){0-2}[0-9]+(\-.*)?$">
@@ -462,9 +502,9 @@ export default {
                             <div class="col-xs-9">
                                 <select class="form-control" v-model="popup_mod_type">
                                     <option value="mod">Mod</option>
-                                    <option value="tc">Total Conversion</option>
-                                    <option value="engine">FSO build</option>
-                                    <option value="tool">Tool</option>
+                                    <option value="tc" v-if="popup_mode === 'create_mod'">Total Conversion</option>
+                                    <option value="engine" v-if="popup_mode === 'create_mod'">FSO build</option>
+                                    <option value="tool" v-if="popup_mode === 'create_mod'">Tool</option>
                                     <option value="ext">Extension</option>
                                 </select>
 

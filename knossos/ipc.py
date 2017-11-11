@@ -172,58 +172,36 @@ def get_mod(mid, version=None):
         return None
 
 
-def handle_message(msg):
-    msg = msg.data().decode('utf8', 'ignore').strip()
+def handle_message(raw_msg):
+    raw_msg = raw_msg.data().decode('utf8', 'ignore').strip()
 
     try:
-        msg = json.loads(msg)
+        msg = json.loads(raw_msg)
     except Exception:
         logging.exception('Failed to parse IPC message %s.', msg)
         return
 
+    logging.info('Received IPC message %s' % raw_msg)
+
     if msg[0] == 'focus':
         center.main_win.win.activateWindow()
         center.main_win.win.raise_()
-    elif msg[0] == 'run':
+    elif msg[0] == 'open':
         if len(msg) < 1:
             QtWidgets.QMessageBox.critical(None, 'Knossos',
-                tr('ipc.handle_message', 'The fso://run/<mod id> link is missing a parameter!'))
+                tr('ipc.handle_message', 'The fso://open/<mod id> link is missing a parameter!'))
         else:
             mod = get_mod(msg[1])
 
             if mod is not None:
-                run_mod(mod)
+                print(msg[1])
+                center.main_win.browser_ctrl.bridge.showModDetails.emit(msg[1])
+
+                center.main_win.win.activateWindow()
+                center.main_win.win.raise_()
             else:
                 QtWidgets.QMessageBox.critical(None, 'Knossos',
                     tr('ipc.handle_message', 'The mod "%s" was not found!') % msg[1])
-    elif msg[0] == 'install':
-        if len(msg) < 2:
-            QtWidgets.QMessageBox.critical(None, 'Knossos',
-                tr('ipc.handle_message', 'The fso://install/<mod id> link is missing a parameter!'))
-            return
-
-        mod = get_mod(msg[1])
-        pkgs = []
-
-        if not mod:
-            # TODO: Maybe we should update the mod DB here?
-            QtWidgets.QMessageBox.critical(None, 'Knossos',
-                tr('ipc.handle_message', 'The mod "%s" was not found!') % msg[1])
-            return
-
-        if len(msg) > 2:
-            for pname in msg[2:]:
-                for pkg in mod.packages:
-                    if pkg.name == pname:
-                        pkgs.append(pkg)
-
-        center.main_win.win.activateWindow()
-
-        if mod.mid not in center.installed.mods:
-            ModInstallWindow(mod, pkgs)
-        else:
-            QtWidgets.QMessageBox.information(None, 'Knossos',
-                tr('ipc.handle_message', 'Mod "%s" is already installed!') % (mod.title))
     else:
         QtWidgets.QMessageBox.critical(None, 'Knossos',
             tr('ipc.handle_message', 'The action "%s" is unknown!') % (msg[0]))

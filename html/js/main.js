@@ -51,8 +51,6 @@ function init() {
 
     window.vm = new Vue(Object.assign({ el: '#loading' }, KnPage));
 
-    call(fs2mod.finishInit, get_translation_source(), (t) => vm.trans = t);
-
     let mod_table = null;
     window.task_mod_map = {};
 
@@ -82,6 +80,19 @@ function init() {
 
         vm.popup_visible = true;
     });
+    fs2mod.showModDetails.connect((mid) => {
+        function cb() {
+            if(!mod_table || !mod_table[mid]) {
+                setTimeout(cb, 300);
+                return;
+            }
+
+            vm.page = 'details';
+            vm.mod = mod_table[mid];
+        }
+
+        cb();
+    });
     fs2mod.updateModlist.connect((mods, type) => {
         mod_table = {};
         mods = JSON.parse(mods);
@@ -90,8 +101,11 @@ function init() {
         }
 
         vm.mods = mods;
-        vm.page = type === 'develop' ? 'develop' : 'modlist';
-        vm.tab = type;
+
+        if(vm.page === 'modlist' || vm.page === 'develop') {
+            vm.page = type === 'develop' ? 'develop' : 'modlist';
+            vm.tab = type;
+        }
     });
     fs2mod.hidePopup.connect(() => vm.popup_visible = false);
 
@@ -146,11 +160,13 @@ function init() {
 
     // Open <a href="..." target="_blank">...</a> links in the system's default browser
     document.body.addEventListener('click', (e) => {
-        if(e.target && e.target.nodeName === 'A' && e.target.target === '_blank' && e.className && e.className.indexOf('open-ext') > -1) {
+        if(e.target && e.target.nodeName === 'A' && e.className && e.className.indexOf('open-ext') > -1) {
             e.preventDefault();
             fs2mod.openExternal(e.target.href);
         }
     });
+
+    setTimeout(() => call(fs2mod.finishInit, get_translation_source(), (t) => vm.trans = t), 300);
 }
 
 if(window.qt) {

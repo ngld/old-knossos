@@ -482,7 +482,7 @@ def get_fso_flags(fs2_bin):
     global fso_flags
 
     if not os.path.isfile(fs2_bin):
-        logging.warn('Tried to get flags for missing executable "%s"!' % fs2_bin)
+        logging.warning('Tried to get flags for missing executable "%s"!' % fs2_bin)
         return None
 
     if fs2_bin in _flag_cache:
@@ -553,6 +553,9 @@ def save_setting(name, value):
     if name == 'max_downloads':
         if value != center.settings['max_downloads']:
             util.DL_POOL.set_capacity(value)
+    if name == 'download_bandwidth':
+        if value > 0.0:
+            util.SPEED_LIMIT_BUCKET.set_rate(value)
     elif name == 'language':
         # NOTE: This is deliberately not translated.
         QtWidgets.QMessageBox.information(None, 'Knossos', 'Please restart Knossos to complete the language change.')

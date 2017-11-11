@@ -25,7 +25,7 @@ cd ../../../../work
 
 export QT_SELECT=5
 VERSION="$(python3 setup.py get_version)"
-UBUNTU_VERSION="xenial"
+UBUNTU_VERSION="artful"
 
 rsync -au ../src/releng/ubuntu/cache/node_modules/ node_modules/
 python3 configure.py

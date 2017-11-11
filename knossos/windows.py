@@ -23,7 +23,7 @@ import json
 from . import uhf
 uhf(__name__)
 
-from . import center, util, integration, web, repo
+from . import center, util, integration, web, repo, ipc
 from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.install import Ui_InstallDialog
@@ -141,6 +141,7 @@ class HellWindow(Window):
     _mod_filter = 'home'
     _search_text = ''
     _updating_mods = None
+    _init_done = False
     browser_ctrl = None
     progress_win = None
 
@@ -175,9 +176,15 @@ class HellWindow(Window):
         # super(HellWindow, self)._del()
 
     def finish_init(self):
+        if self._init_done:
+            return
+
+        self._init_done = True
+
         # The delay is neccessary to make sure that QtWebkit doesn't swallow the resulting event.
         QtCore.QTimer.singleShot(300, self.check_fso)
         center.auto_fetcher.start()
+        ipc.setup()
 
         run_task(CheckTask())
 
@@ -219,6 +226,13 @@ class HellWindow(Window):
         for mid, mvs in mods.items():
             if query in mvs[0].title.lower():
                 mod = mvs[0]
+                if mod.mtype == 'engine' and self._mod_filter != 'develop':
+                    mvs = [mv for mv in mvs if mv.stability == center.settings['engine_stability']]
+                    if len(mvs) == 0:
+                        mvs = mods[mid]
+
+                    mod = mvs[0]
+
                 item = mod.get()
                 item['progress'] = 0
                 item['progress_info'] = {}
@@ -227,7 +241,20 @@ class HellWindow(Window):
                 for m in center.installed.mods.get(mid, []):
                     installed_versions[str(m.version)] = m.dev_mode
 
-                rmod = center.mods.mods.get(mid, (None,))[0]
+                rmod = center.mods.mods.get(mid, (None,))
+                if mod.mtype == 'engine':
+                    rm_sel = None
+                    for m in rmod:
+                        if m.stability == center.settings['engine_stability']:
+                            rm_sel = m
+                            break
+
+                    if rm_sel:
+                        rmod = rm_sel
+                    else:
+                        rmod = rmod[0]
+                else:
+                    rmod = rmod[0]
 
                 # TODO: Refactor (see also templates/kn-{details,devel}-page.vue)
                 if rmod and rmod.version > mod.version:
@@ -399,7 +426,11 @@ class ModInstallWindow(Window):
             item.setData(0, QtCore.Qt.UserRole, mod)
             item.setData(0, QtCore.Qt.UserRole + 2, '')
             c = 0
-            mod_installed = center.installed.is_installed(mod)
+
+            try:
+                local_mod = center.installed.query(mod)
+            except repo.ModNotFound:
+                local_mod = None
 
             for pkg in mod.packages:
                 fsize = 0
@@ -418,13 +449,13 @@ class ModInstallWindow(Window):
                 if is_installed:
                     sub.setText(1, self.tr('Installed'))
 
-                if pkg.status == 'required' or pkg in needed_pkgs or is_required:
+                if pkg.status == 'required' or pkg in needed_pkgs or is_required or (local_mod and local_mod.dev_mode):
                     sub.setCheckState(0, QtCore.Qt.Checked)
                     sub.setDisabled(True)
 
                     c += 1
                 elif pkg.status == 'recommended':
-                    if not mod_installed or is_installed:
+                    if not local_mod or is_installed:
                         sub.setCheckState(0, QtCore.Qt.Checked)
                         c += 1
                     else:
@@ -504,8 +535,6 @@ class ModInstallWindow(Window):
         self.win.notesField.setPlainText(item.data(0, QtCore.Qt.UserRole + 2))
 
     def install(self):
-        center.main_win.update_mod_buttons('home')
-
         to_install, to_remove = self.get_selected_pkgs()
 
         run_task(InstallTask(to_install, self._mod))

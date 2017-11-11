@@ -15,9 +15,9 @@
 !include MUI2.nsh
 
 Name "Knossos ${KNOSSOS_VERSION}"
+RequestExecutionLevel admin  # We need admin for the "fso:// Support" section
 InstallDir "$PROGRAMFILES\Knossos"
 InstallDirRegKey HKLM "Software\Knossos" "Install Dir"
-RequestExecutionLevel admin  # We need admin for the "fso:// Support" section
 SetCompressor /SOLID lzma
 OutFile ${KNOSSOS_ROOT}releng\windows\dist\Knossos-${KNOSSOS_VERSION}.exe
 
@@ -76,6 +76,7 @@ Section
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "NoRepair" 1
 
     !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+        SetShellVarContext all  # Install for all users
 
         CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
         CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Knossos.lnk" "$INSTDIR\Knossos.exe"
@@ -86,6 +87,7 @@ Section
 SectionEnd
 
 Section "Desktop icon" desk_icon
+    SetShellVarContext all  # Install for all users
     CreateShortcut "$DESKTOP\Knossos.lnk" "$INSTDIR\Knossos.exe"
 SectionEnd
 
@@ -95,6 +97,7 @@ SectionEnd
 
 Section "Uninstall"
     !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
+    SetShellVarContext all  # Install for all users
 
     Delete "$SMPROGRAMS\$StartMenuFolder\Knossos.lnk"
     Delete "$SMPROGRAMS\$StartMenuFolder\Launch FSO.lnk"

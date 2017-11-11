@@ -171,6 +171,8 @@ def run_knossos():
         return
 
     util.DL_POOL.set_capacity(center.settings['max_downloads'])
+    if center.settings['download_bandwidth'] > 0.0:
+        util.SPEED_LIMIT_BUCKET.set_rate(center.settings['download_bandwidth'])
 
     center.app = app
     center.installed = repo.InstalledRepo()
@@ -193,7 +195,6 @@ def run_knossos():
     if center.settings['update_notify'] and '-dev' not in center.VERSION:
         run_task(CheckUpdateTask())
 
-    ipc.setup()
     app.exec_()
 
     center.save_settings()

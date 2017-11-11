@@ -139,6 +139,19 @@ export default {
         }
     },
 
+    computed: {
+        engine_builds() {
+            let builds = [];
+            for(let mod of this.mods) {
+                if(mod.type === 'engine') {
+                    builds = builds.concat(mod.versions);
+                }
+            }
+
+            return builds;
+        }
+    },
+
     methods: {
         showRetailPrompt() {
             vm.showRetailPrompt();
@@ -740,7 +753,7 @@ export default {
                                     <div class="input-group">
                                         <select class="form-control" v-model="fso_build">
                                             <option v-if="!isValidBuild()" :key="'invalid'" value="invalid">Please select a valid build</option>
-                                            <option v-for="mod in mods" v-if="mod.type === 'engine'" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
+                                            <option v-for="mod in engine_builds" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
                                                 {{ mod.title }} {{ mod.version }}
                                             </option>
                                             <option v-if="selected_mod.custom_build" :value="'custom#' + selected_mod.custom_build">{{ selected_mod.custom_build.replace(/\\/g, '/').split('/').pop() }}</option>

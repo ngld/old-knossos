@@ -24,7 +24,7 @@ from .qt import QtCore # noqa
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.6.0'
+VERSION = '0.6.1'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
 DEBUG = os.getenv('KN_DEBUG', '0').strip() == '1'
@@ -53,6 +53,7 @@ settings = {
     'base_dirs': [],
     'hash_cache': None,
     'max_downloads': 3,
+    'download_bandwidth': -1.0,  # negative numbers are used to specify no limit
     'repos': [('https://fsnebula.org/storage/repo.json', 'FSNebula')],
     'nebula_link': 'https://fsnebula.org/api/1/',
     'update_notify': True,

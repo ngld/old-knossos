@@ -305,6 +305,19 @@ class Repo(object):
         dep_dict = {}
         ndeps = pkgs
 
+        for pkg in pkgs:
+            mod = pkg.get_mod()
+            dd = dep_dict.setdefault(mod.mid, {})
+            dd = dd.setdefault(pkg.name, {})
+
+            version = str(mod.version)
+            if version != '*' and not SpecItem.re_spec.match(version):
+                # Make a spec out of this version
+                version = '==' + version
+
+            version = util.Spec(version)
+            dd[version] = pkg
+
         # Resolve the pkgs' dependencies
         while len(ndeps) > 0:
             _nd = ndeps
@@ -353,7 +366,7 @@ class Repo(object):
 
                             stab_idx = STABILITES.index(stab)
                             candidates = []
-                            while stab_idx > 0:
+                            while stab_idx > -1:
                                 candidates = [m for m in remains if m.get_mod().stability == stab]
                                 if len(candidates) == 0:
                                     # Nothing found, try the next lower stability
@@ -363,13 +376,14 @@ class Repo(object):
                                     # Found at least one result
                                     break
 
-                            remains = candidates
+                            # An empty remains list would trigger an index out of bounds error; avoid that
+                            if len(candidates) > 0:
+                                remains = candidates
 
                         # Pick the latest
                         remains.sort(key=lambda v: v.get_mod().version)
                         dep_list.add(remains[-1])
 
-        dep_list |= set(pkgs)
         return dep_list
 
     def get_dependents(self, pkgs):
@@ -676,7 +690,7 @@ class Package(object):
             return True
 
         if not isinstance(self.environment, str):
-            logging.warn('Invalid value for environment check in mod %s (%s)!' % (self._mod.mid, self._mod.version))
+            logging.warning('Invalid value for environment check in mod %s (%s)!' % (self._mod.mid, self._mod.version))
             return True
 
         bvars = {}
@@ -824,11 +838,6 @@ class InstalledMod(Mod):
             mod.folder = os.path.normpath(os.path.dirname(path))
             mod.set(data)
             return mod
-        elif path.lower().endswith('.ini'):
-            mod = IniMod()
-            mod.folder = os.path.normpath(os.path.dirname(path))
-            mod.load(path)
-            return mod
         else:
             return None
 
@@ -855,7 +864,11 @@ class InstalledMod(Mod):
         self.custom_build = values.get('custom_build', None)
         self.check_notes = values.get('check_notes', '')
         for pkg in pkgs:
-            self.packages.append(InstalledPackage(pkg, self))
+            installed_pkg = InstalledPackage(pkg, self)
+            # If the user installed packages on multiple platforms into the same directory then an installed package
+            # may be present that is not valid for the current environment so we need to check that here
+            if installed_pkg.check_env():
+                self.packages.append(installed_pkg)
 
     def get(self):
         return {
@@ -865,6 +878,7 @@ class InstalledMod(Mod):
             'type': self.mtype,
             'parent': self.parent,
             'version': str(self.version),
+            'stability': self.stability,
             'description': self.description,
             'notes': self.notes,
             'folder': self.folder,
@@ -1054,7 +1068,7 @@ class IniMod(InstalledMod):
         self._pr_list = []
         self._sc_list = []
 
-        self.version = semantic_version.Version('1.0.0+ini')
+        self.version = semantic_version.Version('1.0.0')
 
     def load(self, path):
         with open(path, 'r') as stream:
@@ -1071,7 +1085,7 @@ class IniMod(InstalledMod):
                     continue
 
                 if name == 'modname':
-                    self.title = value + ' (ini)'
+                    self.title = value
                 elif name == 'infotext':
                     self.description = value
                 elif name.startswith('image'):
@@ -1081,11 +1095,11 @@ class IniMod(InstalledMod):
                 elif name in ('secondarylist', 'secondrylist'):
                     self._sc_list = value.split(',')
 
-        self.folder = os.path.basename(os.path.dirname(path))
+        self.folder = os.path.dirname(path)
         if self.title == '':
-            self.title = self.folder + ' (ini)'
+            self.title = os.path.basename(self.folder)
 
-        self.mid = '##INI_COMPAT#' + self.folder
+        self.mid = os.path.basename(self.folder)
         if self.logo:
             self.logo_path = os.path.join(path, self.logo)
 
@@ -1093,6 +1107,11 @@ class IniMod(InstalledMod):
             'name': 'Content',
             'status': 'required'
         }, self)
+
+        # Set some default values
+        self.screenshots = []
+        self.attachments = []
+
         self.add_pkg(pkg)
 
     def get_mod_flag(self):
@@ -1101,6 +1120,12 @@ class IniMod(InstalledMod):
         mods.extend(self._sc_list)
 
         return mods
+
+    def get_primary_list(self):
+        return self._pr_list
+
+    def get_secondary_list(self):
+        return self._sc_list
 
 
 class InstalledPackage(Package):

@@ -13,4 +13,5 @@ raven = "*"
 pyqt5 = "*"
 requests-toolbelt = "*"
 ply = "*"
+token-bucket = "*"
 
