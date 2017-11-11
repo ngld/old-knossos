@@ -181,26 +181,6 @@ export default {
             vm.popup_visible = true;
         },
 
-        openImportPopup() {
-            vm.popup_mode = 'import_ini_mod';
-            vm.popup_title = 'Import mod.ini';
-            vm.popup_mod_name = '';
-            vm.popup_mod_id = '';
-            vm.popup_mod_version = '1.0.0';
-            vm.popup_mod_type = 'mod';
-            vm.popup_mod_tcs = this.mods.filter((mod) => mod.type === 'tc');
-            vm.popup_mod_parent = '';
-
-            for(let tc of vm.popup_mod_tcs) {
-                if(tc.id === 'FS2') {
-                    vm.popup_mod_parent = 'FS2';
-                    break;
-                }
-            }
-
-            vm.popup_visible = true;
-        },
-
         openNewVersionPopup() {
             vm.popup_mode = 'new_mod_version';
             vm.popup_title = 'Create a new mod version';
@@ -510,7 +490,6 @@ export default {
     <div>
         <div class="scroll-style mlist">
             <button class="mod-btn btn-link-blue" @click.prevent="openCreatePopup"><span class="btn-text">CREATE</span></button>
-            <button class="mod-btn btn-link-blue" @click.prevent="openImportPopup"><span class="btn-text">IMPORT INI</span></button>
             <!-- <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL RETAIL</button> -->
 
             <a href="#" v-for="mod in mods" v-if="mod.dev_mode" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>

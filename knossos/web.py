@@ -524,8 +524,8 @@ class WebBridge(QtCore.QObject):
             logging.exception('Failed to encoding running tasks!')
             return 'null'
 
-    @QtCore.Slot(str, str, str, str, str, result=bool)
-    def createMod(self, name, mid, version, mtype, parent):
+    @QtCore.Slot(str, str, str, str, str, str, result=bool)
+    def createMod(self, ini_path, name, mid, version, mtype, parent):
         if mtype in ('mod', 'ext'):
             if parent != 'FS2':
                 parent = self._get_mod(parent)
@@ -567,27 +567,93 @@ class WebBridge(QtCore.QObject):
                 QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The chosen parent does not exist! Something went very wrong here!!'))
                 return False
 
-        pkg = repo.InstalledPackage({
-            'name': 'Content',
-            'status': 'required',
-            'folder': 'content'
-        })
+        if ini_path != '':
+            # We need the ini mod for determining where to pull the VPs from
+            ini_mod = repo.IniMod()
+            ini_mod.load(ini_path)
 
-        if mtype in ('tool', 'engine'):
-            pkg.folder = '.'
+            if len(ini_mod.get_primary_list()) > 0:
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr(
+                    'Ini mods with a primary list are currently not supported for importing!'))
+                return False
 
-        os.mkdir(mod.folder)
-        pkg_folder = os.path.join(mod.folder, pkg.folder)
-        if not os.path.isdir(pkg_folder):
-            os.mkdir(pkg_folder)
+            # This dict will convert a known secondary list entry to a mod.json style dependency
+            dependency_mapping = {
+                "mediavps_2014": {
+                    "id": "MVPS",
+                    "version": "3.7.2",
+                },
+                "mediavps_3612": {
+                    "id": "MVPS",
+                    "version": "3.6.12",
+                },
+                "mediavps": {
+                    "id": "MVPS",
+                    "version": "3.6.10",
+                },
+            }
 
-        mod.add_pkg(pkg)
-        mod.save()
+            package_dependencies = []
 
-        center.installed.add_mod(mod)
-        center.main_win.update_mod_list()
+            for dependency in ini_mod.get_secondary_list():
+                dependency = dependency.lower()  # The mapping only works for lower case
+                if dependency not in dependency_mapping:
+                    # An unknown dependency is just skipped
+                    QtWidgets.QMessageBox.warning(None, 'Knossos',
+                                                  self.tr(
+                                                      'The mod.ini dependency %s is not known to Knossos and could not be converted to a mod.json dependency.')
+                                                  % (dependency))
+                    continue
 
-        return True
+                package_dependencies.append(dependency_mapping[dependency])
+
+            task = tasks.VpExtractionTask(mod, ini_mod)
+
+            def finish_import():
+                for vp_file in task.get_results():
+                    base_filename = os.path.basename(vp_file).replace(".vp", "")
+
+                    pkg = repo.InstalledPackage({
+                        'name': base_filename,
+                        'status': 'required',
+                        'folder': base_filename,
+                        'dependencies': package_dependencies,
+                        'is_vp': True
+                    })
+                    mod.add_pkg(pkg)
+
+                center.installed.add_mod(mod)
+                mod.update_mod_flag()
+                mod.save()
+
+                center.main_win.update_mod_list()
+
+            task.done.connect(finish_import)
+            tasks.run_task(task)
+
+            return True
+        else:
+            pkg = repo.InstalledPackage({
+                'name': 'Content',
+                'status': 'required',
+                'folder': 'content'
+            })
+
+            if mtype in ('tool', 'engine'):
+                pkg.folder = '.'
+
+            os.mkdir(mod.folder)
+            pkg_folder = os.path.join(mod.folder, pkg.folder)
+            if not os.path.isdir(pkg_folder):
+                os.mkdir(pkg_folder)
+
+            mod.add_pkg(pkg)
+            mod.save()
+
+            center.installed.add_mod(mod)
+            center.main_win.update_mod_list()
+
+            return True
 
     @QtCore.Slot(str, str, str, str, result=int)
     def addPackage(self, mid, version, pkg_name, pkg_folder):
@@ -1147,105 +1213,6 @@ class WebBridge(QtCore.QObject):
         mod = repo.IniMod()
         mod.load(path)
         return json.dumps(mod.get())
-
-    @QtCore.Slot(str, str, str, str, str, str, result=bool)
-    def importIniMod(self, ini_path, name, mid, version, mtype, parent):
-        if parent != 'FS2':
-            parent = self._get_mod(parent)
-
-            if parent == -1:
-                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected parent TC is not valid!'))
-                return False
-            else:
-                parent = parent.mid
-
-        mod = repo.InstalledMod({
-            'title': name,
-            'id': mid,
-            'version': version,
-            'type': mtype,
-            'parent': parent,
-            'dev_mode': True
-        })
-        mod.generate_folder()
-
-        if os.path.isdir(mod.folder):
-            # TODO: Check online, too?
-            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('There already exists a mod with the chosen ID!'))
-            return False
-
-        upper_folder = os.path.dirname(mod.folder)
-        if not os.path.isdir(upper_folder):
-            logging.error('%s did not exist during mod creation! (parent = %s)' % (mod.folder, mod.parent))
-            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The chosen parent does not exist! Something went very wrong here!!'))
-            return False
-
-        # We need the ini mod for determining where to pull the VPs from
-        ini_mod = repo.IniMod()
-        ini_mod.load(ini_path)
-
-        if len(ini_mod.get_primary_list()) > 0:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr(
-                'Ini mods with a primary list are currently not supported for importing!'))
-            return False
-
-        # This dict will convert a known secondary list entry to a mod.json style dependency
-        dependency_mapping = {
-            "mediavps_2014": {
-                "id": "MVPS",
-                "version": "3.7.2",
-            },
-            "mediavps_3612": {
-                "id": "MVPS",
-                "version": "3.6.12",
-            },
-            "mediavps": {
-                "id": "MVPS",
-                "version": "3.6.10",
-            },
-        }
-
-        package_dependencies = []
-
-        for dependency in ini_mod.get_secondary_list():
-            dependency = dependency.lower()  # The mapping only works for lower case
-            if dependency not in dependency_mapping:
-                # An unknown dependency is just skipped
-                QtWidgets.QMessageBox.warning(None, 'Knossos',
-                                              self.tr(
-                                                  'The mod.ini dependency %s is not known to Knossos and could not be converted to a mod.json dependency.')
-                                              % (dependency))
-                continue
-
-            package_dependencies.append(dependency_mapping[dependency])
-
-        task = tasks.VpExtractionTask(mod, ini_mod)
-
-        def finish_import():
-            for vp_file in task.get_results():
-                base_filename = os.path.basename(vp_file).replace(".vp", "")
-
-                pkg = repo.InstalledPackage({
-                    'name': base_filename,
-                    'status': 'required',
-                    'folder': base_filename,
-                    'dependencies': package_dependencies,
-                    'is_vp': True
-                })
-                mod.add_pkg(pkg)
-
-            center.installed.add_mod(mod)
-            mod.update_mod_flag()
-
-            mod.save()
-
-            center.main_win.update_mod_list()
-
-        task.done.connect(finish_import)
-
-        tasks.run_task(task)
-
-        return True
 
 
 if QtWebChannel:

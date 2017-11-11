@@ -140,35 +140,14 @@ export default {
                 return;
             }
 
-            call(fs2mod.createMod, this.popup_mod_name, this.popup_mod_id, this.popup_mod_version, this.popup_mod_type, this.popup_mod_parent, (result) => {
-                if(result) {
-                    this.popup_visible = false;
-                }
-            });
-        },
-
-        importIniMod() {
-            if (this.popup_ini_path === '') {
-                alert('You need to enter the path to the mod.ini file!');
-            }
-
-            if(this.popup_mod_id === '') {
-                alert('You need to enter a mod ID!');
-                return;
-            }
-
-
-            if(this.popup_mod_name === '') {
-                alert('You need to enter a mod name!');
-                return;
-            }
-
-            call(fs2mod.importIniMod, this.popup_ini_path, this.popup_mod_name, this.popup_mod_id,
-                this.popup_mod_version, this.popup_mod_type, this.popup_mod_parent, (result) => {
-                    if (result) {
+            call(fs2mod.createMod, this.popup_ini_path, this.popup_mod_name, this.popup_mod_id, this.popup_mod_version,
+                this.popup_mod_type, this.popup_mod_parent,
+                (result) => {
+                    if(result) {
                         this.popup_visible = false;
                     }
-                });
+                }
+            );
         },
 
         addPackage() {
@@ -475,12 +454,14 @@ export default {
                     <p><button class="btn btn-primary" @click="finishRetailPrompt">Continue</button></p>
                 </div>
 
-                <div v-if="popup_mode === 'create_mod' || popup_mode === 'import_ini_mod'">
+                <div v-if="popup_mode === 'create_mod'">
                     <form class="form-horizontal">
-                        <div class="form-group" v-if="popup_mode === 'import_ini_mod'">
+                        <div class="form-group">
                             <label class="col-xs-3 control-label">Mod.ini path</label>
                             <div class="col-xs-6">
                                 <input type="text" class="form-control" v-model="popup_ini_path">
+
+                                <p class="help-block">Only use this if you want to convert a legacy mod</p>
                             </div>
                             <div class="col-xs-3">
                                 <button class="btn btn-default" @click.prevent="selectModIni">Select mod.ini</button>
@@ -561,8 +542,7 @@ export default {
                             </div>
                         </div>
 
-                        <button class="mod-btn btn-green" @click.prevent="createMod" v-if="popup_mode === 'create_mod'">CREATE</button>
-                        <button class="mod-btn btn-green" @click.prevent="importIniMod" v-if="popup_mode === 'import_ini_mod'">IMPORT</button>
+                        <button class="mod-btn btn-green" @click.prevent="createMod">CREATE</button>
                         <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">CANCEL</button>
                     </form>
                 </div>
