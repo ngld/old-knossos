@@ -366,7 +366,7 @@ class Repo(object):
 
                             stab_idx = STABILITES.index(stab)
                             candidates = []
-                            while stab_idx > 0:
+                            while stab_idx > -1:
                                 candidates = [m for m in remains if m.get_mod().stability == stab]
                                 if len(candidates) == 0:
                                     # Nothing found, try the next lower stability
@@ -376,7 +376,9 @@ class Repo(object):
                                     # Found at least one result
                                     break
 
-                            remains = candidates
+                            # An empty remains list would trigger an index out of bounds error; avoid that
+                            if len(candidates) > 0:
+                                remains = candidates
 
                         # Pick the latest
                         remains.sort(key=lambda v: v.get_mod().version)
