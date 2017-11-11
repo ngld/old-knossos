@@ -457,18 +457,6 @@ export default {
                 <div v-if="popup_mode === 'create_mod'">
                     <form class="form-horizontal">
                         <div class="form-group">
-                            <label class="col-xs-3 control-label">Mod.ini path</label>
-                            <div class="col-xs-6">
-                                <input type="text" class="form-control" v-model="popup_ini_path">
-
-                                <p class="help-block">Only use this if you want to convert a legacy mod</p>
-                            </div>
-                            <div class="col-xs-3">
-                                <button class="btn btn-default" @click.prevent="selectModIni">Select mod.ini</button>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
                             <label class="col-xs-3 control-label">Name</label>
                             <div class="col-xs-9">
                                 <input type="text" class="form-control" v-model="popup_mod_name">
@@ -481,6 +469,20 @@ export default {
                                 <input type="text" class="form-control" v-model="popup_mod_id" pattern="^[a-zA-Z0-9_]+$">
 
                                 <span class="help-block">Only characters (a-z, A-Z), numbers (0-9) and underscores are allowed.</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-xs-3 control-label">Mod.ini path</label>
+                            <div class="col-xs-9">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" v-model="popup_ini_path">
+                                    <span class="input-group-btn">
+                                        <button class="btn btn-default" @click.prevent="selectModIni">Select mod.ini</button>
+                                    </span>
+                                </div>
+
+                                <p class="help-block">Only use this if you want to convert a legacy mod! Will update Name and ID fields above.</p>
                             </div>
                         </div>
 
