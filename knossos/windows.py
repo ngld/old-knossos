@@ -535,8 +535,6 @@ class ModInstallWindow(Window):
         self.win.notesField.setPlainText(item.data(0, QtCore.Qt.UserRole + 2))
 
     def install(self):
-        center.main_win.update_mod_buttons('home')
-
         to_install, to_remove = self.get_selected_pkgs()
 
         run_task(InstallTask(to_install, self._mod))
