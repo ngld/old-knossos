@@ -943,11 +943,15 @@ class UploadTask(progress.MultistepTask):
                                 'checksum': None
                             })
 
-                            if relpath in fnames:
-                                l = conflicts.setdefault(relpath, [fnames[relpath].name])
-                                l.append(pkg.name)
+                            if not pkg.is_vp:
+                                # VP conflicts don't cause problems and are most likely intentional
+                                # which is why we ignore them.
 
-                            fnames[relpath] = pkg
+                                if relpath in fnames:
+                                    l = conflicts.setdefault(relpath, [fnames[relpath].name])
+                                    l.append(pkg.name)
+
+                                fnames[relpath] = pkg
 
                     if len(pkg.filelist) == 0:
                         self._reason = 'empty pkg'
