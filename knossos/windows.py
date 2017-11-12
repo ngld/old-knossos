@@ -421,7 +421,7 @@ class ModInstallWindow(Window):
 
         mods = [self._mod] + list(mods)
         for mod in mods:
-            item = QtWidgets.QTreeWidgetItem(self.win.treeWidget, [mod.title, ''])
+            item = QtWidgets.QTreeWidgetItem(self.win.treeWidget, ['%s %s' % (mod.title, mod.version), ''])
             item.setExpanded(True)
             item.setData(0, QtCore.Qt.UserRole, mod)
             item.setData(0, QtCore.Qt.UserRole + 2, '')

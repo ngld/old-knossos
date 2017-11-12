@@ -330,15 +330,15 @@ class Repo(object):
         for pkg in pkgs:
             mod = pkg.get_mod()
             dd = dep_dict.setdefault(mod.mid, {})
-            dd = dd.setdefault(pkg.name, {})
 
             version = str(mod.version)
             if version != '*' and not SpecItem.re_spec.match(version):
                 # Make a spec out of this version
                 version = '==' + version
 
-            version = util.Spec(version)
-            dd[version] = pkg
+            dd = dd.setdefault(util.Spec(version), {})
+            dd['#mod'] = pkg.get_mod()
+            dd[pkg.name] = pkg
 
         # Resolve the pkgs' dependencies
         while len(ndeps) > 0:
@@ -348,63 +348,67 @@ class Repo(object):
             for pkg in _nd:
                 for dep, version in pkg.resolve_deps():
                     dd = dep_dict.setdefault(dep.get_mod().mid, {})
-                    dd = dd.setdefault(dep.name, {})
+                    dd = dd.setdefault(version, {})
+                    dd['#mod'] = dep.get_mod()
 
-                    if version not in dd:
-                        dd[version] = dep
+                    if dep.name not in dd:
+                        dd[dep.name] = dep
                         if recursive:
                             ndeps.append(dep)
 
         # Check for conflicts (and try to resolve them if possible).
         dep_list = set()
         pref_stable = center.settings['engine_stability']
-        for mid, deps in dep_dict.items():
-            for name, variants in deps.items():
-                if len(variants) == 1:
-                    dep_list.add(next(iter(variants.values())))
-                else:
-                    specs = variants.keys()
-                    remains = []
+        for mid, variants in dep_dict.items():
+            if len(variants) == 1:
+                # This loop only iterates once but it's the easiest solution to get the actual value
+                for pkgs in variants.values():
+                    del pkgs['#mod']
+                    dep_list |= set(pkgs.values())
+            else:
+                specs = variants.keys()
+                remains = []
 
-                    for v in variants.values():
-                        ok = True
-                        for spec in specs:
-                            if not spec.match(v.get_mod().version):
-                                ok = False
+                for v in variants.values():
+                    ok = True
+                    for spec in specs:
+                        if not spec.match(v['#mod'].version):
+                            ok = False
+                            break
+
+                    if ok:
+                        remains.append(v)
+
+                if len(remains) == 0:
+                    v = (list(variants.values())[0]['#mod'].title, ','.join([str(s) for s in specs]))
+                    raise PackageNotFound('No version of mod "%s" found for these constraints: %s' % v, mid, list(variants.values())[0].name)
+                else:
+                    if remains[0]['#mod'].mtype == 'engine':
+                        # Multiple versions qualify and this is an engine so we have to check the stability next
+                        stab = pref_stable
+                        if stab not in STABILITES:
+                            stab = STABILITES[-1]
+
+                        stab_idx = STABILITES.index(stab)
+                        candidates = []
+                        while stab_idx > -1:
+                            candidates = [m for m in remains if m['#mod'].stability == stab]
+                            if len(candidates) == 0:
+                                # Nothing found, try the next lower stability
+                                stab_idx -= 1
+                                stab = STABILITES[stab_idx]
+                            else:
+                                # Found at least one result
                                 break
 
-                        if ok:
-                            remains.append(v)
+                        # An empty remains list would trigger an index out of bounds error; avoid that
+                        if len(candidates) > 0:
+                            remains = candidates
 
-                    if len(remains) == 0:
-                        v = (list(variants.values())[0].name, ','.join([str(s) for s in specs]))
-                        raise PackageNotFound('No version of package "%s" found for these constraints: %s' % v, mid, list(variants.values())[0].name)
-                    else:
-                        if remains[0].get_mod().mtype == 'engine':
-                            # Multiple versions qualify and this is an engine so we have to check the stability next
-                            stab = pref_stable
-                            if stab not in STABILITES:
-                                stab = STABILITES[-1]
-
-                            stab_idx = STABILITES.index(stab)
-                            candidates = []
-                            while stab_idx > -1:
-                                candidates = [m for m in remains if m.get_mod().stability == stab]
-                                if len(candidates) == 0:
-                                    # Nothing found, try the next lower stability
-                                    stab_idx -= 1
-                                    stab = STABILITES[stab_idx]
-                                else:
-                                    # Found at least one result
-                                    break
-
-                            # An empty remains list would trigger an index out of bounds error; avoid that
-                            if len(candidates) > 0:
-                                remains = candidates
-
-                        # Pick the latest
-                        remains.sort(key=lambda v: v.get_mod().version)
-                        dep_list.add(remains[-1])
+                    # Pick the latest
+                    remains.sort(key=lambda v: v['#mod'].version)
+                    del remains[-1]['#mod']
+                    dep_list |= set(remains[-1].values())
 
         return dep_list
 
