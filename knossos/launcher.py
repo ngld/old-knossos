@@ -66,7 +66,7 @@ if six.PY2:
     from . import py2_compat  # noqa
 
 from .qt import QtCore, QtGui, QtWidgets, variant as qt_variant
-from .tasks import run_task, CheckUpdateTask, CheckTask
+from .tasks import run_task, CheckUpdateTask
 from . import util, ipc, auto_fetch
 
 

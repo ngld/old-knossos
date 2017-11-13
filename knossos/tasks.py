@@ -87,25 +87,24 @@ class FetchTask(progress.Task):
             center.main_win.update_mod_list()
 
 
-class CheckTask(progress.MultistepTask):
+class LoadLocalModsTask(progress.Task):
     can_abort = False
     _steps = 2
 
     def __init__(self):
-        super(CheckTask, self).__init__(threads=3)
+        super(LoadLocalModsTask, self).__init__(threads=3)
 
         self.done.connect(self.finish)
-        self.title = 'Checking installed mods...'
+        self.title = 'Loading installed mods...'
 
-    def init1(self):
         if center.settings['base_path'] is None:
-            logging.warning('A CheckTask was launched even though no base path was set!')
+            logging.warning('A LoadLocalModsTask was launched even though no base path was set!')
         else:
             center.installed.clear()
             self.add_work((center.settings['base_path'],))
             self.add_work(center.settings['base_dirs'])
 
-    def work1(self, path):
+    def work(self, path):
         mods = center.installed
 
         subs = []
@@ -131,82 +130,7 @@ class CheckTask(progress.MultistepTask):
 
         self.add_work(subs)
 
-    def init2(self):
-        pkgs = []
-        for mid, mvs in center.installed.mods.items():
-            for mod in mvs:
-                pkgs.extend(mod.packages)
-
-        # Reset them
-        for pkg in pkgs:
-            pkg.files_ok = 0
-            pkg.files_checked = 0
-
-        self.add_work(pkgs)
-
-    def work2(self, pkg):
-        mod = pkg.get_mod()
-        pkg_files = pkg.filelist
-        count = float(len(pkg_files))
-        success = 0
-        missing = 0
-        checked = 0
-
-        archives = set()
-        msgs = []
-
-        if mod.dev_mode:
-            pkgpath = os.path.join(mod.folder, pkg.folder)
-        else:
-            pkgpath = mod.folder
-
-        for info in pkg_files:
-            mypath = util.ipath(os.path.join(pkgpath, info['filename']))
-            fix = False
-            if os.path.isfile(mypath):
-                progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
-
-                if util.check_hash(info['checksum'], mypath):
-                    success += 1
-                else:
-                    msgs.append('File "%s" is corrupted. (checksum mismatch)' % (info['filename']))
-                    fix = True
-            else:
-                msgs.append('File "%s" is missing.' % (info['filename']))
-                missing += 1
-                fix = True
-
-            if fix:
-                archives.add(info['archive'])
-
-            checked += 1
-
-        self.post((pkg, archives, success, missing, checked, msgs))
-
     def finish(self):
-        results = self.get_results()
-
-        # Make sure that the calculated checksums are saved.
-        center.save_settings()
-
-        for pkg, archives, s, m, c, msg in results:
-            mod = pkg.get_mod()
-
-            if s == 0:
-                if m > 0:
-                    # Not Installed
-                    # What?!
-                    logging.warning('Package %s of mod %s (%s) is not installed but in the local repo. Fixing...' % (pkg.name, mod.mid, mod.title))
-                    mod.del_pkg(pkg)
-                    mod.save()
-                elif c > 0:
-                    logging.warning('Package %s of mod %s (%s) is completely corrupted!!' % (pkg.name, mod.mid, mod.title))
-
-            if pkg is not None:
-                pkg.check_notes = msg
-                pkg.files_ok = s
-                pkg.files_checked = c
-
         center.main_win.update_mod_list()
 
 
@@ -216,19 +140,18 @@ class CheckFilesTask(progress.MultistepTask):
     _check_results = None
     _steps = 2
 
-    def __init__(self, mod):
+    def __init__(self, pkgs):
         super(CheckFilesTask, self).__init__(threads=3)
 
-        self.title = 'Checking "%s"...' % mod.title
-        self.mods = [mod]
-        self._mod = mod
+        self.title = 'Checking %d packages...' % len(pkgs)
+        self.pkgs = pkgs
 
     def init1(self):
-        modpath = self._mod.folder
         pkgs = []
 
-        for pkg in self._mod.packages:
-            pkgs.append((modpath, pkg))
+        for pkg in self.pkgs:
+            mod = pkg.get_mod()
+            pkgs.append((mod.folder, pkg))
 
         self.add_work(pkgs)
 
@@ -269,29 +192,33 @@ class CheckFilesTask(progress.MultistepTask):
         self.add_work(('',))
 
     def work2(self, d):
-        modpath = self._mod.folder
         fnames = set()
+        modpaths = set()
         loose = []
 
         # Collect all filenames
         for pkg, s, c, m in self._check_results:
+            modpath = pkg.get_mod().folder
+            modpaths.add(modpath)
             for info in pkg.filelist:
-                fnames.add(info['filename'])
+                # relative paths are valid here but we only want the filename
+                fnames.add(os.path.basename(info['filename']))
 
         # Ignore files are generated by Knossos
         fnames.add('mod.json')
 
         # Check for loose files.
-        for path, dirs, files in os.walk(modpath):
-            if path == modpath:
-                subpath = ''
-            else:
-                subpath = os.path.relpath(path, modpath)
+        for modpath in modpaths:
+            for path, dirs, files in os.walk(modpath):
+                if path == modpath:
+                    subpath = ''
+                else:
+                    subpath = os.path.relpath(path, modpath)
 
-            for item in files:
-                name = os.path.join(subpath, item).replace('\\', '/')
-                if name not in fnames and not name.startswith(('__k_plibs', 'knossos.')):
-                    loose.append(name)
+                for item in files:
+                    name = os.path.join(subpath, item).replace('\\', '/')
+                    if name not in fnames and not name.startswith(('__k_plibs', 'knossos.')):
+                        loose.append(name)
 
         self._check_results.append((None, 0, 0, {'loose': loose}))
         self._results = self._check_results
@@ -385,7 +312,7 @@ class InstallTask(progress.MultistepTask):
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
 
         if self.check_after:
-            run_task(CheckTask())
+            run_task(CheckFilesTask(self._pkgs))
 
     def init1(self):
         if center.settings['neb_user']:
@@ -695,12 +622,11 @@ class UninstallTask(progress.MultistepTask):
     _steps = 2
     check_after = True
 
-    def __init__(self, pkgs, check_after=True, mods=[]):
+    def __init__(self, pkgs, mods=[]):
         super(UninstallTask, self).__init__()
 
         self._pkgs = []
         self._mods = []
-        self.check_after = check_after
 
         for pkg in pkgs:
             try:
@@ -778,8 +704,8 @@ class UninstallTask(progress.MultistepTask):
                 os.rmdir(path)
 
     def finish(self):
-        if self.check_after:
-            run_task(CheckTask())
+        # Update the local mod list which will remove the uninstalled mod
+        run_task(LoadLocalModsTask())
 
 
 class UpdateTask(InstallTask):
@@ -807,12 +733,12 @@ class UpdateTask(InstallTask):
             # The new version has been succesfully installed, remove the old version.
 
             if len(self._old_mod.get_dependents()) == 0:
-                run_task(UninstallTask(self._old_mod.packages, check_after=self.__check_after))
+                run_task(UninstallTask(self._old_mod.packages))
             else:
                 logging.debug('Not uninstalling %s after update because it still has dependents.', self._old_mod)
 
                 if self.__check_after:
-                    run_task(CheckTask())
+                    run_task(CheckFilesTask(self._pkgs))
 
 
 class UploadTask(progress.MultistepTask):

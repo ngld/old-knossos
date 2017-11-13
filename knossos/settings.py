@@ -23,7 +23,7 @@ from collections import OrderedDict
 from threading import Thread
 
 from . import center, util, launcher, runner
-from .tasks import run_task, CheckTask
+from .tasks import run_task
 from .qt import QtCore, QtWidgets, QtGui
 
 
@@ -620,9 +620,3 @@ def get_knossos_log(self):
 def show_fso_cfg_folder(self):
     path = get_fso_profile_path()
     QtGui.QDesktopServices.openUrl(QtCore.QUrl('file://' + path))
-
-
-def clear_hash_cache(self):
-    util.HASH_CACHE = dict()
-    run_task(CheckTask())
-    QtWidgets.QMessageBox.information(None, 'Knossos', tr('SettingsWindow', 'Done!'))
