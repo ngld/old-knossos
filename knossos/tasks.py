@@ -975,7 +975,7 @@ class UploadTask(progress.MultistepTask):
                 self._slot_prog['#checksums'] = ('Checksums', 0, '')
                 self._local.slot = '#checksums'
 
-                fc = float(len(fnames))
+                fc = float(sum([len(pkg.filelist) for pkg in self._mod.packages]))
                 done = 0
                 for pkg in self._mod.packages:
                     pkg_path = os.path.join(self._mod.folder, pkg.folder)
