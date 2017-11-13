@@ -241,7 +241,7 @@ class HellWindow(Window):
                 for m in center.installed.mods.get(mid, []):
                     installed_versions[str(m.version)] = m.dev_mode
 
-                rmod = center.mods.mods.get(mid, (None,))
+                rmod = center.mods.mods.get(mid, [])
                 if mod.mtype == 'engine':
                     rm_sel = None
                     for m in rmod:
@@ -251,9 +251,9 @@ class HellWindow(Window):
 
                     if rm_sel:
                         rmod = rm_sel
-                    else:
+                    elif len(rmod) > 0:
                         rmod = rmod[0]
-                else:
+                elif len(rmod) > 0:
                     rmod = rmod[0]
 
                 # TODO: Refactor (see also templates/kn-{details,devel}-page.vue)
