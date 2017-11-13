@@ -28,7 +28,7 @@ from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.install import Ui_InstallDialog
 from .ui.edit_description import Ui_Dialog as Ui_DescEditor
-from .tasks import run_task, CheckTask, GOGExtractTask, InstallTask, UninstallTask, WindowsUpdateTask
+from .tasks import run_task, GOGExtractTask, InstallTask, UninstallTask, WindowsUpdateTask, LoadLocalModsTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -186,7 +186,7 @@ class HellWindow(Window):
         center.auto_fetcher.start()
         ipc.setup()
 
-        run_task(CheckTask())
+        run_task(LoadLocalModsTask())
 
     def check_fso(self):
         if 'KN_WELCOME' not in os.environ and center.settings['base_path'] is not None:
