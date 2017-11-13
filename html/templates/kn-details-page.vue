@@ -109,6 +109,10 @@ export default {
 
         uninstallMod() {
             fs2mod.uninstall(this.mod.id, this.mod.version, []);
+        },
+
+        verifyIntegrity() {
+            fs2mod.verifyModIntegrity(this.mod.id, this.mod.version);
         }
     }
 }
@@ -167,6 +171,7 @@ export default {
                     <button @click="uploadLog">Upload Debug Log</button>
                     <button v-if="mod.id !== 'FS2' && mod.status !== 'updating' && mod.installed" @click="install">Modify</button>
                     <button v-if="mod.id !== 'FS2' && mod.status !== 'updating' && !mod.dev_mode" @click="uninstallMod">Uninstall</button>
+                    <button v-if="mod.id !== 'FS2' && !mod.dev_mode" @click="verifyIntegrity">Verify file integrity</button>
                 </kn-dropdown>
             </div>
 

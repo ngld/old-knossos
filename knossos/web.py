@@ -141,6 +141,7 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot()
     def fetchModlist(self):
         tasks.run_task(tasks.FetchTask())
+        tasks.run_task(tasks.LoadLocalModsTask())
 
     @QtCore.Slot(bool, result='QVariantList')
     def requestModlist(self, async=False):
@@ -394,6 +395,7 @@ class WebBridge(QtCore.QObject):
         else:
             center.settings['base_path'] = os.path.abspath(path)
             center.save_settings()
+            tasks.run_task(tasks.LoadLocalModsTask())
             center.main_win.check_fso()
 
     @QtCore.Slot()
@@ -1211,6 +1213,14 @@ class WebBridge(QtCore.QObject):
         mod = repo.IniMod()
         mod.load(path)
         return json.dumps(mod.get())
+
+    @QtCore.Slot(str, str)
+    def verifyModIntegrity(self, mid, version):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return
+
+        tasks.run_task(tasks.CheckFilesTask(mod.packages))
 
 
 if QtWebChannel:
