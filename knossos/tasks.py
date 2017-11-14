@@ -176,15 +176,11 @@ class CheckFilesTask(progress.MultistepTask):
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
 
-                progress.start_task(checked / count, 1.0 / count, 'Checking "%s"...' % (info['filename']))
-
-                if util.check_hash(info['checksum'], mypath, False, True):
+                if util.check_hash(info['checksum'], mypath, False):
                     success += 1
                     summary['ok'].append(info['filename'])
                 else:
                     summary['corrupt'].append(info['filename'])
-
-                progress.finish_task()
             else:
                 summary['missing'].append(info['filename'])
 

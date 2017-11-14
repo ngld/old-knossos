@@ -536,7 +536,7 @@ def url_join(a, b):
     return pjoin(a, b)
 
 
-def gen_hash(path, algo='sha256', use_hash_cache=True, use_progress=False):
+def gen_hash(path, algo='sha256', use_hash_cache=True):
     global HASH_CACHE
 
     path = os.path.abspath(path)
@@ -550,12 +550,6 @@ def gen_hash(path, algo='sha256', use_hash_cache=True, use_progress=False):
 
     logging.debug('Calculating checksum for %s...', path)
 
-    if use_progress:
-        progress.update(0.0)
-
-    max_size = info.st_size
-    current_byte = 0
-
     h = hashlib.new(algo)
     with open(path, 'rb') as stream:
         while True:
@@ -565,14 +559,6 @@ def gen_hash(path, algo='sha256', use_hash_cache=True, use_progress=False):
 
             h.update(chunk)
 
-            current_byte += len(chunk)
-
-            if use_progress:
-                progress.update(float(current_byte) / float(max_size))
-
-    if use_progress:
-        progress.update(1.0)
-
     chksum = h.hexdigest()
     if algo == 'sha256':
         HASH_CACHE[path] = (chksum, info.st_mtime)
@@ -580,13 +566,13 @@ def gen_hash(path, algo='sha256', use_hash_cache=True, use_progress=False):
     return algo, chksum
 
 
-def check_hash(value, path, use_hash_cache=True, use_progress=False):
+def check_hash(value, path, use_hash_cache=True):
     algo, csum = value
 
     if algo != 'sha256':
         logging.warning("Comparing checksums which aren't sha256! (%s, %s)" % (csum, path))
 
-    _, path_sum = gen_hash(path, algo, use_hash_cache, use_progress)
+    _, path_sum = gen_hash(path, algo, use_hash_cache)
     return csum == path_sum
 
 
