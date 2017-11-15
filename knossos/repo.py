@@ -381,7 +381,7 @@ class Repo(object):
 
                 if len(remains) == 0:
                     v = (list(variants.values())[0]['#mod'].title, ','.join([str(s) for s in specs]))
-                    raise PackageNotFound('No version of mod "%s" found for these constraints: %s' % v, mid, list(variants.values())[0].name)
+                    raise PackageNotFound('No version of mod "%s" found for these constraints: %s' % v, mid, v[0])
                 else:
                     if remains[0]['#mod'].mtype == 'engine':
                         # Multiple versions qualify and this is an engine so we have to check the stability next
