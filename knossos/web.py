@@ -1182,7 +1182,13 @@ class WebBridge(QtCore.QObject):
 
             tasks.run_task(tasks.CopyFolderTask(mod.folder, new_mod.folder))
         elif method == 'rename':
-            os.rename(mod.folder, new_mod.folder)
+            try:
+                util.safe_rename(mod.folder, new_mod.folder)
+            except OSError:
+                logging.exception('Failed to rename mod folder for new version!')
+                QtWidgets.QMessageBox.critical(None, self.tr('Error'),
+                    self.tr('Failed to rename folder "%s"! Make sure that no other pogram has locked it.') % mod.folder)
+            return False
 
             try:
                 center.installed.remove_mod(mod)

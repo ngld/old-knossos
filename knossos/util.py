@@ -873,6 +873,32 @@ def disable_raven():
     center.raven_handler = None
 
 
+def retry_helper(fn, *args, retries=5):
+    while retries > 0:
+        try:
+            return fn(*args)
+        except Exception:
+            retries -= 1
+            if retries == 0:
+                raise
+
+            time.sleep(random.randint(0, 2000) / 1000.)
+
+
+def safe_unlink(path):
+    if sys.platform == 'win32':
+        return retry_helper(os.unlink, path)
+    else:
+        return os.unlink(path)
+
+
+def safe_rename(a, b):
+    if sys.platform == 'win32':
+        return retry_helper(os.rename, a, b)
+    else:
+        return os.rename(a, b)
+
+
 class Spec(semantic_version.Spec):
 
     @classmethod

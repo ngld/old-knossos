@@ -929,7 +929,7 @@ class InstalledMod(Mod):
 
     def generate_folder(self):
         # IMPORTANT: This code decides where newly installed mods are stored.
-        base = center.settings['base_path']
+        base = os.path.normpath(center.settings['base_path'])
 
         if self.mtype in ('engine', 'tool'):
             self.folder = os.path.join(base, 'bin', self.mid)

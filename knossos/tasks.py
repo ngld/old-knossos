@@ -712,6 +712,8 @@ class UninstallTask(progress.MultistepTask):
                     shutil.rmtree(libs)
 
                 center.installed.del_mod(mod)
+            elif not os.path.isdir(modpath):
+                logging.error('Mod %s still has packages but mod folder "%s" is gone!' % (mod, modpath))
             else:
                 mod.save()
         except Exception:
@@ -1097,7 +1099,11 @@ class UploadTask(progress.MultistepTask):
         pass
 
     def finish(self):
-        self._dir.cleanup()
+        try:
+            util.retry_helper(self._dir.cleanup)
+        except OSError:
+            # This is not a critical error so we only log it for now
+            logging.exception('Failed to remove temporary folder after upload!')
 
         if self._login_failed:
             message = 'Failed to login!'
