@@ -504,6 +504,7 @@ def get_fso_flags(fs2_bin):
     else:
         with open(flags_path, 'rb') as stream:
             flags = FlagsReader(stream)
+        os.remove(flags_path)
 
     st = os.stat(fs2_bin)
     _flag_cache[fs2_bin] = (st.st_mtime, flags)
