@@ -41,12 +41,9 @@ function init() {
         'kn-mod-explore',
         'kn-settings-page'
     ];
-    window.tt = [];
 
     tmp.forEach((comp) => {
-        let c = require(`../templates/${comp}.vue`).default;
-        tt.push(c);
-        Vue.component(comp, c);
+        Vue.component(comp, require(`../templates/${comp}.vue`).default);
     });
 
     window.vm = new Vue(Object.assign({ el: '#loading' }, KnPage));
