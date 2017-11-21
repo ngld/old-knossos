@@ -302,6 +302,12 @@ export default {
                 {{ label }}
             </a>
         </div>
+        <div id="tab-bar-misc" class="keep-left" v-if="page === 'modlist'">
+            <a href="#" class="tab-misc-btn"><span class="screenshots-image"></span></a>
+        </div>
+        <div id="tab-bar-misc" class="keep-right" v-if="page !== 'modlist'">
+            <a href="#" class="tab-misc-btn"><span class="screenshots-image"></span></a>
+        </div>
     <!-------------------------------------------------------------------------------- Start the Filter Button ---------->
         <div class="filter-container" v-if="page === 'modlist'">
             <button class="filterbtn" @click="show_filter = true"></button>
