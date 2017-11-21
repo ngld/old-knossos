@@ -337,6 +337,48 @@ iframe {
     background-repeat: no-repeat;
 }
 
+#tab-bar-misc {
+    position: absolute;
+    top: 58px;
+    height: 25px;
+}
+
+.keep-left {
+    right: 35px;
+}
+
+.keep-right {
+    right: 10px;
+}
+
+.tab-misc-btn {
+    display: inline-block;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    font-family: Arial, Tahoma, Verdana, FreeSans, sans-serif;
+    /*font-size: 20px;*/
+    color: #828282;
+    text-decoration: none !important;
+    height: 25px;
+}
+
+.screenshots-image {
+    content: url(../images/icon-screenshots.png);
+    height: 16px;
+    /*vertical-align: middle;
+    padding-top: 3px;*/
+}
+
+.tab-misc-btn:hover .screenshots-image {
+    content: url(../images/icon-screenshots-h.png);
+}
+
+.tab-misc-btn.active .screenshots-image {
+    content: url(../images/icon-screenshots-a.png);
+}
+
 #installed-tab {
     margin-left: 10px;
 }
