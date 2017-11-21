@@ -69,9 +69,7 @@ export default {
         },
 
         openScreenshotFolder() {
-            call(fs2mod.getPreferencesPath, (path) => {
-                fs2mod.openExternal('file://' + path + 'screenshots');
-            });
+            fs2mod.openScreenshotFolder();
         },
 
         showHelp() {

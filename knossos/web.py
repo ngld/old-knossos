@@ -1228,9 +1228,15 @@ class WebBridge(QtCore.QObject):
 
         tasks.run_task(tasks.CheckFilesTask(mod.packages))
 
-    @QtCore.Slot(result=str)
-    def getPreferencesPath(self):
-        return settings.get_fso_profile_path()
+    @QtCore.Slot()
+    def openScreenshotFolder(self):
+        path = os.path.join(settings.get_fso_profile_path(), 'screenshots')
+
+        if os.path.isdir(path):
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', "The screenshot folder doesn't exist. Try taking screenshots before clicking this button!")
+
 
 if QtWebChannel:
     BrowserCtrl = WebBridge
