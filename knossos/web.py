@@ -1228,6 +1228,9 @@ class WebBridge(QtCore.QObject):
 
         tasks.run_task(tasks.CheckFilesTask(mod.packages))
 
+    @QtCore.Slot(result=str)
+    def getPreferencesPath(self):
+        return settings.get_fso_profile_path()
 
 if QtWebChannel:
     BrowserCtrl = WebBridge
