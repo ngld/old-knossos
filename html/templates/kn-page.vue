@@ -68,6 +68,12 @@ export default {
             fs2mod.openExternal(url);
         },
 
+        openScreenshotFolder() {
+            call(fs2mod.getPreferencesPath, (path) => {
+                fs2mod.openExternal('file://' + path + 'screenshots');
+            });
+        },
+
         showHelp() {
             alert('Not yet implemented! Sorry.');
         },
@@ -303,10 +309,10 @@ export default {
             </a>
         </div>
         <div id="tab-bar-misc" class="keep-left" v-if="page === 'modlist'">
-            <a href="#" class="tab-misc-btn"><span class="screenshots-image"></span></a>
+            <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
         </div>
         <div id="tab-bar-misc" class="keep-right" v-if="page !== 'modlist'">
-            <a href="#" class="tab-misc-btn"><span class="screenshots-image"></span></a>
+            <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
         </div>
     <!-------------------------------------------------------------------------------- Start the Filter Button ---------->
         <div class="filter-container" v-if="page === 'modlist'">
