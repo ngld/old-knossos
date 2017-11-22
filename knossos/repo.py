@@ -479,7 +479,7 @@ class Mod(object):
         self.stability = values.get('stability', 'stable')
         self.parent = values.get('parent', 'FS2')
         self.cmdline = values.get('cmdline', '')
-        self.mod_flag = values.get('mod_flag', [])
+        self.mod_flag = values.get('mod_flag', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
         self.release_thread = values.get('release_thread', None)
@@ -889,6 +889,11 @@ class InstalledMod(Mod):
         self.dev_mode = values.get('dev_mode', False)
         self.custom_build = values.get('custom_build', None)
         self.check_notes = values.get('check_notes', '')
+
+        if not self.mod_flag:
+            # Fix broken metadata
+            self.update_mod_flag()
+
         for pkg in pkgs:
             installed_pkg = InstalledPackage(pkg, self)
             # If the user installed packages on multiple platforms into the same directory then an installed package
