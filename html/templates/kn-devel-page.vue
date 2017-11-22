@@ -43,7 +43,6 @@ export default {
 
     watch: {
         mods(new_list) {
-            this.reloading = true;
             this.mod_map = {};
             for(let mod of new_list) {
                 this.mod_map[mod.id] = mod;
@@ -75,65 +74,6 @@ export default {
                             break;
                         }
                     }
-                }
-            }
-
-            this.reloading = false;
-        },
-
-        selected_mod(sel_mod) {
-            if(this.reloading) return;
-            this.selected_pkg = null;
-
-            if(sel_mod) {
-                this.tab_scroll = -1;
-                this.fso_build = null;
-                this.video_urls = sel_mod.videos.join("\n");
-
-                this.tools = [];
-                call(fs2mod.getModTools, this.selected_mod.id, this.selected_mod.version, (tools) => {
-                    this.tools = tools;
-                });
-
-                if(sel_mod.type === 'mod' || sel_mod.type === 'tc') {
-                    this.page = 'fso';
-
-                    call(fs2mod.getFsoBuild, sel_mod.id, sel_mod.version, (result) => {
-                        this.fso_build = result;
-                    });
-                } else {
-                    this.page = 'details';
-                }
-            }
-        },
-
-        selected_pkg(sel_pkg) {
-            if(this.reloading) return;
-            this.edit_dep = false;
-        },
-
-        fso_build(sel_build) {
-            if(sel_build) {
-                sel_build = sel_build.split('#');
-                call(fs2mod.getFsoCaps, sel_build[0], sel_build[1], (caps) => {
-                    this.caps = JSON.parse(caps);
-                });
-            } else {
-                this.caps = null;
-            }
-        },
-
-        edit_dep_mod(sel_mod) {
-            let mod = this.mod_map[sel_mod];
-
-            this.edit_dep_version = null;
-            this.edit_dep_pkgs = [];
-            this.edit_dep_pkg_sel = {};
-
-            if(mod && mod.packages) {
-                for(let pkg of mod.packages) {
-                    this.edit_dep_pkgs.push(pkg);
-                    this.edit_dep_pkg_sel[pkg.name] = pkg.status === 'recommended';
                 }
             }
         }
@@ -195,7 +135,27 @@ export default {
         selectMod(mod) {
             // TODO: Warn about unsaved changes?
             this.selected_mod = Object.assign({}, mod);
+            this.selected_pkg = null;
             this.sel_version = this.selected_mod.version;
+
+            this.tab_scroll = -1;
+            this.fso_build = null;
+            this.video_urls = mod.videos.join("\n");
+
+            this.tools = [];
+            call(fs2mod.getModTools, this.selected_mod.id, this.selected_mod.version, (tools) => {
+                this.tools = tools;
+            });
+
+            if(mod.type === 'mod' || mod.type === 'tc') {
+                this.page = 'fso';
+
+                call(fs2mod.getFsoBuild, mod.id, mod.version, (result) => {
+                    this.fso_build = result;
+                });
+            } else {
+                this.page = 'details';
+            }
         },
 
         selectVersion(version) {
@@ -295,6 +255,18 @@ export default {
             return this.fso_build && this.fso_build.indexOf('#') > -1;
         },
 
+        updateFsoBuild() {
+            if(this.fso_build) {
+                let sel_build = this.fso_build.split('#');
+                call(fs2mod.getFsoCaps, sel_build[0], sel_build[1], (caps) => {
+                    this.caps = JSON.parse(caps);
+                });
+            } else {
+                this.fso_build = null;
+                this.caps = null;
+            }
+        },
+
         saveModFlag() {
             fs2mod.saveModFlag(this.selected_mod.id, this.selected_mod.version, this.selected_mod.mod_flag);
         },
@@ -315,10 +287,46 @@ export default {
             this.edit_dep_pkg_sel = {};
             this.edit_dep = true;
 
+            this.updateDepModVersion();
+
             if(dep.packages !== null) {
                 for(let pkg of dep.packages) {
                     this.edit_dep_pkg_sel[pkg] = true;
                 }
+            }
+        },
+
+        updateDepMod() {
+            let mod = this.mod_map[this.edit_dep_mod];
+
+            this.edit_dep_version = null;
+            this.edit_dep_pkgs = [];
+            this.edit_dep_pkg_sel = {};
+
+            if(mod && mod.packages) {
+                for(let pkg of mod.packages) {
+                    this.edit_dep_pkgs.push(pkg);
+                    this.edit_dep_pkg_sel[pkg.name] = pkg.status === 'recommended';
+                }
+            }
+        },
+
+        updateDepModVersion() {
+            let mod = this.mod_map[this.edit_dep_mod];
+            let v = null;
+
+            for(let mv of mod.versions) {
+                if(mv.version === this.edit_dep_version) {
+                    v = mv;
+                    break;
+                }
+            }
+
+            if(!v) v = mod;
+
+            this.edit_dep_pkgs = [];
+            for(let pkg of v.packages) {
+                this.edit_dep_pkgs.push(pkg);
             }
         },
 
@@ -537,7 +545,7 @@ export default {
                             v-for="pkg, i in selected_mod.packages"
                             v-show="i > tab_scroll"
                             :class="{'active': (selected_pkg||{}).name === pkg.name }"
-                            @click.prevent="selectPkg(pkg)">
+                            @click.prevent="selectPkg(pkg); edit_dep = false">
                             {{ pkg.name }}
                         </a>
 
@@ -765,7 +773,7 @@ export default {
                                 <label class="col-xs-3 control-label">FSO build</label>
                                 <div class="col-xs-9">
                                     <div class="input-group">
-                                        <select class="form-control" v-model="fso_build">
+                                        <select class="form-control" v-model="fso_build" @change="updateFsoBuild">
                                             <option v-if="!isValidBuild()" :key="'invalid'" value="invalid">Please select a valid build</option>
                                             <option v-for="mod in engine_builds" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
                                                 {{ mod.title }} {{ mod.version }}
@@ -878,7 +886,7 @@ export default {
                                         <div class="form-group">
                                             <label class="col-xs-4 control-label">Mod</label>
                                             <div class="col-xs-8">
-                                                <select class="form-control" v-model="edit_dep_mod">
+                                                <select class="form-control" v-model="edit_dep_mod" @change="updateDepMod">
                                                     <option v-for="mod in mods" :value="mod.id" :key="mod.id">{{ mod.title }}</option>
                                                 </select>
                                             </div>
@@ -888,7 +896,7 @@ export default {
                                             <label class="col-xs-4 control-label">Version</label>
                                             <div class="col-xs-8">
                                                 <select class="form-control" disabled v-if="!mod_map[edit_dep_mod]"></select>
-                                                <select class="form-control" v-model="edit_dep_version" v-else>
+                                                <select class="form-control" v-model="edit_dep_version" @change="updateDepModVersion" v-else>
                                                     <option :value="null" :key="'newest'">newest</option>
                                                     <option v-for="v in mod_map[edit_dep_mod].versions" :value="v.version" :key="v.version">{{ v.version }}</option>
                                                 </select>
