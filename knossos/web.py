@@ -315,7 +315,7 @@ class WebBridge(QtCore.QObject):
     def getModTools(self, mid, spec):
         mod = self._get_mod(mid, spec)
         if mod in (-1, -2):
-            return mod
+            return [mod]
 
         labels = set()
         try:

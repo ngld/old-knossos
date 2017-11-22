@@ -98,11 +98,6 @@ function init() {
         }
 
         vm.mods = mods;
-
-        if(vm.page === 'modlist' || vm.page === 'develop') {
-            vm.page = type === 'develop' ? 'develop' : 'modlist';
-            vm.tab = type;
-        }
     });
     fs2mod.hidePopup.connect(() => vm.popup_visible = false);
 
