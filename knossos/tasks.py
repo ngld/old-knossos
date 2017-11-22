@@ -832,6 +832,18 @@ class UploadTask(progress.MultistepTask):
         self._local.slot = 'total'
 
         try:
+            progress.update(0, 'Performing sanity checks...')
+            if self._mod.mtype in ('mod', 'tc'):
+                try:
+                    exes = self._mod.get_executables()
+                except Exception:
+                    exes = []
+
+                if len(exes) == 0:
+                    self._reason = 'no exes'
+                    self.abort()
+                    return
+
             progress.update(0.1, 'Logging in...')
 
             self._dir = tempfile.TemporaryDirectory()
@@ -1103,7 +1115,8 @@ class UploadTask(progress.MultistepTask):
 
     def finish(self):
         try:
-            util.retry_helper(self._dir.cleanup)
+            if self._dir:
+                util.retry_helper(self._dir.cleanup)
         except OSError:
             # This is not a critical error so we only log it for now
             logging.exception('Failed to remove temporary folder after upload!')
@@ -1121,6 +1134,8 @@ class UploadTask(progress.MultistepTask):
             message += self._msg
         elif self._reason == 'empty pkg':
             message = 'The package %s is empty!' % self._msg
+        elif self._reason == 'no exes':
+            message = 'The mod has no exectuables selected!'
         elif self._reason == 'aborted':
             return
         else:
