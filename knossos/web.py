@@ -1175,7 +1175,7 @@ class WebBridge(QtCore.QObject):
                 logging.exception('Failed to rename mod folder for new version!')
                 QtWidgets.QMessageBox.critical(None, self.tr('Error'),
                     self.tr('Failed to rename folder "%s"! Make sure that no other pogram has locked it.') % mod.folder)
-            return False
+                return False
 
             try:
                 center.installed.remove_mod(mod)

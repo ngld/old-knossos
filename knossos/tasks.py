@@ -1135,7 +1135,7 @@ class UploadTask(progress.MultistepTask):
         elif self._reason == 'empty pkg':
             message = 'The package %s is empty!' % self._msg
         elif self._reason == 'no exes':
-            message = 'The mod has no exectuables selected!'
+            message = 'The mod has no executables selected!'
         elif self._reason == 'aborted':
             return
         else:

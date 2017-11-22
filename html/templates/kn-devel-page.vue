@@ -432,7 +432,7 @@ export default {
             this.selected_pkg.executables.splice(i, 1);
         },
 
-        uploadMod()  {
+        uploadMod() {
             vm.popup_progress_message = null;
             vm.popup_mode = 'are_you_sure';
             vm.popup_title = 'Upload mod';
@@ -444,6 +444,14 @@ export default {
 
                 fs2mod.startUpload(this.selected_mod.id, this.selected_mod.version);
             };
+            vm.popup_visible = true;
+        },
+
+        reopenUploadPopup() {
+            vm.popup_mode = 'mod_progress';
+            vm.popup_title = 'Upload mod';
+            vm.popup_progress_message = null;
+            vm.popup_content = this.mod_map[this.selected_mod.id];
             vm.popup_visible = true;
         },
 
@@ -513,7 +521,8 @@ export default {
                     <button v-for="tool in tools" @click.prevent="launchTool(tool)" :class="'mod-btn btn-' + (tool.toLowerCase().indexOf('fred') > -1 ? 'orange' : tool.toLowerCase().indexOf('debug') > -1 ? 'yellow' : 'grey')"><p>{{ tool }}</p></button>
 
                     <br><br>
-                    <button @click.prevent="uploadMod" class="mod-btn btn-link-blue">Upload</button>
+                    <button @click.prevent="reopenUploadPopup" class="mod-btn btn-link-blue" v-if="(this.mod_map[(this.selected_mod || {}).id] || {}).progress">Uploading...</button>
+                    <button @click.prevent="uploadMod" class="mod-btn btn-link-blue" v-else>Upload</button>
                     <button @click.prevent="deleteMod" class="mod-btn btn-link-red">Delete</button><br>
                     <button @click.prevent="openNewVersionPopup" class="mod-btn btn-link-grey">+ Version</button>
                     <button @click.prevent="addPackage" class="mod-btn btn-link-grey">+ Package</button>
