@@ -18,20 +18,17 @@ import sys
 import os
 import logging
 import subprocess
-import struct
 import hashlib
 import tempfile
 import re
 import time
-import json
 import random
 import functools
 import glob
 import semantic_version
 import requests
 import token_bucket
-from collections import OrderedDict
-from threading import Condition, Event, Thread
+from threading import Condition, Event
 from collections import deque
 
 from .vplib import VpReader
@@ -44,11 +41,6 @@ except ImportError:
     Image = None
 
 SEVEN_PATH = '7z'
-# Copied from http://sourceforge.net/p/sevenzipjbind/code/ci/master/tree/jbinding-java/src/net/sf/sevenzipjbinding/ArchiveFormat.java
-# to conform to the FSO Installer.
-ARCHIVE_FORMATS = ('zip', 'tar', 'split', 'rar', 'lzma', 'iso', 'hfs', 'gzip', 'gz',
-                   'cpio', 'bzip2', 'bz2', '7z', 'z', 'arj', 'cab', 'lzh', 'chm',
-                   'nsis', 'deb', 'rpm', 'udf', 'wim', 'xar')
 # TODO: Too many?
 USER_AGENTS = (
     'Mozilla/5.0 (compatible; Knossos %s +http://dev.tproxy.de/knossos/)' % (center.VERSION),
@@ -106,7 +98,6 @@ HTTP_SESSION.verify = True
 QUIET = not center.DEBUG
 QUIET_EXC = False
 HASH_CACHE = dict()
-_HAS_CONVERT = None
 _HAS_TAR = None
 DL_POOL = None
 _DL_CANCEL = Event()
@@ -463,20 +454,6 @@ def cancel_downloads():
     _DL_CANCEL.clear()
 
 
-# Tries all passed links until one succeeds.
-def try_download(links, dest):
-    for url in links:
-        if download(url, dest):
-            return True
-
-    return False
-
-
-# Actually transforms a given path into a platform-specific one.
-def normpath(path):
-    return os.path.normcase(path.replace('\\', '/'))
-
-
 # Try to map a case insensitive path to an existing one.
 def ipath(path):
     if os.path.exists(path) or path == '':
@@ -597,16 +574,6 @@ def test_7z():
             return False
 
 
-def is_archive(path):
-    path = path.lower()
-
-    for ext in ARCHIVE_FORMATS:
-        if path.endswith('.' + ext):
-            return True
-
-    return False
-
-
 def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
     global _HAS_TAR
 
@@ -689,33 +656,6 @@ def extract_archive(archive, outpath, overwrite=False, files=None, _rec=False):
         return call(cmd) == 0
 
 
-def convert_img(path, outfmt):
-    global _HAS_CONVERT
-
-    fd, dest = tempfile.mkstemp('.' + outfmt)
-    os.close(fd)
-    if Image is not None:
-        img = Image.open(path)
-        img.save(dest)
-
-        return dest
-    else:
-        if _HAS_CONVERT is None:
-            try:
-                subprocess.check_call(['which', 'convert'], stdout=subprocess.DEVNULL)
-                _HAS_CONVERT = True
-            except subprocess.CalledProcessError:
-                # Well, this failed, too. Is there any other way to convert an image?
-                # For now I'll just abort.
-                _HAS_CONVERT = False
-                return None
-        elif _HAS_CONVERT is False:
-            return None
-
-        subprocess.check_call(['convert', path, dest])
-        return dest
-
-
 def init_ui(ui, win):
     ui.setupUi(win)
     for attr in ui.__dict__:
@@ -730,16 +670,6 @@ def is_number(s):
         return True
     except TypeError:
         return False
-
-
-def merge_dicts(a, b):
-    for k, v in b.items():
-        if k in a and isinstance(v, dict) and isinstance(a[k], dict):
-            merge_dicts(a[k], v)
-        else:
-            a[k] = v
-
-    return a
 
 
 def get_cpuinfo():
@@ -761,14 +691,6 @@ def get_user_agent(random_ua=False):
         return USER_AGENTS[0]
 
 
-def str_random(slen):
-    s = ''
-    for i in range(0, slen):
-        s += random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
-
-    return s
-
-
 def human_list(items):
     if not isinstance(items, list):
         items = list(items)
@@ -779,15 +701,6 @@ def human_list(items):
         return items[0]
     else:
         return ', '.join(items[:-1]) + translate('util.human_list', ' and ') + items[-1]
-
-
-def connect(sig, cb, *args):
-    cb = functools.partial(cb, *args)
-    if not hasattr(sig, '_pyl'):
-        sig._pyl = []
-
-    sig._pyl.append(cb)
-    sig.connect(cb)
 
 
 def is_fs2_retail_directory(path):
@@ -946,5 +859,4 @@ if sys.hexversion >= 0x020709F0:
         del pssl
 
 if sys.platform.startswith('win'):
-    _HAS_CONVERT = False
     _HAS_TAR = False
