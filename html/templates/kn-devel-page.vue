@@ -140,6 +140,7 @@ export default {
 
             this.tab_scroll = -1;
             this.fso_build = null;
+            this.caps = null;
             this.video_urls = mod.videos.join("\n");
 
             this.tools = [];
@@ -152,6 +153,7 @@ export default {
 
                 call(fs2mod.getFsoBuild, mod.id, mod.version, (result) => {
                     this.fso_build = result;
+                    this.updateFsoBuild();
                 });
             } else {
                 this.page = 'details';

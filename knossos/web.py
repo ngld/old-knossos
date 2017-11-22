@@ -905,7 +905,7 @@ class WebBridge(QtCore.QObject):
                         if pkg.status == 'required':
                             pkg.dependencies.append({
                                 'id': build[0],
-                                'version': build[1]
+                                'version': '>=' + build[1]
                             })
                             done = True
                             break

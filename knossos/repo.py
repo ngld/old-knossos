@@ -578,13 +578,13 @@ class Mod(object):
 
         return files
 
-    def resolve_deps(self, only_required=True):
+    def resolve_deps(self, only_required=True, recursive=True):
         if only_required:
             pkgs = [pkg for pkg in self.packages if pkg.status == 'required']
         else:
             pkgs = [pkg for pkg in self.packages if pkg.status in ('required', 'recommended')]
 
-        return self._repo.process_pkg_selection(pkgs)
+        return self._repo.process_pkg_selection(pkgs, recursive=recursive)
 
     def get_parent(self):
         if self.parent:
@@ -1053,9 +1053,7 @@ class InstalledMod(Mod):
             deps = self.packages
         else:
             try:
-                deps = self.resolve_deps(True)
-                if not deps:
-                    deps = self.resolve_deps()
+                deps = self.resolve_deps(True, False)
             except ModNotFound:
                 logging.exception('Error during dep resolve for executables!')
                 deps = []
