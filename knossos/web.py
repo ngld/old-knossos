@@ -790,6 +790,7 @@ class WebBridge(QtCore.QObject):
         if mod.mtype == 'engine':
             mod.stability = data['stability']
 
+        mod.title = data['title']
         mod.description = data['description']
         imlist = set()
         for prop in ('logo', 'tile', 'banner', 'screenshots', 'attachments'):
