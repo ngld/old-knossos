@@ -336,12 +336,15 @@ class InstallTask(progress.MultistepTask):
 
     def init1(self):
         if center.settings['neb_user']:
-            neb = nebula.NebulaClient()
-            editable = neb.get_editable_mods()
+            try:
+                neb = nebula.NebulaClient()
+                editable = neb.get_editable_mods()
 
-            for mod in self._mods:
-                if mod.mid in editable:
-                    mod.dev_mode = True
+                for mod in self._mods:
+                    if mod.mid in editable:
+                        mod.dev_mode = True
+            except Exception:
+                logging.exception('Failed to login to the Nebula')
 
         self._threads = 3
         self.add_work(self._mods)
