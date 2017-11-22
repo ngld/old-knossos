@@ -93,6 +93,7 @@ def update(prog, text=''):
 
 # Task scheduler
 class Worker(threading.Thread):
+    busy = False
 
     def __init__(self, master):
         super(Worker, self).__init__()
@@ -107,17 +108,20 @@ class Worker(threading.Thread):
             if task is None:
                 return
 
+            self.busy = True
             try:
                 reset()
                 set_callback(task[0]._track_progress)
                 task[0]._init()
                 task[0].work(*task[1])
             except SystemExit:
+                self.busy = False
                 return
             except Exception:
                 logging.exception('Exception in Thread!')
 
             task[0]._deinit()
+            self.busy = False
 
 
 class Master(object):
@@ -194,6 +198,9 @@ class Master(object):
     def wake_workers(self):
         with self._worker_cond:
             self._worker_cond.notify_all()
+
+    def is_busy(self):
+        return any([w.busy for w in self._workers])
 
 
 class Task(QtCore.QObject):

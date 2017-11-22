@@ -49,9 +49,14 @@ class QMainWindow(QtWidgets.QMainWindow):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
     def closeEvent(self, e):
-        e.accept()
+        if center.pmaster.is_busy():
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                'Some tasks are still running in the background. Please wait for them to finish or abort them.')
 
-        center.app.quit()
+            e.ignore()
+        else:
+            e.accept()
+            center.app.quit()
 
     def changeEvent(self, event):
         if event.type() == QtCore.QEvent.ActivationChange:
