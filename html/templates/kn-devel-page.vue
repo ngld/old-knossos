@@ -315,7 +315,7 @@ export default {
             this.edit_dep_pkg_sel = {};
             this.edit_dep = true;
 
-            if(dep.packages) {
+            if(dep.packages !== null) {
                 for(let pkg of dep.packages) {
                     this.edit_dep_pkg_sel[pkg] = true;
                 }
