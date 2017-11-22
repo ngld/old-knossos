@@ -550,7 +550,21 @@ export default {
 
                 <div class="form-content container-fluid scroll-style">
                     <form class="form-horizontal" v-if="selected_mod">
-                        <div v-if="!selected_pkg && page === 'details'">
+                        <div v-if="selected_mod.packages.length === 0">
+                            <h4>Dev Help</h4>
+
+                            <p class="help-block">
+                                This mod doesn't have packages.
+                            </p>
+
+                            <p class="help-block">
+                                To create a package click the "+ Package" button on the left.<br>
+                                Packages contain mod files and you will usually create one for each VP file. Knossos will create a folder for each package.<br>
+                                You have to place your mod files in these folders. If you want to, Knossos can then pack everything in that folder automatically
+                                into a VP when you upload. Click on the package name in the top tab list to edit it.
+                            </p>
+                        </div>
+                        <div v-else-if="!selected_pkg && page === 'details'">
                             <h4>Mod Details</h4>
 
                             <div class="form-group">
@@ -744,7 +758,7 @@ export default {
                             </div>
                         </div>
 
-                        <div v-if="!selected_pkg && page === 'fso'">
+                        <div v-else-if="!selected_pkg && page === 'fso'">
                             <h4>FSO Settings</h4>
 
                             <div class="form-group">

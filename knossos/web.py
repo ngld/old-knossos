@@ -633,21 +633,7 @@ class WebBridge(QtCore.QObject):
 
             return True
         else:
-            pkg = repo.InstalledPackage({
-                'name': 'Content',
-                'status': 'required',
-                'folder': 'content'
-            })
-
-            if mtype in ('tool', 'engine'):
-                pkg.folder = '.'
-
             os.mkdir(mod.folder)
-            pkg_folder = os.path.join(mod.folder, pkg.folder)
-            if not os.path.isdir(pkg_folder):
-                os.mkdir(pkg_folder)
-
-            mod.add_pkg(pkg)
             mod.save()
 
             center.installed.add_mod(mod)
