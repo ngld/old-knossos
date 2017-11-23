@@ -430,9 +430,6 @@ class WebBridge(QtCore.QObject):
         if center.settings['fs2_bin']:
             try:
                 flags = settings.get_fso_flags(center.settings['fs2_bin'])
-
-                if flags:
-                    flags = flags.to_dict()
             except Exception:
                 logging.exception('Failed to fetch FSO flags!')
 
@@ -1095,8 +1092,6 @@ class WebBridge(QtCore.QObject):
         flags = None
         if mid == 'custom':
             flags = settings.get_fso_flags(version)
-            if flags:
-                flags = flags.to_dict()
 
             return json.dumps(flags)
 
@@ -1107,9 +1102,6 @@ class WebBridge(QtCore.QObject):
             for exe in mod.get_executables():
                 if not exe['label']:
                     flags = settings.get_fso_flags(exe['file'])
-
-            if flags:
-                flags = flags.to_dict()
         except repo.NoExecutablesFound:
             return 'null'
         except Exception:

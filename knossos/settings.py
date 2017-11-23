@@ -20,6 +20,7 @@ import json
 import struct
 import logging
 from collections import OrderedDict
+from json.decoder import JSONDecodeError
 from threading import Thread
 
 from . import center, util, launcher, runner
@@ -89,19 +90,19 @@ class FlagsReader(object):
 
     @property
     def openal(self):
-        return self.build_caps & 1
+        return self.build_caps & 1 != 0
 
     @property
     def no_d3d(self):
-        return self.build_caps & (1 << 1)
+        return self.build_caps & (1 << 1) != 0
 
     @property
     def new_snd(self):
-        return self.build_caps & (1 << 2)
+        return self.build_caps & (1 << 2) != 0
 
     @property
     def sdl(self):
-        return self.build_caps & (1 << 3)
+        return self.build_caps & (1 << 3) != 0
 
     def to_dict(self):
         return {
@@ -492,19 +493,74 @@ def get_fso_flags(fs2_bin):
         if st.st_mtime == mtime:
             return flags
 
-    flags_path = os.path.join(center.settings['base_path'], 'flags.lch')
-    rc = runner.run_fs2_silent([fs2_bin, '-get_flags', '-parse_cmdline_only'])
+    output_types = ["json_v1", "binary"]
 
     flags = None
 
-    if rc != 1 and rc != 0:
-        logging.error('Failed to run FSO! (Exit code was %d)', rc)
-    elif not os.path.isfile(flags_path):
-        logging.error('Could not find the flags file "%s"!', flags_path)
-    else:
-        with open(flags_path, 'rb') as stream:
-            flags = FlagsReader(stream)
-        os.remove(flags_path)
+    for output_type in output_types:
+        rc, output = runner.run_fs2_silent([fs2_bin, '-get_flags', output_type, '-parse_cmdline_only'])
+
+        if rc != 1 and rc != 0:
+            logging.error('Failed to run FSO! (Exit code was %d)', rc)
+            break
+        elif "OUTPUT TYPE NOT SUPPORTED!" in output:
+            # FSO does not support this output type
+            continue
+        else:
+            # Output probably worked
+            if output_type == "json_v1" and output is not None and output != "":
+                # We got some JSON flag output
+                try:
+                    json_flags = json.loads(output)
+                except JSONDecodeError as e:
+                    logging.error("Failed to read JSON printed by FSO: " + str(e))
+                    # Try one of the other output types...
+                    continue
+
+                # The rest of the code expects a slightly different format for the flags so the JSON data needs to be
+                # converted.
+                flags = {
+                    "easy_flags": OrderedDict(),
+                    "flags": OrderedDict()
+                }
+
+                for i, easy_flag in enumerate(json_flags["easy_flags"]):
+                    flags["easy_flags"][1 << i] = easy_flag
+
+                for i, json_flag in enumerate(json_flags["flags"]):
+                    flag = {
+                        'name': json_flag["name"],
+                        'desc': json_flag["description"],
+                        'fso_only': json_flag["fso_only"],
+                        'on_flags': json_flag["on_flags"],
+                        'off_flags': json_flag["off_flags"],
+                        'type': json_flag["type"],
+                        'web_url': json_flag["web_url"]
+                    }
+
+                    if flag['type'] not in flags["flags"]:
+                        flags["flags"][flag['type']] = []
+
+                    flags["flags"][flag['type']].append(flag)
+
+                flags["openal"] = "OpenAL" in json_flags["caps"]
+                flags["no_d3d"] = "No D3D" in json_flags["caps"]
+                flags["new_snd"] = "New Sound" in json_flags["caps"]
+                flags["sdl"] = "SDL" in json_flags["caps"]
+
+                break
+            elif output_type == "binary" or output is None or output == "":
+                # Either all previous types were unsupported or we didn't get any output at all
+                # This must be a build that simply doesn't support the JSON output.
+                flags_path = os.path.join(center.settings['base_path'], 'flags.lch')
+                if not os.path.isfile(flags_path):
+                    logging.error('Could not find the flags file "%s"!', flags_path)
+                else:
+                    with open(flags_path, 'rb') as stream:
+                        flags = FlagsReader(stream).to_dict()
+                    os.remove(flags_path)
+
+                break
 
     st = os.stat(fs2_bin)
     _flag_cache[fs2_bin] = (st.st_mtime, flags)
@@ -571,7 +627,7 @@ def save_setting(name, value):
 
         if not get_fso_flags(value):
             # We failed to run FSO but why?
-            rc = runner.run_fs2_silent(['-help'])
+            rc, _ = runner.run_fs2_silent(['-help'])
             if rc == -128:
                 msg = tr('SettingsWindow', 'The FSO binary "%s" is missing!') % value
             elif rc == -127:
