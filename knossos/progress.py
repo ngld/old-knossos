@@ -217,6 +217,8 @@ class Task(QtCore.QObject):
     _running = 0
     _pending = 0
     _threads = 0
+    _local = None
+    _slot_prog = None
     background = False
     can_abort = True
     aborted = False
@@ -237,9 +239,10 @@ class Task(QtCore.QObject):
         self._result_lock = threading.Lock()
         self._work_lock = threading.Lock()
         self._done = threading.Event()
-        self._progress = dict()
         self._progress_lock = threading.Lock()
         self._threads = threads
+        self._local = threading.local()
+        self._slot_prog = {}
         self.mods = []
 
     def _get_work(self):
@@ -258,7 +261,6 @@ class Task(QtCore.QObject):
 
     def _init(self):
         with self._progress_lock:
-            self._progress[threading.get_ident()] = (0, 'Ready')
             self._running += 1
 
     def _deinit(self):
@@ -266,7 +268,6 @@ class Task(QtCore.QObject):
             with self._work_lock:
                 self._pending -= 1
 
-            self._progress[threading.get_ident()] = (0, 'Done')
             self._running -= 1
 
             if self._running == 0 and not self._has_work() and not self._done.is_set():
@@ -275,9 +276,14 @@ class Task(QtCore.QObject):
 
     def _track_progress(self, prog, text):
         with self._progress_lock:
-            self._progress[threading.get_ident()] = (prog, text)
+            if hasattr(self._local, 'slot'):
+                self._slot_prog[self._local.slot] = (self._slot_prog[self._local.slot][0], prog, text)
 
-        self.progress.emit(self.get_progress())
+            total = 0
+            for label, prog, text in self._slot_prog.values():
+                total += prog
+
+            self.progress.emit((total / max(1, len(self._slot_prog)), self._slot_prog, self.title))
 
     def post(self, result):
         with self._result_lock:
@@ -308,9 +314,6 @@ class Task(QtCore.QObject):
         self._master.check_tasks()
 
     def get_progress(self):
-        with self._progress_lock:
-            prog = self._progress.copy()
-
         with self._work_lock:
             wc_left = len(self._work)
             wc_total = self._work_count
@@ -326,7 +329,7 @@ class Task(QtCore.QObject):
         for item in prog.values():
             total += item[0] * (1.0 / count)
 
-        return total, prog, self.title
+        return total, {}, self.title
 
     def is_done(self):
         if not self._done.is_set():

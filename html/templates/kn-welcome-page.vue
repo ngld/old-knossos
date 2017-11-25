@@ -1,18 +1,13 @@
 <script>
-const default_paths = {
-    win32: 'C:\\Games\\FreespaceOpen',
-    linux: '~/games/FreespaceOpen',
-    macos: '~/Documents/Games/FreespaceOpen'
-};
-
 export default {
     data: () => ({
         step: 1,
-        data_path: (default_paths[platform] || ''),
+        data_path: '',
 
         retail_searching: false,
         retail_found: false,
         retail_path: '',
+        retail_installed: false,
 
         installer_path: '',
 
@@ -30,6 +25,10 @@ export default {
                 this.retail_found = true;
                 this.retail_path = path;
             }
+        });
+
+        call(fs2mod.getDefaultBasePath, (result) => {
+            this.data_path = result;
         });
     },
 
@@ -63,7 +62,21 @@ export default {
         },
 
         processRetail() {
-            alert('Not yet implemented!');
+            let path = this.installer_path === '' ? this.retail_path : this.installer_path;
+            call(fs2mod.copyRetailData, path, (result) => {
+                if(result) {
+                    vm.popup_visible = true;
+                    vm.popup_title = 'Installing Retail';
+                    vm.popup_mode = 'mod_progress';
+                    vm.popup_mod_id = 'FS2';
+
+                    connectOnce(fs2mod.retailInstalled, () => {
+                        vm.popup_visible = false;
+                        this.retail_installed = true;
+                        this.step++;
+                    });
+                }
+            });
         },
 
         skipRetail() {
@@ -112,38 +125,51 @@ export default {
 
             <form class="form-horizontal">
                 <p>Just a few more steps...</p>
-                <p>
-                    If you want to play Freespace 2 Mods (Games that are built on and modify Retail Freespace 2 data), you'll need
-                    to get Retail Freespace 2 installed. First, you'll need to own a copy. You can buy it here at
-                    <a href="https://www.gog.com/game/freespace_2" class="open-ext">gog.com</a> for just a few dollars.
-                </p>
 
-                <p>Once you have purchased Freespace 2, just point us to the GOG Installer EXE.</p>
-            
-                <div class="input-group">
-                    <input type="text" class="form-control" v-model="installer_path">
-                    <span class="input-group-btn">
-                        <button class="btn btn-default" @click.prevent="selectInstaller">Browse...</button>
-                    </span>
+                <div v-if="retail_found">
+                    <p>We found an existing Freespace 2 installation in the location below. Is this correct?</p>
+
+                    <p><strong>{{ retail_path }}</strong></p>
+
+                    <p>
+                        <button class="btn btn-primary" @click.prevent="processRetail">Yes</button>
+                        <button class="btn btn-default pull-right" @click.prevent="retail_found = false">No</button>
+                    </p>
                 </div>
-                <br>
+                <div v-else>
+                    <p>
+                        If you want to play Freespace 2 Mods (Games that are built on and modify Retail Freespace 2 data), you'll need
+                        to get Retail Freespace 2 installed. First, you'll need to own a copy. You can buy it here at
+                        <a href="https://www.gog.com/game/freespace_2" class="open-ext">gog.com</a> for just a few dollars.
+                    </p>
 
-                <p>OR...</p>
+                    <p>Once you have purchased Freespace 2, just point us to the GOG Installer EXE.</p>
+                
+                    <div class="input-group">
+                        <input type="text" class="form-control" v-model="installer_path">
+                        <span class="input-group-btn">
+                            <button class="btn btn-default" @click.prevent="selectInstaller">Browse...</button>
+                        </span>
+                    </div>
+                    <br>
 
-                <p>If you already own Freespace 2, just point us to the retail data files (usually C:\Games\Freespace2).</p>
+                    <p>OR...</p>
 
-                <div class="input-group">
-                    <input type="text" class="form-control" v-model="retail_path">
-                    <span class="input-group-btn">
-                        <button class="btn btn-default" @click.prevent="selectRetailFolder">Browse...</button>
-                    </span>
+                    <p>If you already own Freespace 2, just point us to the retail data files (usually C:\Games\Freespace2).</p>
+
+                    <div class="input-group">
+                        <input type="text" class="form-control" v-model="retail_path">
+                        <span class="input-group-btn">
+                            <button class="btn btn-default" @click.prevent="selectRetailFolder">Browse...</button>
+                        </span>
+                    </div>
+                    <br>
+
+                    <p>
+                        <button class="btn btn-primary" @click.prevent="processRetail">Continue</button>
+                        <button class="btn btn-default pull-right" @click.prevent="wl_popup_visible = true">Skip</button>
+                    </p>
                 </div>
-                <br>
-
-                <p>
-                    <button class="btn btn-primary" @click.prevent="processRetail">Continue</button>
-                    <button class="btn btn-default pull-right" @click.prevent="wl_popup_visible = true">Skip</button>
-                </p>
             </form>
         </div>
 
@@ -155,7 +181,7 @@ export default {
                 <a href="#" @click.prevent="goToExplore">Explore</a> tab and pick a few to start with.
             </p>
 
-            <p>
+            <p v-if="retail_installed">
                 If you are interested in playing Retail Freespace 2, we recommend you install the
                 <a href="#" @click.prevent="goToMVPS">MediaVPs mod</a>. That mod will let you play Freespace 2 with all
                 of the glittery graphical goodness that Hard-Light has created over the years!

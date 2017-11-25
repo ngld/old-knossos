@@ -147,6 +147,7 @@ class HellWindow(Window):
     _search_text = ''
     _updating_mods = None
     _init_done = False
+    _prg_visible = False
     browser_ctrl = None
     progress_win = None
 
@@ -313,17 +314,13 @@ class HellWindow(Window):
         task.done.connect(functools.partial(self._forget_task, task))
         task.progress.connect(functools.partial(self._track_progress, task))
 
-        if len(task.mods) == 0:
-            if len(self._tasks) == 1:
+        if len(task.mods) == 0 and not self._prg_visible:
+                self._prg_visible = True
                 self.win.progressInfo.show()
                 self.win.progressLabel.setText(task.title)
                 self.win.progressBar.setValue(0)
 
                 integration.current.show_progress(0)
-            else:
-                # TODO: Stop being lazy and calculate the aggregate progress.
-                self.win.progressBar.hide()
-                self.win.progressLabel.setText(self.tr('Working...'))
 
     def _track_progress(self, task, pi):
         self.browser_ctrl.bridge.taskProgress.emit(id(task), pi[0] * 100, json.dumps(pi[1]))
@@ -331,7 +328,7 @@ class HellWindow(Window):
         for m in task.mods:
             self._updating_mods[m.mid] = pi[0] * 100
 
-        if len(self._tasks) == 1:
+        if len(task.mods) == 0 and self._prg_visible:
             integration.current.set_progress(pi[0])
             self.win.progressBar.setValue(pi[0] * 100)
 
@@ -344,12 +341,8 @@ class HellWindow(Window):
             if m.mid in self._updating_mods:
                 del self._updating_mods[m.mid]
 
-        if len(self._tasks) == 1:
-            task = list(self._tasks.values())[0]
-            self.win.progressLabel.setText(task.title)
-            self.win.progressBar.setValue(task.get_progress()[0])
-            self.win.progressBar.show()
-        elif len(self._tasks) == 0:
+        if len(task.mods) == 0 and self._prg_visible:
+            self._prg_visible = False
             self.win.progressInfo.hide()
             integration.current.hide_progress()
 

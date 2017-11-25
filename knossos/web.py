@@ -44,6 +44,7 @@ class WebBridge(QtCore.QObject):
     updateModlist = QtCore.Signal(str, str)
     modProgress = QtCore.Signal(str, float, str)
     settingsArrived = QtCore.Signal(str)
+    retailInstalled = QtCore.Signal()
     hidePopup = QtCore.Signal()
     applyDevDesc = QtCore.Signal(str)
 
@@ -1247,6 +1248,17 @@ class WebBridge(QtCore.QObject):
             QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos', "The screenshot folder doesn't exist. Try taking screenshots before clicking this button!")
+
+    @QtCore.Slot(result=str)
+    def getDefaultBasePath(self):
+        if sys.platform == 'win32':
+            return 'C:\\Games\\FreespaceOpen'
+        elif sys.platform == 'linux':
+            return os.path.expanduser('~/games/FreespaceOpen')
+        elif sys.platform == 'macos':
+            return os.path.expanduser('~/Documents/Games/FreespaceOpen')
+        else:
+            return ''
 
 
 if QtWebChannel:

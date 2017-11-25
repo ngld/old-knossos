@@ -128,6 +128,7 @@ function init() {
             if(mod_table[mid]) {
                 mod_table[mid].progress = progress;
                 mod_table[mid].progress_info = details;
+                vm.$set(vm.popup_progress, mid, details);
             }
         }
     });

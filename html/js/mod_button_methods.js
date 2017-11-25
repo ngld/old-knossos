@@ -28,7 +28,7 @@ export default {
 
     showProgress() {
         vm.popup_progress_message = null;
-        vm.popup_content = this.mod;
+        vm.popup_mod_id = this.mod.id;
         vm.popup_title = 'Installation Details';
         vm.popup_mode = 'mod_progress';
         vm.popup_visible = true;

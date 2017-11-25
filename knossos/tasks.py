@@ -255,7 +255,6 @@ class InstallTask(progress.MultistepTask):
     _steps = 3
     _error = False
     _7z_lock = None
-    _pkg_prog = None
     check_after = True
 
     def __init__(self, pkgs, mod=None, check_after=True):
@@ -264,8 +263,6 @@ class InstallTask(progress.MultistepTask):
         self._mods = set()
         self._pkgs = []
         self._pkg_names = []
-        self._pkg_prog = {}
-        self._local = threading.local()
         self.check_after = check_after
 
         if sys.platform == 'win32':
@@ -290,7 +287,7 @@ class InstallTask(progress.MultistepTask):
             self._pkg_names.append((pmod.mid, ins_pkg.name))
 
             for item in ins_pkg.files.values():
-                self._pkg_prog[id(item)] = ('%s: %s' % (pmod.title, item['filename']), 0, 'Checking...')
+                self._slot_prog[id(item)] = ('%s: %s' % (pmod.title, item['filename']), 0, 'Checking...')
 
         for m in self._mods:
             if m not in self.mods:
@@ -299,17 +296,6 @@ class InstallTask(progress.MultistepTask):
         center.signals.repo_updated.emit()
         self.done.connect(self.finish)
         self.title = 'Installing mods...'
-
-    def _track_progress(self, prog, text):
-        with self._progress_lock:
-            if self._local.pkg:
-                self._pkg_prog[self._local.pkg] = (self._pkg_prog[self._local.pkg][0], prog, text)
-
-            total = 0
-            for label, prog, text in self._pkg_prog.values():
-                total += prog
-
-            self.progress.emit((total / max(1, len(self._pkg_prog)), self._pkg_prog, 'Installing mods...'))
 
     def abort(self):
         super(InstallTask, self).abort()
@@ -353,8 +339,8 @@ class InstallTask(progress.MultistepTask):
         modpath = mod.folder
         mfiles = mod.get_files()
         mnames = [f['filename'] for f in mfiles] + ['knossos.bmp', 'mod.json']
-        self._local.pkg = id(mod)
-        self._pkg_prog[id(mod)] = (mod.title, 0, '')
+        self._local.slot = id(mod)
+        self._slot_prog[id(mod)] = (mod.title, 0, '')
 
         archives = set()
         progress.start_task(0, 0.9, '%s')
@@ -456,7 +442,7 @@ class InstallTask(progress.MultistepTask):
                     item['_id'] = id(oitem)
                     downloads.append(item)
                 else:
-                    del self._pkg_prog[id(oitem)]
+                    del self._slot_prog[id(oitem)]
 
         if len(archives) == 0:
             logging.info('Nothing to do for this InstallTask!')
@@ -468,7 +454,7 @@ class InstallTask(progress.MultistepTask):
         self.add_work(downloads)
 
     def work2(self, archive):
-        self._local.pkg = archive['_id']
+        self._local.slot = archive['_id']
 
         with tempfile.TemporaryDirectory() as tpath:
             arpath = os.path.join(tpath, archive['filename'])
@@ -794,7 +780,6 @@ class UploadTask(progress.MultistepTask):
         self._mod = mod.copy()
 
         self._threads = 2
-        self._local = threading.local()
         self._slot_prog = {
             'total': ('Status', 0, 'Waiting...')
         }
@@ -802,17 +787,6 @@ class UploadTask(progress.MultistepTask):
         self.done.connect(self.finish)
         self._question.connect(self.show_question)
         self._question_cond = threading.Condition()
-
-    def _track_progress(self, prog, text):
-        with self._progress_lock:
-            if self._local.slot:
-                self._slot_prog[self._local.slot] = (self._slot_prog[self._local.slot][0], prog, text)
-
-            total = 0
-            for label, prog, text in self._slot_prog.values():
-                total += prog
-
-            self.progress.emit((total / max(1, len(self._slot_prog)), self._slot_prog, 'Uploading mod...'))
 
     def abort(self):
         self._local.slot = 'total'
@@ -1154,6 +1128,13 @@ class GOGExtractTask(progress.Task):
         self.add_work([(gog_path, dest_path)])
         self.title = 'Installing FS2 from GOG...'
 
+        self._makedirs(dest_path)
+        create_retail_mod(dest_path)
+        center.main_win.update_mod_buttons('home')
+
+        self.mods = [center.installed.query('FS2')]
+        self._slot_prog['total'] = ('Status', 0, 'Waiting...')
+
         if not center.installed.has('FSO'):
             try:
                 fso = center.mods.query('FSO')
@@ -1163,6 +1144,7 @@ class GOGExtractTask(progress.Task):
 
     def work(self, paths):
         gog_path, dest_path = paths
+        self._local.slot = 'total'
 
         progress.update(0.03, 'Looking for InnoExtract...')
         data = util.get(center.INNOEXTRACT_LINK)
@@ -1280,8 +1262,6 @@ class GOGExtractTask(progress.Task):
         shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
         shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
 
-        create_retail_mod(dest_path)
-
         self.post(dest_path)
 
     def _makedirs(self, path):
@@ -1299,10 +1279,8 @@ class GOGExtractTask(progress.Task):
                 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?'))
             return
         else:
-            QtWidgets.QMessageBox.information(None, translate('tasks', 'Done'), self.tr(
-                'FS2 has been successfully installed.'))
-
             center.main_win.update_mod_list()
+            center.main_win.browser_ctrl.bridge.retailInstalled.emit()
 
 
 class GOGCopyTask(progress.Task):
@@ -1315,6 +1293,13 @@ class GOGCopyTask(progress.Task):
         self.add_work([(gog_path, dest_path)])
         self.title = 'Copying retail files...'
 
+        self._makedirs(dest_path)
+        create_retail_mod(dest_path)
+        center.main_win.update_mod_buttons('home')
+
+        self.mods = [center.installed.query('FS2')]
+        self._slot_prog['total'] = ('Status', 0, 'Waiting...')
+
         if not center.installed.has('FSO'):
             try:
                 fso = center.mods.query('FSO')
@@ -1324,25 +1309,28 @@ class GOGCopyTask(progress.Task):
 
     def work(self, paths):
         gog_path, dest_path = paths
+        self._local.slot = 'total'
 
-        progress.update(0, 'Copying files...')
+        progress.update(0, 'Creating directories...')
         self._makedirs(os.path.join(dest_path, 'data/players'))
         self._makedirs(os.path.join(dest_path, 'data/movies'))
 
+        progress.update(1 / 4., 'Copying VPs...')
         for item in glob.glob(os.path.join(gog_path, '*.vp')):
             shutil.copyfile(item, os.path.join(dest_path, os.path.basename(item)))
 
+        progress.update(2 / 4., 'Copying player profiles...')
         for item in glob.glob(os.path.join(gog_path, 'data/players', '*.hcf')):
             shutil.copyfile(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
 
+        progress.update(3 / 4., 'Copying cutscenes...')
         for item in glob.glob(os.path.join(gog_path, 'data2', '*.mve')):
             shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
         for item in glob.glob(os.path.join(gog_path, 'data3', '*.mve')):
             shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
-        create_retail_mod(dest_path)
-
+        progress.update(1, 'Done')
         self.post(dest_path)
 
     def _makedirs(self, path):
@@ -1351,6 +1339,7 @@ class GOGCopyTask(progress.Task):
 
     def finish(self):
         center.main_win.update_mod_list()
+        center.main_win.browser_ctrl.bridge.retailInstalled.emit()
 
 
 class CheckUpdateTask(progress.Task):

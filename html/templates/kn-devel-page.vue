@@ -440,7 +440,7 @@ export default {
             vm.sureCallback = () => {
                 vm.popup_mode = 'mod_progress';
                 // We need the original mod here because the copy doesn't contain the progress info.
-                vm.popup_content = this.mod_map[this.selected_mod.id];
+                vm.popup_mod_id = this.selected_mod.id;
 
                 fs2mod.startUpload(this.selected_mod.id, this.selected_mod.version);
             };
@@ -451,7 +451,7 @@ export default {
             vm.popup_mode = 'mod_progress';
             vm.popup_title = 'Upload mod';
             vm.popup_progress_message = null;
-            vm.popup_content = this.mod_map[this.selected_mod.id];
+            vm.popup_mod_id = this.selected_mod.id;
             vm.popup_visible = true;
         },
 

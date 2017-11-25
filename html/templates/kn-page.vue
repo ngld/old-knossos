@@ -3,6 +3,8 @@ let next_tab = null;
 
 export default {
     data: () => ({
+        w: window,
+
         tabs: {
             home: 'Home',
             explore: 'Explore',
@@ -24,6 +26,7 @@ export default {
         popup_content: null,
 
         popup_progress_message: null,
+        popup_progress: {},
 
         popup_mod_name: '',
         popup_mod_id: '',
@@ -199,7 +202,7 @@ export default {
 
         showModProgress() {
             this.popup_progress_message = null;
-            this.popup_content = this.mod;
+            this.popup_mod_id = this.mod.id;
             this.popup_title = 'Installation Details';
             this.popup_mode = 'mod_progress';
             this.popup_visible = true;
@@ -394,11 +397,11 @@ export default {
                 <div v-if="popup_mode === 'mod_progress'">
                     <p v-if="popup_progress_message">{{ popup_progress_message }}</p>
 
-                    <p v-if="popup_content.progress_info.length === 0">
+                    <p v-if="!popup_progress[popup_mod_id]">
                         Preparing...
                     </p>
 
-                    <div v-for="row in popup_content.progress_info" class="row">
+                    <div v-for="row in (popup_progress[popup_mod_id] || [])" class="row">
                         <div class="col-xs-4 mod-prog-label">{{ row[0] }}</div>
                         <div class="col-xs-5">
                             <div :class="'mod-prog-bar' + (row[1] === 1 ? ' complete' : '')">
