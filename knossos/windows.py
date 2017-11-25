@@ -143,7 +143,7 @@ class Window(object):
 
 class HellWindow(Window):
     _tasks = None
-    _mod_filter = 'home'
+    _mod_filter = 'explore'
     _search_text = ''
     _updating_mods = None
     _init_done = False
@@ -186,18 +186,10 @@ class HellWindow(Window):
 
         self._init_done = True
 
-        # The delay is neccessary to make sure that QtWebkit doesn't swallow the resulting event.
-        QtCore.QTimer.singleShot(300, self.check_fso)
         center.auto_fetcher.start()
         ipc.setup()
 
         run_task(LoadLocalModsTask())
-
-    def check_fso(self):
-        if 'KN_WELCOME' not in os.environ and center.settings['base_path'] is not None:
-            self.update_mod_buttons('home')
-        else:
-            self.browser_ctrl.bridge.showWelcome.emit()
 
     def ask_update(self, version):
         # We only have an updater for windows.
@@ -218,10 +210,6 @@ class HellWindow(Window):
             mods = center.installed.mods
         elif self._mod_filter == 'explore':
             mods = center.mods.mods
-        # elif self._mod_filter == 'updates':
-        #     mods = {}
-        #     for mid in center.installed.get_updates():
-        #         mods[mid] = center.installed.mods[mid]
         else:
             mods = {}
 
@@ -295,9 +283,6 @@ class HellWindow(Window):
 
             if filter_ in ('home', 'explore', 'develop'):
                 self.browser_ctrl.bridge.updateModlist.emit(json.dumps(result), filter_)
-
-    def show_settings(self):
-        pass
 
     def show_indicator(self):
         self.win.setCursor(QtCore.Qt.BusyCursor)

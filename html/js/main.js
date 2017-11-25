@@ -39,7 +39,8 @@ function init() {
         'kn-flag-editor',
         'kn-mod-home',
         'kn-mod-explore',
-        'kn-settings-page'
+        'kn-settings-page',
+        'kn-welcome-page'
     ];
 
     tmp.forEach((comp) => {
@@ -91,13 +92,13 @@ function init() {
         cb();
     });
     fs2mod.updateModlist.connect((mods, type) => {
-        mod_table = {};
+        window.mod_table = mod_table = {};
         mods = JSON.parse(mods);
         for(let mod of mods) {
             mod_table[mod.id] = mod;
         }
 
-        vm.mods = mods;
+        vm.updateModlist(mods);
     });
     fs2mod.hidePopup.connect(() => vm.popup_visible = false);
 
@@ -158,7 +159,16 @@ function init() {
         }
     });
 
-    setTimeout(() => call(fs2mod.finishInit, get_translation_source(), (t) => vm.trans = t), 300);
+    setTimeout(() => call(fs2mod.finishInit, get_translation_source(), (res) => {
+        res = JSON.parse(res);
+        
+        vm.trans = res.t;
+        window.platform = res.platform;
+
+        if(res.welcome) {
+            vm.page = 'welcome';
+        }
+    }), 300);
 }
 
 if(window.qt) {

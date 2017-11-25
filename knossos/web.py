@@ -74,14 +74,18 @@ class WebBridge(QtCore.QObject):
 
             webView.load(QtCore.QUrl(link))
 
-    @QtCore.Slot('QVariantList', result='QVariantMap')
+    @QtCore.Slot('QVariantList', result=str)
     def finishInit(self, tr_keys):
         trs = {}
         for k in tr_keys:
             trs[k] = QtCore.QCoreApplication.translate('modlist_ts', k)
 
         center.main_win.finish_init()
-        return trs
+        return json.dumps({
+            't': trs,
+            'platform': sys.platform,
+            'welcome': 'KN_WELCOME' in os.environ or center.settings['base_path'] is None
+        })
 
     @QtCore.Slot(result=str)
     def getVersion(self):
@@ -388,15 +392,24 @@ class WebBridge(QtCore.QObject):
         else:
             return []
 
-    @QtCore.Slot(str)
+    @QtCore.Slot(str, result=bool)
     def setBasePath(self, path):
-        if not os.path.isdir(path):
+        if os.path.isfile(path):
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path is not a directory!'))
-        else:
-            center.settings['base_path'] = os.path.abspath(path)
-            center.save_settings()
-            tasks.run_task(tasks.LoadLocalModsTask())
-            center.main_win.check_fso()
+            return False
+        elif not os.path.isdir(path):
+            result = QtWidgets.QMessageBox.question(None, 'Knossos',
+                self.tr('The selected path does not exist. Should I create the folder?'))
+
+            if result == QtWidgets.QMessageBox.Yes:
+                os.makedirs(path)
+            else:
+                return False
+
+        center.settings['base_path'] = os.path.abspath(path)
+        center.save_settings()
+        tasks.run_task(tasks.LoadLocalModsTask())
+        return True
 
     @QtCore.Slot()
     def getSettings(self):
