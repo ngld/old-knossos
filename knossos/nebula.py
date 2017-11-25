@@ -99,6 +99,14 @@ class NebulaClient(object):
 
         return chks
 
+    def check_mod_id(self, mid, title=None):
+        result = self._call('mod/check_id', check_code=True, data={
+            'id': mid,
+            'title': title
+        })
+
+        return result.json()['result']
+
     def create_mod(self, mod):
         logo_chk, tile_chk = self._upload_mod_logos(mod)
 

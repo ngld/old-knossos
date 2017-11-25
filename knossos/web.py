@@ -546,9 +546,28 @@ class WebBridge(QtCore.QObject):
         mod.generate_folder()
 
         if os.path.isdir(mod.folder):
-            # TODO: Check online, too?
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('There already exists a mod with the chosen ID!'))
             return False
+
+        exists = False
+        try:
+            neb = nebula.NebulaClient()
+            neb.login()
+            exists = not neb.check_mod_id(mid, name)
+        except nebula.InvalidLoginException:
+            QtWidgets.QMessageBox.warning(None, 'Knossos',
+                self.tr("Knossos couldn't check if your mod ID is unique because it couldn't connect to the Nebula. " +
+                    "Continue at your own risk if you're sure it is unique, otherwise please abort."))
+        except Exception:
+            logging.exception('Failed to contact the nebula!')
+            QtWidgets.QMessageBox.warning(None, 'Knossos',
+                self.tr("Knossos couldn't check if your mod ID is unique because it couldn't connect to the Nebula. " +
+                    "Continue at your own risk if you're sure it is unique, otherwise please abort."))
+
+        if exists:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr('Your chosen mod ID is already being used by someone else. Please choose a different one.'))
+            return
 
         upper_folder = os.path.dirname(mod.folder)
         if not os.path.isdir(upper_folder):

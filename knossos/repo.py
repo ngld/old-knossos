@@ -998,6 +998,9 @@ class InstalledMod(Mod):
         old_list = self.mod_flag
         new_list = set([self.mid])
 
+        if old_list is None:
+            old_list = []
+
         # Collect all dependency IDs
         for pkg in self.packages:
             for dep in pkg.dependencies:
