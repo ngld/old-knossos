@@ -403,6 +403,9 @@ class MultistepTask(Task):
         self._steps[self._cur_step][1](arg)
 
     def _next_step(self):
+        if self.aborted:
+            return
+
         self._cur_step += 1
         logging.debug('Entering step %d of %d in task %s.', self._cur_step + 1, len(self._steps), self.__class__.__name__)
 
