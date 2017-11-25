@@ -406,6 +406,11 @@ class WebBridge(QtCore.QObject):
                 os.makedirs(path)
             else:
                 return False
+        else:
+            vp_path = util.ipath(os.path.join(path, 'root_fs2.vp'))
+            if os.path.isfile(vp_path):
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("Please don't use an existing FS2 directory. It won't work!"))
+                return False
 
         center.settings['base_path'] = os.path.abspath(path)
         center.save_settings()
