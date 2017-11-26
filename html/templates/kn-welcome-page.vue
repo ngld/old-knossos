@@ -83,6 +83,22 @@ export default {
             this.wl_popup_visible = false;
             this.step++;
         },
+        
+        login() {
+            fs2mod.nebLogin(this.neb_user, this.neb_password);
+        },
+
+        register() {
+            if(this.neb_user == '' || this.neb_password == '' || this.neb_email == '') {
+                alert('You have to enter your desired username, password and email address!');
+            } else {
+                fs2mod.nebRegister(this.neb_user, this.neb_password, this.neb_email);
+            }
+        },
+
+        resetPassword() {
+            fs2mod.nebResetPassword(this.neb_user);
+        },
 
         goToExplore() {
             vm.showTab('explore');
@@ -188,6 +204,48 @@ export default {
             </p>
 
             <p><button class="btn btn-primary" @click.prevent="goToExplore">Finish</button></p>
+
+            <hr>
+
+                <div class="welcome-login">
+                    Are you a mod developer? Login!
+                    <div class="login-form">
+                        <div class="form-group">
+                            <label class="col-sm-4 welcome-label">Username:</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="neb-input" v-model="neb_user">
+                            </div>
+                        </div>
+
+                        <br>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 welcome-label">Password:</label>
+                            <div class="col-sm-8">
+                                <input type="password" class="neb-input" v-model="neb_password">
+                            </div>
+                        </div>
+
+                        <br>
+
+                        <div class="form-group">
+                            <label class="col-sm-4 welcome-label">E-Mail:</label>
+                            <div class="col-sm-8">
+                                <input type="email" class="neb-input" v-model="neb_email" placeholder="only required for registration">
+                            </div>
+                        </div>
+
+                        <br>
+
+                        <div class="form-group">
+                            <div class="col-sm-offset-2 col-sm-8 neb-btns">
+                                <button class="mod-btn btn-link-blue" @click="login">Login</button>
+                                <button class="mod-btn btn-link-blue" @click="register">Register</button>
+                                <button class="mod-btn btn-link-red" @click="resetPassword">Reset Pass</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
         </div>
 
         <div v-else>
@@ -197,6 +255,7 @@ export default {
         </div>
 
         <hr>
+
         <p>
             This launcher is still in development. Join us on
             <a href="https://discord.gg/qfReB8t" class="open-ext">#knossos</a>

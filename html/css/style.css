@@ -194,6 +194,24 @@ iframe {
     z-index: 999;
 }
 
+.welcome-login {
+    height: 220px;
+    padding-top: 50px;
+}
+
+.login-form {
+    float: right;
+    width: 65%;
+}
+
+.welcome-login input.neb-input {
+    width: 100%;
+}
+
+.welcome-label {
+    width: 100px;
+}
+
 /* ----------------------------- This is the filter rollout button section. ------------------------------- */
 
 .filter-container {
