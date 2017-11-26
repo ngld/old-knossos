@@ -36,6 +36,7 @@ if not QtWebChannel:
 class WebBridge(QtCore.QObject):
     _path = None
 
+    asyncCbFinished = QtCore.Signal(int, str)
     showWelcome = QtCore.Signal()
     showDetailsPage = QtCore.Signal('QVariant')
     showRetailPrompt = QtCore.Signal()
@@ -973,6 +974,28 @@ class WebBridge(QtCore.QObject):
 
         center.main_win.update_mod_list()
 
+    @QtCore.Slot(str, str, str, str)
+    def saveUserFsoDetails(self, mid, version, build, cmdline):
+        mod = self._get_mod(mid, version)
+        if mod == -1:
+            logging.error('Failed find mod "%s" during save!' % mid)
+            QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
+            return
+
+        build = build.split('#')
+        if len(build) != 2:
+            logging.error('saveModFsoDetails(): build is not correctly formatted! (%s)' % build)
+        else:
+            if build[0] == 'custom':
+                mod.user_custom_build = build[1]
+                mod.user_exe = None
+            else:
+                mod.user_custom_build = None
+                mod.user_exe = build
+
+        mod.user_cmdline = cmdline
+        mod.save_user()
+
     @QtCore.Slot(str, str, list)
     def saveModFlag(self, mid, version, mod_flag):
         mod = self._get_mod(mid, version)
@@ -1101,7 +1124,7 @@ class WebBridge(QtCore.QObject):
             filter_ = '*'
 
         res = QtWidgets.QFileDialog.getOpenFileNames(None, 'Please select your FSO build', None, filter_)
-        if res:
+        if res and len(res[0]) > 0:
             return res[0][0]
         else:
             return ''
@@ -1126,29 +1149,52 @@ class WebBridge(QtCore.QObject):
         return ''
 
     @QtCore.Slot(str, str, result=str)
-    def getFsoCaps(self, mid, version):
-        flags = None
-        if mid == 'custom':
-            flags = settings.get_fso_flags(version)
-
-            return json.dumps(flags)
-
+    def getUserBuild(self, mid, version):
         mod = self._get_mod(mid, version)
 
-        try:
-            flags = None
-            for exe in mod.get_executables():
-                if not exe['label']:
-                    flags = settings.get_fso_flags(exe['file'])
-        except repo.NoExecutablesFound:
-            return 'null'
-        except Exception:
-            logging.exception('Failed to fetch FSO flags!')
+        if mod.user_custom_build:
+            return 'custom#' + mod.user_custom_build
 
         try:
-            return json.dumps(flags)
+            for item in mod.get_executables(user=True):
+                if item.get('label') is None:
+                    mod = item['mod']
+                    return mod.mid + '#' + str(mod.version)
+        except repo.NoExecutablesFound:
+            return ''
         except Exception:
-            logging.exception('Failed to encode FSO flags!')
+            logging.exception('Failed to fetch executables!')
+
+        return ''
+
+    @QtCore.Slot(str, str, int)
+    def getFsoCaps(self, mid, version, cb_id):
+        mod = None
+        if mid != 'custom':
+            mod = self._get_mod(mid, version)
+            if mod in (-1, -2):
+                return
+
+        def helper():
+            flags = None
+            if not mod:
+                flags = settings.get_fso_flags(version)
+            else:
+                try:
+                    for exe in mod.get_executables():
+                        if not exe['label']:
+                            flags = settings.get_fso_flags(exe['file'])
+                except repo.NoExecutablesFound:
+                    pass
+                except Exception:
+                    logging.exception('Failed to fetch FSO flags!')
+
+            try:
+                self.asyncCbFinished.emit(cb_id, json.dumps(flags))
+            except Exception:
+                logging.exception('Failed to encode FSO flags!')
+
+        Thread(target=helper).start()
 
     @QtCore.Slot(str, str, str, str, result=bool)
     def createModVersion(self, mid, version, dest_ver, method):

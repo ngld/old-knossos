@@ -667,6 +667,10 @@ export default {
                     <button class="mod-btn btn-green" @click.prevent="sureCallback">YES</button>
                     <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">NO</button>
                 </div>
+
+                <div v-if="popup_mode == 'fso_settings'">
+                    <kn-fso-user-settings :mods="mods" :mod="popup_content"></kn-fso-user-settings>
+                </div>
             </div>
         </div>
     </div>

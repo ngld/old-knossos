@@ -24,7 +24,6 @@ from json.decoder import JSONDecodeError
 from threading import Thread
 
 from . import center, util, launcher, runner
-from .tasks import run_task
 from .qt import QtCore, QtWidgets, QtGui
 
 

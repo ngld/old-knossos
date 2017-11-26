@@ -98,6 +98,7 @@ export default {
                         <button v-for="tool in tools" v-if="(mod.status === 'ready' || mod.status === 'update') && (mod.type === 'mod' || mod.type == 'tc')" @click="launchTool(tool)">Run {{ tool }}</button>
                         <button @click="uploadLog">Upload Debug Log</button>
                         <button v-if="mod.id !== 'FS2'" @click="install">Modify</button>
+                        <button @click="showFsoSettings">FSO Settings</button>
                         <button v-if="mod.id !== 'FS2' && !mod.dev_mode" @click="uninstallMod">Uninstall</button>
                         <button v-if="mod.id !== 'FS2' && !mod.dev_mode" @click="verifyIntegrity">Verify file integrity</button>
                     </kn-dropdown>

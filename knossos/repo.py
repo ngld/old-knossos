@@ -852,6 +852,9 @@ class InstalledMod(Mod):
     folder = None
     dev_mode = False
     custom_build = None
+    user_exe = None
+    user_cmdline = None
+    user_custom_build = None
     _path = None
 
     @staticmethod
@@ -863,6 +866,15 @@ class InstalledMod(Mod):
             mod = InstalledMod(None)
             mod.folder = os.path.normpath(os.path.dirname(path))
             mod.set(data)
+
+            user_path = os.path.join(os.path.dirname(path), 'user.json')
+            if os.path.isfile(user_path):
+                try:
+                    with open(user_path, 'r') as stream:
+                        mod.set_user(json.load(stream))
+                except Exception:
+                    logging.exception('Failed to load user data for %s!' % mod)
+
             return mod
         else:
             return None
@@ -901,6 +913,11 @@ class InstalledMod(Mod):
             if installed_pkg.check_env():
                 self.packages.append(installed_pkg)
 
+    def set_user(self, values):
+        self.user_exe = values.get('exe')
+        self.user_cmdline = values.get('cmdline')
+        self.user_custom_build = values.get('custom_build')
+
     def get(self):
         return {
             'installed': True,
@@ -926,7 +943,18 @@ class InstalledMod(Mod):
             'mod_flag': self.mod_flag,
             'dev_mode': self.dev_mode,
             'custom_build': self.custom_build,
-            'packages': [pkg.get() for pkg in self.packages]
+            'packages': [pkg.get() for pkg in self.packages],
+
+            'user_exe': self.user_exe,
+            'user_cmdline': self.user_cmdline,
+            'user_custom_build': self.user_custom_build
+        }
+
+    def get_user(self):
+        return {
+            'exe': self.user_exe,
+            'cmdline': self.user_cmdline,
+            'custom_build': self.user_custom_build
         }
 
     def copy(self):
@@ -980,6 +1008,9 @@ class InstalledMod(Mod):
 
         # Storing the folder of the JSON file inside the file would be silly.
         del info['folder']
+        del info['user_exe']
+        del info['user_cmdline']
+        del info['user_custom_build']
 
         # Make sure we only store relative paths.
         for prop in ('logo', 'tile', 'banner'):
@@ -993,6 +1024,20 @@ class InstalledMod(Mod):
 
         with open(path, 'w') as stream:
             json.dump(info, stream)
+
+    def save_user(self):
+        modpath = self.folder
+        im_path = util.ipath(modpath)
+
+        # Correct the casing of our folder if neccessary.
+        if im_path != modpath:
+            modpath = im_path
+            self.folder = modpath
+
+        path = os.path.join(modpath, 'user.json')
+
+        with open(path, 'w') as stream:
+            json.dump(self.get_user(), stream)
 
     def update_mod_flag(self):
         old_list = self.mod_flag
@@ -1051,7 +1096,22 @@ class InstalledMod(Mod):
 
         return paths, dev_involved
 
-    def get_executables(self):
+    def get_executables(self, user=False):
+        exes = []
+        if user and self.user_custom_build:
+                exes.append({
+                    'file': self.user_custom_build,
+                    'mod': self,
+                    'label': None
+                })
+
+        if self.custom_build:
+            exes.append({
+                'file': self.custom_build,
+                'mod': self,
+                'label': None
+            })
+
         if self.mtype in ('engine', 'tool'):
             deps = self.packages
         else:
@@ -1061,13 +1121,12 @@ class InstalledMod(Mod):
                 logging.exception('Error during dep resolve for executables!')
                 deps = []
 
-        exes = []
-        if self.custom_build:
-            exes.append({
-                'file': self.custom_build,
-                'mod': self,
-                'label': None
-            })
+        if user and self.user_exe:
+            try:
+                exe_mod = self._repo.query(self.user_exe[0], util.Spec('==' + self.user_exe[1]))
+                deps = exe_mod.packages + list(deps)
+            except ModNotFound:
+                pass
 
         for pkg in deps:
             mod = pkg.get_mod()

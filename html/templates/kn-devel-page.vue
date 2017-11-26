@@ -79,19 +79,6 @@ export default {
         }
     },
 
-    computed: {
-        engine_builds() {
-            let builds = [];
-            for(let mod of this.mods) {
-                if(mod.type === 'engine') {
-                    builds = builds.concat(mod.versions);
-                }
-            }
-
-            return builds;
-        }
-    },
-
     methods: {
         showRetailPrompt() {
             vm.showRetailPrompt();
@@ -153,7 +140,6 @@ export default {
 
                 call(fs2mod.getFsoBuild, mod.id, mod.version, (result) => {
                     this.fso_build = result;
-                    this.updateFsoBuild();
                 });
             } else {
                 this.page = 'details';
@@ -205,13 +191,6 @@ export default {
             fs2mod.saveModFsoDetails(mod.id, mod.version, this.fso_build, mod.cmdline);
         },
 
-        selectCustomBuild() {
-            call(fs2mod.selectCustomBuild, (result) => {
-                this.selected_mod.custom_build = result;
-                this.fso_build = 'custom#' + result;
-            });
-        },
-
         savePackage() {
             let pkg = Object.assign({}, this.selected_pkg);
             let mod = this.selected_mod;
@@ -251,22 +230,6 @@ export default {
                     this.selected_mod[prop] = new_path;
                 }
             });
-        },
-
-        isValidBuild() {
-            return this.fso_build && this.fso_build.indexOf('#') > -1;
-        },
-
-        updateFsoBuild() {
-            if(this.fso_build) {
-                let sel_build = this.fso_build.split('#');
-                call(fs2mod.getFsoCaps, sel_build[0], sel_build[1], (caps) => {
-                    this.caps = JSON.parse(caps);
-                });
-            } else {
-                this.fso_build = null;
-                this.caps = null;
-            }
         },
 
         saveModFlag() {
@@ -780,26 +743,9 @@ export default {
                         <div v-else-if="!selected_pkg && page === 'fso'">
                             <h4>FSO Settings</h4>
 
-                            <div class="form-group">
-                                <label class="col-xs-3 control-label">FSO build</label>
-                                <div class="col-xs-9">
-                                    <div class="input-group">
-                                        <select class="form-control" v-model="fso_build" @change="updateFsoBuild">
-                                            <option v-if="!isValidBuild()" :key="'invalid'" value="invalid">Please select a valid build</option>
-                                            <option v-for="mod in engine_builds" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
-                                                {{ mod.title }} {{ mod.version }}
-                                            </option>
-                                            <option v-if="selected_mod.custom_build" :value="'custom#' + selected_mod.custom_build">{{ selected_mod.custom_build.replace(/\\/g, '/').split('/').pop() }}</option>
-                                        </select>
-                                        <span class="input-group-btn">
-                                            <button class="btn btn-default" @click.prevent="selectCustomBuild">Browse...</button>
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                            <kn-fso-settings :mods="mods" :fso_build.sync="fso_build" :cmdline.sync="(selected_mod || {}).cmdline"></kn-fso-settings>
 
-                            <kn-flag-editor :caps="caps" :cmdline.sync="selected_mod.cmdline"></kn-flag-editor>
-
+                            
                             <div class="form-group">
                                 <div class="col-xs-9 col-xs-offset-3">
                                     <button class="mod-btn btn-green" @click.prevent="saveFsoSettings"><span class="btn-text">SAVE</span></button>

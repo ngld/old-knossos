@@ -294,7 +294,13 @@ def run_mod(mod, tool=None, exe_label=None):
             translate('runner', 'No matching executable was found!'))
         return
 
-    mod_flag, mod_choice = mod.get_mod_flag()
+    try:
+        mod_flag, mod_choice = mod.get_mod_flag()
+    except repo.ModNotFound:
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('runner', '"%s" has an error in its dependencies. Aborted.' % mod))
+        return
+
     if mod_choice or len(exes) > 1:
         # We have to ask the user
         center.main_win.browser_ctrl.bridge.showLaunchPopup.emit(json.dumps({

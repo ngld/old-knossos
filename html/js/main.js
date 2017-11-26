@@ -22,6 +22,18 @@ function init() {
         }
     }
 
+    let cb_id = 0;
+    let cb_store = {};
+    window.call_async = function (ref) {
+        let args = Array.prototype.slice.apply(arguments, [1]);
+        let cb = args.pop();
+        args.push(cb_id);
+        cb_store[cb_id] = cb;
+
+        ref.apply(null, args);
+        cb_id++;
+    }
+
     window.connectOnce = function (sig, cb) {
         let wrapper = function () {
             sig.disconnect(wrapper);
@@ -36,7 +48,8 @@ function init() {
         'kn-devel-page',
         'kn-drawer',
         'kn-dropdown',
-        'kn-flag-editor',
+        'kn-fso-settings',
+        'kn-fso-user-settings',
         'kn-mod-home',
         'kn-mod-explore',
         'kn-settings-page',
@@ -52,6 +65,10 @@ function init() {
     let mod_table = null;
     window.task_mod_map = {};
 
+    fs2mod.asyncCbFinished.connect((id, data) => {
+        cb_store[id](JSON.parse(data));
+        delete cb_store[id];
+    });
     fs2mod.showWelcome.connect(() => vm.page = 'welcome');
     fs2mod.showDetailsPage.connect((mod) => {
         vm.mod = mod;

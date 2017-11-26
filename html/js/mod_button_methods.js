@@ -41,5 +41,12 @@ export default {
         vm.popup_mod_version = this.mod.version;
         vm.popup_mod_message = '';
         vm.popup_visible = true;
+    },
+
+    showFsoSettings() {
+        vm.popup_visible = true;
+        vm.popup_title = 'FSO Settings';
+        vm.popup_mode = 'fso_settings';
+        vm.popup_content = this.mod;
     }
 };
