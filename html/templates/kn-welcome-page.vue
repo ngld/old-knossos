@@ -11,7 +11,11 @@ export default {
 
         installer_path: '',
 
-        wl_popup_visible: false
+        wl_popup_visible: false,
+
+        neb_user: '',
+        neb_password: '',
+        neb_email: ''
     }),
 
     created() {
