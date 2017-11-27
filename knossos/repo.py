@@ -957,12 +957,34 @@ class InstalledMod(Mod):
             'custom_build': self.user_custom_build
         }
 
+    def get_relative(self):
+        info = self.get()
+
+        # Storing the folder of the JSON file inside the file would be silly.
+        del info['folder']
+        del info['user_exe']
+        del info['user_cmdline']
+        del info['user_custom_build']
+
+        # Make sure we only store relative paths.
+        for prop in ('logo', 'tile', 'banner'):
+            if info[prop] and '://' not in info[prop]:
+                info[prop] = os.path.relpath(info[prop], self.folder)
+
+        for prop in ('screenshots', 'attachments'):
+            paths = info[prop]
+            for i, p in enumerate(paths):
+                paths[i] = os.path.relpath(p, self.folder)
+
+        return info
+
     def copy(self):
         return InstalledMod(self.get(), self._repo)
 
     def generate_folder(self):
         # IMPORTANT: This code decides where newly installed mods are stored.
         base = os.path.normpath(center.settings['base_path'])
+        meta = self.get_relative()
 
         if self.mtype in ('engine', 'tool'):
             self.folder = os.path.join(base, 'bin', self.mid)
@@ -972,6 +994,9 @@ class InstalledMod(Mod):
             self.folder = os.path.join(base, self.parent, self.mid)
 
         self.folder += '-' + str(self.version)
+
+        # This should update the paths to images, etc. since get_relative() only returns relative paths
+        self.set(meta)
 
     def add_pkg(self, pkg):
         pkg = InstalledPackage.convert(pkg, self)
@@ -995,35 +1020,14 @@ class InstalledMod(Mod):
                 break
 
     def save(self):
-        modpath = self.folder
-        im_path = util.ipath(modpath)
+        im_path = util.ipath(self.folder)
 
         # Correct the casing of our folder if neccessary.
-        if im_path != modpath:
-            modpath = im_path
-            self.folder = modpath
+        if im_path != self.folder:
+            self.folder = im_path
 
-        path = os.path.join(modpath, 'mod.json')
-        info = self.get()
-
-        # Storing the folder of the JSON file inside the file would be silly.
-        del info['folder']
-        del info['user_exe']
-        del info['user_cmdline']
-        del info['user_custom_build']
-
-        # Make sure we only store relative paths.
-        for prop in ('logo', 'tile', 'banner'):
-            if info[prop] and '://' not in info[prop]:
-                info[prop] = os.path.relpath(info[prop], modpath)
-
-        for prop in ('screenshots', 'attachments'):
-            paths = info[prop]
-            for i, p in enumerate(paths):
-                paths[i] = os.path.relpath(p, modpath)
-
-        with open(path, 'w') as stream:
-            json.dump(info, stream)
+        with open(os.path.join(self.folder, 'mod.json'), 'w') as stream:
+            json.dump(self.get_relative(), stream, indent=4)
 
     def save_user(self):
         modpath = self.folder
