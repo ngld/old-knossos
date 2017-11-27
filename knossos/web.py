@@ -463,7 +463,7 @@ class WebBridge(QtCore.QObject):
         # Huge thanks go to jr2 for discovering everything implemented here to detect possible FS2 retail installs.
         # --ngld
 
-        folders = [r'C:\GOG Games\Freespace2']
+        folders = [r'C:\GOG Games\Freespace2', r'C:\Games\Freespace2', r'C:\Games\Freespace 2']
 
         reg = QtCore.QSettings(r'HKEY_CURRENT_USER\Software\Valve\Steam', QtCore.QSettings.NativeFormat)
         reg.setFallbacksEnabled(False)
