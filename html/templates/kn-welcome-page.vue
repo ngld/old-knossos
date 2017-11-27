@@ -121,7 +121,7 @@ export default {
             <h1>Welcome!</h1>
             
             <p>It looks like you started Knossos for the first time.</p>
-            <p>You need to select a directoy where Knossos will store the game data (models, textures, etc.).</p>
+            <p>You need to select a directory where Knossos will store the game data (models, textures, etc.).</p>
             
             <p>We recommend...</p>
             <form class="form-horizontal">
@@ -163,7 +163,7 @@ export default {
                         <a href="https://www.gog.com/game/freespace_2" class="open-ext">gog.com</a> for just a few dollars.
                     </p>
 
-                    <p>Once you have purchased Freespace 2, just point us to the GOG Installer EXE.</p>
+                    <p>Once you have purchased Freespace 2, just point us to the GOG Installer EXE you downloaded.</p>
                 
                     <div class="input-group">
                         <input type="text" class="form-control" v-model="installer_path">
