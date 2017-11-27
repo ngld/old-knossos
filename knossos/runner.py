@@ -280,7 +280,7 @@ def run_mod(mod, tool=None, exe_label=None):
             return
     else:
         try:
-            exes = mod.get_executables()
+            exes = mod.get_executables(user=True)
         except Exception:
             logging.exception('Failed to retrieve binaries for "%s"!' % mod.mid)
             QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
@@ -301,7 +301,7 @@ def run_mod(mod, tool=None, exe_label=None):
             translate('runner', '"%s" has an error in its dependencies. Aborted.' % mod))
         return
 
-    if mod_choice or len(exes) > 1:
+    if mod_choice:
         # We have to ask the user
         center.main_win.browser_ctrl.bridge.showLaunchPopup.emit(json.dumps({
             'id': mod.mid,
@@ -317,6 +317,9 @@ def run_mod(mod, tool=None, exe_label=None):
 def run_mod_ex(mod, binpath, mod_flag):
     # Put the cmdline together
     cmdline = mod.cmdline
+
+    if mod.user_cmdline:
+        cmdline = mod.user_cmdline
 
     if mod.mtype == 'mod':
         basepath = mod.get_parent().folder
