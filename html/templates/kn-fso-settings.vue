@@ -32,7 +32,8 @@ export default {
     },
 
     watch: {
-        fso_build() {
+        fso_build(build) {
+            this.fso_build = build;
             this.updateFsoBuild();
         },
 
