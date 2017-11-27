@@ -967,7 +967,7 @@ class InstalledMod(Mod):
         if self.mtype in ('engine', 'tool'):
             self.folder = os.path.join(base, 'bin', self.mid)
         elif self.mtype == 'tc':
-            self.folder = os.path.join(base, self.mid)
+            self.folder = os.path.join(base, self.mid, self.mid)
         else:
             self.folder = os.path.join(base, self.parent, self.mid)
 

@@ -322,7 +322,26 @@ def run_mod_ex(mod, binpath, mod_flag):
         cmdline = mod.user_cmdline
 
     if mod.mtype == 'mod':
-        basepath = mod.get_parent().folder
+        parent = mod.get_parent()
+
+        if parent.mid == 'FS2':
+            basepath = parent.folder
+        else:
+            basepath = os.path.dirname(parent.folder)
+
+            found = False
+            for pkg in mod.packages:
+                for dep in pkg.dependencies:
+                    if dep['id'] == parent.mid:
+                        found = True
+                        break
+
+                if found:
+                    break
+
+            if not found:
+                logging.debug("Mod %s doesn't depend on parent, fixing mod flags...", mod)
+                mod_flag.extend([p[0] for p in parent.get_mod_flag()[0]])
     elif mod.mtype:
         basepath = mod.folder
 
