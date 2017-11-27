@@ -291,6 +291,7 @@ def get_settings_p2():
         'knossos': kn_settings,
         'languages': center.LANGUAGES,
         'has_log': launcher.log_path is not None,
+        'has_retail': center.installed.has('FS2'),
         'fso': fso
     }
 
