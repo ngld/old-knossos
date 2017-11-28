@@ -47,7 +47,11 @@ export default {
         save() {
             this.fso.joystick_ff_strength = this.ff_enabled ? 100 : 0;
 
-            for(let set of ['base_path', 'max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth']) {
+            if(this.knossos.base_path !== this.old_settings.knossos.base_path) {
+                fs2mod.setBasePath(this.knossos.base_path);
+            }
+
+            for(let set of ['max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth']) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
                 }

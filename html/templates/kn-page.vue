@@ -1,5 +1,6 @@
 <script>
 let next_tab = null;
+let first_load = true;
 
 export default {
     data: () => ({
@@ -104,6 +105,10 @@ export default {
                 this.tab = next_tab;
                 this.page = next_tab === 'develop' ? 'develop' : 'modlist';
                 next_tab = null;
+            } else if(first_load) {
+                first_load = false;
+                next_tab = mods.length === 0 ? 'explore' : 'home';
+                fs2mod.showTab(next_tab);
             }
         },
 
