@@ -447,7 +447,7 @@ def write_fso_config(sections):
             stream.write('[%s]\n' % name)
 
             for k, v in pairs.items():
-                stream.write('%s = %s\n' % (k, v))
+                stream.write('%s=%s\n' % (k, v))
 
             stream.write('\n')
 
