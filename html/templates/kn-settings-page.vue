@@ -212,6 +212,18 @@ export default {
                         <input type="number" v-model="fso.sample_rate">
                     </div>
                 </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Language:</label>
+                    <div class="col-sm-8">
+                        <select v-model="fso.language">
+                            <option>English</option>
+                            <option>German</option>
+                            <option>French</option>
+                            <option>Polish</option>
+                        </select>
+                    </div>
+                </div>
             </kn-drawer>
         </div>
         <div class="col-sm-6">

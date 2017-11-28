@@ -158,6 +158,9 @@ def get_settings_p2():
     joystick_enable_hit = section.get('EnableHitEffect', False)
     joystick_ff_strength = config.get('ForceFeedback', {}).get('Strength', 100)
 
+    # language
+    fso['language'] = section.get('Language', 'English')
+
     # speech
     speech_vol = section.get('SpeechVolume', 100)
     speech_voice = section.get('SpeechVoice', 0)
@@ -173,9 +176,9 @@ def get_settings_p2():
 
     net_ip = section.get('Network/CustomIP', None)
 
+    # sound settings
     section = config.get('Sound', {})
 
-    # sound settings
     playback_device = section.get('PlaybackDevice', None)
     capture_device = section.get('CaptureDevice', None)
     enable_efx = section.get('EnableEFX', None)
@@ -309,6 +312,8 @@ def save_fso_settings(new_settings):
 
         section['VideocardFs2open'] = 'OGL -({0}x{1})x{2} bit'.format(new_res_width, new_res_height, new_depth)
         section['TextureFilter'] = new_settings['texfilter']
+
+        section['Language'] = new_settings['language']
 
         # section['OGL_AntiAliasSamples'] = new_aa
         # section['OGL_AnisotropicFilter'] = new_af
