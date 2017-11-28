@@ -94,6 +94,7 @@ if [ "$error" = "yes" ]; then
 
 	if [ "$switched" = "yes" ]; then
 		git reset --hard origin/master
+		git tag -d "v$VERSION"
 		git checkout develop
 	fi
 

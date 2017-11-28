@@ -87,25 +87,24 @@ class FetchTask(progress.Task):
             center.main_win.update_mod_list()
 
 
-class CheckTask(progress.MultistepTask):
+class LoadLocalModsTask(progress.Task):
     can_abort = False
     _steps = 2
 
     def __init__(self):
-        super(CheckTask, self).__init__(threads=3)
+        super(LoadLocalModsTask, self).__init__(threads=3)
 
         self.done.connect(self.finish)
-        self.title = 'Checking installed mods...'
+        self.title = 'Loading installed mods...'
 
-    def init1(self):
         if center.settings['base_path'] is None:
-            logging.warning('A CheckTask was launched even though no base path was set!')
+            logging.warning('A LoadLocalModsTask was launched even though no base path was set!')
         else:
             center.installed.clear()
             self.add_work((center.settings['base_path'],))
             self.add_work(center.settings['base_dirs'])
 
-    def work1(self, path):
+    def work(self, path):
         mods = center.installed
 
         subs = []
@@ -131,82 +130,7 @@ class CheckTask(progress.MultistepTask):
 
         self.add_work(subs)
 
-    def init2(self):
-        pkgs = []
-        for mid, mvs in center.installed.mods.items():
-            for mod in mvs:
-                pkgs.extend(mod.packages)
-
-        # Reset them
-        for pkg in pkgs:
-            pkg.files_ok = 0
-            pkg.files_checked = 0
-
-        self.add_work(pkgs)
-
-    def work2(self, pkg):
-        mod = pkg.get_mod()
-        pkg_files = pkg.filelist
-        count = float(len(pkg_files))
-        success = 0
-        missing = 0
-        checked = 0
-
-        archives = set()
-        msgs = []
-
-        if mod.dev_mode:
-            pkgpath = os.path.join(mod.folder, pkg.folder)
-        else:
-            pkgpath = mod.folder
-
-        for info in pkg_files:
-            mypath = util.ipath(os.path.join(pkgpath, info['filename']))
-            fix = False
-            if os.path.isfile(mypath):
-                progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
-
-                if util.check_hash(info['checksum'], mypath):
-                    success += 1
-                else:
-                    msgs.append('File "%s" is corrupted. (checksum mismatch)' % (info['filename']))
-                    fix = True
-            else:
-                msgs.append('File "%s" is missing.' % (info['filename']))
-                missing += 1
-                fix = True
-
-            if fix:
-                archives.add(info['archive'])
-
-            checked += 1
-
-        self.post((pkg, archives, success, missing, checked, msgs))
-
     def finish(self):
-        results = self.get_results()
-
-        # Make sure that the calculated checksums are saved.
-        center.save_settings()
-
-        for pkg, archives, s, m, c, msg in results:
-            mod = pkg.get_mod()
-
-            if s == 0:
-                if m > 0:
-                    # Not Installed
-                    # What?!
-                    logging.warning('Package %s of mod %s (%s) is not installed but in the local repo. Fixing...' % (pkg.name, mod.mid, mod.title))
-                    mod.del_pkg(pkg)
-                    mod.save()
-                elif c > 0:
-                    logging.warning('Package %s of mod %s (%s) is completely corrupted!!' % (pkg.name, mod.mid, mod.title))
-
-            if pkg is not None:
-                pkg.check_notes = msg
-                pkg.files_ok = s
-                pkg.files_checked = c
-
         center.main_win.update_mod_list()
 
 
@@ -216,19 +140,21 @@ class CheckFilesTask(progress.MultistepTask):
     _check_results = None
     _steps = 2
 
-    def __init__(self, mod):
-        super(CheckFilesTask, self).__init__(threads=3)
+    def __init__(self, pkgs):
+        super(CheckFilesTask, self).__init__()
 
-        self.title = 'Checking "%s"...' % mod.title
-        self.mods = [mod]
-        self._mod = mod
+        self.title = 'Checking %d packages...' % len(pkgs)
+        self.pkgs = pkgs
+
+        self.done.connect(self.finish)
+        self._threads = 1
 
     def init1(self):
-        modpath = self._mod.folder
         pkgs = []
 
-        for pkg in self._mod.packages:
-            pkgs.append((modpath, pkg))
+        for pkg in self.pkgs:
+            mod = pkg.get_mod()
+            pkgs.append((mod.folder, pkg))
 
         self.add_work(pkgs)
 
@@ -250,7 +176,7 @@ class CheckFilesTask(progress.MultistepTask):
             if os.path.isfile(mypath):
                 progress.update(checked / count, 'Checking "%s"...' % (info['filename']))
 
-                if util.check_hash(info['checksum'], mypath):
+                if util.check_hash(info['checksum'], mypath, False):
                     success += 1
                     summary['ok'].append(info['filename'])
                 else:
@@ -269,32 +195,54 @@ class CheckFilesTask(progress.MultistepTask):
         self.add_work(('',))
 
     def work2(self, d):
-        modpath = self._mod.folder
         fnames = set()
+        modpaths = set()
         loose = []
 
         # Collect all filenames
         for pkg, s, c, m in self._check_results:
-            for info in pkg.filelist:
-                fnames.add(info['filename'])
+            modpath = pkg.get_mod().folder
+            modpaths.add(modpath)
 
-        # Ignore files are generated by Knossos
-        fnames.add('mod.json')
+            # Ignore files are generated by Knossos. Only mod.json files that are in the location where we expect it to
+            # be are ignored. All other mod.json files will be considered loose
+            fnames.add(os.path.join(modpath, 'mod.json'))
+
+            for info in pkg.filelist:
+                # relative paths are valid here but we only want the filename
+                fnames.add(os.path.normpath(os.path.join(modpath, info['filename'])))
 
         # Check for loose files.
-        for path, dirs, files in os.walk(modpath):
-            if path == modpath:
-                subpath = ''
-            else:
-                subpath = os.path.relpath(path, modpath)
-
-            for item in files:
-                name = os.path.join(subpath, item).replace('\\', '/')
-                if name not in fnames and not name.startswith(('__k_plibs', 'knossos.')):
-                    loose.append(name)
+        for modpath in modpaths:
+            for path, dirs, files in os.walk(modpath):
+                for item in files:
+                    name = os.path.join(path, item)
+                    if name not in fnames and not item.startswith(('__k_plibs', 'knossos.')):
+                        loose.append(name)
 
         self._check_results.append((None, 0, 0, {'loose': loose}))
         self._results = self._check_results
+
+    def finish(self):
+        bad_packages = []
+        for result in self._check_results:
+            if result[0] is None:
+                # This is the entry which contains the loose files
+                continue
+
+            if result[1] != result[2]:
+                # If the number of checked files is different than the number of valid files then there is something
+                # wrong with this package
+                bad_packages.append(result[0])
+
+        if len(bad_packages) > 0:
+            msg = "An error was detected while validating the game file integrity. The following packages are invalid:"
+            for pkg in bad_packages:
+                msg += "\n  - Package %s of mod %s" % (pkg.name, pkg.get_mod().title)
+            msg += "\n\nThese mods are invalid and need to be redownloaded before they can be played without errors."
+
+            QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
+
 
 
 # TODO: Optimize, make sure all paths are relative (no mod should be able to install to C:\evil)
@@ -304,10 +252,10 @@ class InstallTask(progress.MultistepTask):
     _pkg_names = None
     _mods = None
     _dls = None
-    _steps = 3
+    _copies = None
+    _steps = 4
     _error = False
     _7z_lock = None
-    _pkg_prog = None
     check_after = True
 
     def __init__(self, pkgs, mod=None, check_after=True):
@@ -316,8 +264,6 @@ class InstallTask(progress.MultistepTask):
         self._mods = set()
         self._pkgs = []
         self._pkg_names = []
-        self._pkg_prog = {}
-        self._local = threading.local()
         self.check_after = check_after
 
         if sys.platform == 'win32':
@@ -342,7 +288,7 @@ class InstallTask(progress.MultistepTask):
             self._pkg_names.append((pmod.mid, ins_pkg.name))
 
             for item in ins_pkg.files.values():
-                self._pkg_prog[id(item)] = ('%s: %s' % (pmod.title, item['filename']), 0, 'Checking...')
+                self._slot_prog[id(item)] = ('%s: %s' % (pmod.title, item['filename']), 0, 'Checking...')
 
         for m in self._mods:
             if m not in self.mods:
@@ -351,17 +297,6 @@ class InstallTask(progress.MultistepTask):
         center.signals.repo_updated.emit()
         self.done.connect(self.finish)
         self.title = 'Installing mods...'
-
-    def _track_progress(self, prog, text):
-        with self._progress_lock:
-            if self._local.pkg:
-                self._pkg_prog[self._local.pkg] = (self._pkg_prog[self._local.pkg][0], prog, text)
-
-            total = 0
-            for label, prog, text in self._pkg_prog.values():
-                total += prog
-
-            self.progress.emit((total / max(1, len(self._pkg_prog)), self._pkg_prog, 'Installing mods...'))
 
     def abort(self):
         super(InstallTask, self).abort()
@@ -377,6 +312,10 @@ class InstallTask(progress.MultistepTask):
                         shutil.rmtree(ar['tpath'])
                     except Exception:
                         logging.exception('Failed to remove "%s"!' % ar['tpath'])
+            else:
+                QtWidgets.QMessageBox.critical(None, 'Knossos',
+                    self.tr('The mod installation was aborted before it could finish. ' +
+                        'You might have to uninstall the partially installed mod(s).'))
         elif self._error:
             msg = self.tr(
                 'An error occured during the installation of a mod. It might be partially installed.\n' +
@@ -384,17 +323,20 @@ class InstallTask(progress.MultistepTask):
             )
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
 
-        if self.check_after:
-            run_task(CheckTask())
+        if not isinstance(self, UpdateTask):
+            run_task(LoadLocalModsTask())
 
     def init1(self):
         if center.settings['neb_user']:
-            neb = nebula.NebulaClient()
-            editable = neb.get_editable_mods()
+            try:
+                neb = nebula.NebulaClient()
+                editable = neb.get_editable_mods()
 
-            for mod in self._mods:
-                if mod.mid in editable:
-                    mod.dev_mode = True
+                for mod in self._mods:
+                    if mod.mid in editable:
+                        mod.dev_mode = True
+            except Exception:
+                logging.exception('Failed to login to the Nebula')
 
         self._threads = 3
         self.add_work(self._mods)
@@ -403,8 +345,8 @@ class InstallTask(progress.MultistepTask):
         modpath = mod.folder
         mfiles = mod.get_files()
         mnames = [f['filename'] for f in mfiles] + ['knossos.bmp', 'mod.json']
-        self._local.pkg = id(mod)
-        self._pkg_prog[id(mod)] = (mod.title, 0, '')
+        self._local.slot = id(mod)
+        self._slot_prog[id(mod)] = (mod.title, 0, '')
 
         archives = set()
         progress.start_task(0, 0.9, '%s')
@@ -435,10 +377,20 @@ class InstallTask(progress.MultistepTask):
             os.makedirs(modpath)
 
         amount = float(len(mfiles))
-        if mod.dev_mode:
-            pkg_folders = {}
-            for pkg in mod.packages:
-                pkg_folders[pkg.name] = pkg.folder
+        inst_mods = center.installed.query_all(mod.mid)
+        copies = []
+        pkg_folders = {}
+
+        # query_all is a generator so the exception will be thrown when looping over the result
+        try:
+            for mv in inst_mods:
+                if mv.dev_mode:
+                    pf = pkg_folders.setdefault(mv, {})
+
+                    for pkg in mv.packages:
+                        pf[pkg.name] = pkg.folder
+        except repo.ModNotFound:
+            inst_mods = []
 
         for i, info in enumerate(mfiles):
             if (mod.mid, info['package']) not in self._pkg_names:
@@ -446,16 +398,24 @@ class InstallTask(progress.MultistepTask):
 
             progress.update(i / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
 
-            if mod.dev_mode:
-                itempath = util.ipath(os.path.join(modpath, pkg_folders[info['package']], info['filename']))
-            else:
-                itempath = util.ipath(os.path.join(modpath, info['filename']))
+            # Check if we already have this file
+            found = False
+            for mv in inst_mods:
+                if mv.dev_mode:
+                    itempath = util.ipath(os.path.join(mv.folder, pkg_folders[mv][info['package']], info['filename']))
+                else:
+                    itempath = util.ipath(os.path.join(mv.folder, info['filename']))
 
-            if not os.path.isfile(itempath) or not util.check_hash(info['checksum'], itempath):
+                if os.path.isfile(itempath) and util.check_hash(info['checksum'], itempath):
+                    copies.append((mod, info['package'], info['filename'], itempath))
+                    found = True
+                    break
+
+            if not found:
                 archives.add((mod.mid, info['package'], info['archive']))
-                logging.debug('%s is missing for %s.', itempath, mod)
+                logging.debug('%s: %s is missing/broken for %s.', info['package'], info['filename'], mod)
 
-        self.post(archives)
+        self.post((archives, copies))
         progress.finish_task()
         progress.start_task(0.9, 0, 'Downloading logos...')
 
@@ -491,10 +451,14 @@ class InstallTask(progress.MultistepTask):
 
     def init2(self):
         archives = set()
+        copies = []
         downloads = []
 
-        for a in self.get_results():
+        for a, c in self.get_results():
             archives |= a
+            copies.extend(c)
+
+        self._copies = copies
 
         for pkg in self._pkgs:
             mod = pkg.get_mod()
@@ -506,7 +470,7 @@ class InstallTask(progress.MultistepTask):
                     item['_id'] = id(oitem)
                     downloads.append(item)
                 else:
-                    del self._pkg_prog[id(oitem)]
+                    del self._slot_prog[id(oitem)]
 
         if len(archives) == 0:
             logging.info('Nothing to do for this InstallTask!')
@@ -518,7 +482,7 @@ class InstallTask(progress.MultistepTask):
         self.add_work(downloads)
 
     def work2(self, archive):
-        self._local.pkg = archive['_id']
+        self._local.slot = archive['_id']
 
         with tempfile.TemporaryDirectory() as tpath:
             arpath = os.path.join(tpath, archive['filename'])
@@ -679,6 +643,35 @@ class InstallTask(progress.MultistepTask):
         self.add_work((None,))
 
     def work3(self, _):
+        self._slot_prog['copies'] = ('Copy old files', 0, 'Waiting...')
+        self._local.slot = 'copies'
+
+        pkg_folders = {}
+
+        count = float(len(self._copies))
+        for i, info in enumerate(self._copies):
+            mod, pkg_name, fn, src = info
+
+            progress.update(i / count, fn)
+            if mod.dev_mode:
+                if mod not in pkg_folders:
+                    pkg_folders[mod] = {}
+                    for pkg in mod.packages:
+                        pkg_folders[mod][pkg.name] = pkg.folder
+
+                dest = os.path.join(mod.folder, pkg_folders[mod][pkg_name], fn)
+            else:
+                dest = os.path.join(mod.folder, fn)
+
+            logging.debug('Copying %s to %s', src, dest)
+            shutil.copy(src, dest)
+
+        progress.update(1, 'Done')
+
+    def init4(self):
+        self.add_work((None,))
+
+    def work4(self, _):
         # Generate mod.json files.
         for mod in self._mods:
             try:
@@ -695,12 +688,11 @@ class UninstallTask(progress.MultistepTask):
     _steps = 2
     check_after = True
 
-    def __init__(self, pkgs, check_after=True, mods=[]):
+    def __init__(self, pkgs, mods=[]):
         super(UninstallTask, self).__init__()
 
         self._pkgs = []
         self._mods = []
-        self.check_after = check_after
 
         for pkg in pkgs:
             try:
@@ -766,6 +758,8 @@ class UninstallTask(progress.MultistepTask):
                     shutil.rmtree(libs)
 
                 center.installed.del_mod(mod)
+            elif not os.path.isdir(modpath):
+                logging.error('Mod %s still has packages but mod folder "%s" is gone!' % (mod, modpath))
             else:
                 mod.save()
         except Exception:
@@ -778,8 +772,8 @@ class UninstallTask(progress.MultistepTask):
                 os.rmdir(path)
 
     def finish(self):
-        if self.check_after:
-            run_task(CheckTask())
+        # Update the local mod list which will remove the uninstalled mod
+        run_task(LoadLocalModsTask())
 
 
 class UpdateTask(InstallTask):
@@ -807,12 +801,10 @@ class UpdateTask(InstallTask):
             # The new version has been succesfully installed, remove the old version.
 
             if len(self._old_mod.get_dependents()) == 0:
-                run_task(UninstallTask(self._old_mod.packages, check_after=self.__check_after))
+                run_task(UninstallTask(self._old_mod.packages))
             else:
                 logging.debug('Not uninstalling %s after update because it still has dependents.', self._old_mod)
-
-                if self.__check_after:
-                    run_task(CheckTask())
+                run_task(LoadLocalModsTask())
 
 
 class UploadTask(progress.MultistepTask):
@@ -844,7 +836,6 @@ class UploadTask(progress.MultistepTask):
         self._mod = mod.copy()
 
         self._threads = 2
-        self._local = threading.local()
         self._slot_prog = {
             'total': ('Status', 0, 'Waiting...')
         }
@@ -852,17 +843,6 @@ class UploadTask(progress.MultistepTask):
         self.done.connect(self.finish)
         self._question.connect(self.show_question)
         self._question_cond = threading.Condition()
-
-    def _track_progress(self, prog, text):
-        with self._progress_lock:
-            if self._local.slot:
-                self._slot_prog[self._local.slot] = (self._slot_prog[self._local.slot][0], prog, text)
-
-            total = 0
-            for label, prog, text in self._slot_prog.values():
-                total += prog
-
-            self.progress.emit((total / max(1, len(self._slot_prog)), self._slot_prog, 'Uploading mod...'))
 
     def abort(self):
         self._local.slot = 'total'
@@ -882,6 +862,18 @@ class UploadTask(progress.MultistepTask):
         self._local.slot = 'total'
 
         try:
+            progress.update(0, 'Performing sanity checks...')
+            if self._mod.mtype in ('mod', 'tc'):
+                try:
+                    exes = self._mod.get_executables()
+                except Exception:
+                    exes = []
+
+                if len(exes) == 0:
+                    self._reason = 'no exes'
+                    self.abort()
+                    return
+
             progress.update(0.1, 'Logging in...')
 
             self._dir = tempfile.TemporaryDirectory()
@@ -943,11 +935,15 @@ class UploadTask(progress.MultistepTask):
                                 'checksum': None
                             })
 
-                            if relpath in fnames:
-                                l = conflicts.setdefault(relpath, [fnames[relpath].name])
-                                l.append(pkg.name)
+                            if not pkg.is_vp:
+                                # VP conflicts don't cause problems and are most likely intentional
+                                # which is why we ignore them.
 
-                            fnames[relpath] = pkg
+                                if relpath in fnames:
+                                    l = conflicts.setdefault(relpath, [fnames[relpath].name])
+                                    l.append(pkg.name)
+
+                                fnames[relpath] = pkg
 
                     if len(pkg.filelist) == 0:
                         self._reason = 'empty pkg'
@@ -971,7 +967,7 @@ class UploadTask(progress.MultistepTask):
                 self._slot_prog['#checksums'] = ('Checksums', 0, '')
                 self._local.slot = '#checksums'
 
-                fc = float(len(fnames))
+                fc = float(sum([len(pkg.filelist) for pkg in self._mod.packages]))
                 done = 0
                 for pkg in self._mod.packages:
                     pkg_path = os.path.join(self._mod.folder, pkg.folder)
@@ -1102,7 +1098,7 @@ class UploadTask(progress.MultistepTask):
             while retries > 0:
                 retries -= 1
                 try:
-                    self._client.upload_file(ar_name, ar_path)
+                    self._client.upload_file(ar_name, ar_path, content_checksum=content_ck)
                     break
                 except nebula.RequestFailedException:
                     logging.exception('Failed upload, retrying...')
@@ -1148,7 +1144,12 @@ class UploadTask(progress.MultistepTask):
         pass
 
     def finish(self):
-        self._dir.cleanup()
+        try:
+            if self._dir:
+                util.retry_helper(self._dir.cleanup)
+        except OSError:
+            # This is not a critical error so we only log it for now
+            logging.exception('Failed to remove temporary folder after upload!')
 
         if self._login_failed:
             message = 'Failed to login!'
@@ -1163,6 +1164,8 @@ class UploadTask(progress.MultistepTask):
             message += self._msg
         elif self._reason == 'empty pkg':
             message = 'The package %s is empty!' % self._msg
+        elif self._reason == 'no exes':
+            message = 'The mod has no executables selected!'
         elif self._reason == 'aborted':
             return
         else:
@@ -1181,6 +1184,13 @@ class GOGExtractTask(progress.Task):
         self.add_work([(gog_path, dest_path)])
         self.title = 'Installing FS2 from GOG...'
 
+        self._makedirs(dest_path)
+        create_retail_mod(dest_path)
+        center.main_win.update_mod_buttons('home')
+
+        self.mods = [center.installed.query('FS2')]
+        self._slot_prog['total'] = ('Status', 0, 'Waiting...')
+
         if not center.installed.has('FSO'):
             try:
                 fso = center.mods.query('FSO')
@@ -1190,6 +1200,7 @@ class GOGExtractTask(progress.Task):
 
     def work(self, paths):
         gog_path, dest_path = paths
+        self._local.slot = 'total'
 
         progress.update(0.03, 'Looking for InnoExtract...')
         data = util.get(center.INNOEXTRACT_LINK)
@@ -1307,8 +1318,6 @@ class GOGExtractTask(progress.Task):
         shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
         shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
 
-        create_retail_mod(dest_path)
-
         self.post(dest_path)
 
     def _makedirs(self, path):
@@ -1326,10 +1335,8 @@ class GOGExtractTask(progress.Task):
                 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?'))
             return
         else:
-            QtWidgets.QMessageBox.information(None, translate('tasks', 'Done'), self.tr(
-                'FS2 has been successfully installed.'))
-
             center.main_win.update_mod_list()
+            center.main_win.browser_ctrl.bridge.retailInstalled.emit()
 
 
 class GOGCopyTask(progress.Task):
@@ -1342,6 +1349,13 @@ class GOGCopyTask(progress.Task):
         self.add_work([(gog_path, dest_path)])
         self.title = 'Copying retail files...'
 
+        self._makedirs(dest_path)
+        create_retail_mod(dest_path)
+        center.main_win.update_mod_buttons('home')
+
+        self.mods = [center.installed.query('FS2')]
+        self._slot_prog['total'] = ('Status', 0, 'Waiting...')
+
         if not center.installed.has('FSO'):
             try:
                 fso = center.mods.query('FSO')
@@ -1351,25 +1365,28 @@ class GOGCopyTask(progress.Task):
 
     def work(self, paths):
         gog_path, dest_path = paths
+        self._local.slot = 'total'
 
-        progress.update(0, 'Copying files...')
+        progress.update(0, 'Creating directories...')
         self._makedirs(os.path.join(dest_path, 'data/players'))
         self._makedirs(os.path.join(dest_path, 'data/movies'))
 
+        progress.update(1 / 4., 'Copying VPs...')
         for item in glob.glob(os.path.join(gog_path, '*.vp')):
             shutil.copyfile(item, os.path.join(dest_path, os.path.basename(item)))
 
+        progress.update(2 / 4., 'Copying player profiles...')
         for item in glob.glob(os.path.join(gog_path, 'data/players', '*.hcf')):
             shutil.copyfile(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
 
+        progress.update(3 / 4., 'Copying cutscenes...')
         for item in glob.glob(os.path.join(gog_path, 'data2', '*.mve')):
             shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
         for item in glob.glob(os.path.join(gog_path, 'data3', '*.mve')):
             shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
-        create_retail_mod(dest_path)
-
+        progress.update(1, 'Done')
         self.post(dest_path)
 
     def _makedirs(self, path):
@@ -1378,6 +1395,7 @@ class GOGCopyTask(progress.Task):
 
     def finish(self):
         center.main_win.update_mod_list()
+        center.main_win.browser_ctrl.bridge.retailInstalled.emit()
 
 
 class CheckUpdateTask(progress.Task):

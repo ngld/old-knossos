@@ -22,6 +22,18 @@ function init() {
         }
     }
 
+    let cb_id = 0;
+    let cb_store = {};
+    window.call_async = function (ref) {
+        let args = Array.prototype.slice.apply(arguments, [1]);
+        let cb = args.pop();
+        args.push(cb_id);
+        cb_store[cb_id] = cb;
+
+        ref.apply(null, args);
+        cb_id++;
+    }
+
     window.connectOnce = function (sig, cb) {
         let wrapper = function () {
             sig.disconnect(wrapper);
@@ -36,17 +48,16 @@ function init() {
         'kn-devel-page',
         'kn-drawer',
         'kn-dropdown',
-        'kn-flag-editor',
+        'kn-fso-settings',
+        'kn-fso-user-settings',
         'kn-mod-home',
         'kn-mod-explore',
-        'kn-settings-page'
+        'kn-settings-page',
+        'kn-welcome-page'
     ];
-    window.tt = [];
 
     tmp.forEach((comp) => {
-        let c = require(`../templates/${comp}.vue`).default;
-        tt.push(c);
-        Vue.component(comp, c);
+        Vue.component(comp, require(`../templates/${comp}.vue`).default);
     });
 
     window.vm = new Vue(Object.assign({ el: '#loading' }, KnPage));
@@ -54,6 +65,10 @@ function init() {
     let mod_table = null;
     window.task_mod_map = {};
 
+    fs2mod.asyncCbFinished.connect((id, data) => {
+        cb_store[id](JSON.parse(data));
+        delete cb_store[id];
+    });
     fs2mod.showWelcome.connect(() => vm.page = 'welcome');
     fs2mod.showDetailsPage.connect((mod) => {
         vm.mod = mod;
@@ -94,18 +109,13 @@ function init() {
         cb();
     });
     fs2mod.updateModlist.connect((mods, type) => {
-        mod_table = {};
+        window.mod_table = mod_table = {};
         mods = JSON.parse(mods);
         for(let mod of mods) {
             mod_table[mod.id] = mod;
         }
 
-        vm.mods = mods;
-
-        if(vm.page === 'modlist' || vm.page === 'develop') {
-            vm.page = type === 'develop' ? 'develop' : 'modlist';
-            vm.tab = type;
-        }
+        vm.updateModlist(mods);
     });
     fs2mod.hidePopup.connect(() => vm.popup_visible = false);
 
@@ -135,6 +145,7 @@ function init() {
             if(mod_table[mid]) {
                 mod_table[mid].progress = progress;
                 mod_table[mid].progress_info = details;
+                vm.$set(vm.popup_progress, mid, details);
             }
         }
     });
@@ -160,13 +171,22 @@ function init() {
 
     // Open <a href="..." target="_blank">...</a> links in the system's default browser
     document.body.addEventListener('click', (e) => {
-        if(e.target && e.target.nodeName === 'A' && e.className && e.className.indexOf('open-ext') > -1) {
+        if(e.target && e.target.nodeName === 'A' && e.target.className && e.target.className.indexOf('open-ext') > -1) {
             e.preventDefault();
             fs2mod.openExternal(e.target.href);
         }
     });
 
-    setTimeout(() => call(fs2mod.finishInit, get_translation_source(), (t) => vm.trans = t), 300);
+    setTimeout(() => call(fs2mod.finishInit, get_translation_source(), (res) => {
+        res = JSON.parse(res);
+        
+        vm.trans = res.t;
+        window.platform = res.platform;
+
+        if(res.welcome) {
+            vm.page = 'welcome';
+        }
+    }), 300);
 }
 
 if(window.qt) {

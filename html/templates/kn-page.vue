@@ -1,6 +1,10 @@
 <script>
+let next_tab = null;
+
 export default {
     data: () => ({
+        w: window,
+
         tabs: {
             home: 'Home',
             explore: 'Explore',
@@ -8,13 +12,10 @@ export default {
         },
 
         search_text: '',
-        tab: 'home',
+        tab: 'explore',
         page: 'modlist',
         show_filter: false,
         mods: [],
-
-        // welcome page
-        data_path: '?',
 
         // details page
         mod: null,
@@ -25,6 +26,7 @@ export default {
         popup_content: null,
 
         popup_progress_message: null,
+        popup_progress: {},
 
         popup_mod_name: '',
         popup_mod_id: '',
@@ -68,6 +70,10 @@ export default {
             fs2mod.openExternal(url);
         },
 
+        openScreenshotFolder() {
+            fs2mod.openScreenshotFolder();
+        },
+
         showHelp() {
             alert('Not yet implemented! Sorry.');
         },
@@ -82,10 +88,7 @@ export default {
         },
 
         showTab(tab) {
-            if(this.page === 'settings') {
-                this.tab = tab;
-                this.page = tab === 'develop' ? 'develop' : 'modlist';
-            }
+            next_tab = tab;
 
             if(window.qt) {
                 fs2mod.showTab(tab);
@@ -94,18 +97,18 @@ export default {
             }
         },
 
+        updateModlist(mods) {
+            this.mods = mods;
+
+            if(next_tab) {
+                this.tab = next_tab;
+                this.page = next_tab === 'develop' ? 'develop' : 'modlist';
+                next_tab = null;
+            }
+        },
+
         exitDetails() {
             this.page = 'modlist';
-        },
-
-        selectFolder() {
-            call(fs2mod.browseFolder, 'Please select a folder', this.data_path, (path) => {
-                if(path) this.data_path = path;
-            });
-        },
-
-        finishWelcome() {
-            fs2mod.setBasePath(this.data_path);
         },
 
         installMod() {
@@ -199,7 +202,7 @@ export default {
 
         showModProgress() {
             this.popup_progress_message = null;
-            this.popup_content = this.mod;
+            this.popup_mod_id = this.mod.id;
             this.popup_title = 'Installation Details';
             this.popup_mode = 'mod_progress';
             this.popup_visible = true;
@@ -292,6 +295,7 @@ export default {
                 <div class="mod-search">
                     <input v-model="search_text" type="text" placeholder="Search">
                 </div>
+                <div class="text-marquee"><span>Announcements go here!</span></div>
             </div>
         </div>
     <!-------------------------------------------------------------------------------- Start the Tab Menus ---------->
@@ -300,6 +304,12 @@ export default {
                 <span :class="'icon ' + name + '-image'"></span>
                 {{ label }}
             </a>
+        </div>
+        <div id="tab-bar-misc" class="keep-left" v-if="page === 'modlist'">
+            <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
+        </div>
+        <div id="tab-bar-misc" class="keep-right" v-if="page !== 'modlist'">
+            <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
         </div>
     <!-------------------------------------------------------------------------------- Start the Filter Button ---------->
         <div class="filter-container" v-if="page === 'modlist'">
@@ -319,6 +329,8 @@ export default {
                 </div>
             </div>
         </div>
+
+        <div class="welcome-overlay" v-if="page === 'welcome'"></div>
 
     <!-------------------------------------------------------------------------------- Start the Details Menu ---------->
         <div id="details-tab-bar" v-if="page === 'details'">
@@ -341,34 +353,8 @@ export default {
             <div id="main-shadow-effect"></div>
 
     <!-------------------------------------------------------------------------------- Start the Welcome page ---------->
-            <div data-tr class="info-page" v-if="page === 'welcome'">
-                <div class="container main-notice">
-                    <h1>Welcome!</h1>
-                    
-                    <p>It looks like you started Knossos for the first time.</p>
-                    <p>You need to select a directoy where Knossos will store the game data (models, textures, etc.).</p>
-                    
-                    <form class="form-horizontal">
-                        <div class="form-group">
-                            <div class="col-xs-8">
-                                <input type="text" class="form-control" v-model="data_path">
-                            </div>
-                            <div class="col-xs-4">
-                                <button class="btn btn-default" @click.prevent="selectFolder">Browse...</button>
-                            </div>
-                        </div>
-                    </form>
-                    
-                    <p><button class="btn btn-primary" @click="finishWelcome">Continue</button></p>
-
-                    <hr>
-                    <p>
-                        This launcher is still in development. Please visit
-                        <a href="#" @click="openLink('http://www.hard-light.net/forums/index.php?topic=93144.0')">this HLP thread</a>
-                        and let me know what you think, what didn't work and what you would like to change.
-                    </p>
-                    <p>-- ngld</p>
-                </div>
+            <div class="info-page" v-if="page === 'welcome'">
+                <kn-welcome-page></kn-welcome-page>
             </div>
 
     <!-------------------------------------------------------------------------------- Start the Details page ---------->
@@ -411,11 +397,11 @@ export default {
                 <div v-if="popup_mode === 'mod_progress'">
                     <p v-if="popup_progress_message">{{ popup_progress_message }}</p>
 
-                    <p v-if="popup_content.progress_info.length === 0">
+                    <p v-if="!popup_progress[popup_mod_id]">
                         Preparing...
                     </p>
 
-                    <div v-for="row in popup_content.progress_info" class="row">
+                    <div v-for="row in (popup_progress[popup_mod_id] || [])" class="row">
                         <div class="col-xs-4 mod-prog-label">{{ row[0] }}</div>
                         <div class="col-xs-5">
                             <div :class="'mod-prog-bar' + (row[1] === 1 ? ' complete' : '')">
@@ -680,6 +666,10 @@ export default {
 
                     <button class="mod-btn btn-green" @click.prevent="sureCallback">YES</button>
                     <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">NO</button>
+                </div>
+
+                <div v-if="popup_mode == 'fso_settings'">
+                    <kn-fso-user-settings :mods="mods" :mod="popup_content"></kn-fso-user-settings>
                 </div>
             </div>
         </div>

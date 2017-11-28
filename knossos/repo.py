@@ -259,7 +259,29 @@ class Repo(object):
                 logging.warning('Repo.query(): Expected Spec but got Version instead! (%s)' % repr(spec))
                 spec = util.Spec.from_version(spec)
 
-            version = spec.select([mod.version for mod in candidates])
+            if candidates[0].mtype == 'engine':
+                # Multiple versions qualify and this is an engine so we have to check the stability next
+                stab = center.settings['engine_stability']
+                if stab not in STABILITES:
+                    stab = STABILITES[-1]
+
+                stab_idx = STABILITES.index(stab)
+                version = None
+                while stab_idx > -1:
+                    version = spec.select([mod.version for mod in candidates if mod.stability == stab])
+                    if not version:
+                        # Nothing found, try the next lower stability
+                        stab_idx -= 1
+                        stab = STABILITES[stab_idx]
+                    else:
+                        # Found at least one result
+                        break
+
+                if not version:
+                    version = spec.select([mod.version for mod in candidates])
+            else:
+                version = spec.select([mod.version for mod in candidates])
+
             if not version:
                 raise ModNotFound('Mod "%s" %s wasn\'t found!' % (mid, spec), mid, spec)
 
@@ -308,15 +330,15 @@ class Repo(object):
         for pkg in pkgs:
             mod = pkg.get_mod()
             dd = dep_dict.setdefault(mod.mid, {})
-            dd = dd.setdefault(pkg.name, {})
 
             version = str(mod.version)
             if version != '*' and not SpecItem.re_spec.match(version):
                 # Make a spec out of this version
                 version = '==' + version
 
-            version = util.Spec(version)
-            dd[version] = pkg
+            dd = dd.setdefault(util.Spec(version), {})
+            dd['#mod'] = pkg.get_mod()
+            dd[pkg.name] = pkg
 
         # Resolve the pkgs' dependencies
         while len(ndeps) > 0:
@@ -326,63 +348,67 @@ class Repo(object):
             for pkg in _nd:
                 for dep, version in pkg.resolve_deps():
                     dd = dep_dict.setdefault(dep.get_mod().mid, {})
-                    dd = dd.setdefault(dep.name, {})
+                    dd = dd.setdefault(version, {})
+                    dd['#mod'] = dep.get_mod()
 
-                    if version not in dd:
-                        dd[version] = dep
+                    if dep.name not in dd:
+                        dd[dep.name] = dep
                         if recursive:
                             ndeps.append(dep)
 
         # Check for conflicts (and try to resolve them if possible).
         dep_list = set()
         pref_stable = center.settings['engine_stability']
-        for mid, deps in dep_dict.items():
-            for name, variants in deps.items():
-                if len(variants) == 1:
-                    dep_list.add(next(iter(variants.values())))
-                else:
-                    specs = variants.keys()
-                    remains = []
+        for mid, variants in dep_dict.items():
+            if len(variants) == 1:
+                # This loop only iterates once but it's the easiest solution to get the actual value
+                for pkgs in variants.values():
+                    del pkgs['#mod']
+                    dep_list |= set(pkgs.values())
+            else:
+                specs = variants.keys()
+                remains = []
 
-                    for v in variants.values():
-                        ok = True
-                        for spec in specs:
-                            if not spec.match(v.get_mod().version):
-                                ok = False
+                for v in variants.values():
+                    ok = True
+                    for spec in specs:
+                        if not spec.match(v['#mod'].version):
+                            ok = False
+                            break
+
+                    if ok:
+                        remains.append(v)
+
+                if len(remains) == 0:
+                    v = (list(variants.values())[0]['#mod'].title, ','.join([str(s) for s in specs]))
+                    raise PackageNotFound('No version of mod "%s" found for these constraints: %s' % v, mid, v[0])
+                else:
+                    if remains[0]['#mod'].mtype == 'engine':
+                        # Multiple versions qualify and this is an engine so we have to check the stability next
+                        stab = pref_stable
+                        if stab not in STABILITES:
+                            stab = STABILITES[-1]
+
+                        stab_idx = STABILITES.index(stab)
+                        candidates = []
+                        while stab_idx > -1:
+                            candidates = [m for m in remains if m['#mod'].stability == stab]
+                            if len(candidates) == 0:
+                                # Nothing found, try the next lower stability
+                                stab_idx -= 1
+                                stab = STABILITES[stab_idx]
+                            else:
+                                # Found at least one result
                                 break
 
-                        if ok:
-                            remains.append(v)
+                        # An empty remains list would trigger an index out of bounds error; avoid that
+                        if len(candidates) > 0:
+                            remains = candidates
 
-                    if len(remains) == 0:
-                        v = (list(variants.values())[0].name, ','.join([str(s) for s in specs]))
-                        raise PackageNotFound('No version of package "%s" found for these constraints: %s' % v, mid, list(variants.values())[0].name)
-                    else:
-                        if remains[0].get_mod().mtype == 'engine':
-                            # Multiple versions qualify and this is an engine so we have to check the stability next
-                            stab = pref_stable
-                            if stab not in STABILITES:
-                                stab = STABILITES[-1]
-
-                            stab_idx = STABILITES.index(stab)
-                            candidates = []
-                            while stab_idx > -1:
-                                candidates = [m for m in remains if m.get_mod().stability == stab]
-                                if len(candidates) == 0:
-                                    # Nothing found, try the next lower stability
-                                    stab_idx -= 1
-                                    stab = STABILITES[stab_idx]
-                                else:
-                                    # Found at least one result
-                                    break
-
-                            # An empty remains list would trigger an index out of bounds error; avoid that
-                            if len(candidates) > 0:
-                                remains = candidates
-
-                        # Pick the latest
-                        remains.sort(key=lambda v: v.get_mod().version)
-                        dep_list.add(remains[-1])
+                    # Pick the latest
+                    remains.sort(key=lambda v: v['#mod'].version)
+                    del remains[-1]['#mod']
+                    dep_list |= set(remains[-1].values())
 
         return dep_list
 
@@ -453,7 +479,7 @@ class Mod(object):
         self.stability = values.get('stability', 'stable')
         self.parent = values.get('parent', 'FS2')
         self.cmdline = values.get('cmdline', '')
-        self.mod_flag = values.get('mod_flag', [])
+        self.mod_flag = values.get('mod_flag', None)
         self.description = values.get('description', '')
         self.notes = values.get('notes', '')
         self.release_thread = values.get('release_thread', None)
@@ -552,13 +578,13 @@ class Mod(object):
 
         return files
 
-    def resolve_deps(self, only_required=True):
+    def resolve_deps(self, only_required=True, recursive=True):
         if only_required:
             pkgs = [pkg for pkg in self.packages if pkg.status == 'required']
         else:
             pkgs = [pkg for pkg in self.packages if pkg.status in ('required', 'recommended')]
 
-        return self._repo.process_pkg_selection(pkgs)
+        return self._repo.process_pkg_selection(pkgs, recursive=recursive)
 
     def get_parent(self):
         if self.parent:
@@ -826,6 +852,9 @@ class InstalledMod(Mod):
     folder = None
     dev_mode = False
     custom_build = None
+    user_exe = None
+    user_cmdline = None
+    user_custom_build = None
     _path = None
 
     @staticmethod
@@ -837,6 +866,15 @@ class InstalledMod(Mod):
             mod = InstalledMod(None)
             mod.folder = os.path.normpath(os.path.dirname(path))
             mod.set(data)
+
+            user_path = os.path.join(os.path.dirname(path), 'user.json')
+            if os.path.isfile(user_path):
+                try:
+                    with open(user_path, 'r') as stream:
+                        mod.set_user(json.load(stream))
+                except Exception:
+                    logging.exception('Failed to load user data for %s!' % mod)
+
             return mod
         else:
             return None
@@ -863,12 +901,22 @@ class InstalledMod(Mod):
         self.dev_mode = values.get('dev_mode', False)
         self.custom_build = values.get('custom_build', None)
         self.check_notes = values.get('check_notes', '')
+
+        if not self.mod_flag:
+            # Fix broken metadata
+            self.update_mod_flag()
+
         for pkg in pkgs:
             installed_pkg = InstalledPackage(pkg, self)
             # If the user installed packages on multiple platforms into the same directory then an installed package
             # may be present that is not valid for the current environment so we need to check that here
             if installed_pkg.check_env():
                 self.packages.append(installed_pkg)
+
+    def set_user(self, values):
+        self.user_exe = values.get('exe')
+        self.user_cmdline = values.get('cmdline')
+        self.user_custom_build = values.get('custom_build')
 
     def get(self):
         return {
@@ -895,24 +943,60 @@ class InstalledMod(Mod):
             'mod_flag': self.mod_flag,
             'dev_mode': self.dev_mode,
             'custom_build': self.custom_build,
-            'packages': [pkg.get() for pkg in self.packages]
+            'packages': [pkg.get() for pkg in self.packages],
+
+            'user_exe': self.user_exe,
+            'user_cmdline': self.user_cmdline,
+            'user_custom_build': self.user_custom_build
         }
+
+    def get_user(self):
+        return {
+            'exe': self.user_exe,
+            'cmdline': self.user_cmdline,
+            'custom_build': self.user_custom_build
+        }
+
+    def get_relative(self):
+        info = self.get()
+
+        # Storing the folder of the JSON file inside the file would be silly.
+        del info['folder']
+        del info['user_exe']
+        del info['user_cmdline']
+        del info['user_custom_build']
+
+        # Make sure we only store relative paths.
+        for prop in ('logo', 'tile', 'banner'):
+            if info[prop] and '://' not in info[prop]:
+                info[prop] = os.path.relpath(info[prop], self.folder)
+
+        for prop in ('screenshots', 'attachments'):
+            paths = info[prop]
+            for i, p in enumerate(paths):
+                paths[i] = os.path.relpath(p, self.folder)
+
+        return info
 
     def copy(self):
         return InstalledMod(self.get(), self._repo)
 
     def generate_folder(self):
         # IMPORTANT: This code decides where newly installed mods are stored.
-        base = center.settings['base_path']
+        base = os.path.normpath(center.settings['base_path'])
+        meta = self.get_relative()
 
         if self.mtype in ('engine', 'tool'):
             self.folder = os.path.join(base, 'bin', self.mid)
         elif self.mtype == 'tc':
-            self.folder = os.path.join(base, self.mid)
+            self.folder = os.path.join(base, self.mid, self.mid)
         else:
             self.folder = os.path.join(base, self.parent, self.mid)
 
         self.folder += '-' + str(self.version)
+
+        # This should update the paths to images, etc. since get_relative() only returns relative paths
+        self.set(meta)
 
     def add_pkg(self, pkg):
         pkg = InstalledPackage.convert(pkg, self)
@@ -936,6 +1020,16 @@ class InstalledMod(Mod):
                 break
 
     def save(self):
+        im_path = util.ipath(self.folder)
+
+        # Correct the casing of our folder if neccessary.
+        if im_path != self.folder:
+            self.folder = im_path
+
+        with open(os.path.join(self.folder, 'mod.json'), 'w') as stream:
+            json.dump(self.get_relative(), stream, indent=4)
+
+    def save_user(self):
         modpath = self.folder
         im_path = util.ipath(modpath)
 
@@ -944,28 +1038,17 @@ class InstalledMod(Mod):
             modpath = im_path
             self.folder = modpath
 
-        path = os.path.join(modpath, 'mod.json')
-        info = self.get()
-
-        # Storing the folder of the JSON file inside the file would be silly.
-        del info['folder']
-
-        # Make sure we only store relative paths.
-        for prop in ('logo', 'tile', 'banner'):
-            if info[prop] and '://' not in info[prop]:
-                info[prop] = os.path.relpath(info[prop], modpath)
-
-        for prop in ('screenshots', 'attachments'):
-            paths = info[prop]
-            for i, p in enumerate(paths):
-                paths[i] = os.path.relpath(p, modpath)
+        path = os.path.join(modpath, 'user.json')
 
         with open(path, 'w') as stream:
-            json.dump(info, stream)
+            json.dump(self.get_user(), stream)
 
     def update_mod_flag(self):
         old_list = self.mod_flag
         new_list = set([self.mid])
+
+        if old_list is None:
+            old_list = []
 
         # Collect all dependency IDs
         for pkg in self.packages:
@@ -1017,25 +1100,37 @@ class InstalledMod(Mod):
 
         return paths, dev_involved
 
-    def get_executables(self):
-        if self.mtype in ('engine', 'tool'):
-            deps = self.packages
-        else:
-            try:
-                deps = self.resolve_deps(True)
-                if not deps:
-                    deps = self.resolve_deps()
-            except ModNotFound:
-                logging.exception('Error during dep resolve for executables!')
-                deps = []
-
+    def get_executables(self, user=False):
         exes = []
+        if user and self.user_custom_build:
+                exes.append({
+                    'file': self.user_custom_build,
+                    'mod': self,
+                    'label': None
+                })
+
         if self.custom_build:
             exes.append({
                 'file': self.custom_build,
                 'mod': self,
                 'label': None
             })
+
+        if self.mtype in ('engine', 'tool'):
+            deps = self.packages
+        else:
+            try:
+                deps = self.resolve_deps(True, False)
+            except ModNotFound:
+                logging.exception('Error during dep resolve for executables!')
+                deps = []
+
+        if user and self.user_exe:
+            try:
+                exe_mod = self._repo.query(self.user_exe[0], util.Spec('==' + self.user_exe[1]))
+                deps = exe_mod.packages + list(deps)
+            except ModNotFound:
+                pass
 
         for pkg in deps:
             mod = pkg.get_mod()

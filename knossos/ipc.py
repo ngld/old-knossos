@@ -194,7 +194,6 @@ def handle_message(raw_msg):
             mod = get_mod(msg[1])
 
             if mod is not None:
-                print(msg[1])
                 center.main_win.browser_ctrl.bridge.showModDetails.emit(msg[1])
 
                 center.main_win.win.activateWindow()

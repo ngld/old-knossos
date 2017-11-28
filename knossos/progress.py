@@ -93,6 +93,7 @@ def update(prog, text=''):
 
 # Task scheduler
 class Worker(threading.Thread):
+    busy = False
 
     def __init__(self, master):
         super(Worker, self).__init__()
@@ -107,17 +108,20 @@ class Worker(threading.Thread):
             if task is None:
                 return
 
+            self.busy = True
             try:
                 reset()
                 set_callback(task[0]._track_progress)
                 task[0]._init()
                 task[0].work(*task[1])
             except SystemExit:
+                self.busy = False
                 return
             except Exception:
                 logging.exception('Exception in Thread!')
 
             task[0]._deinit()
+            self.busy = False
 
 
 class Master(object):
@@ -195,6 +199,9 @@ class Master(object):
         with self._worker_cond:
             self._worker_cond.notify_all()
 
+    def is_busy(self):
+        return any([w.busy for w in self._workers])
+
 
 class Task(QtCore.QObject):
     _results = None
@@ -210,6 +217,8 @@ class Task(QtCore.QObject):
     _running = 0
     _pending = 0
     _threads = 0
+    _local = None
+    _slot_prog = None
     background = False
     can_abort = True
     aborted = False
@@ -230,9 +239,10 @@ class Task(QtCore.QObject):
         self._result_lock = threading.Lock()
         self._work_lock = threading.Lock()
         self._done = threading.Event()
-        self._progress = dict()
         self._progress_lock = threading.Lock()
         self._threads = threads
+        self._local = threading.local()
+        self._slot_prog = {}
         self.mods = []
 
     def _get_work(self):
@@ -251,7 +261,6 @@ class Task(QtCore.QObject):
 
     def _init(self):
         with self._progress_lock:
-            self._progress[threading.get_ident()] = (0, 'Ready')
             self._running += 1
 
     def _deinit(self):
@@ -259,7 +268,6 @@ class Task(QtCore.QObject):
             with self._work_lock:
                 self._pending -= 1
 
-            self._progress[threading.get_ident()] = (0, 'Done')
             self._running -= 1
 
             if self._running == 0 and not self._has_work() and not self._done.is_set():
@@ -268,9 +276,14 @@ class Task(QtCore.QObject):
 
     def _track_progress(self, prog, text):
         with self._progress_lock:
-            self._progress[threading.get_ident()] = (prog, text)
+            if hasattr(self._local, 'slot'):
+                self._slot_prog[self._local.slot] = (self._slot_prog[self._local.slot][0], prog, text)
 
-        self.progress.emit(self.get_progress())
+            total = 0
+            for label, prog, text in self._slot_prog.values():
+                total += prog
+
+            self.progress.emit((total / max(1, len(self._slot_prog)), self._slot_prog, self.title))
 
     def post(self, result):
         with self._result_lock:
@@ -301,9 +314,6 @@ class Task(QtCore.QObject):
         self._master.check_tasks()
 
     def get_progress(self):
-        with self._progress_lock:
-            prog = self._progress.copy()
-
         with self._work_lock:
             wc_left = len(self._work)
             wc_total = self._work_count
@@ -319,7 +329,7 @@ class Task(QtCore.QObject):
         for item in prog.values():
             total += item[0] * (1.0 / count)
 
-        return total, prog, self.title
+        return total, {}, self.title
 
     def is_done(self):
         if not self._done.is_set():
@@ -393,6 +403,9 @@ class MultistepTask(Task):
         self._steps[self._cur_step][1](arg)
 
     def _next_step(self):
+        if self.aborted:
+            return
+
         self._cur_step += 1
         logging.debug('Entering step %d of %d in task %s.', self._cur_step + 1, len(self._steps), self.__class__.__name__)
 
@@ -411,170 +424,3 @@ class MultistepTask(Task):
 
         # Wake all free workers.
         self._master.wake_workers()
-
-
-# Curses display
-class Textbox(object):
-    win = None
-    lock = None
-    border = False
-    content = []
-
-    def __init__(self, win, lock=None):
-        self.win = win
-        self.lock = lock
-
-    def wrap(self, text):
-        wrapped = []
-        y, x, height, width = self.get_coords()
-
-        for line in text.split('\n'):
-            while len(line) > width:
-                wrapped.append(line[:width])
-                line = ' ' + line[width:]
-
-            wrapped.append(line)
-
-        return wrapped
-
-    def get_coords(self):
-        height, width = self.win.getmaxyx()
-
-        if self.border:
-            y = x = 1
-            height -= 2
-            width -= 2
-        else:
-            y = x = 0
-
-        return y, x, height, width
-
-    def appendln(self, text):
-        with self.lock:
-            text = self.wrap(text)
-            y, x, height, width = self.get_coords()
-
-            self.content.extend(text)
-            while len(self.content) > height:
-                self.content.pop(0)
-
-            self.win.move(y, x)
-            self.win.insdelln(-len(text))
-
-            start = y + height - len(text)
-            self.win.move(start, x)
-            for ly in range(start, start + len(text)):
-                self.win.addstr(ly, x, text.pop(0))
-
-            self.win.refresh()
-
-    def append(self, text):
-        with self.lock:
-            if len(self.content) == 0:
-                self.appendln(text)
-                return
-
-            text = self.wrap(self.content[-1] + text)
-            y, x, height, width = self.get_coords()
-            self.content[-1] = text.pop(0)
-
-            self.win.addstr(y + height - 1, x, self.content[-1])
-
-            if len(text) > 0:
-                self.appendln('\n'.join(text))
-
-    def set_text(self, text):
-        with self.lock:
-            text = self.wrap(text)
-            self.content = text
-
-            if self.border:
-                self.win.resize(len(text) + 2, self.win.getmaxyx()[1])
-            else:
-                self.win.resize(len(text), self.win.getmaxyx()[1])
-
-            y, x, height, width = self.get_coords()
-
-            self.win.erase()
-            if self.border:
-                self.win.border()
-
-            for ly, line in enumerate(text):
-                self.win.addstr(y + ly, x, line)
-
-            self.win.refresh()
-
-
-class CursesOutput(object):
-    win = None
-    log = None
-    other_win = None
-    lock = None
-
-    def __init__(self, win, log=None, other_win=None):
-        self.win = win
-        self.log = log
-        self.other_win = other_win
-        self.lock = threading.RLock()
-
-    def write(self, data):
-        with self.lock:
-            self.win.append(data)
-            self.other_win.redrawwin()
-
-            if self.log is not None:
-                self.log.write(data)
-
-    def flush(self):
-        with self.lock:
-            if self.log is not None:
-                self.log.flush()
-
-
-def _init_curses(scr, cb, log):
-    # Setup the display
-    height, width = scr.getmaxyx()
-    clock = threading.RLock()
-    statusw = Textbox(curses.newwin(0, 0, 0, 0), clock)
-    statusw.border = True
-    win = Textbox(scr, clock)
-
-    def show_status(prog, text):
-        h, w = statusw.win.getmaxyx()
-        statusw.set_text('\n [' + '=' * min(w, int(prog * (w - 8))) + '>\n' + text)
-
-    set_callback(show_status)
-
-    stdout = sys.stdout
-    stderr = sys.stderr
-    sys.stderr = sys.stdout = CursesOutput(win, log, statusw.win)
-    handlers = []
-
-    # Redirect the logging output.
-    for handler in logging.getLogger().handlers:
-        if isinstance(handler, logging.StreamHandler):
-            if handler.stream in (stdout, stderr):
-                handlers.append((handler, handler.stream))
-                handler.stream = sys.stdout
-
-    cb()
-
-    for handler, stream in handlers:
-        handler.stream = stream
-
-    sys.stdout = stdout
-    sys.stderr = stderr
-    set_callback(None)
-
-
-def init_curses(cb, log=None):
-    curses.wrapper(_init_curses, cb, log)
-
-    # Restore ONLCR mode. (See man tcsetattr for details)
-    try:
-        import termios
-        attr = termios.tcgetattr(sys.stdout)
-        attr[1] = attr[1] | termios.ONLCR
-        termios.tcsetattr(sys.stdout, termios.TCSAFLUSH, attr)
-    except Exception:
-        pass

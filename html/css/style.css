@@ -157,6 +157,61 @@ iframe {
     content: url(../images/icon-settings-a.png);
 }
 
+.text-marquee {
+    float: left;
+    width: calc(100% - 320px);
+    height: 25px;
+    margin-top: 8px;
+    margin-left: 10px;
+    margin-right: 10px;
+    padding-left: 4px;
+    padding-right: 4px;
+    line-height: 25px;
+    white-space: nowrap;
+    text-overflow: clip;
+    overflow: hidden;
+    color: #ababab;
+    box-shadow: inset 0px 12px 5px -12px rgba(0,0,0,1),
+                inset 0px -12px 5px -12px rgba(0,0,0,1),
+                inset 12px 0px 5px -12px rgba(0,0,0,1),
+                inset -12px 0px 5px -12px rgba(0,0,0,1);
+}
+
+.text-marquee span {
+    position: relative;
+    right: -101% /*Can translate this property by % to scroll the text from right to left.
+                The difficulty will be calculating the % at which the entire span will
+                have scrolled out of view before we reset and start it again.*/
+}
+
+.welcome-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 78px;
+    background: rgba(0,0,0,0.6);
+    z-index: 999;
+}
+
+.welcome-login {
+    height: 220px;
+    padding-top: 50px;
+}
+
+.login-form {
+    float: right;
+    width: 65%;
+}
+
+.welcome-login input.neb-input {
+    width: 100%;
+}
+
+.welcome-label {
+    width: 100px;
+}
+
 /* ----------------------------- This is the filter rollout button section. ------------------------------- */
 
 .filter-container {
@@ -308,6 +363,48 @@ iframe {
     width: 16px;
     height: 16px;
     background-repeat: no-repeat;
+}
+
+#tab-bar-misc {
+    position: absolute;
+    top: 58px;
+    height: 25px;
+}
+
+.keep-left {
+    right: 35px;
+}
+
+.keep-right {
+    right: 10px;
+}
+
+.tab-misc-btn {
+    display: inline-block;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    font-family: Arial, Tahoma, Verdana, FreeSans, sans-serif;
+    /*font-size: 20px;*/
+    color: #828282;
+    text-decoration: none !important;
+    height: 25px;
+}
+
+.screenshots-image {
+    content: url(../images/icon-screenshots.png);
+    height: 16px;
+    /*vertical-align: middle;
+    padding-top: 3px;*/
+}
+
+.tab-misc-btn:hover .screenshots-image {
+    content: url(../images/icon-screenshots-h.png);
+}
+
+.tab-misc-btn.active .screenshots-image {
+    content: url(../images/icon-screenshots-a.png);
 }
 
 #installed-tab {
@@ -1534,9 +1631,12 @@ iframe {
     display: inline-block;
     padding: 6px;
     padding-left: 10px;
-
+    padding-right: 20px;
     width: 150px;
     height: 30px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .devel-page .dev-tabbar > a.active {

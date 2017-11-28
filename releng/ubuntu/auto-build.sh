@@ -8,7 +8,6 @@ rsync -a --exclude=releng --exclude=node_modules src/ work/
 
 cd src
 . releng/config/config.sh
-import_key
 
 if [ ! -d releng/ubuntu/cache ]; then
 	mkdir -p releng/ubuntu/cache
@@ -40,7 +39,7 @@ tar -xzf ../"knossos_$VERSION.orig.tar.gz"
 cp -a ../src/releng/ubuntu/debian .
 
 if [ "$RELEASE" = "y" ]; then
-	gpg-agent --daemon
+	import_key
 
 	for ubuntu in $UBUNTU_VERSIONS; do
 		cat > debian/changelog <<EOF

@@ -28,7 +28,7 @@ export default {
 
     showProgress() {
         vm.popup_progress_message = null;
-        vm.popup_content = this.mod;
+        vm.popup_mod_id = this.mod.id;
         vm.popup_title = 'Installation Details';
         vm.popup_mode = 'mod_progress';
         vm.popup_visible = true;
@@ -41,5 +41,12 @@ export default {
         vm.popup_mod_version = this.mod.version;
         vm.popup_mod_message = '';
         vm.popup_visible = true;
+    },
+
+    showFsoSettings() {
+        vm.popup_visible = true;
+        vm.popup_title = 'FSO Settings';
+        vm.popup_mode = 'fso_settings';
+        vm.popup_content = this.mod;
     }
 };

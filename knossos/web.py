@@ -36,6 +36,7 @@ if not QtWebChannel:
 class WebBridge(QtCore.QObject):
     _path = None
 
+    asyncCbFinished = QtCore.Signal(int, str)
     showWelcome = QtCore.Signal()
     showDetailsPage = QtCore.Signal('QVariant')
     showRetailPrompt = QtCore.Signal()
@@ -44,6 +45,7 @@ class WebBridge(QtCore.QObject):
     updateModlist = QtCore.Signal(str, str)
     modProgress = QtCore.Signal(str, float, str)
     settingsArrived = QtCore.Signal(str)
+    retailInstalled = QtCore.Signal()
     hidePopup = QtCore.Signal()
     applyDevDesc = QtCore.Signal(str)
 
@@ -74,14 +76,18 @@ class WebBridge(QtCore.QObject):
 
             webView.load(QtCore.QUrl(link))
 
-    @QtCore.Slot('QVariantList', result='QVariantMap')
+    @QtCore.Slot('QVariantList', result=str)
     def finishInit(self, tr_keys):
         trs = {}
         for k in tr_keys:
             trs[k] = QtCore.QCoreApplication.translate('modlist_ts', k)
 
         center.main_win.finish_init()
-        return trs
+        return json.dumps({
+            't': trs,
+            'platform': sys.platform,
+            'welcome': 'KN_WELCOME' in os.environ or center.settings['base_path'] is None
+        })
 
     @QtCore.Slot(result=str)
     def getVersion(self):
@@ -141,7 +147,7 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot()
     def fetchModlist(self):
         tasks.run_task(tasks.FetchTask())
-        tasks.run_task(tasks.CheckTask())
+        tasks.run_task(tasks.LoadLocalModsTask())
 
     @QtCore.Slot(bool, result='QVariantList')
     def requestModlist(self, async=False):
@@ -315,7 +321,7 @@ class WebBridge(QtCore.QObject):
     def getModTools(self, mid, spec):
         mod = self._get_mod(mid, spec)
         if mod in (-1, -2):
-            return mod
+            return [mod]
 
         labels = set()
         try:
@@ -388,15 +394,29 @@ class WebBridge(QtCore.QObject):
         else:
             return []
 
-    @QtCore.Slot(str)
+    @QtCore.Slot(str, result=bool)
     def setBasePath(self, path):
-        if not os.path.isdir(path):
+        if os.path.isfile(path):
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path is not a directory!'))
+            return False
+        elif not os.path.isdir(path):
+            result = QtWidgets.QMessageBox.question(None, 'Knossos',
+                self.tr('The selected path does not exist. Should I create the folder?'))
+
+            if result == QtWidgets.QMessageBox.Yes:
+                os.makedirs(path)
+            else:
+                return False
         else:
-            center.settings['base_path'] = os.path.abspath(path)
-            center.save_settings()
-            tasks.run_task(tasks.CheckTask())
-            center.main_win.check_fso()
+            vp_path = util.ipath(os.path.join(path, 'root_fs2.vp'))
+            if os.path.isfile(vp_path):
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("Please don't use an existing FS2 directory. It won't work!"))
+                return False
+
+        center.settings['base_path'] = os.path.abspath(path)
+        center.save_settings()
+        tasks.run_task(tasks.LoadLocalModsTask())
+        return True
 
     @QtCore.Slot()
     def getSettings(self):
@@ -430,9 +450,6 @@ class WebBridge(QtCore.QObject):
         if center.settings['fs2_bin']:
             try:
                 flags = settings.get_fso_flags(center.settings['fs2_bin'])
-
-                if flags:
-                    flags = flags.to_dict()
             except Exception:
                 logging.exception('Failed to fetch FSO flags!')
 
@@ -446,7 +463,7 @@ class WebBridge(QtCore.QObject):
         # Huge thanks go to jr2 for discovering everything implemented here to detect possible FS2 retail installs.
         # --ngld
 
-        folders = [r'C:\GOG Games\Freespace2']
+        folders = [r'C:\GOG Games\Freespace2', r'C:\Games\Freespace2', r'C:\Games\Freespace 2']
 
         reg = QtCore.QSettings(r'HKEY_CURRENT_USER\Software\Valve\Steam', QtCore.QSettings.NativeFormat)
         reg.setFallbacksEnabled(False)
@@ -549,9 +566,28 @@ class WebBridge(QtCore.QObject):
         mod.generate_folder()
 
         if os.path.isdir(mod.folder):
-            # TODO: Check online, too?
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('There already exists a mod with the chosen ID!'))
             return False
+
+        exists = False
+        try:
+            neb = nebula.NebulaClient()
+            neb.login()
+            exists = not neb.check_mod_id(mid, name)
+        except nebula.InvalidLoginException:
+            QtWidgets.QMessageBox.warning(None, 'Knossos',
+                self.tr("Knossos couldn't check if your mod ID is unique because it couldn't connect to the Nebula. " +
+                    "Continue at your own risk if you're sure it is unique, otherwise please abort."))
+        except Exception:
+            logging.exception('Failed to contact the nebula!')
+            QtWidgets.QMessageBox.warning(None, 'Knossos',
+                self.tr("Knossos couldn't check if your mod ID is unique because it couldn't connect to the Nebula. " +
+                    "Continue at your own risk if you're sure it is unique, otherwise please abort."))
+
+        if exists:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                self.tr('Your chosen mod ID is already being used by someone else. Please choose a different one.'))
+            return
 
         upper_folder = os.path.dirname(mod.folder)
         if not os.path.isdir(upper_folder):
@@ -633,21 +669,7 @@ class WebBridge(QtCore.QObject):
 
             return True
         else:
-            pkg = repo.InstalledPackage({
-                'name': 'Content',
-                'status': 'required',
-                'folder': 'content'
-            })
-
-            if mtype in ('tool', 'engine'):
-                pkg.folder = '.'
-
             os.mkdir(mod.folder)
-            pkg_folder = os.path.join(mod.folder, pkg.folder)
-            if not os.path.isdir(pkg_folder):
-                os.mkdir(pkg_folder)
-
-            mod.add_pkg(pkg)
             mod.save()
 
             center.installed.add_mod(mod)
@@ -804,6 +826,7 @@ class WebBridge(QtCore.QObject):
         if mod.mtype == 'engine':
             mod.stability = data['stability']
 
+        mod.title = data['title']
         mod.description = data['description']
         imlist = set()
         for prop in ('logo', 'tile', 'banner', 'screenshots', 'attachments'):
@@ -918,7 +941,7 @@ class WebBridge(QtCore.QObject):
                         if pkg.status == 'required':
                             pkg.dependencies.append({
                                 'id': build[0],
-                                'version': build[1]
+                                'version': '>=' + build[1]
                             })
                             done = True
                             break
@@ -950,6 +973,28 @@ class WebBridge(QtCore.QObject):
         mod.save()
 
         center.main_win.update_mod_list()
+
+    @QtCore.Slot(str, str, str, str)
+    def saveUserFsoDetails(self, mid, version, build, cmdline):
+        mod = self._get_mod(mid, version)
+        if mod == -1:
+            logging.error('Failed find mod "%s" during save!' % mid)
+            QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
+            return
+
+        build = build.split('#')
+        if len(build) != 2:
+            logging.error('saveModFsoDetails(): build is not correctly formatted! (%s)' % build)
+        else:
+            if build[0] == 'custom':
+                mod.user_custom_build = build[1]
+                mod.user_exe = None
+            else:
+                mod.user_custom_build = None
+                mod.user_exe = build
+
+        mod.user_cmdline = cmdline
+        mod.save_user()
 
     @QtCore.Slot(str, str, list)
     def saveModFlag(self, mid, version, mod_flag):
@@ -1079,7 +1124,7 @@ class WebBridge(QtCore.QObject):
             filter_ = '*'
 
         res = QtWidgets.QFileDialog.getOpenFileNames(None, 'Please select your FSO build', None, filter_)
-        if res:
+        if res and len(res[0]) > 0:
             return res[0][0]
         else:
             return ''
@@ -1104,34 +1149,52 @@ class WebBridge(QtCore.QObject):
         return ''
 
     @QtCore.Slot(str, str, result=str)
-    def getFsoCaps(self, mid, version):
-        flags = None
-        if mid == 'custom':
-            flags = settings.get_fso_flags(version)
-            if flags:
-                flags = flags.to_dict()
-
-            return json.dumps(flags)
-
+    def getUserBuild(self, mid, version):
         mod = self._get_mod(mid, version)
 
-        try:
-            flags = None
-            for exe in mod.get_executables():
-                if not exe['label']:
-                    flags = settings.get_fso_flags(exe['file'])
+        if mod.user_custom_build:
+            return 'custom#' + mod.user_custom_build
 
-            if flags:
-                flags = flags.to_dict()
+        try:
+            for item in mod.get_executables(user=True):
+                if item.get('label') is None:
+                    mod = item['mod']
+                    return mod.mid + '#' + str(mod.version)
         except repo.NoExecutablesFound:
-            return 'null'
+            return ''
         except Exception:
-            logging.exception('Failed to fetch FSO flags!')
+            logging.exception('Failed to fetch executables!')
 
-        try:
-            return json.dumps(flags)
-        except Exception:
-            logging.exception('Failed to encode FSO flags!')
+        return ''
+
+    @QtCore.Slot(str, str, int)
+    def getFsoCaps(self, mid, version, cb_id):
+        mod = None
+        if mid != 'custom':
+            mod = self._get_mod(mid, version)
+            if mod in (-1, -2):
+                return
+
+        def helper():
+            flags = None
+            if not mod:
+                flags = settings.get_fso_flags(version)
+            else:
+                try:
+                    for exe in mod.get_executables():
+                        if not exe['label']:
+                            flags = settings.get_fso_flags(exe['file'])
+                except repo.NoExecutablesFound:
+                    pass
+                except Exception:
+                    logging.exception('Failed to fetch FSO flags!')
+
+            try:
+                self.asyncCbFinished.emit(cb_id, json.dumps(flags))
+            except Exception:
+                logging.exception('Failed to encode FSO flags!')
+
+        Thread(target=helper).start()
 
     @QtCore.Slot(str, str, str, str, result=bool)
     def createModVersion(self, mid, version, dest_ver, method):
@@ -1182,7 +1245,13 @@ class WebBridge(QtCore.QObject):
 
             tasks.run_task(tasks.CopyFolderTask(mod.folder, new_mod.folder))
         elif method == 'rename':
-            os.rename(mod.folder, new_mod.folder)
+            try:
+                util.safe_rename(mod.folder, new_mod.folder)
+            except OSError:
+                logging.exception('Failed to rename mod folder for new version!')
+                QtWidgets.QMessageBox.critical(None, self.tr('Error'),
+                    self.tr('Failed to rename folder "%s"! Make sure that no other pogram has locked it.') % mod.folder)
+                return False
 
             try:
                 center.installed.remove_mod(mod)
@@ -1213,6 +1282,34 @@ class WebBridge(QtCore.QObject):
         mod = repo.IniMod()
         mod.load(path)
         return json.dumps(mod.get())
+
+    @QtCore.Slot(str, str)
+    def verifyModIntegrity(self, mid, version):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return
+
+        tasks.run_task(tasks.CheckFilesTask(mod.packages))
+
+    @QtCore.Slot()
+    def openScreenshotFolder(self):
+        path = os.path.join(settings.get_fso_profile_path(), 'screenshots')
+
+        if os.path.isdir(path):
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', "The screenshot folder doesn't exist. Try taking screenshots before clicking this button!")
+
+    @QtCore.Slot(result=str)
+    def getDefaultBasePath(self):
+        if sys.platform == 'win32':
+            return 'C:\\Games\\FreespaceOpen'
+        elif sys.platform == 'linux':
+            return os.path.expanduser('~/games/FreespaceOpen')
+        elif sys.platform == 'macos':
+            return os.path.expanduser('~/Documents/Games/FreespaceOpen')
+        else:
+            return ''
 
 
 if QtWebChannel:

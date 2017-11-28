@@ -28,7 +28,7 @@ from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.install import Ui_InstallDialog
 from .ui.edit_description import Ui_Dialog as Ui_DescEditor
-from .tasks import run_task, CheckTask, GOGExtractTask, InstallTask, UninstallTask, WindowsUpdateTask
+from .tasks import run_task, InstallTask, UninstallTask, WindowsUpdateTask, LoadLocalModsTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -49,9 +49,14 @@ class QMainWindow(QtWidgets.QMainWindow):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
     def closeEvent(self, e):
-        e.accept()
+        if center.pmaster.is_busy():
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                'Some tasks are still running in the background. Please wait for them to finish or abort them.')
 
-        center.app.quit()
+            e.ignore()
+        else:
+            e.accept()
+            center.app.quit()
 
     def changeEvent(self, event):
         if event.type() == QtCore.QEvent.ActivationChange:
@@ -138,10 +143,11 @@ class Window(object):
 
 class HellWindow(Window):
     _tasks = None
-    _mod_filter = 'home'
+    _mod_filter = 'explore'
     _search_text = ''
     _updating_mods = None
     _init_done = False
+    _prg_visible = False
     browser_ctrl = None
     progress_win = None
 
@@ -181,18 +187,10 @@ class HellWindow(Window):
 
         self._init_done = True
 
-        # The delay is neccessary to make sure that QtWebkit doesn't swallow the resulting event.
-        QtCore.QTimer.singleShot(300, self.check_fso)
         center.auto_fetcher.start()
         ipc.setup()
 
-        run_task(CheckTask())
-
-    def check_fso(self):
-        if 'KN_WELCOME' not in os.environ and center.settings['base_path'] is not None:
-            self.update_mod_buttons('home')
-        else:
-            self.browser_ctrl.bridge.showWelcome.emit()
+        run_task(LoadLocalModsTask())
 
     def ask_update(self, version):
         # We only have an updater for windows.
@@ -213,10 +211,6 @@ class HellWindow(Window):
             mods = center.installed.mods
         elif self._mod_filter == 'explore':
             mods = center.mods.mods
-        # elif self._mod_filter == 'updates':
-        #     mods = {}
-        #     for mid in center.installed.get_updates():
-        #         mods[mid] = center.installed.mods[mid]
         else:
             mods = {}
 
@@ -241,7 +235,7 @@ class HellWindow(Window):
                 for m in center.installed.mods.get(mid, []):
                     installed_versions[str(m.version)] = m.dev_mode
 
-                rmod = center.mods.mods.get(mid, (None,))
+                rmod = center.mods.mods.get(mid, [])
                 if mod.mtype == 'engine':
                     rm_sel = None
                     for m in rmod:
@@ -251,9 +245,9 @@ class HellWindow(Window):
 
                     if rm_sel:
                         rmod = rm_sel
-                    else:
+                    elif len(rmod) > 0:
                         rmod = rmod[0]
-                else:
+                elif len(rmod) > 0:
                     rmod = rmod[0]
 
                 # TODO: Refactor (see also templates/kn-{details,devel}-page.vue)
@@ -291,9 +285,6 @@ class HellWindow(Window):
             if filter_ in ('home', 'explore', 'develop'):
                 self.browser_ctrl.bridge.updateModlist.emit(json.dumps(result), filter_)
 
-    def show_settings(self):
-        pass
-
     def show_indicator(self):
         self.win.setCursor(QtCore.Qt.BusyCursor)
 
@@ -323,17 +314,13 @@ class HellWindow(Window):
         task.done.connect(functools.partial(self._forget_task, task))
         task.progress.connect(functools.partial(self._track_progress, task))
 
-        if len(task.mods) == 0:
-            if len(self._tasks) == 1:
+        if len(task.mods) == 0 and not self._prg_visible:
+                self._prg_visible = True
                 self.win.progressInfo.show()
                 self.win.progressLabel.setText(task.title)
                 self.win.progressBar.setValue(0)
 
                 integration.current.show_progress(0)
-            else:
-                # TODO: Stop being lazy and calculate the aggregate progress.
-                self.win.progressBar.hide()
-                self.win.progressLabel.setText(self.tr('Working...'))
 
     def _track_progress(self, task, pi):
         self.browser_ctrl.bridge.taskProgress.emit(id(task), pi[0] * 100, json.dumps(pi[1]))
@@ -341,7 +328,7 @@ class HellWindow(Window):
         for m in task.mods:
             self._updating_mods[m.mid] = pi[0] * 100
 
-        if len(self._tasks) == 1:
+        if len(task.mods) == 0 and self._prg_visible:
             integration.current.set_progress(pi[0])
             self.win.progressBar.setValue(pi[0] * 100)
 
@@ -354,12 +341,8 @@ class HellWindow(Window):
             if m.mid in self._updating_mods:
                 del self._updating_mods[m.mid]
 
-        if len(self._tasks) == 1:
-            task = list(self._tasks.values())[0]
-            self.win.progressLabel.setText(task.title)
-            self.win.progressBar.setValue(task.get_progress()[0])
-            self.win.progressBar.show()
-        elif len(self._tasks) == 0:
+        if len(task.mods) == 0 and self._prg_visible:
+            self._prg_visible = False
             self.win.progressInfo.hide()
             integration.current.hide_progress()
 
@@ -421,7 +404,7 @@ class ModInstallWindow(Window):
 
         mods = [self._mod] + list(mods)
         for mod in mods:
-            item = QtWidgets.QTreeWidgetItem(self.win.treeWidget, [mod.title, ''])
+            item = QtWidgets.QTreeWidgetItem(self.win.treeWidget, ['%s %s' % (mod.title, mod.version), ''])
             item.setExpanded(True)
             item.setData(0, QtCore.Qt.UserRole, mod)
             item.setData(0, QtCore.Qt.UserRole + 2, '')

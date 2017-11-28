@@ -10,6 +10,7 @@ export default {
     props: [],
 
     data: () => ({
+        retail_installed: true,
         knossos: {},
         fso: {},
         old_settings: {},
@@ -23,6 +24,8 @@ export default {
     beforeMount() {
         connectOnce(fs2mod.settingsArrived, (settings) => {
             settings = JSON.parse(settings);
+
+            this.retail_installed = settings.has_retail;
 
             this.knossos = Object.assign({}, settings.knossos);
             this.fso = Object.assign({}, settings.fso);
@@ -76,6 +79,10 @@ export default {
 
         testVoice() {
             fs2mod.testVoice(parseInt(this.fso.speech_voice), parseInt(this.fso.speech_vol), 'Test');
+        },
+
+        showRetailPrompt() {
+            vm.showRetailPrompt();
         }
     }
 };
@@ -85,6 +92,7 @@ export default {
         <div class="col-sm-6">
             <h2>
                 Settings
+                <small><button class="mod-btn btn-blue pull-right" @click="showRetailPrompt" v-if="!retail_installed">Install Retail</button></small>
                 <small><button class="mod-btn btn-green pull-right" @click="save">Save</button></small>
             </h2>
             <div class="settings-exp">Click the arrows to reveal each group's options. Click SAVE when done.</div>
@@ -202,6 +210,18 @@ export default {
                     <label class="col-sm-3 control-label">Sample Rate:</label>
                     <div class="col-sm-4">
                         <input type="number" v-model="fso.sample_rate">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Language:</label>
+                    <div class="col-sm-8">
+                        <select v-model="fso.language">
+                            <option>English</option>
+                            <option>German</option>
+                            <option>French</option>
+                            <option>Polish</option>
+                        </select>
                     </div>
                 </div>
             </kn-drawer>

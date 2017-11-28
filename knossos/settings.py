@@ -20,10 +20,10 @@ import json
 import struct
 import logging
 from collections import OrderedDict
+from json.decoder import JSONDecodeError
 from threading import Thread
 
 from . import center, util, launcher, runner
-from .tasks import run_task, CheckTask
 from .qt import QtCore, QtWidgets, QtGui
 
 
@@ -89,19 +89,19 @@ class FlagsReader(object):
 
     @property
     def openal(self):
-        return self.build_caps & 1
+        return self.build_caps & 1 != 0
 
     @property
     def no_d3d(self):
-        return self.build_caps & (1 << 1)
+        return self.build_caps & (1 << 1) != 0
 
     @property
     def new_snd(self):
-        return self.build_caps & (1 << 2)
+        return self.build_caps & (1 << 2) != 0
 
     @property
     def sdl(self):
-        return self.build_caps & (1 << 3)
+        return self.build_caps & (1 << 3) != 0
 
     def to_dict(self):
         return {
@@ -158,6 +158,9 @@ def get_settings_p2():
     joystick_enable_hit = section.get('EnableHitEffect', False)
     joystick_ff_strength = config.get('ForceFeedback', {}).get('Strength', 100)
 
+    # language
+    fso['language'] = section.get('Language', 'English')
+
     # speech
     speech_vol = section.get('SpeechVolume', 100)
     speech_voice = section.get('SpeechVoice', 0)
@@ -173,9 +176,9 @@ def get_settings_p2():
 
     net_ip = section.get('Network/CustomIP', None)
 
+    # sound settings
     section = config.get('Sound', {})
 
-    # sound settings
     playback_device = section.get('PlaybackDevice', None)
     capture_device = section.get('CaptureDevice', None)
     enable_efx = section.get('EnableEFX', None)
@@ -291,6 +294,7 @@ def get_settings_p2():
         'knossos': kn_settings,
         'languages': center.LANGUAGES,
         'has_log': launcher.log_path is not None,
+        'has_retail': center.installed.has('FS2'),
         'fso': fso
     }
 
@@ -308,6 +312,8 @@ def save_fso_settings(new_settings):
 
         section['VideocardFs2open'] = 'OGL -({0}x{1})x{2} bit'.format(new_res_width, new_res_height, new_depth)
         section['TextureFilter'] = new_settings['texfilter']
+
+        section['Language'] = new_settings['language']
 
         # section['OGL_AntiAliasSamples'] = new_aa
         # section['OGL_AnisotropicFilter'] = new_af
@@ -446,7 +452,7 @@ def write_fso_config(sections):
             stream.write('[%s]\n' % name)
 
             for k, v in pairs.items():
-                stream.write('%s = %s\n' % (k, v))
+                stream.write('%s=%s\n' % (k, v))
 
             stream.write('\n')
 
@@ -492,18 +498,74 @@ def get_fso_flags(fs2_bin):
         if st.st_mtime == mtime:
             return flags
 
-    flags_path = os.path.join(center.settings['base_path'], 'flags.lch')
-    rc = runner.run_fs2_silent([fs2_bin, '-get_flags', '-parse_cmdline_only'])
+    output_types = ["json_v1", "binary"]
 
     flags = None
 
-    if rc != 1 and rc != 0:
-        logging.error('Failed to run FSO! (Exit code was %d)', rc)
-    elif not os.path.isfile(flags_path):
-        logging.error('Could not find the flags file "%s"!', flags_path)
-    else:
-        with open(flags_path, 'rb') as stream:
-            flags = FlagsReader(stream)
+    for output_type in output_types:
+        rc, output = runner.run_fs2_silent([fs2_bin, '-get_flags', output_type, '-parse_cmdline_only'])
+
+        if rc != 1 and rc != 0:
+            logging.error('Failed to run FSO! (Exit code was %d)', rc)
+            break
+        elif "OUTPUT TYPE NOT SUPPORTED!" in output:
+            # FSO does not support this output type
+            continue
+        else:
+            # Output probably worked
+            if output_type == "json_v1" and output is not None and output != "":
+                # We got some JSON flag output
+                try:
+                    json_flags = json.loads(output)
+                except JSONDecodeError as e:
+                    logging.error("Failed to read JSON printed by FSO: " + str(e))
+                    # Try one of the other output types...
+                    continue
+
+                # The rest of the code expects a slightly different format for the flags so the JSON data needs to be
+                # converted.
+                flags = {
+                    "easy_flags": OrderedDict(),
+                    "flags": OrderedDict()
+                }
+
+                for i, easy_flag in enumerate(json_flags["easy_flags"]):
+                    flags["easy_flags"][1 << i] = easy_flag
+
+                for i, json_flag in enumerate(json_flags["flags"]):
+                    flag = {
+                        'name': json_flag["name"],
+                        'desc': json_flag["description"],
+                        'fso_only': json_flag["fso_only"],
+                        'on_flags': json_flag["on_flags"],
+                        'off_flags': json_flag["off_flags"],
+                        'type': json_flag["type"],
+                        'web_url': json_flag["web_url"]
+                    }
+
+                    if flag['type'] not in flags["flags"]:
+                        flags["flags"][flag['type']] = []
+
+                    flags["flags"][flag['type']].append(flag)
+
+                flags["openal"] = "OpenAL" in json_flags["caps"]
+                flags["no_d3d"] = "No D3D" in json_flags["caps"]
+                flags["new_snd"] = "New Sound" in json_flags["caps"]
+                flags["sdl"] = "SDL" in json_flags["caps"]
+
+                break
+            elif output_type == "binary" or output is None or output == "":
+                # Either all previous types were unsupported or we didn't get any output at all
+                # This must be a build that simply doesn't support the JSON output.
+                flags_path = os.path.join(center.settings['base_path'], 'flags.lch')
+                if not os.path.isfile(flags_path):
+                    logging.error('Could not find the flags file "%s"!', flags_path)
+                else:
+                    with open(flags_path, 'rb') as stream:
+                        flags = FlagsReader(stream).to_dict()
+                    os.remove(flags_path)
+
+                break
 
     st = os.stat(fs2_bin)
     _flag_cache[fs2_bin] = (st.st_mtime, flags)
@@ -570,7 +632,7 @@ def save_setting(name, value):
 
         if not get_fso_flags(value):
             # We failed to run FSO but why?
-            rc = runner.run_fs2_silent(['-help'])
+            rc, _ = runner.run_fs2_silent(['-help'])
             if rc == -128:
                 msg = tr('SettingsWindow', 'The FSO binary "%s" is missing!') % value
             elif rc == -127:
@@ -620,9 +682,3 @@ def get_knossos_log(self):
 def show_fso_cfg_folder(self):
     path = get_fso_profile_path()
     QtGui.QDesktopServices.openUrl(QtCore.QUrl('file://' + path))
-
-
-def clear_hash_cache(self):
-    util.HASH_CACHE = dict()
-    run_task(CheckTask())
-    QtWidgets.QMessageBox.information(None, 'Knossos', tr('SettingsWindow', 'Done!'))

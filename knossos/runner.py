@@ -24,6 +24,7 @@ import time
 import ctypes.util
 import stat
 import json
+from subprocess import CalledProcessError
 
 from . import center, repo, util, settings
 from .qt import QtCore, QtWidgets, run_in_qt
@@ -216,31 +217,41 @@ def run_fs2_silent(params):
     fs2_bin = params[0]
 
     if not os.path.isfile(fs2_bin):
-        return -128
+        return -128, None
 
     mode = os.stat(fs2_bin).st_mode
     if mode & stat.S_IXUSR != stat.S_IXUSR:
         # Make it executable.
         os.chmod(fs2_bin, mode | stat.S_IXUSR)
 
-    env = {}
-    if sys.platform.startswith('linux'):
+    # We copy the existing environment to avoid omitting any values that may be necessary for running the binary
+    # properly
+    env = dict(os.environ)
+    # AppImages are a bit special since they are themselves ELF executables which contain the actual FSO executable so
+    # it makes no sense to examine the binary for missing libraries
+    if sys.platform.startswith('linux') and not fs2_bin.lower().endswith(".appimage"):
         ld_path, missing = fix_missing_libs(fs2_bin)
         if len(missing) > 0:
-            return -127
+            return -127, None
 
         env['LD_LIBRARY_PATH'] = ld_path
 
     try:
-        rc = util.call(params, cwd=base_path, env=env)
+        try:
+            output = util.check_output(params, env=env, cwd=base_path, stderr=subprocess.DEVNULL)
+            rc = 0
+        except CalledProcessError as e:
+            # check_output raises this error if the return code was anything other than 0
+            rc = e.returncode
+            output = e.output
     except OSError:
-        return -129
+        return -129, None
 
     if rc == 3221225595:
         # We're missing a DLL
-        return -127
+        return -127, None
 
-    return rc
+    return rc, output
 
 
 def run_mod(mod, tool=None, exe_label=None):
@@ -269,7 +280,7 @@ def run_mod(mod, tool=None, exe_label=None):
             return
     else:
         try:
-            exes = mod.get_executables()
+            exes = mod.get_executables(user=True)
         except Exception:
             logging.exception('Failed to retrieve binaries for "%s"!' % mod.mid)
             QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
@@ -283,8 +294,14 @@ def run_mod(mod, tool=None, exe_label=None):
             translate('runner', 'No matching executable was found!'))
         return
 
-    mod_flag, mod_choice = mod.get_mod_flag()
-    if mod_choice or len(exes) > 1:
+    try:
+        mod_flag, mod_choice = mod.get_mod_flag()
+    except repo.ModNotFound:
+        QtWidgets.QMessageBox.critical(None, 'Knossos',
+            translate('runner', '"%s" has an error in its dependencies. Aborted.' % mod))
+        return
+
+    if mod_choice:
         # We have to ask the user
         center.main_win.browser_ctrl.bridge.showLaunchPopup.emit(json.dumps({
             'id': mod.mid,
@@ -301,8 +318,30 @@ def run_mod_ex(mod, binpath, mod_flag):
     # Put the cmdline together
     cmdline = mod.cmdline
 
+    if mod.user_cmdline:
+        cmdline = mod.user_cmdline
+
     if mod.mtype == 'mod':
-        basepath = mod.get_parent().folder
+        parent = mod.get_parent()
+
+        if parent.mid == 'FS2':
+            basepath = parent.folder
+        else:
+            basepath = os.path.dirname(parent.folder)
+
+            found = False
+            for pkg in mod.packages:
+                for dep in pkg.dependencies:
+                    if dep['id'] == parent.mid:
+                        found = True
+                        break
+
+                if found:
+                    break
+
+            if not found:
+                logging.debug("Mod %s doesn't depend on parent, fixing mod flags...", mod)
+                mod_flag.extend([p[0] for p in parent.get_mod_flag()[0]])
     elif mod.mtype:
         basepath = mod.folder
 

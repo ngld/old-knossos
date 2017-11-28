@@ -15,7 +15,9 @@ To run this script you'll need the following:
 * [Six][six]
 * [semantic_version][sv]
 * [requests][rq]
-* If you're using Python 2 < 2.8 you will also need [ndg-httpsclient][nhs] and [pyasn1][pan]
+* [requests_toolbelt][rqtb]
+* [ply][ply]
+* [token_bucket][tb]
 * [7zip][7z] (IMPORTANT: This script needs the full implementation, i.e. ```p7zip-full``` _and_ ```p7zip-rar``` on Ubuntu)
 * [raven][rv] (optional, neccessary to automatically report errors)
 
@@ -31,7 +33,7 @@ Now you can use `ninja run` to launch Knossos in release mode and `ninja debug` 
 If you delete or add files in `html/images` or `html/templates` you have to run
 `configure.py` again because it needs to rebuild the file list.
 
-The converter is a console-only script. Use ```python converter.py -h``` to read its help.
+If you add or remove files in `knossos`, `html/templates` or `html/images`, you need to run `tools/common/update_file_list.py` to update `file_list.json`.
 
 ## License
 
@@ -50,8 +52,9 @@ The icon is borrowed from [Hard Light][hl].
 [cpuid]: https://github.com/workhorsy/py-cpuinfo
 [sv]: https://pypi.python.org/pypi/semantic_version
 [rq]: https://pypi.python.org/pypi/requests
-[nhs]: https://pypi.python.org/pypi/ndg-httpsclient
-[pan]: https://pypi.python.org/pypi/pyasn1
+[rqtb]: https://pypi.python.org/pypi/requests_toolbelt
+[ply]: https://pypi.python.org/pypi/ply
+[tb]: https://pypi.python.org/pypi/token_bucket
 [pyi]: http://pyinstaller.org/
 
 [hl]: http://www.hard-light.net/
