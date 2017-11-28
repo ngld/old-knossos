@@ -4,11 +4,13 @@ set -eo pipefail
 
 cd /build
 sudo chown packager .
-rsync -a --exclude=dist --exclude=build --exclude=packer --exclude=.vagrant src/ work/
-cd work
+rsync -a --exclude=releng --exclude=node_modules src/ work/
+cd src
 
 . releng/config/config.sh
 import_key
+
+cd ../work
 
 export QT_SELECT=5
 VERSION="$(python3 setup.py get_version)"

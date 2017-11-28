@@ -143,7 +143,7 @@ class Window(object):
 
 class HellWindow(Window):
     _tasks = None
-    _mod_filter = 'explore'
+    _mod_filter = 'home'
     _search_text = ''
     _updating_mods = None
     _init_done = False

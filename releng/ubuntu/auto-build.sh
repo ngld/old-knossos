@@ -23,7 +23,9 @@ fi
 cd ../../../../work
 
 export QT_SELECT=5
-VERSION="$(python3 setup.py get_version)"
+if [ -z "$VERSION" ]; then
+	VERSION="$(python3 setup.py get_version)"
+fi
 UBUNTU_VERSION="artful"
 
 rsync -au ../src/releng/ubuntu/cache/node_modules/ node_modules/
@@ -39,7 +41,9 @@ tar -xzf ../"knossos_$VERSION.orig.tar.gz"
 cp -a ../src/releng/ubuntu/debian .
 
 if [ "$RELEASE" = "y" ]; then
+	pushd /build/src > /dev/null
 	import_key
+	popd > /dev/null
 
 	for ubuntu in $UBUNTU_VERSIONS; do
 		cat > debian/changelog <<EOF

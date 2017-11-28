@@ -377,12 +377,13 @@ class InstallTask(progress.MultistepTask):
             os.makedirs(modpath)
 
         amount = float(len(mfiles))
-        inst_mods = center.installed.query_all(mod.mid)
         copies = []
         pkg_folders = {}
 
         # query_all is a generator so the exception will be thrown when looping over the result
         try:
+            inst_mods = list(center.installed.query_all(mod.mid))
+
             for mv in inst_mods:
                 if mv.dev_mode:
                     pf = pkg_folders.setdefault(mv, {})
