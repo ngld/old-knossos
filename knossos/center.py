@@ -72,6 +72,8 @@ if sys.platform.startswith('win'):
     settings_path = os.path.expandvars('$APPDATA/knossos')
 elif 'XDG_CONFIG_HOME' in os.environ:
     settings_path = os.path.expandvars('$XDG_CONFIG_HOME/knossos')
+elif sys.platform == 'darwin':
+    settings_path = os.path.expandvars('$HOME/Library/Preferences/knossos')
 else:
     settings_path = os.path.expanduser('~/.knossos')
 
