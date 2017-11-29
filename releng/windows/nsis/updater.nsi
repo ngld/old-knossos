@@ -28,6 +28,11 @@ OutFile ${KNOSSOS_ROOT}releng\windows\dist\update-${KNOSSOS_VERSION}.exe
 !define MUI_ICON ${KNOSSOS_ROOT}knossos\data\hlp.ico
 !define MUI_INSTFILESPAGE_HEADER_SUBTEXT
 
+Var StartMenuFolder
+!define MUI_STARTMENUPAGE_REGISTRY_ROOT "HKLM"
+!define MUI_STARTMENUPAGE_REGISTRY_KEY "Software\Knossos"
+!define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "Start Menu Folder"
+
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
 
@@ -60,12 +65,16 @@ Section
     Delete "$INSTDIR\*.dll"
     Delete "$INSTDIR\*.pyd"
 
+    !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
+    SetShellVarContext all
+    Delete "$SMPROGRAMS\$StartMenuFolder\Launch FSO.lnk"
+
     SetOverwrite on
     File /r ${KNOSSOS_ROOT}releng\windows\dist\Knossos\*
 
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "DisplayVersion" "${KNOSSOS_VERSION}"
 
     DetailPrint "Launching Knossos..."
-    ExecShell "open" '"$INSTDIR\Knossos.exe"' '--finish-update "$EXEPATH"'
+    Exec 'runas /trustlevel:0x20000 "\"$INSTDIR\Knossos.exe\" --finish-update \"$EXEPATH\""'
     SetAutoClose true
 SectionEnd
