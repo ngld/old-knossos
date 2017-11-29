@@ -56,6 +56,7 @@ settings = {
     'download_bandwidth': -1.0,  # negative numbers are used to specify no limit
     'repos': [('https://fsnebula.org/storage/repo.json', 'FSNebula')],
     'nebula_link': 'https://fsnebula.org/api/1/',
+    'nebula_web': 'https://fsnebula.org/',
     'update_notify': True,
     'use_raven': True,
     'mod_settings': {},

@@ -278,3 +278,11 @@ class NebulaClient(object):
             return True, data
         else:
             return False, None
+
+    def upload_log(self, content):
+        result = self._call('log/upload', check_code=True, data={'log': content})
+        data = result.json()
+        if data['result']:
+            return center.settings['nebula_web'] + 'log/' + data['id']
+        else:
+            return None

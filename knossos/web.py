@@ -1311,6 +1311,38 @@ class WebBridge(QtCore.QObject):
         else:
             return ''
 
+    @QtCore.Slot(result=str)
+    def uploadFsoDebugLog(self):
+        try:
+            logpath = os.path.join(settings.get_fso_profile_path(), 'data/fs2_open.log')
+            if not os.path.isfile(logpath):
+                QtWidgets.QMessageBox.warning(None, 'Knossos',
+                    'Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?')
+                return ''
+
+            st = os.stat(logpath)
+            if st.st_size > 5 * (1024 ** 2):
+                QtWidgets.QMessageBox.critical(None, 'Knossos',
+                    "Your log is larger than 5 MB! I unfortunately can't upload logs that big.")
+                return ''
+
+            client = nebula.NebulaClient()
+            with open(logpath, 'r') as stream:
+                log_link = client.upload_log(stream.read())
+        except nebula.InvalidLoginException:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'You have to login to upload logs!')
+        except Exception:
+            logging.exception('Log upload failed!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                'The log upload failed for an unknown reason! Please make sure your internet connection is fine.')
+        else:
+            if log_link:
+                return log_link
+            else:
+                QtWidgets.QMessageBox.critical(None, 'Knossos', 'The log upload failed for an unknown reason!')
+
+        return ''
+
 
 if QtWebChannel:
     BrowserCtrl = WebBridge

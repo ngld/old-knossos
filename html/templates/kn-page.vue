@@ -676,6 +676,15 @@ export default {
                 <div v-if="popup_mode == 'fso_settings'">
                     <kn-fso-user-settings :mods="mods" :mod="popup_content"></kn-fso-user-settings>
                 </div>
+
+                <div v-if="popup_mode === 'debug_log'">
+                    <p>
+                        You debug log was successfully uploaded and can now be accessed through the following link:
+                    </p>
+                    <p>
+                        <a :href="popup_content" class="open-ext">{{ popup_content }}</a>
+                    </p>
+                </div>
             </div>
         </div>
     </div>

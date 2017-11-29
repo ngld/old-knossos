@@ -40,7 +40,14 @@ export default {
         },
 
         uploadLog() {
-            alert('Not yet implemented!');
+            call(fs2mod.uploadFsoDebugLog, (result) => {
+                if(result !== '') {
+                    vm.popup_visible = true;
+                    vm.popup_title = 'Uploaded Debug Log';
+                    vm.popup_mode = 'debug_log';
+                    vm.popup_content = result;
+                }
+            });
         },
 
         uninstallMod() {

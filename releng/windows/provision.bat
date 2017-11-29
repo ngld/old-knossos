@@ -32,5 +32,3 @@ py -3 -mpip install PyQt5 six requests requests_toolbelt ply raven semantic_vers
 
 echo ::: Downloading remaining dependencies...
 py -3 tools/common/download_archive.py releng/windows/support/support.json
-
-call npm install
