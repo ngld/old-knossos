@@ -70,8 +70,14 @@ settings = {
 
 if sys.platform.startswith('win'):
     settings_path = os.path.expandvars('$APPDATA/knossos')
-elif 'XDG_CONFIG_HOME' in os.environ:
-    settings_path = os.path.expandvars('$XDG_CONFIG_HOME/knossos')
+elif 'XDG_CONFIG_HOME' in os.environ or sys.platform.startswith('linux'):
+    config_home = os.environ.get('XDG_CONFIG_HOME', '')
+
+    if config_home == '':
+        # As specified by the XDG Base Directory Specification this should be the default
+        config_home = os.path.expandvars('$HOME/.config')
+
+    settings_path = os.path.join(config_home, 'knossos')
 elif sys.platform == 'darwin':
     settings_path = os.path.expandvars('$HOME/Library/Preferences/knossos')
 else:
