@@ -406,7 +406,7 @@ export default {
                         Preparing...
                     </p>
 
-                    <div v-for="row in (popup_progress[popup_mod_id] || [])" class="row">
+                    <div v-for="row in (popup_progress[popup_mod_id] || [])" :key="row[0]" class="row">
                         <div class="col-xs-4 mod-prog-label">{{ row[0] }}</div>
                         <div class="col-xs-5">
                             <div :class="'mod-prog-bar' + (row[1] === 1 ? ' complete' : '')">

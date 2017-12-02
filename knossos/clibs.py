@@ -27,7 +27,11 @@ uhf(__name__)
 from . import center
 
 
-ENCODING = 'utf8'
+if sys.platform == 'win32':
+    ENCODING = 'latin1'
+else:
+    ENCODING = 'utf8'
+
 sdl = None
 alc = None
 
@@ -94,9 +98,12 @@ def double_zero_string(val):
         if val[off] == b'\x00':
             break
 
-        slen = libc.strlen(val)
-        data.append(val[off:off + slen].decode(ENCODING, 'replace'))
-        off += slen
+        end = off + 1
+        while val[end] != b'\x00':
+            end += 1
+
+        data.append(val[off:end].decode(ENCODING, 'replace'))
+        off = end + 1
 
     return data
 
@@ -250,12 +257,13 @@ def init_sdl():
 # OpenAL constants
 ALC_DEFAULT_DEVICE_SPECIFIER = 0x1004
 ALC_DEVICE_SPECIFIER = 0x1005
+ALC_ALL_DEVICES_SPECIFIER = 0x1013
 ALC_CAPTURE_DEVICE_SPECIFIER = 0x310
 ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER = 0x311
 
 
 def init_openal():
-    global alc
+    global alc, dev, ctx
 
     if alc:
         return
@@ -274,7 +282,28 @@ def init_openal():
             logging.exception('Failed to load OpenAL!')
 
     if alc:
+        alc.alcOpenDevice.argtypes = [ctypes.c_char_p]
+        alc.alcOpenDevice.restype = ctypes.c_void_p
+
+        alc.alcCreateContext.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        alc.alcCreateContext.restype = ctypes.c_void_p
+
+        alc.alcMakeContextCurrent.argtypes = [ctypes.c_void_p]
+        alc.alcMakeContextCurrent.restype = ctypes.c_bool
+
+        alc.alcDestroyContext.argtypes = [ctypes.c_void_p]
+        alc.alcDestroyContext.restype = None
+
+        alc.alcCloseDevice.argtypes = [ctypes.c_void_p]
+        alc.alcCloseDevice.restype = None
+
+        alc.alcGetError.argtypes = [ctypes.c_void_p]
+        alc.alcGetError.restype = ctypes.c_char_p
+
+        alc.alcIsExtensionPresent.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
         alc.alcIsExtensionPresent.restype = ctypes.c_bool
+
+        alc.alcGetString.argtypes = [ctypes.c_void_p, ctypes.c_int]
         alc.alcGetString.restype = ctypes.POINTER(ctypes.c_char)
         return True
     else:
@@ -326,16 +355,19 @@ def init_gtk():
 
 
 def can_detect_audio():
-    # OpenAL Soft doesn't support ALC_ENUMERATION_EXT but still provides a reasonable
-    # list. For now, I'll pretend this extension is always present.
-    return True  # alc.alcIsExtensionPresent(None, 'ALC_ENUMERATION_EXT')
+    return alc.alcIsExtensionPresent(None, b'ALC_ENUMERATION_EXT')
 
 
 def list_audio_devs():
     if not alc:
         return [], '', [], ''
 
-    devs = double_zero_string(alc.alcGetString(None, ALC_DEVICE_SPECIFIER))
+    if alc.alcIsExtensionPresent(None, b'ALC_ENUMERATE_ALL_EXT'):
+        spec = ALC_ALL_DEVICES_SPECIFIER
+    else:
+        spec = ALC_DEVICE_SPECIFIER
+
+    devs = double_zero_string(alc.alcGetString(None, spec))
     default = alc.alcGetString(None, ALC_DEFAULT_DEVICE_SPECIFIER)
 
     captures = double_zero_string(alc.alcGetString(None, ALC_CAPTURE_DEVICE_SPECIFIER))
