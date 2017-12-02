@@ -34,7 +34,7 @@ def main():
     pyfiles = []
     for fn in os.listdir('knossos'):
         fn = 'knossos/' + fn
-        if os.path.isfile(fn) and not fn.endswith('.pyc'):
+        if os.path.isfile(fn) and fn.endswith('.py'):
             pyfiles.append(fn)
 
     pyfiles.sort()

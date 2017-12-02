@@ -102,7 +102,6 @@
         "knossos/ipc.py",
         "knossos/launcher.py",
         "knossos/nebula.py",
-        "knossos/parser.out",
         "knossos/parsetab.py",
         "knossos/progress.py",
         "knossos/py2_compat.py",
