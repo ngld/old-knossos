@@ -401,16 +401,26 @@ class InstallTask(progress.MultistepTask):
 
             # Check if we already have this file
             found = False
-            for mv in inst_mods:
-                if mv.dev_mode:
-                    itempath = util.ipath(os.path.join(mv.folder, pkg_folders[mv][info['package']], info['filename']))
+            if mod in inst_mods:
+                # This mod is already installed, let's see if the file already exists
+                if mod.dev_mode:
+                    dest_path = util.ipath(os.path.join(mod.folder, pkg_folders[mod][info['package']], info['filename']))
                 else:
-                    itempath = util.ipath(os.path.join(mv.folder, info['filename']))
+                    dest_path = util.ipath(os.path.join(mod.folder, info['filename']))
 
-                if os.path.isfile(itempath) and util.check_hash(info['checksum'], itempath):
-                    copies.append((mod, info['package'], info['filename'], itempath))
-                    found = True
-                    break
+                found = os.path.isfile(dest_path)
+
+            if not found:
+                for mv in inst_mods:
+                    if mv.dev_mode:
+                        itempath = util.ipath(os.path.join(mv.folder, pkg_folders[mv][info['package']], info['filename']))
+                    else:
+                        itempath = util.ipath(os.path.join(mv.folder, info['filename']))
+
+                    if os.path.isfile(itempath) and util.check_hash(info['checksum'], itempath):
+                        copies.append((mod, info['package'], info['filename'], itempath))
+                        found = True
+                        break
 
             if not found:
                 archives.add((mod.mid, info['package'], info['archive']))
@@ -677,9 +687,10 @@ class InstallTask(progress.MultistepTask):
         for mod in self._mods:
             try:
                 mod.save()
-                util.get(center.settings['nebula_link'] + 'api/1/track/install/' + mod.mid)
             except Exception:
                 logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
+
+        util.get(center.settings['nebula_link'] + 'track/install/' + self.mods[0].mid)
 
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
