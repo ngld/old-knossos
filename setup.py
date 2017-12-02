@@ -44,7 +44,11 @@ with open(path.join(here, 'knossos', 'center.py'), 'r', encoding='utf-8') as f:
             info_file = path.join(here, '.git/logs/' + ref[1].strip())
             if path.isfile(info_file):
                 with open(info_file) as stream:
-                    version += '+' + stream.read()[:7]
+                    line = next(stream)
+                    if line.startswith('0000000'):
+                        line = next(stream)
+
+                    version += '+' + line[:7]
 
 if len(sys.argv) == 2 and sys.argv[1] == 'get_version':
     print(version)

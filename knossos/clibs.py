@@ -51,6 +51,12 @@ class SDL_DisplayMode(ctypes.Structure):
     ]
 
 
+class SDL_JoystickGUID(ctypes.Structure):
+    _fields_ = [
+        ('data', ctypes.c_uint8 * 16)
+    ]
+
+
 class c_any_pointer(object):
 
     @classmethod
@@ -96,7 +102,7 @@ def double_zero_string(val):
 
 
 def init_sdl():
-    global sdl, SDL2, get_modes, list_joysticks, get_config_path
+    global sdl, get_modes, list_joysticks, list_guid_joysticks, get_config_path
 
     if sdl:
         return
@@ -104,7 +110,6 @@ def init_sdl():
     if center.settings['sdl2_path']:
         try:
             sdl = load_lib(center.settings['sdl2_path'])
-            SDL2 = True
         except Exception:
             logging.exception('Failed to load user-supplied SDL2!')
 
@@ -113,184 +118,133 @@ def init_sdl():
         if sys.platform == 'darwin' and hasattr(sys, 'frozen'):
             try:
                 sdl = load_lib('../Frameworks/SDL2.framework/SDL2')
-                SDL2 = True
             except Exception:
                 logging.exception('Failed to load bundled SDL2!')
 
-        try:
-            sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
-            SDL2 = True
-        except Exception:
-            # Try SDL 1.2
-            sdl = load_lib('libSDL-1.2.so.0', 'SDL', 'SDL.dll', 'libSDL.dylib')
-            SDL2 = False
+    sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
 
     # SDL constants
-    if SDL2:
-        SDL_INIT_VIDEO = 0x00000020
-        SDL_INIT_JOYSTICK = 0x00000200
+    SDL_INIT_VIDEO = 0x00000020
+    SDL_INIT_JOYSTICK = 0x00000200
 
-        # SDL.h
-        sdl.SDL_SetMainReady.argtypes = []
-        sdl.SDL_SetMainReady.restype = None
+    # SDL.h
+    sdl.SDL_SetMainReady.argtypes = []
+    sdl.SDL_SetMainReady.restype = None
 
-        sdl.SDL_Init.argtypes = [ctypes.c_uint32]
-        sdl.SDL_Init.restype = ctypes.c_int
+    sdl.SDL_Init.argtypes = [ctypes.c_uint32]
+    sdl.SDL_Init.restype = ctypes.c_int
 
-        sdl.SDL_InitSubSystem.argtypes = [ctypes.c_uint32]
-        sdl.SDL_InitSubSystem.restype = ctypes.c_int
+    sdl.SDL_InitSubSystem.argtypes = [ctypes.c_uint32]
+    sdl.SDL_InitSubSystem.restype = ctypes.c_int
 
-        sdl.SDL_QuitSubSystem.argtypes = [ctypes.c_uint32]
-        sdl.SDL_QuitSubSystem.restype = None
+    sdl.SDL_QuitSubSystem.argtypes = [ctypes.c_uint32]
+    sdl.SDL_QuitSubSystem.restype = None
 
-        # SDL_error.h
-        sdl.SDL_GetError.argtypes = []
-        sdl.SDL_GetError.restype = ctypes.c_char_p
+    # SDL_error.h
+    sdl.SDL_GetError.argtypes = []
+    sdl.SDL_GetError.restype = ctypes.c_char_p
 
-        # SDL_video.h
-        sdl.SDL_VideoInit.argtypes = [ctypes.c_char_p]
-        sdl.SDL_VideoInit.restype = ctypes.c_int
+    # SDL_video.h
+    sdl.SDL_VideoInit.argtypes = [ctypes.c_char_p]
+    sdl.SDL_VideoInit.restype = ctypes.c_int
 
-        sdl.SDL_VideoQuit.argtypes = []
-        sdl.SDL_VideoQuit.restype = None
+    sdl.SDL_VideoQuit.argtypes = []
+    sdl.SDL_VideoQuit.restype = None
 
-        sdl.SDL_GetNumVideoDisplays.argtypes = []
-        sdl.SDL_GetNumVideoDisplays.restype = ctypes.c_int
+    sdl.SDL_GetNumVideoDisplays.argtypes = []
+    sdl.SDL_GetNumVideoDisplays.restype = ctypes.c_int
 
-        sdl.SDL_GetNumDisplayModes.argtypes = [ctypes.c_int]
-        sdl.SDL_GetNumDisplayModes.restype = ctypes.c_int
+    sdl.SDL_GetNumDisplayModes.argtypes = [ctypes.c_int]
+    sdl.SDL_GetNumDisplayModes.restype = ctypes.c_int
 
-        sdl.SDL_GetDisplayMode.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(SDL_DisplayMode)]
-        sdl.SDL_GetDisplayMode.restype = ctypes.c_int
+    sdl.SDL_GetDisplayMode.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(SDL_DisplayMode)]
+    sdl.SDL_GetDisplayMode.restype = ctypes.c_int
 
-        sdl.SDL_GetCurrentDisplayMode.argtypes = [ctypes.c_int, ctypes.POINTER(SDL_DisplayMode)]
-        sdl.SDL_GetCurrentDisplayMode.restype = ctypes.c_int
+    sdl.SDL_GetCurrentDisplayMode.argtypes = [ctypes.c_int, ctypes.POINTER(SDL_DisplayMode)]
+    sdl.SDL_GetCurrentDisplayMode.restype = ctypes.c_int
 
-        # SDL_joystick.h
-        sdl.SDL_NumJoysticks.argtypes = []
-        sdl.SDL_NumJoysticks.restype = ctypes.c_int
+    # SDL_joystick.h
+    sdl.SDL_NumJoysticks.argtypes = []
+    sdl.SDL_NumJoysticks.restype = ctypes.c_int
 
-        sdl.SDL_JoystickNameForIndex.argtypes = [ctypes.c_int]
-        sdl.SDL_JoystickNameForIndex.restype = ctypes.c_char_p
+    sdl.SDL_JoystickNameForIndex.argtypes = [ctypes.c_int]
+    sdl.SDL_JoystickNameForIndex.restype = ctypes.c_char_p
 
-        sdl.SDL_JoystickGetDeviceGUID.argtypes = [ctypes.c_int]
-        sdl.SDL_JoystickGetDeviceGUID.restype = c_any_pointer
+    sdl.SDL_JoystickGetDeviceGUID.argtypes = [ctypes.c_int]
+    sdl.SDL_JoystickGetDeviceGUID.restype = SDL_JoystickGUID
 
-        sdl.SDL_JoystickGetGUIDString.argtypes = [c_any_pointer, ctypes.c_char_p, ctypes.c_int]
-        sdl.SDL_JoystickGetGUIDString.restype = None
+    sdl.SDL_JoystickGetGUIDString.argtypes = [SDL_JoystickGUID, ctypes.c_char_p, ctypes.c_int]
+    sdl.SDL_JoystickGetGUIDString.restype = None
 
-        # SDL_filesystem.h
-        sdl.SDL_GetPrefPath.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
-        sdl.SDL_GetPrefPath.restype = ctypes.c_char_p
-    else:
-        SDL_INIT_VIDEO = 0x00000020
-        SDL_INIT_JOYSTICK = 0x00000200
-        SDL_HWSURFACE = 0x00000001
-        SDL_FULLSCREEN = 0x80000000
+    # SDL_filesystem.h
+    sdl.SDL_GetPrefPath.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    sdl.SDL_GetPrefPath.restype = ctypes.c_char_p
 
-        sdl.SDL_InitSubSystem.argtypes = [ctypes.c_uint32]
-        sdl.SDL_InitSubSystem.restype = ctypes.c_int
+    sdl.SDL_SetMainReady()
+    if sdl.SDL_Init(0) != 0:
+        logging.error('Failed to init SDL!')
+        logging.error(sdl.SDL_GetError())
 
-        sdl.SDL_QuitSubSystem.argtypes = [ctypes.c_uint32]
-        sdl.SDL_QuitSubSystem.restype = None
-
-        sdl.SDL_GetError.argtypes = []
-        sdl.SDL_GetError.restype = ctypes.c_char_p
-
-        sdl.SDL_ListModes.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
-        sdl.SDL_ListModes.restype = ctypes.POINTER(ctypes.POINTER(SDL_Rect))
-
-        sdl.SDL_NumJoysticks.argtypes = []
-        sdl.SDL_NumJoysticks.restype = ctypes.c_int
-
-        sdl.SDL_JoystickName.argtypes = [ctypes.c_int]
-        sdl.SDL_JoystickName.restype = ctypes.c_char_p
-
-    if SDL2:
-        sdl.SDL_SetMainReady()
-        if sdl.SDL_Init(0) != 0:
-            logging.error('Failed to init SDL!')
+    def get_modes():
+        if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0 or sdl.SDL_VideoInit(None) < 0:
+            logging.error('Failed to init SDL\'s video subsystem!')
             logging.error(sdl.SDL_GetError())
+            return []
 
-        def get_modes():
-            if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0 or sdl.SDL_VideoInit(None) < 0:
-                logging.error('Failed to init SDL\'s video subsystem!')
-                logging.error(sdl.SDL_GetError())
-                return []
+        modes = []
+        for i in range(sdl.SDL_GetNumVideoDisplays()):
+            for a in range(sdl.SDL_GetNumDisplayModes(i)):
+                m = SDL_DisplayMode()
+                sdl.SDL_GetDisplayMode(i, a, ctypes.byref(m))
 
-            modes = []
-            for i in range(sdl.SDL_GetNumVideoDisplays()):
-                for a in range(sdl.SDL_GetNumDisplayModes(i)):
-                    m = SDL_DisplayMode()
-                    sdl.SDL_GetDisplayMode(i, a, ctypes.byref(m))
+                if (m.w, m.h) not in modes:
+                    modes.append((m.w, m.h))
 
-                    if (m.w, m.h) not in modes:
-                        modes.append((m.w, m.h))
+        sdl.SDL_VideoQuit()
+        sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
+        return modes
 
-            sdl.SDL_VideoQuit()
-            sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
-            return modes
+    def list_joysticks():
+        if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
+            logging.error('Failed to init SDL\'s joystick subsystem!')
+            logging.error(sdl.SDL_GetError())
+            return []
 
-        def list_joysticks():
-            if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
-                logging.error('Failed to init SDL\'s joystick subsystem!')
-                logging.error(sdl.SDL_GetError())
-                return []
+        joys = []
+        for i in range(sdl.SDL_NumJoysticks()):
+            joys.append(sdl.SDL_JoystickNameForIndex(i).decode(ENCODING))
 
-            joys = []
-            for i in range(sdl.SDL_NumJoysticks()):
-                joys.append(sdl.SDL_JoystickNameForIndex(i).decode(ENCODING))
+        sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
+        return joys
 
-            # Initializing the subsystem takes a while so make sure we don't have to reinit on every call.
-            # sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
-            return joys
+    def list_guid_joysticks():
+        if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
+            logging.error('Failed to init SDL\'s joystick subsystem!')
+            logging.error(sdl.SDL_GetError())
+            return []
 
-        def get_config_path():
-            # See https://github.com/scp-fs2open/fs2open.github.com/blob/master/code/osapi/osapi.cpp
-            return sdl.SDL_GetPrefPath(b'HardLightProductions', b'FreeSpaceOpen').decode('utf8')
-    else:
-        def get_modes():
-            try:
-                if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0:
-                    logging.error('Failed to init SDL\'s video subsystem!')
-                    logging.error(sdl.SDL_GetError())
-                    return []
+        joys = []
+        guid_counts = {}
+        buf = ctypes.create_string_buffer(33)
+        for i in range(sdl.SDL_NumJoysticks()):
+            guid = sdl.SDL_JoystickGetDeviceGUID(i)
+            sdl.SDL_JoystickGetGUIDString(guid, buf, 33)
 
-                modes = sdl.SDL_ListModes(None, SDL_FULLSCREEN | SDL_HWSURFACE)
-                my_modes = []
+            guid_str = buf.raw.decode(ENCODING).strip('\x00')
+            if guid_str in guid_counts:
+                guid_counts[guid_str] += 1
+            else:
+                guid_counts[guid_str] = 0
 
-                for mode in modes:
-                    if not mode:
-                        break
+            name = sdl.SDL_JoystickNameForIndex(i).decode(ENCODING)
+            joys.append((guid_str, guid_counts[guid_str], name))
 
-                    rect = mode[0]
-                    my_modes.append((rect.w, rect.h))
+        sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
+        return joys
 
-                sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
-                return my_modes
-            except Exception:
-                logging.exception('Failed to call SDL_ListModes()!')
-                return []
-
-        def list_joysticks():
-            try:
-                if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
-                    logging.error('Failed to init SDL\'s joystick subsystem!')
-                    logging.error(sdl.SDL_GetError())
-                    return []
-
-                joys = []
-                for i in range(sdl.SDL_NumJoysticks()):
-                    joys.append(sdl.SDL_JoystickName(i).decode(ENCODING, 'replace'))
-
-                sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
-                return joys
-            except Exception:
-                logging.exception('Failed to ask SDL for joysticks!')
-                return []
-
-        def get_config_path():
-            return None
+    def get_config_path():
+        # See https://github.com/scp-fs2open/fs2open.github.com/blob/master/code/osapi/osapi.cpp
+        return sdl.SDL_GetPrefPath(b'HardLightProductions', b'FreeSpaceOpen').decode('utf8')
 
 
 # OpenAL constants

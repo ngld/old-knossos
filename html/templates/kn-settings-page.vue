@@ -14,6 +14,7 @@ export default {
         knossos: {},
         fso: {},
         old_settings: {},
+        sel_joystick: null,
         ff_enabled: false,
 
         neb_user: '',
@@ -32,6 +33,7 @@ export default {
             this.old_settings = settings;
 
             this.neb_user = this.knossos.neb_user;
+            this.sel_joystick = this.fso.joystick_id === 'No Joystick' ? 'No Joystick' : this.fso.joystick_guid + '#' + this.fso.joystick_id;
             this.ff_enabled = settings.fso.joystick_ff_strength == 100;
         });
         fs2mod.getSettings();
@@ -46,6 +48,13 @@ export default {
 
         save() {
             this.fso.joystick_ff_strength = this.ff_enabled ? 100 : 0;
+            let joystick = this.sel_joystick.split('#');
+            if(joystick.length < 2) {
+                this.fso.joystick_id = 99999;
+            } else {
+                this.fso.joystick_guid = joystick[0];
+                this.fso.joystick_id = joystick[1];
+            }
 
             if(this.knossos.base_path !== this.old_settings.knossos.base_path) {
                 fs2mod.setBasePath(this.knossos.base_path);
@@ -310,9 +319,9 @@ export default {
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Joystick:</label>
                     <div class="col-sm-8">
-                        <select v-model="fso.joystick_id">
+                        <select v-model="sel_joystick">
                             <option>No Joystick</option>
-                            <option v-for="(joy, id) in fso.joysticks" :value="id" :key="id">{{ joy }}</option>
+                            <option v-for="joy in fso.joysticks" :value="joy[0] + '#' + joy[1]" :key="joy[0] + '#' + joy[1]">{{ joy[2] }}</option>
                         </select>
                     </div>
                 </div>
@@ -339,6 +348,7 @@ export default {
                 </div>
             </kn-drawer>
 
+            <!-- TODO: Implement this
             <kn-drawer label="Network">
                 <div class="settings-exp drawer-exp">Manage your network settings for multiplayer</div>
                 <div class="form-group">
@@ -374,6 +384,7 @@ export default {
                     </div>
                 </div>
             </kn-drawer>
+            -->
         </div>
     </div>
 </template>
