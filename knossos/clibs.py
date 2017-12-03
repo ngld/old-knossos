@@ -57,7 +57,8 @@ class SDL_DisplayMode(ctypes.Structure):
 
 class SDL_JoystickGUID(ctypes.Structure):
     _fields_ = [
-        ('data', ctypes.c_uint8 * 16)
+        ('data1', ctypes.c_uint8 * 8),
+        ('data2', ctypes.c_uint8 * 8)
     ]
 
 
