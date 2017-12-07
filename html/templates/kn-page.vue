@@ -17,9 +17,10 @@ export default {
         page: 'modlist',
         show_filter: false,
         mods: [],
+        mod_table: {},
 
         // details page
-        mod: null,
+        detail_mod: null,
 
         popup_visible: false,
         popup_title: 'Popup',
@@ -114,26 +115,6 @@ export default {
 
         exitDetails() {
             this.page = 'modlist';
-        },
-
-        installMod() {
-            fs2mod.install(this.mod.id, '', []);
-        },
-
-        uninstallMod() {
-            fs2mod.uninstall(this.mod.id, '', []);
-        },
-
-        cancelMod() {
-            fs2mod.abortTask(task_mod_map[this.mod.id]);
-        },
-
-        playMod() {
-            fs2mod.runMod(this.mod.id, '');
-        },
-
-        updateMod() {
-            fs2mod.updateMod(this.mod.id, '');
         },
 
         createMod() {
@@ -364,7 +345,7 @@ export default {
 
     <!-------------------------------------------------------------------------------- Start the Details page ---------->
             <div class="info-page" id="details-page" v-if="page === 'details'">
-                <kn-details-page :modbundle="mod"></kn-details-page>
+                <kn-details-page :modbundle="mod_table[detail_mod]"></kn-details-page>
             </div>
 
             <div class="info-page settings-page container-fluid" v-if="page === 'settings'">

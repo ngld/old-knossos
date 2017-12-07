@@ -103,7 +103,7 @@ function init() {
             }
 
             vm.page = 'details';
-            vm.mod = mod_table[mid];
+            vm.detail_mod = mid;
         }
 
         cb();
@@ -111,10 +111,12 @@ function init() {
     fs2mod.updateModlist.connect((mods, type) => {
         window.mod_table = mod_table = {};
         mods = JSON.parse(mods);
+
         for(let mod of mods) {
-            mod_table[mod.id] = mod;
+            Vue.set(mod_table, mod.id, mod);
         }
 
+        vm.mod_table = mod_table;
         vm.updateModlist(mods);
     });
     fs2mod.hidePopup.connect(() => vm.popup_visible = false);
@@ -131,7 +133,7 @@ function init() {
 
         for(let mid of mods) {
             if(mod_table[mid]) {
-                mod_table[mid].status = 'updating';
+                Vue.set(mod_table[mid], 'status', 'updating');
                 task_mod_map[mid] = tid;
             }
         }
@@ -143,8 +145,8 @@ function init() {
         details = JSON.parse(details);
         for(let mid of tasks[tid].mods) {
             if(mod_table[mid]) {
-                mod_table[mid].progress = progress;
-                mod_table[mid].progress_info = details;
+                Vue.set(mod_table[mid], 'progress', progress);
+                Vue.set(mod_table[mid], 'progress_info', details);
                 vm.$set(vm.popup_progress, mid, details);
             }
         }
@@ -155,8 +157,8 @@ function init() {
 
         for(let mid of tasks[tid].mods) {
             if(mod_table[mid]) {
-                mod_table[mid].progress = 0;
-                mod_table[mid].status = 'ready';
+                Vue.set(mod_table[mid], 'progress', 0);
+                Vue.set(mod_table[mid], 'status', 'ready');
             }
 
             if(task_mod_map[mid]) delete task_mod_map[mid];
