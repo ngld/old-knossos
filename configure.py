@@ -35,6 +35,7 @@ JS_FILES = [
     'html/js/gallery_yt.js',
     'html/js/main.js',
     'html/js/mod_button_methods.js',
+    'html/js/preboot.js',
     'html/js/translations.js',
     'webpack.config.js'
 ]

@@ -26,6 +26,11 @@ try:
 
     try:
         from PyQt5 import QtWebChannel, QtWebEngineWidgets
+
+        try:
+            from PyQt5 import QtWebSockets
+        except ImportError:
+            QtWebSockets = None
     except ImportError:
         from PyQt5 import QtWebKit, QtWebKitWidgets
 
@@ -94,6 +99,6 @@ def run_in_qt(func):
 
 
 __all__ = [
-    'QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtWebChannel', 'QtWebEngineWidgets', 'QtWebKit', 'variant',
+    'QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtWebChannel', 'QtWebEngineWidgets', 'QtWebKit', 'QtWebSockets',
     'read_file', 'load_styles', 'run_in_qt'
 ]

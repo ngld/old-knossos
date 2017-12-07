@@ -26,11 +26,40 @@ import semantic_version
 
 from threading import Thread
 from datetime import datetime
-from .qt import QtCore, QtGui, QtWidgets, QtWebChannel
+from .qt import QtCore, QtGui, QtWidgets, QtWebChannel, read_file
 from . import center, runner, repo, windows, tasks, util, settings, nebula, clibs
 
 if not QtWebChannel:
     from .qt import QtWebKit
+else:
+    class WebSocketWrapper(QtWebChannel.QWebChannelAbstractTransport):
+        _conn = None
+        _bridge = None
+
+        def __init__(self, conn, bridge):
+            super(WebSocketWrapper, self).__init__()
+
+            self._bridge = bridge
+            self._bridge._conns.append(self)
+
+            self._conn = conn
+            self._conn.textMessageReceived.connect(self.socketMessageReceived)
+            self._conn.disconnected.connect(self.socketDisconnected)
+
+        def sendMessage(self, msg):
+            for k, v in msg.items():
+                if isinstance(v, QtCore.QJsonValue):
+                    msg[k] = v.toVariant()
+
+            print('#-> ', json.dumps(msg))
+            self._conn.sendTextMessage(json.dumps(msg))
+
+        def socketMessageReceived(self, msg):
+            print('#<- ', json.loads(msg))
+            self.messageReceived.emit(json.loads(msg), self)
+
+        def socketDisconnected(self):
+            self._bridge._conns.remove(self)
 
 
 class WebBridge(QtCore.QObject):
@@ -60,12 +89,27 @@ class WebBridge(QtCore.QObject):
         if QtWebChannel:
             self.bridge = self
             page = webView.page()
-            channel = QtWebChannel.QWebChannel(page)
+            self._channel = QtWebChannel.QWebChannel(page)
 
-            page.setWebChannel(channel)
-            channel.registerObject('fs2mod', self)
+            page.setWebChannel(self._channel)
+            self._channel.registerObject('fs2mod', self)
 
             if center.DEBUG and os.path.isdir('../html'):
+                try:
+                    from .qt import QtWebSockets, QtNetwork
+                except ImportError:
+                    logging.exception('Remote mode disabled')
+                else:
+                    self._conns = []
+                    self._server = QtWebSockets.QWebSocketServer('Knossos interface', QtWebSockets.QWebSocketServer.NonSecureMode)
+                    if not self._server.listen(QtNetwork.QHostAddress.LocalHost, 4007):
+                        logging.warn('Failed to listen on port 4007!')
+                    else:
+                        self._server.newConnection.connect(self._acceptConnection)
+
+                    with open('../html/qwebchannel.js', 'w') as hdl:
+                        hdl.write(read_file(':/qtwebchannel/qwebchannel.js'))
+
                 link = os.path.abspath('../html/index_debug.html')
                 if sys.platform == 'win32':
                     link = '/' + link.replace('\\', '/')
@@ -75,6 +119,10 @@ class WebBridge(QtCore.QObject):
                 link = 'qrc:///html/index.html'
 
             webView.load(QtCore.QUrl(link))
+
+    def _acceptConnection(self):
+        conn = self._server.nextPendingConnection()
+        self._channel.connectTo(WebSocketWrapper(conn, self))
 
     @QtCore.Slot('QVariantList', result=str)
     def finishInit(self, tr_keys):

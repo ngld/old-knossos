@@ -2,10 +2,7 @@
  * The fs2mod object is defined through python. The methods are implemented in knossos/web.py.
  */
 
-if(USE_WEBKIT) {
-    require('es6-shim');
-}
-
+import './preboot';
 import Vue from 'vue';
 import get_translation_source from './translations.js';
 import KnPage from '../templates/kn-page.vue';
@@ -123,7 +120,9 @@ function init() {
 
     let tasks = null;
     call(fs2mod.getRunningTasks, (raw_tasks) => {
-        tasks = JSON.parse(raw_tasks);
+        if(raw_tasks) {
+            tasks = JSON.parse(raw_tasks);
+        }
     });
 
     fs2mod.taskStarted.connect((tid, title, mods) => {
@@ -196,6 +195,23 @@ if(window.qt) {
         window.fs2mod = channel.objects.fs2mod;
         init();
     });
-} else {
+} else if(window.fs2mod) {
     window.addEventListener('load', init);
+} else if(KN_DEBUG) {
+    let socket = new WebSocket('ws://localhost:4007');
+
+    socket.onclose = function() {
+        console.error("web channel closed");
+    };
+
+    socket.onerror = function(error) {
+        console.error("web channel error: " + error);
+    };
+
+    socket.onopen = function() {
+        new QWebChannel(socket, function (channel) {
+            window.fs2mod = channel.objects.fs2mod;
+            init();
+        });
+    };
 }

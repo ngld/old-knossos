@@ -39,7 +39,7 @@ const config = {
       },
       {
         test: /\.vue$/,
-        use: ['vue-loader']
+        use: ['vue-loader?preserveWhitespace=false']
       },
       {
         test: /\.css$/,
@@ -73,6 +73,7 @@ module.exports = [
   }),
 
   Object.assign({}, config, {
+    devtool: 'eval',
     output: {
       filename: 'debug_bundle.js',
       path: path.resolve(__dirname, 'html/dist'),

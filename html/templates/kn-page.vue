@@ -270,7 +270,7 @@ export default {
 };
 </script>
 <template>
-    <div>
+    <div class="root-container">
         <div class="main-menus">
             <div class="pull-right top-right-btns">
                 <a href="#" class="top-btn" @click="showHelp"><span class="help-image"></span></a>
