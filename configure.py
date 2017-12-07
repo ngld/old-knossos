@@ -84,7 +84,7 @@ if sys.platform == 'win32':
 
 # We want to use the more modern QtWebEngine by default so we check for that first.
 webkit = False
-if not check_module('PyQt5.QtWebEngine', required=False):
+if not check_module('PyQt5.QtWebEngineWidgets', required=False):
     # If it's not available, we use QtWebKit as a fallback.
     check_module('PyQt5.QtWebKit')
     webkit = True
