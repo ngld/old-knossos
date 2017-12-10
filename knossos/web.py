@@ -1374,6 +1374,35 @@ class WebBridge(QtCore.QObject):
                     "Your log is larger than 5 MB! I unfortunately can't upload logs that big.")
                 return ''
 
+            # Date check
+            changed_at = datetime.fromtimestamp(st.st_mtime)
+            age = datetime.now() - changed_at
+
+            message = 'The most recent log was generated '
+
+            if age.days == 0:
+                message += 'today'
+            elif age.days == 1:
+                message += 'yesterday'
+            else:
+                message += '%d days ago' % age.days
+
+            message += changed_at.strftime(' at %X')
+            message += '. Is this when you encountered a problem?'
+            
+            box = QtWidgets.QMessageBox()
+            box.setIcon(QtWidgets.QMessageBox.Question)
+            box.setText(message)
+            box.setWindowTitle('Knossos')
+
+            box.addButton('Yes, upload', QtWidgets.QMessageBox.YesRole)
+            # no_again = box.addButton('No, run again and generate a new log', QtWidgets.QMessageBox.NoRole)
+            no_abort = box.addButton('No', QtWidgets.QMessageBox.RejectRole)
+            box.exec_()
+
+            if box.clickedButton() == no_abort:
+                return
+
             client = nebula.NebulaClient()
             with open(logpath, 'r') as stream:
                 log_link = client.upload_log(stream.read())
