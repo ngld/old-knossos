@@ -492,7 +492,7 @@ iframe {
                 inset -13px 0px 15px -10px rgba(0,0,0,1);*/
 }
 
-#main-shadow-effect {
+.main-container .main-shadow-effect {
     position: fixed;
     top: 78px;
     bottom: 7px;
@@ -506,7 +506,7 @@ iframe {
     /*z-index: -1;*/
 }
 
-#main-background {
+.main-container .main-background {
     position: fixed;
     top: 78px;
     bottom: 7px;

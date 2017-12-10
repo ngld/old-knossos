@@ -126,6 +126,7 @@
         "html/templates/kn-mod-explore.vue",
         "html/templates/kn-mod-home.vue",
         "html/templates/kn-page.vue",
+        "html/templates/kn-scroll-container.vue",
         "html/templates/kn-settings-page.vue",
         "html/templates/kn-welcome-page.vue"
     ]

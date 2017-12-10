@@ -325,9 +325,8 @@ export default {
         </div>
 
     <!-------------------------------------------------------------------------------- Build the Main View container ---------->
-        <div class="main-container scroll-style">
-            <div id="main-background"></div>
-            <div class="container-fluid mod-container" v-if="page === 'modlist'">
+        <kn-scroll-container v-show="page === 'modlist'" key="modlist">
+            <div class="container-fluid mod-container">
                 <div v-if="tab === 'home'">
                     <kn-mod-home v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-home>
                 </div>
@@ -336,26 +335,29 @@ export default {
                 </div>
                 <div v-if="mods.length === 0" class="main-notice">No mods found.</div>
             </div>
-            <div id="main-shadow-effect"></div>
+        </kn-scroll-container>
 
-    <!-------------------------------------------------------------------------------- Start the Welcome page ---------->
-            <div class="info-page" v-if="page === 'welcome'">
-                <kn-welcome-page></kn-welcome-page>
-            </div>
+        <kn-scroll-container v-if="page === 'welcome'" key="welcome">
+            <kn-welcome-page></kn-welcome-page>
+        </kn-scroll-container>
 
-    <!-------------------------------------------------------------------------------- Start the Details page ---------->
-            <div class="info-page" id="details-page" v-if="page === 'details'">
+        <kn-scroll-container v-if="page === 'details'" key="details">
+            <div class="info-page" id="details-page">
                 <kn-details-page :modbundle="mod_table[detail_mod]"></kn-details-page>
             </div>
+        </kn-scroll-container>
 
-            <div class="info-page settings-page container-fluid" v-if="page === 'settings'">
+        <kn-scroll-container v-if="page === 'settings'" key="settings">
+            <div class="info-page settings-page container-fluid">
                 <kn-settings-page></kn-settings-page>
             </div>
+        </kn-scroll-container>
 
+        <kn-scroll-container v-if="page === 'develop'" key="develop">
             <div class="info-page devel-page" v-if="page === 'develop'">
                 <kn-devel-page :mods="mods"></kn-devel-page>
             </div>
-        </div>
+        </kn-scroll-container>
 
         <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>
 

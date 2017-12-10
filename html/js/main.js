@@ -49,6 +49,7 @@ function init() {
         'kn-fso-user-settings',
         'kn-mod-home',
         'kn-mod-explore',
+        'kn-scroll-container',
         'kn-settings-page',
         'kn-welcome-page'
     ];
