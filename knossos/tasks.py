@@ -403,7 +403,7 @@ class InstallTask(progress.MultistepTask):
             found = False
             if mod in inst_mods:
                 # This mod is already installed, let's see if the file already exists
-                if mod.dev_mode:
+                if mod.dev_mode and mod in pkg_folders:
                     dest_path = util.ipath(os.path.join(mod.folder, pkg_folders[mod][info['package']], info['filename']))
                 else:
                     dest_path = util.ipath(os.path.join(mod.folder, info['filename']))
@@ -412,7 +412,7 @@ class InstallTask(progress.MultistepTask):
 
             if not found:
                 for mv in inst_mods:
-                    if mv.dev_mode:
+                    if mv.dev_mode and mv in pkg_folders:
                         itempath = util.ipath(os.path.join(mv.folder, pkg_folders[mv][info['package']], info['filename']))
                     else:
                         itempath = util.ipath(os.path.join(mv.folder, info['filename']))

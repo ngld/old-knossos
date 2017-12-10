@@ -296,9 +296,20 @@ def run_mod(mod, tool=None, exe_label=None):
 
     try:
         mod_flag, mod_choice = mod.get_mod_flag()
-    except repo.ModNotFound:
-        QtWidgets.QMessageBox.critical(None, 'Knossos',
-            translate('runner', '"%s" has an error in its dependencies. Aborted.' % mod))
+    except repo.ModNotFound as exc:
+        mod_name = exc.mid
+
+        try:
+            err_mod = center.mods.query(mod_name).title
+        except repo.ModNotFound:
+            err_mod = mod_name
+
+        if err_mod:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                translate('runner', '"%s" requires "%s" which is missing!' % (mod, err_mod)))
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                translate('runner', '"%s" has an error in its dependencies. Aborted.' % mod))
         return
 
     if mod_choice:
