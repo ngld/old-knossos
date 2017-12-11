@@ -646,6 +646,13 @@ class WebBridge(QtCore.QObject):
                     logging.exception('Failed to create binary folder! (%s)' % upper_folder)
                     QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('I could not create the folder for binaries!'))
                     return False
+            elif mod.mtype == 'tc':
+                try:
+                    os.mkdir(upper_folder)
+                except Exception:
+                    logging.exception('Failed to create TC folder! (%s)' % upper_folder)
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('I could not create the folder for the TC!'))
+                    return False
             else:
                 logging.error('%s did not exist during mod creation! (parent = %s)' % (mod.folder, mod.parent))
                 QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The chosen parent does not exist! Something went very wrong here!!'))
