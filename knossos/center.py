@@ -85,7 +85,13 @@ elif 'XDG_CONFIG_HOME' in os.environ or sys.platform.startswith('linux'):
 
     del old_path, config_home
 elif sys.platform == 'darwin':
+    old_path = os.path.expandvars('$HOME/.knossos')
     settings_path = os.path.expandvars('$HOME/Library/Preferences/knossos')
+
+    if not os.path.isdir(settings_path) and os.path.isdir(old_path):
+        settings_path = old_path
+
+    del old_path
 else:
     settings_path = os.path.expanduser('~/.knossos')
 

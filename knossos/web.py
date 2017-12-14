@@ -1361,7 +1361,7 @@ class WebBridge(QtCore.QObject):
             return 'C:\\Games\\FreespaceOpen'
         elif sys.platform == 'linux':
             return os.path.expanduser('~/games/FreespaceOpen')
-        elif sys.platform == 'macos':
+        elif sys.platform == 'darwin':
             return os.path.expanduser('~/Documents/Games/FreespaceOpen')
         else:
             return ''

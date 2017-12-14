@@ -129,7 +129,8 @@ def init_sdl():
             except Exception:
                 logging.exception('Failed to load bundled SDL2!')
 
-    sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
+    if not sdl:
+        sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
 
     # SDL constants
     SDL_INIT_VIDEO = 0x00000020
