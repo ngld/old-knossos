@@ -20,7 +20,7 @@ before_install:
 - cd ../..
 
 install:
-- if [ "$TRAVIS_OS_NAME" == "osx" ]; then bash releng/macos/provision.sh; fi
+- bash releng/ci/travis_provision.sh
 
 script:
 - bash ./releng/ci/travis.sh macos

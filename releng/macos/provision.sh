@@ -12,7 +12,7 @@ brew install node p7zip ninja qt5
 
 # If we don't delete qmake, PyInstaller detects this Qt installation and uses its libraries instead of PyQt5's
 # which then leads to a crash because PyQt5 isn't compatible with the version we install.
-rm /usr/local/Cellar/qt/*/bin/qmake
+rm -f /usr/local/Cellar/qt/*/bin/qmake
 
 mkdir /tmp/prov
 cd /tmp/prov
