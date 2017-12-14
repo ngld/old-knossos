@@ -2,10 +2,7 @@
  * The fs2mod object is defined through python. The methods are implemented in knossos/web.py.
  */
 
-if(USE_WEBKIT) {
-    require('es6-shim');
-}
-
+import './preboot';
 import Vue from 'vue';
 import get_translation_source from './translations.js';
 import KnPage from '../templates/kn-page.vue';
@@ -52,6 +49,7 @@ function init() {
         'kn-fso-user-settings',
         'kn-mod-home',
         'kn-mod-explore',
+        'kn-scroll-container',
         'kn-settings-page',
         'kn-welcome-page'
     ];
@@ -103,7 +101,7 @@ function init() {
             }
 
             vm.page = 'details';
-            vm.mod = mod_table[mid];
+            vm.detail_mod = mid;
         }
 
         cb();
@@ -111,17 +109,21 @@ function init() {
     fs2mod.updateModlist.connect((mods, type) => {
         window.mod_table = mod_table = {};
         mods = JSON.parse(mods);
+
         for(let mod of mods) {
-            mod_table[mod.id] = mod;
+            Vue.set(mod_table, mod.id, mod);
         }
 
+        vm.mod_table = mod_table;
         vm.updateModlist(mods);
     });
     fs2mod.hidePopup.connect(() => vm.popup_visible = false);
 
     let tasks = null;
     call(fs2mod.getRunningTasks, (raw_tasks) => {
-        tasks = JSON.parse(raw_tasks);
+        if(raw_tasks) {
+            tasks = JSON.parse(raw_tasks);
+        }
     });
 
     fs2mod.taskStarted.connect((tid, title, mods) => {
@@ -131,7 +133,7 @@ function init() {
 
         for(let mid of mods) {
             if(mod_table[mid]) {
-                mod_table[mid].status = 'updating';
+                Vue.set(mod_table[mid], 'status', 'updating');
                 task_mod_map[mid] = tid;
             }
         }
@@ -143,8 +145,8 @@ function init() {
         details = JSON.parse(details);
         for(let mid of tasks[tid].mods) {
             if(mod_table[mid]) {
-                mod_table[mid].progress = progress;
-                mod_table[mid].progress_info = details;
+                Vue.set(mod_table[mid], 'progress', progress);
+                Vue.set(mod_table[mid], 'progress_info', details);
                 vm.$set(vm.popup_progress, mid, details);
             }
         }
@@ -155,8 +157,8 @@ function init() {
 
         for(let mid of tasks[tid].mods) {
             if(mod_table[mid]) {
-                mod_table[mid].progress = 0;
-                mod_table[mid].status = 'ready';
+                Vue.set(mod_table[mid], 'progress', 0);
+                Vue.set(mod_table[mid], 'status', 'ready');
             }
 
             if(task_mod_map[mid]) delete task_mod_map[mid];
@@ -194,6 +196,23 @@ if(window.qt) {
         window.fs2mod = channel.objects.fs2mod;
         init();
     });
-} else {
+} else if(window.fs2mod) {
     window.addEventListener('load', init);
+} else if(KN_DEBUG) {
+    let socket = new WebSocket('ws://localhost:4007');
+
+    socket.onclose = function() {
+        console.error("web channel closed");
+    };
+
+    socket.onerror = function(error) {
+        console.error("web channel error: " + error);
+    };
+
+    socket.onopen = function() {
+        new QWebChannel(socket, function (channel) {
+            window.fs2mod = channel.objects.fs2mod;
+            init();
+        });
+    };
 }

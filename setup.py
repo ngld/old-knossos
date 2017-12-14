@@ -39,12 +39,16 @@ with open(path.join(here, 'knossos', 'center.py'), 'r', encoding='utf-8') as f:
         else:
             with open(path.join(here, '.git/HEAD')) as stream:
                 ref = stream.read().strip().split(':')
-                assert ref[0] == 'ref'
 
-            info_file = path.join(here, '.git/logs/' + ref[1].strip())
-            if path.isfile(info_file):
-                with open(info_file) as stream:
-                    version += '+' + stream.read()[:7]
+            if ref[0] == 'ref':
+                info_file = path.join(here, '.git/logs/' + ref[1].strip())
+                if path.isfile(info_file):
+                    with open(info_file) as stream:
+                        version += '+' + stream.read()[:7]
+            elif len(ref[0]) == 40:
+                version += '+' + ref[0][:7]
+            else:
+                sys.stderr.write('WARNING: Parsing .git/HEAD failed!')
 
 if len(sys.argv) == 2 and sys.argv[1] == 'get_version':
     print(version)

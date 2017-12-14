@@ -1,8 +1,5 @@
 FROM mailsvb/arch-linux:latest
 
-ARG AUR_USER
-ARG AUR_EMAIL
-
 ADD aur.sh /usr/bin/aur
 
 RUN pacman -Sy --noconfirm archlinux-keyring && \
@@ -14,8 +11,6 @@ RUN pacman -Sy --noconfirm archlinux-keyring && \
 	echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers && \
 	install -do packager /scratch && \
 	sudo -u packager aur -sci --noconfirm --noprogress python-semantic-version python-token-bucket && \
-	rm -r /scratch/* && \
-	sudo -u packager git config --global user.name "$AUR_USER" && \
-	sudo -u packager git config --global user.email "$AUR_EMAIL"
+	rm -r /scratch/*
 
 CMD ["/bin/bash"]

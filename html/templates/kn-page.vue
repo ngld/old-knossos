@@ -17,9 +17,10 @@ export default {
         page: 'modlist',
         show_filter: false,
         mods: [],
+        mod_table: {},
 
         // details page
-        mod: null,
+        detail_mod: null,
 
         popup_visible: false,
         popup_title: 'Popup',
@@ -114,26 +115,6 @@ export default {
 
         exitDetails() {
             this.page = 'modlist';
-        },
-
-        installMod() {
-            fs2mod.install(this.mod.id, '', []);
-        },
-
-        uninstallMod() {
-            fs2mod.uninstall(this.mod.id, '', []);
-        },
-
-        cancelMod() {
-            fs2mod.abortTask(task_mod_map[this.mod.id]);
-        },
-
-        playMod() {
-            fs2mod.runMod(this.mod.id, '');
-        },
-
-        updateMod() {
-            fs2mod.updateMod(this.mod.id, '');
         },
 
         createMod() {
@@ -289,7 +270,7 @@ export default {
 };
 </script>
 <template>
-    <div>
+    <div class="root-container">
         <div class="main-menus">
             <div class="pull-right top-right-btns">
                 <a href="#" class="top-btn" @click="showHelp"><span class="help-image"></span></a>
@@ -344,9 +325,8 @@ export default {
         </div>
 
     <!-------------------------------------------------------------------------------- Build the Main View container ---------->
-        <div class="main-container scroll-style">
-            <div id="main-background"></div>
-            <div class="container-fluid mod-container" v-if="page === 'modlist'">
+        <kn-scroll-container v-show="page === 'modlist'" key="modlist">
+            <div class="container-fluid mod-container">
                 <div v-if="tab === 'home'">
                     <kn-mod-home v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-home>
                 </div>
@@ -355,26 +335,29 @@ export default {
                 </div>
                 <div v-if="mods.length === 0" class="main-notice">No mods found.</div>
             </div>
-            <div id="main-shadow-effect"></div>
+        </kn-scroll-container>
 
-    <!-------------------------------------------------------------------------------- Start the Welcome page ---------->
-            <div class="info-page" v-if="page === 'welcome'">
-                <kn-welcome-page></kn-welcome-page>
+        <kn-scroll-container v-if="page === 'welcome'" key="welcome">
+            <kn-welcome-page></kn-welcome-page>
+        </kn-scroll-container>
+
+        <kn-scroll-container v-if="page === 'details'" key="details">
+            <div class="info-page" id="details-page">
+                <kn-details-page :modbundle="mod_table[detail_mod]"></kn-details-page>
             </div>
+        </kn-scroll-container>
 
-    <!-------------------------------------------------------------------------------- Start the Details page ---------->
-            <div class="info-page" id="details-page" v-if="page === 'details'">
-                <kn-details-page :modbundle="mod"></kn-details-page>
-            </div>
-
-            <div class="info-page settings-page container-fluid" v-if="page === 'settings'">
+        <kn-scroll-container v-if="page === 'settings'" key="settings">
+            <div class="info-page settings-page container-fluid">
                 <kn-settings-page></kn-settings-page>
             </div>
+        </kn-scroll-container>
 
+        <kn-scroll-container v-if="page === 'develop'" key="develop">
             <div class="info-page devel-page" v-if="page === 'develop'">
                 <kn-devel-page :mods="mods"></kn-devel-page>
             </div>
-        </div>
+        </kn-scroll-container>
 
         <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>
 
@@ -406,7 +389,7 @@ export default {
                         Preparing...
                     </p>
 
-                    <div v-for="row in (popup_progress[popup_mod_id] || [])" class="row">
+                    <div v-for="row in (popup_progress[popup_mod_id] || [])" :key="row[0]" class="row">
                         <div class="col-xs-4 mod-prog-label">{{ row[0] }}</div>
                         <div class="col-xs-5">
                             <div :class="'mod-prog-bar' + (row[1] === 1 ? ' complete' : '')">
@@ -675,6 +658,15 @@ export default {
 
                 <div v-if="popup_mode == 'fso_settings'">
                     <kn-fso-user-settings :mods="mods" :mod="popup_content"></kn-fso-user-settings>
+                </div>
+
+                <div v-if="popup_mode === 'debug_log'">
+                    <p>
+                        You debug log was successfully uploaded and can now be accessed through the following link:
+                    </p>
+                    <p>
+                        <a :href="popup_content" class="open-ext">{{ popup_content }}</a>
+                    </p>
                 </div>
             </div>
         </div>

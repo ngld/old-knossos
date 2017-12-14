@@ -1,0 +1,187 @@
+Created by PLY version 3.10 (http://www.dabeaz.com/ply)
+
+Grammar
+
+Rule 0     S' -> expr
+Rule 1     expr -> VAR
+Rule 2     expr -> LPARENS expr RPARENS
+Rule 3     expr -> NOT expr
+Rule 4     expr -> expr AND expr
+Rule 5     expr -> expr OR expr
+
+Terminals, with rules where they appear
+
+AND                  : 4
+LPARENS              : 2
+NOT                  : 3
+OR                   : 5
+RPARENS              : 2
+VAR                  : 1
+error                : 
+
+Nonterminals, with rules where they appear
+
+expr                 : 2 3 4 4 5 5 0
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . expr
+    (1) expr -> . VAR
+    (2) expr -> . LPARENS expr RPARENS
+    (3) expr -> . NOT expr
+    (4) expr -> . expr AND expr
+    (5) expr -> . expr OR expr
+
+    VAR             shift and go to state 2
+    LPARENS         shift and go to state 3
+    NOT             shift and go to state 4
+
+    expr                           shift and go to state 1
+
+state 1
+
+    (0) S' -> expr .
+    (4) expr -> expr . AND expr
+    (5) expr -> expr . OR expr
+
+    AND             shift and go to state 5
+    OR              shift and go to state 6
+
+
+state 2
+
+    (1) expr -> VAR .
+
+    AND             reduce using rule 1 (expr -> VAR .)
+    OR              reduce using rule 1 (expr -> VAR .)
+    $end            reduce using rule 1 (expr -> VAR .)
+    RPARENS         reduce using rule 1 (expr -> VAR .)
+
+
+state 3
+
+    (2) expr -> LPARENS . expr RPARENS
+    (1) expr -> . VAR
+    (2) expr -> . LPARENS expr RPARENS
+    (3) expr -> . NOT expr
+    (4) expr -> . expr AND expr
+    (5) expr -> . expr OR expr
+
+    VAR             shift and go to state 2
+    LPARENS         shift and go to state 3
+    NOT             shift and go to state 4
+
+    expr                           shift and go to state 7
+
+state 4
+
+    (3) expr -> NOT . expr
+    (1) expr -> . VAR
+    (2) expr -> . LPARENS expr RPARENS
+    (3) expr -> . NOT expr
+    (4) expr -> . expr AND expr
+    (5) expr -> . expr OR expr
+
+    VAR             shift and go to state 2
+    LPARENS         shift and go to state 3
+    NOT             shift and go to state 4
+
+    expr                           shift and go to state 8
+
+state 5
+
+    (4) expr -> expr AND . expr
+    (1) expr -> . VAR
+    (2) expr -> . LPARENS expr RPARENS
+    (3) expr -> . NOT expr
+    (4) expr -> . expr AND expr
+    (5) expr -> . expr OR expr
+
+    VAR             shift and go to state 2
+    LPARENS         shift and go to state 3
+    NOT             shift and go to state 4
+
+    expr                           shift and go to state 9
+
+state 6
+
+    (5) expr -> expr OR . expr
+    (1) expr -> . VAR
+    (2) expr -> . LPARENS expr RPARENS
+    (3) expr -> . NOT expr
+    (4) expr -> . expr AND expr
+    (5) expr -> . expr OR expr
+
+    VAR             shift and go to state 2
+    LPARENS         shift and go to state 3
+    NOT             shift and go to state 4
+
+    expr                           shift and go to state 10
+
+state 7
+
+    (2) expr -> LPARENS expr . RPARENS
+    (4) expr -> expr . AND expr
+    (5) expr -> expr . OR expr
+
+    RPARENS         shift and go to state 11
+    AND             shift and go to state 5
+    OR              shift and go to state 6
+
+
+state 8
+
+    (3) expr -> NOT expr .
+    (4) expr -> expr . AND expr
+    (5) expr -> expr . OR expr
+
+    AND             reduce using rule 3 (expr -> NOT expr .)
+    OR              reduce using rule 3 (expr -> NOT expr .)
+    $end            reduce using rule 3 (expr -> NOT expr .)
+    RPARENS         reduce using rule 3 (expr -> NOT expr .)
+
+  ! AND             [ shift and go to state 5 ]
+  ! OR              [ shift and go to state 6 ]
+
+
+state 9
+
+    (4) expr -> expr AND expr .
+    (4) expr -> expr . AND expr
+    (5) expr -> expr . OR expr
+
+    AND             reduce using rule 4 (expr -> expr AND expr .)
+    OR              reduce using rule 4 (expr -> expr AND expr .)
+    $end            reduce using rule 4 (expr -> expr AND expr .)
+    RPARENS         reduce using rule 4 (expr -> expr AND expr .)
+
+  ! AND             [ shift and go to state 5 ]
+  ! OR              [ shift and go to state 6 ]
+
+
+state 10
+
+    (5) expr -> expr OR expr .
+    (4) expr -> expr . AND expr
+    (5) expr -> expr . OR expr
+
+    AND             reduce using rule 5 (expr -> expr OR expr .)
+    OR              reduce using rule 5 (expr -> expr OR expr .)
+    $end            reduce using rule 5 (expr -> expr OR expr .)
+    RPARENS         reduce using rule 5 (expr -> expr OR expr .)
+
+  ! AND             [ shift and go to state 5 ]
+  ! OR              [ shift and go to state 6 ]
+
+
+state 11
+
+    (2) expr -> LPARENS expr RPARENS .
+
+    AND             reduce using rule 2 (expr -> LPARENS expr RPARENS .)
+    OR              reduce using rule 2 (expr -> LPARENS expr RPARENS .)
+    $end            reduce using rule 2 (expr -> LPARENS expr RPARENS .)
+    RPARENS         reduce using rule 2 (expr -> LPARENS expr RPARENS .)
+

@@ -1,6 +1,13 @@
 <script>
+import Popper from 'vue-popperjs';
+import 'vue-popperjs/dist/css/vue-popper.css';
+
 export default {
     props: ['mod', 'tab'],
+
+    components: {
+        popper: Popper
+    },
 
     data: () => ({
         dropdown_active: false,
@@ -22,7 +29,7 @@ export default {
         ...require('../js/mod_button_methods.js').default,
 
         showDetails() {
-            vm.mod = this.mod;
+            vm.detail_mod = this.mod.id;
             vm.page = 'details';
         },
 
@@ -40,7 +47,14 @@ export default {
         },
 
         uploadLog() {
-            alert('Not yet implemented!');
+            call(fs2mod.uploadFsoDebugLog, (result) => {
+                if(result !== '') {
+                    vm.popup_visible = true;
+                    vm.popup_title = 'Uploaded Debug Log';
+                    vm.popup_mode = 'debug_log';
+                    vm.popup_content = result;
+                }
+            });
         },
 
         uninstallMod() {
@@ -94,14 +108,18 @@ export default {
                         <span class="btn-text">DETAILS</span>
                     </button>
 
-                    <kn-dropdown v-if="mod.status !== 'updating'" @open="updateTools(); open = true" @close="open = false">
-                        <button v-for="tool in tools" v-if="(mod.status === 'ready' || mod.status === 'update') && (mod.type === 'mod' || mod.type == 'tc')" @click="launchTool(tool)">Run {{ tool }}</button>
-                        <button @click="uploadLog">Upload Debug Log</button>
-                        <button v-if="mod.id !== 'FS2'" @click="install">Modify</button>
-                        <button v-if="mod.type === 'mod' || mod.type == 'tc'" @click="showFsoSettings">FSO Settings</button>
-                        <button v-if="mod.id !== 'FS2' && !mod.dev_mode" @click="uninstallMod">Uninstall</button>
-                        <button v-if="mod.id !== 'FS2' && !mod.dev_mode" @click="verifyIntegrity">Verify file integrity</button>
-                    </kn-dropdown>
+                    <popper v-if="mod.status !== 'updating'" trigger="click" @show="updateTools(); open = true" @hide="open = false" class="dropdown">
+                        <div class="dropdown-content">
+                            <button v-for="tool in tools" v-if="(mod.status === 'ready' || mod.status === 'update') && (mod.type === 'mod' || mod.type == 'tc')" @click="launchTool(tool)">Run {{ tool }}</button>
+                            <button @click="uploadLog">Upload Debug Log</button>
+                            <button v-if="mod.id !== 'FS2'" @click="install">Modify</button>
+                            <button v-if="mod.type === 'mod' || mod.type == 'tc'" @click="showFsoSettings">FSO Settings</button>
+                            <button v-if="mod.id !== 'FS2' && !mod.dev_mode" @click="uninstallMod">Uninstall</button>
+                            <button v-if="mod.id !== 'FS2' && !mod.dev_mode" @click="verifyIntegrity">Verify file integrity</button>
+                        </div>
+
+                        <button class="dropbtn" slot="reference"></button>
+                    </popper>
                 </div>
             </div>
             <div class="mod-progress"><div class="bar" :style="'width: ' + mod.progress + '%'"></div></div>

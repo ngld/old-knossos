@@ -24,7 +24,7 @@ from .qt import QtCore # noqa
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.7.1'
+VERSION = '0.7.2'
 UPDATE_LINK = 'https://dev.tproxy.de/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
 DEBUG = os.getenv('KN_DEBUG', '0').strip() == '1'
@@ -56,6 +56,7 @@ settings = {
     'download_bandwidth': -1.0,  # negative numbers are used to specify no limit
     'repos': [('https://fsnebula.org/storage/repo.json', 'FSNebula')],
     'nebula_link': 'https://fsnebula.org/api/1/',
+    'nebula_web': 'https://fsnebula.org/',
     'update_notify': True,
     'use_raven': True,
     'mod_settings': {},
@@ -69,8 +70,28 @@ settings = {
 
 if sys.platform.startswith('win'):
     settings_path = os.path.expandvars('$APPDATA/knossos')
-elif 'XDG_CONFIG_HOME' in os.environ:
-    settings_path = os.path.expandvars('$XDG_CONFIG_HOME/knossos')
+elif 'XDG_CONFIG_HOME' in os.environ or sys.platform.startswith('linux'):
+    config_home = os.environ.get('XDG_CONFIG_HOME', '')
+
+    if config_home == '':
+        # As specified by the XDG Base Directory Specification this should be the default
+        config_home = os.path.expandvars('$HOME/.config')
+
+    settings_path = os.path.join(config_home, 'knossos')
+    old_path = os.path.expandvars('$HOME/.knossos')
+
+    if not os.path.isdir(settings_path) and os.path.isdir(old_path):
+        settings_path = old_path
+
+    del old_path, config_home
+elif sys.platform == 'darwin':
+    old_path = os.path.expandvars('$HOME/.knossos')
+    settings_path = os.path.expandvars('$HOME/Library/Preferences/knossos')
+
+    if not os.path.isdir(settings_path) and os.path.isdir(old_path):
+        settings_path = old_path
+
+    del old_path
 else:
     settings_path = os.path.expanduser('~/.knossos')
 

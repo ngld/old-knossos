@@ -153,7 +153,11 @@ class WindowsIntegration(Integration):
 
     def __init__(self, taskbar):
         self.taskbar = taskbar
-        taskbar.HrInit()
+
+        try:
+            taskbar.HrInit()
+        except Exception:
+            logging.exception('taskbar.HrInit() failed!')
 
     def wid(self):
         win = center.main_win.win
@@ -164,14 +168,24 @@ class WindowsIntegration(Integration):
         return self._hwnd
 
     def show_progress(self, value):
-        self.taskbar.SetProgressState(self.wid(), self.TBPF_NORMAL)
+        try:
+            self.taskbar.SetProgressState(self.wid(), self.TBPF_NORMAL)
+        except Exception:
+            logging.exception('COM error')
+
         self.set_progress(value)
 
     def set_progress(self, value):
-        self.taskbar.SetProgressValue(self.wid(), int(value * 100), 100)
+        try:
+            self.taskbar.SetProgressValue(self.wid(), int(value * 100), 100)
+        except Exception:
+            logging.exception('COM error')
 
     def hide_progress(self):
-        self.taskbar.SetProgressState(self.wid(), self.TBPF_NOPROGRESS)
+        try:
+            self.taskbar.SetProgressState(self.wid(), self.TBPF_NOPROGRESS)
+        except Exception:
+            logging.exception('COM error')
 
     def install_scheme_handler(self):
         my_cmd = launcher.get_cmd()

@@ -102,7 +102,6 @@
         "knossos/ipc.py",
         "knossos/launcher.py",
         "knossos/nebula.py",
-        "knossos/parser.out",
         "knossos/parsetab.py",
         "knossos/progress.py",
         "knossos/py2_compat.py",
@@ -127,6 +126,7 @@
         "html/templates/kn-mod-explore.vue",
         "html/templates/kn-mod-home.vue",
         "html/templates/kn-page.vue",
+        "html/templates/kn-scroll-container.vue",
         "html/templates/kn-settings-page.vue",
         "html/templates/kn-welcome-page.vue"
     ]

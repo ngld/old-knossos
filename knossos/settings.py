@@ -155,6 +155,7 @@ def get_settings_p2():
 
     # joysticks
     joystick_id = section.get('CurrentJoystick', None)
+    joystick_guid = section.get('CurrentJoystickGUID', None)
     joystick_enable_hit = section.get('EnableHitEffect', False)
     joystick_ff_strength = config.get('ForceFeedback', {}).get('Strength', 100)
 
@@ -246,8 +247,8 @@ def get_settings_p2():
     fso['joysticks'] = dev_info['joysticks'] if dev_info else []
     fso['joystick_enable_hit'] = joystick_enable_hit == '1'
     fso['joystick_ff_strength'] = joystick_ff_strength
+    fso['joystick_guid'] = joystick_guid
 
-    # TODO: Implement UUID handling
     if util.is_number(joystick_id):
         if joystick_id == '99999':
             fso['joystick_id'] = 'No Joystick'
@@ -337,10 +338,12 @@ def save_fso_settings(new_settings):
         section = config['Default']
 
         # joystick
-        if new_settings.get('joystick_id', 'No Joystick') == 'No Joystick':
+        if new_settings.get('joystick_id', 99999) == 99999:
             section['CurrentJoystick'] = 99999
+            section['CurrentJoystickGUID'] = ''
         else:
-            section['CurrentJoystickGUID'] = new_settings['joystick_id']
+            section['CurrentJoystick'] = new_settings['joystick_id']
+            section['CurrentJoystickGUID'] = new_settings['joystick_guid']
 
         section['EnableHitEffect'] = 1 if new_settings['joystick_enable_hit'] else 0
         config['ForceFeedback'] = {'Strength': new_settings['joystick_ff_strength']}
@@ -478,7 +481,7 @@ def get_deviceinfo():
     return {
         'modes': clibs.get_modes(),
         'audio_devs': audio_devs,
-        'joysticks': clibs.list_joysticks(),
+        'joysticks': clibs.list_guid_joysticks(),
         'voices': clibs.list_voices()
     }
 

@@ -668,7 +668,7 @@ def is_number(s):
     try:
         int(s)
         return True
-    except TypeError:
+    except (TypeError, ValueError):
         return False
 
 

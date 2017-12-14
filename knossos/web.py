@@ -26,11 +26,40 @@ import semantic_version
 
 from threading import Thread
 from datetime import datetime
-from .qt import QtCore, QtGui, QtWidgets, QtWebChannel
+from .qt import QtCore, QtGui, QtWidgets, QtWebChannel, read_file
 from . import center, runner, repo, windows, tasks, util, settings, nebula, clibs
 
 if not QtWebChannel:
     from .qt import QtWebKit
+else:
+    class WebSocketWrapper(QtWebChannel.QWebChannelAbstractTransport):
+        _conn = None
+        _bridge = None
+
+        def __init__(self, conn, bridge):
+            super(WebSocketWrapper, self).__init__()
+
+            self._bridge = bridge
+            self._bridge._conns.append(self)
+
+            self._conn = conn
+            self._conn.textMessageReceived.connect(self.socketMessageReceived)
+            self._conn.disconnected.connect(self.socketDisconnected)
+
+        def sendMessage(self, msg):
+            for k, v in msg.items():
+                if isinstance(v, QtCore.QJsonValue):
+                    msg[k] = v.toVariant()
+
+            print('#-> ', json.dumps(msg))
+            self._conn.sendTextMessage(json.dumps(msg))
+
+        def socketMessageReceived(self, msg):
+            print('#<- ', json.loads(msg))
+            self.messageReceived.emit(json.loads(msg), self)
+
+        def socketDisconnected(self):
+            self._bridge._conns.remove(self)
 
 
 class WebBridge(QtCore.QObject):
@@ -60,12 +89,27 @@ class WebBridge(QtCore.QObject):
         if QtWebChannel:
             self.bridge = self
             page = webView.page()
-            channel = QtWebChannel.QWebChannel(page)
+            self._channel = QtWebChannel.QWebChannel(page)
 
-            page.setWebChannel(channel)
-            channel.registerObject('fs2mod', self)
+            page.setWebChannel(self._channel)
+            self._channel.registerObject('fs2mod', self)
 
             if center.DEBUG and os.path.isdir('../html'):
+                try:
+                    from .qt import QtWebSockets, QtNetwork
+                except ImportError:
+                    logging.exception('Remote mode disabled')
+                else:
+                    self._conns = []
+                    self._server = QtWebSockets.QWebSocketServer('Knossos interface', QtWebSockets.QWebSocketServer.NonSecureMode)
+                    if not self._server.listen(QtNetwork.QHostAddress.LocalHost, 4007):
+                        logging.warn('Failed to listen on port 4007!')
+                    else:
+                        self._server.newConnection.connect(self._acceptConnection)
+
+                    with open('../html/qwebchannel.js', 'w') as hdl:
+                        hdl.write(read_file(':/qtwebchannel/qwebchannel.js'))
+
                 link = os.path.abspath('../html/index_debug.html')
                 if sys.platform == 'win32':
                     link = '/' + link.replace('\\', '/')
@@ -75,6 +119,10 @@ class WebBridge(QtCore.QObject):
                 link = 'qrc:///html/index.html'
 
             webView.load(QtCore.QUrl(link))
+
+    def _acceptConnection(self):
+        conn = self._server.nextPendingConnection()
+        self._channel.connectTo(WebSocketWrapper(conn, self))
 
     @QtCore.Slot('QVariantList', result=str)
     def finishInit(self, tr_keys):
@@ -597,6 +645,13 @@ class WebBridge(QtCore.QObject):
                 except Exception:
                     logging.exception('Failed to create binary folder! (%s)' % upper_folder)
                     QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('I could not create the folder for binaries!'))
+                    return False
+            elif mod.mtype == 'tc':
+                try:
+                    os.mkdir(upper_folder)
+                except Exception:
+                    logging.exception('Failed to create TC folder! (%s)' % upper_folder)
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('I could not create the folder for the TC!'))
                     return False
             else:
                 logging.error('%s did not exist during mod creation! (parent = %s)' % (mod.folder, mod.parent))
@@ -1306,10 +1361,71 @@ class WebBridge(QtCore.QObject):
             return 'C:\\Games\\FreespaceOpen'
         elif sys.platform == 'linux':
             return os.path.expanduser('~/games/FreespaceOpen')
-        elif sys.platform == 'macos':
+        elif sys.platform == 'darwin':
             return os.path.expanduser('~/Documents/Games/FreespaceOpen')
         else:
             return ''
+
+    @QtCore.Slot(result=str)
+    def uploadFsoDebugLog(self):
+        try:
+            logpath = os.path.join(settings.get_fso_profile_path(), 'data/fs2_open.log')
+            if not os.path.isfile(logpath):
+                QtWidgets.QMessageBox.warning(None, 'Knossos',
+                    'Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?')
+                return ''
+
+            st = os.stat(logpath)
+            if st.st_size > 5 * (1024 ** 2):
+                QtWidgets.QMessageBox.critical(None, 'Knossos',
+                    "Your log is larger than 5 MB! I unfortunately can't upload logs that big.")
+                return ''
+
+            # Date check
+            changed_at = datetime.fromtimestamp(st.st_mtime)
+            age = datetime.now() - changed_at
+
+            message = 'The most recent log was generated '
+
+            if age.days == 0:
+                message += 'today'
+            elif age.days == 1:
+                message += 'yesterday'
+            else:
+                message += '%d days ago' % age.days
+
+            message += changed_at.strftime(' at %X')
+            message += '. Is this when you encountered a problem?'
+            
+            box = QtWidgets.QMessageBox()
+            box.setIcon(QtWidgets.QMessageBox.Question)
+            box.setText(message)
+            box.setWindowTitle('Knossos')
+
+            box.addButton('Yes, upload', QtWidgets.QMessageBox.YesRole)
+            # no_again = box.addButton('No, run again and generate a new log', QtWidgets.QMessageBox.NoRole)
+            no_abort = box.addButton('No', QtWidgets.QMessageBox.RejectRole)
+            box.exec_()
+
+            if box.clickedButton() == no_abort:
+                return
+
+            client = nebula.NebulaClient()
+            with open(logpath, 'r') as stream:
+                log_link = client.upload_log(stream.read())
+        except nebula.InvalidLoginException:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'You have to login to upload logs!')
+        except Exception:
+            logging.exception('Log upload failed!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                'The log upload failed for an unknown reason! Please make sure your internet connection is fine.')
+        else:
+            if log_link:
+                return log_link
+            else:
+                QtWidgets.QMessageBox.critical(None, 'Knossos', 'The log upload failed for an unknown reason!')
+
+        return ''
 
 
 if QtWebChannel:

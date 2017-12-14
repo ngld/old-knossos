@@ -22,7 +22,7 @@ export default {
         ...require('../js/mod_button_methods.js').default,
 
         showDetails() {
-            vm.mod = this.mod;
+            vm.detail_mod = this.mod.id;
             vm.page = 'details';
         },
 
