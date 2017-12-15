@@ -56,8 +56,23 @@ if not version:
 with open('version-rthook.py', 'w') as stream:
     stream.write('import os;os.environ["KN_VERSION"] = %s' % repr(version))
 
+
+crt_counter = 0
+crt_path = None
+
+for p in (r'C:\Program Files (x86)\Windows Kits\10\Redist\ucrt\DLLs', r'C:\Program Files\Windows Kits\10\Redist\ucrt\DLLs'):
+    p = os.path.join(p, 'x64' if is_x64 else 'x86')
+
+    if os.path.isdir(p):
+        crt_path = p
+        break
+
+pathex = []
+if crt_path:
+    pathex.append(crt_path)
+
 a = Analysis(['../../knossos/__main__.py'],
-            pathex=['../..', 'py-env/lib/site-packages/PyQt5/qt/bin'],
+            pathex=pathex,
             hiddenimports=him,
             hookspath=[],
             runtime_hooks=rthooks,
@@ -70,29 +85,11 @@ a = Analysis(['../../knossos/__main__.py'],
 
 # Exclude everything we don't need.
 idx = []
-crt_counter = 0
-crt_path = None
-
-for p in (r'C:\Program Files (x86)\Windows Kits\7\Redist\ucrt\DLLs', r'C:\Program Files\Windows Kits\7\Redist\ucrt\DLLs'):
-    p = os.path.join(p, 'x64' if is_x64 else 'x86')
-
-    if os.path.isdir(p):
-        crt_path = p
-        break
-
 
 for i, item in enumerate(a.binaries):
     fn = item[0].lower()
     if fn.startswith(('ole', 'user32')):
         idx.append(i)
-
-    if crt_path and fn.startswith('api-ms-'):
-        item[1] = os.path.join(crt_path, fn)
-        crt_counter += 1
-
-if crt_counter > 0:
-    logging.info('%d CRT DLLs replaced with versions from the 7 SDK.')
-
 
 for i in reversed(idx):
     del a.binaries[i]
@@ -138,6 +135,15 @@ else:
               strip=None,
               upx=not debug,
               console=debug)
+
+    if crt_path:
+        for item in a.binaries:
+            if item[0].lower().startswith('api-ms-') and not item[1].startswith(crt_path):
+                item[1] = os.path.join(crt_path, item[0])
+                crt_counter += 1
+
+    if crt_counter > 0:
+        logging.info('%d CRT DLLs replaced with versions from the 7 SDK.')
 
     coll = COLLECT(exe,
                    a.binaries,

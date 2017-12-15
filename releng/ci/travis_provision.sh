@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eo pipefail
+set -exo pipefail
 
 if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     echo "==> Installing build tools"
@@ -8,7 +8,7 @@ if [ "$TRAVIS_OS_NAME" == "osx" ]; then
 
     # If we don't delete qmake, PyInstaller detects this Qt installation and uses its libraries instead of PyQt5's
     # which then leads to a crash because PyQt5 isn't compatible with the version we install.
-    rm -f /usr/local/Cellar/qt/*/bin/qmake
+    sudo rm -f /usr/local/Cellar/qt/*/bin/qmake
 
     mkdir /tmp/prov
     cd /tmp/prov
