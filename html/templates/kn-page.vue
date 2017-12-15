@@ -108,8 +108,11 @@ export default {
                 next_tab = null;
             } else if(first_load) {
                 first_load = false;
-                next_tab = mods.length === 0 ? 'explore' : 'home';
-                fs2mod.showTab(next_tab);
+
+                if(this.page !== 'welcome') {
+                    next_tab = mods.length === 0 ? 'explore' : 'home';
+                    fs2mod.showTab(next_tab);
+                }
             }
         },
 
