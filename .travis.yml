@@ -26,3 +26,14 @@ script:
 - bash ./releng/ci/travis.sh macos
 - bash ./releng/ci/travis.sh ubuntu
 - bash ./releng/ci/travis.sh arch
+
+deploy:
+  provider: releases
+  api_key:
+    secure: UJe0tWh2R1ecKy3z8O0BfsdrMEGecZU/vpM2uiKDNx/ZRRLKQ6jf/8sh1MD5bBOVAgrueB1fhgkkh4BONEVVhvfkWfzeydf87E5jtRkA49A0YG/HysdcguUKaM8bpIX3rnga2BA3EedrcCQUt9hoWREYJXHoDLQtJhwtiwEvbO0=
+
+  file_glob: true
+  file: "releng/macos/dist/*.dmg"
+  skip_cleanup: true
+  on:
+    tags: true
