@@ -15,13 +15,15 @@
 
 import sys
 import os.path
-import re
 import subprocess
+import platform
 import PyQt5
 
 onefile = False
 him = ['knossos.parsetab']
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
+is_x64 = platform.architecture()[0] == '64bit'
+
 
 # Build the TaskbarLib module.
 try:
@@ -68,10 +70,29 @@ a = Analysis(['../../knossos/__main__.py'],
 
 # Exclude everything we don't need.
 idx = []
+crt_counter = 0
+crt_path = None
+
+for p in (r'C:\Program Files (x86)\Windows Kits\7\Redist\ucrt\DLLs', r'C:\Program Files\Windows Kits\7\Redist\ucrt\DLLs'):
+    p = os.path.join(p, 'x64' if is_x64 else 'x86')
+
+    if os.path.isdir(p):
+        crt_path = p
+        break
+
+
 for i, item in enumerate(a.binaries):
     fn = item[0].lower()
     if fn.startswith(('ole', 'user32')):
         idx.append(i)
+
+    if crt_path and fn.startswith('api-ms-'):
+        item[1] = os.path.join(crt_path, fn)
+        crt_counter += 1
+
+if crt_counter > 0:
+    logging.info('%d CRT DLLs replaced with versions from the 7 SDK.')
+
 
 for i in reversed(idx):
     del a.binaries[i]
