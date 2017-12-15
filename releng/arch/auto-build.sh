@@ -11,7 +11,7 @@ if [ "$RELEASE" = "y" ]; then
 	. releng/config/config.sh
 
 	install -Dm600 releng/config/aur_key ~/.ssh/id_rsa
-	echo "StrictHostKeyChecking no" > ~/.ssh/ssh_config
+	echo -e "Host aur.archlinux.org\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null\n" > ~/.ssh/ssh_config
 
 	git config --global user.name "$AUR_USER"
 	git config --global user.email "$AUR_EMAIL"

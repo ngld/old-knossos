@@ -342,6 +342,9 @@ def main():
                         os.rmdir(os.path.dirname(updater))
                     except Exception:
                         logging.exception('Failed to remove the updater\'s temporary directory.')
+        elif sys.argv[1].startswith('-psn_'):
+            # This parameter is automatically passed by Finder on macOS, ignore it.
+            pass
         else:
             tries = 3
             while tries > 0:

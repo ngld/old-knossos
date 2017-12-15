@@ -41,6 +41,13 @@ with open(p7zip_path, 'r') as stream:
     if stream.read(2) == '#!':
         p7zip_path = stream.readlines()[1].split('"')[1]
 
+if os.path.islink(p7zip_path):
+    p7zip_path = os.readlink(p7zip_path)
+
+p7zip_lib = os.path.join(os.path.dirname(p7zip_path), '7z.so')
+if not os.path.isfile(p7zip_lib):
+    logging.error('7z.so not found! Please make sure that it\'s near the 7z binary!')
+    sys.exit(1)
 
 sdl2_path = ctypes.util.find_library('SDL2')
 if not sdl2_path:
@@ -78,6 +85,7 @@ a = Analysis(['../../knossos/__main__.py'],
             ],
             datas=[
                 (p7zip_path, '.'),
+                (p7zip_lib, '.'),
                 ('../../knossos/data/resources.rcc', 'data'),
                 ('../../knossos/parser.out', '.'),
 
@@ -87,7 +95,6 @@ a = Analysis(['../../knossos/__main__.py'],
                 (os.path.join(resources_dir, 'qtwebengine_resources_100p.pak'), ''),
                 (os.path.join(resources_dir, 'qtwebengine_resources_200p.pak'), ''),
 
-                
                 # The distributed Info.plist has LSUIElement set to true, which prevents the
                 # icon from appearing in the dock.
                 (os.path.join(qt_path, 'QtWebEngineCore.framework', 'Helpers', 'QtWebEngineProcess.app', 'Contents', 'Info.plist'),
