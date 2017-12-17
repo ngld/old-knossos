@@ -1414,11 +1414,11 @@ class GOGCopyTask(progress.Task):
             shutil.copyfile(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
 
         progress.update(3 / 4., 'Copying cutscenes...')
-        for item in glob.glob(os.path.join(gog_path, 'data2', '*.mve')):
-            shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
-        for item in glob.glob(os.path.join(gog_path, 'data3', '*.mve')):
-            shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
+        for ext in ('mve', 'ogg'):
+            for sub in ('data', 'data2', 'data3'):
+                for item in glob.glob(os.path.join(gog_path, sub, '*.' + ext)):
+                    shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
         progress.update(1, 'Done')
         self.post(dest_path)
