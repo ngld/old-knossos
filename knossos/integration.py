@@ -64,7 +64,7 @@ Terminal=false
 MimeType=x-scheme-handler/fso;
 """
 
-        tpl_mime_type = 'x-scheme-handler/fso=Knossos.desktop;'
+        tpl_mime_type = 'x-scheme-handler/fso=knossos.desktop;'
 
         applications_path = os.path.expanduser('~/.local/share/applications/')
         desktop_file = applications_path + 'knossos.desktop'
@@ -75,7 +75,7 @@ MimeType=x-scheme-handler/fso;
             return True
 
         tpl_desktop = tpl_desktop.replace('{PATH}', my_path)
-        tpl_desktop = tpl_desktop.replace('{ICON_PATH}', launcher.get_file_path('hlp.png'))
+        tpl_desktop = tpl_desktop.replace('{ICON_PATH}', os.path.abspath(launcher.get_file_path('hlp.png')))
 
         if not os.path.isdir(applications_path):
             os.makedirs(applications_path)
