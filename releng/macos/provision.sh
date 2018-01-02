@@ -27,9 +27,8 @@ sudo installer -store -pkg python2.pkg -target /
 echo "==> Installing dmgbuild"
 pip2 install dmgbuild
 
-# We need Python 3.5 since that's the latest version PyInstaller supports.
-echo "==> Installing Python 3.5.3"
-curl -so python.pkg "https://www.python.org/ftp/python/3.5.3/python-3.5.3-macosx10.6.pkg"
+echo "==> Installing Python 3.6.4"
+curl -so python.pkg "https://www.python.org/ftp/python/3.6.4/python-3.6.4-macosx10.6.pkg"
 sudo installer -store -pkg python.pkg -target /
 
 echo "==> Installing Python dependencies"
@@ -37,7 +36,7 @@ pip3 install -U pip
 pip3 install six requests requests_toolbelt ply raven semantic_version PyQt5 PyInstaller token_bucket
 
 echo "==> Installing SDL2"
-curl -so SDL2.dmg "https://libsdl.org/release/SDL2-2.0.5.dmg"
+curl -so SDL2.dmg "https://libsdl.org/release/SDL2-2.0.7.dmg"
 
 dev="$(hdiutil attach SDL2.dmg | tail -n1 | awk '{ print $3 }')"
 sudo cp -a "$dev/SDL2.framework" /Library/Frameworks
