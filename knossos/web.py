@@ -580,7 +580,7 @@ class WebBridge(QtCore.QObject):
         for t, task in tasks.items():
             res[t] = {
                 'title': task.title,
-                'mods': task.mods
+                'mods': [m.get() for m in task.mods]
             }
 
         try:
@@ -1206,6 +1206,8 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str, str, result=str)
     def getUserBuild(self, mid, version):
         mod = self._get_mod(mid, version)
+        if not isinstance(mod, repo.Mod):
+            return ''
 
         if mod.user_custom_build:
             return 'custom#' + mod.user_custom_build
