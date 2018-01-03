@@ -21,6 +21,7 @@ import subprocess
 import time
 import json
 import traceback
+import ssl
 import six
 from six.moves.urllib import parse as urlparse
 
@@ -283,6 +284,7 @@ def main():
                 pass
 
     logging.info('Running Knossos %s on %s and Python %s.', center.VERSION, qt_variant, sys.version)
+    logging.info('OpenSSL version: %s', ssl.OPENSSL_VERSION)
     app = QtWidgets.QApplication([])
 
     res_path = get_file_path('resources.rcc')

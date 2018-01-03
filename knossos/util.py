@@ -752,6 +752,9 @@ def enable_raven():
         logging.exception('Failed to import raven!')
         return False
 
+    import platform
+    import ssl
+
     from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
     from raven.handlers.logging import SentryHandler
 
@@ -771,7 +774,9 @@ def enable_raven():
         transport=ThreadedRequestsHTTPTransport
     )
     center.raven.tags_context({
-        'os': sys.platform
+        'os': sys.platform,
+        'os_title': '%s %s' % (platform.system(), platform.version()),
+        'openssl': ssl.OPENSSL_VERSION
     })
     center.raven_handler = SentryHandler(center.raven, level=logging.ERROR)
     logging.getLogger().addHandler(center.raven_handler)
