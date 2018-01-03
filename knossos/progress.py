@@ -384,10 +384,19 @@ class MultistepTask(Task):
                 return (self, (self._work.pop(0),))
 
     def work(self, arg):
+        if self.aborted:
+            logging.error('Work triggered on aborted task!!!')
+            return
+
         # Any better ideas for this magic key?
         if arg == 'MAGIC_MULTITASK_STEP_KEY_###':
             # Maybe we need to advance to the next step.
             self._work_lock.acquire()
+
+            # Just to make sure (the lock might have caused a short delay)
+            if self.abort:
+                logging.warning('Task aborted during step switch!')
+                return
 
             if (self._pending == 1 and self._running == 1 and len(self._work) == 0) or self._cur_step < 0:
                 self._work_lock.release()

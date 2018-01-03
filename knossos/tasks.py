@@ -1107,6 +1107,8 @@ class UploadTask(progress.MultistepTask):
 
             if p.returncode != 0:
                 logging.error('Failed to build %s! (%s)' % (ar_name, 7z_msg))
+                self._reason = 'bad archive'
+                self._msg = pkg.name
                 self.abort()
                 return
 
@@ -1193,6 +1195,8 @@ class UploadTask(progress.MultistepTask):
             message = 'The package %s is empty!' % self._msg
         elif self._reason == 'no exes':
             message = 'The mod has no executables selected!'
+        elif self._reason == 'bad archive':
+            message = 'Failed to pack %s!' % self._msg
         elif self._reason == 'aborted':
             return
         else:
