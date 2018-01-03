@@ -1078,7 +1078,7 @@ class UploadTask(progress.MultistepTask):
             else:
                 progress.start_task(0.0, 0.4, '%s')
 
-            7z_msg = ''
+            _7z_msg = ''
             if pkg.is_vp:
                 p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, vp_name],
                     cwd=self._dir.name, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -1103,10 +1103,10 @@ class UploadTask(progress.MultistepTask):
                 if m:
                     progress.update(int(m.group(1)) / 100., 'Compressing...')
                 else:
-                    7z_msg += line
+                    _7z_msg += line
 
             if p.returncode != 0:
-                logging.error('Failed to build %s! (%s)' % (ar_name, 7z_msg))
+                logging.error('Failed to build %s! (%s)' % (ar_name, _7z_msg))
                 self._reason = 'bad archive'
                 self._msg = pkg.name
                 self.abort()
