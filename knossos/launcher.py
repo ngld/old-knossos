@@ -192,9 +192,6 @@ def run_knossos():
     center.main_win = HellWindow()
     center.main_win.open()
 
-    if center.settings['update_notify'] and '-dev' not in center.VERSION:
-        run_task(CheckUpdateTask())
-
     app.exec_()
 
     center.save_settings()

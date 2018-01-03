@@ -459,7 +459,7 @@ class InstallTask(progress.MultistepTask):
                 im_paths[i] = dest
 
         progress.finish_task()
-        progress.update(1, 'Done')
+        progress.update(1, 'Done preparing')
 
     def init2(self):
         archives = set()
@@ -701,7 +701,8 @@ class InstallTask(progress.MultistepTask):
             except Exception:
                 logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
-        util.get(center.settings['nebula_link'] + 'track/install/' + self.mods[0].mid)
+        # The nebula currently doesn't support tracking installations
+        # util.get(center.settings['nebula_link'] + 'track/install/' + self.mods[0].mid)
 
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
