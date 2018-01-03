@@ -116,7 +116,7 @@ else:
     fail(' not found!\nPlease run "npm install" to install the missing modules.')
 
 check_ctypes_lib(['libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib'], 'SDL2')
-check_ctypes_lib(['libopenal.so.1.15.1', 'openal', 'OpenAL', 'OpenAL32'], 'OpenAL')
+check_ctypes_lib(['libopenal.so.1.15.1', 'openal', 'OpenAL', 'OpenAL32', 'OpenAL32.dll'], 'OpenAL')
 
 info('Reading version...\n')
 version = subprocess.check_output([sys.executable, 'setup.py', 'get_version']).decode('utf8').strip()
