@@ -22,6 +22,7 @@ import six
 from . import uhf
 uhf(__name__)
 
+from . import center
 from .qt import QtCore
 
 try:
@@ -109,6 +110,9 @@ class Worker(threading.Thread):
                 return
 
             self.busy = True
+            if center.raven:
+                center.raven.context.activate()
+
             try:
                 reset()
                 set_callback(task[0]._track_progress)
@@ -121,6 +125,10 @@ class Worker(threading.Thread):
                 logging.exception('Exception in Thread!')
 
             task[0]._deinit()
+
+            if center.raven:
+                center.raven.context.clear()
+
             self.busy = False
 
 

@@ -771,13 +771,14 @@ def enable_raven():
         center.SENTRY_DSN,
         release=center.VERSION,
         environment='debug' if center.DEBUG else 'production',
-        transport=ThreadedRequestsHTTPTransport
+        transport=ThreadedRequestsHTTPTransport,
+        auto_log_stacks=True,
+        tags={
+            'os': sys.platform,
+            'os_title': '%s %s' % (platform.system(), platform.version()),
+            'openssl': ssl.OPENSSL_VERSION
+        }
     )
-    center.raven.tags_context({
-        'os': sys.platform,
-        'os_title': '%s %s' % (platform.system(), platform.version()),
-        'openssl': ssl.OPENSSL_VERSION
-    })
     center.raven_handler = SentryHandler(center.raven, level=logging.ERROR)
     logging.getLogger().addHandler(center.raven_handler)
 
