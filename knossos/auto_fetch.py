@@ -50,3 +50,6 @@ class AutoFetcher(Thread):
     @qt.run_in_qt
     def launch_task(self):
         tasks.run_task(tasks.FetchTask())
+
+        if center.settings['update_notify'] and '-dev' not in center.VERSION:
+            run_task(CheckUpdateTask())

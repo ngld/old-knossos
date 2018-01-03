@@ -60,7 +60,7 @@ export default {
                 fs2mod.setBasePath(this.knossos.base_path);
             }
 
-            for(let set of ['max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth']) {
+            for(let set of ['max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth', 'update_notify']) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
                 }
@@ -117,6 +117,13 @@ export default {
                     <div class="col-sm-8">
                         <small>{{ knossos.base_path }}</small>
                         <button @click.prevent="changeBasePath">Browse</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Update Notifications:</label>
+                    <div class="col-sm-8">
+                        <input type="checkbox" v-model="knossos.update_notify">
                     </div>
                 </div>
 

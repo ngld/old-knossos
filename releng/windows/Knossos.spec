@@ -109,7 +109,7 @@ pyz = PYZ(a.pure)
 a.datas += [('7z.exe', 'support/7z.exe', 'BINARY'),
             ('7z.dll', 'support/7z.dll', 'BINARY'),
             ('SDL2.dll', 'support/SDL2.dll', 'BINARY'),
-            ('openal.dll', 'support/openal.dll', 'BINARY'),
+            ('OpenAL32.dll', 'support/OpenAL32.dll', 'BINARY'),
             ('taskbar.tlb', 'support/taskbar.tlb', 'BINARY')]
 
 for name in ('QtWebEngineProcess.exe', 'libEGL.dll', 'libGLESv2.dll'):

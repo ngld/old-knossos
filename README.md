@@ -4,7 +4,7 @@ A modern mod manager and launcher for FreeSpace Open
 
 ## Website
 
-[**Installation instructions**](https://dev.tproxy.de/knossos/)
+[**Installation instructions**](https://fsnebula.org/knossos/)
 
 ## Dependencies
 
@@ -58,4 +58,4 @@ The icon is borrowed from [Hard Light][hl].
 [pyi]: http://pyinstaller.org/
 
 [hl]: http://www.hard-light.net/
-[win_inst]: http://dev.tproxy.de/knossos/stable/knossos.exe
+[win_inst]: http://fsnebula.org/knossos/Knossos.exe

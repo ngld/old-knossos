@@ -25,6 +25,7 @@ import time
 import random
 import functools
 import glob
+import shutil
 import semantic_version
 import requests
 import token_bucket
@@ -751,6 +752,9 @@ def enable_raven():
         logging.exception('Failed to import raven!')
         return False
 
+    import platform
+    import ssl
+
     from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
     from raven.handlers.logging import SentryHandler
 
@@ -767,11 +771,14 @@ def enable_raven():
         center.SENTRY_DSN,
         release=center.VERSION,
         environment='debug' if center.DEBUG else 'production',
-        transport=ThreadedRequestsHTTPTransport
+        transport=ThreadedRequestsHTTPTransport,
+        auto_log_stacks=True,
+        tags={
+            'os': sys.platform,
+            'os_title': '%s %s' % (platform.system(), platform.version()),
+            'openssl': ssl.OPENSSL_VERSION
+        }
     )
-    center.raven.tags_context({
-        'os': sys.platform
-    })
     center.raven_handler = SentryHandler(center.raven, level=logging.ERROR)
     logging.getLogger().addHandler(center.raven_handler)
 
@@ -810,6 +817,26 @@ def safe_rename(a, b):
         return retry_helper(os.rename, a, b)
     else:
         return os.rename(a, b)
+
+
+def safe_copy(a, b):
+    if sys.platform == 'win32':
+        return retry_helper(shutil.copyfile, a, b)
+    else:
+        return shutil.copyfile(a, b)
+
+
+def safe_download(url, dest):
+    try:
+        return retry_helper(_safe_download, url, dest)
+    except Exception:
+        logging.exception('Failed to download %s to %s!' % (url, dest))
+        return False
+
+
+def _safe_download(url, dest):
+    with open(dest, 'wb') as fobj:
+        download(url, fobj)
 
 
 class Spec(semantic_version.Spec):

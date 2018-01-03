@@ -22,6 +22,7 @@ import six
 from . import uhf
 uhf(__name__)
 
+from . import center
 from .qt import QtCore
 
 try:
@@ -109,6 +110,9 @@ class Worker(threading.Thread):
                 return
 
             self.busy = True
+            if center.raven:
+                center.raven.context.activate()
+
             try:
                 reset()
                 set_callback(task[0]._track_progress)
@@ -121,6 +125,10 @@ class Worker(threading.Thread):
                 logging.exception('Exception in Thread!')
 
             task[0]._deinit()
+
+            if center.raven:
+                center.raven.context.clear()
+
             self.busy = False
 
 
@@ -384,10 +392,19 @@ class MultistepTask(Task):
                 return (self, (self._work.pop(0),))
 
     def work(self, arg):
+        if self.aborted:
+            logging.error('Work triggered on aborted task!!!')
+            return
+
         # Any better ideas for this magic key?
         if arg == 'MAGIC_MULTITASK_STEP_KEY_###':
             # Maybe we need to advance to the next step.
             self._work_lock.acquire()
+
+            # Just to make sure (the lock might have caused a short delay)
+            if self.abort:
+                logging.warning('Task aborted during step switch!')
+                return
 
             if (self._pending == 1 and self._running == 1 and len(self._work) == 0) or self._cur_step < 0:
                 self._work_lock.release()

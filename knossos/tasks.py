@@ -412,8 +412,11 @@ class InstallTask(progress.MultistepTask):
 
             if not found:
                 for mv in inst_mods:
-                    if mv.dev_mode and mv in pkg_folders:
-                        itempath = util.ipath(os.path.join(mv.folder, pkg_folders[mv][info['package']], info['filename']))
+                    if mv.dev_mode:
+                        try:
+                            itempath = util.ipath(os.path.join(mv.folder, pkg_folders[mv][info['package']], info['filename']))
+                        except KeyError:
+                            itempath = util.ipath(os.path.join(mv.folder, info['filename']))
                     else:
                         itempath = util.ipath(os.path.join(mv.folder, info['filename']))
 
@@ -438,10 +441,9 @@ class InstallTask(progress.MultistepTask):
                 ext = os.path.splitext(img_path)[1]
                 dest = os.path.join(mod.folder, 'kn_' + prop + ext)
 
-                if '://' in img_path:
+                if '://' in img_path and not os.path.isfile(dest):
                     # That's a URL
-                    with open(dest, 'wb') as fobj:
-                        util.download(img_path, fobj)
+                    util.safe_download(img_path, dest)
 
                 setattr(mod, prop, dest)
 
@@ -451,14 +453,13 @@ class InstallTask(progress.MultistepTask):
                 ext = os.path.splitext(path)[1]
                 dest = os.path.join(mod.folder, 'kn_' + prop + '_' + str(i) + ext)
 
-                if '://' in path:
-                    with open(dest, 'wb') as fobj:
-                        util.download(path, fobj)
+                if '://' in path and not os.path.isfile(dest):
+                    util.safe_download(path, dest)
 
                 im_paths[i] = dest
 
         progress.finish_task()
-        progress.update(1, 'Done')
+        progress.update(1, 'Done preparing')
 
     def init2(self):
         archives = set()
@@ -660,24 +661,34 @@ class InstallTask(progress.MultistepTask):
         pkg_folders = {}
 
         count = float(len(self._copies))
-        for i, info in enumerate(self._copies):
-            mod, pkg_name, fn, src = info
+        try:
+            for i, info in enumerate(self._copies):
+                mod, pkg_name, fn, src = info
 
-            progress.update(i / count, fn)
-            if mod.dev_mode:
-                if mod not in pkg_folders:
-                    pkg_folders[mod] = {}
-                    for pkg in mod.packages:
-                        pkg_folders[mod][pkg.name] = pkg.folder
+                progress.update(i / count, fn)
+                if mod.dev_mode:
+                    if mod not in pkg_folders:
+                        pkg_folders[mod] = {}
+                        for pkg in mod.packages:
+                            pkg_folders[mod][pkg.name] = pkg.folder
 
-                dest = os.path.join(mod.folder, pkg_folders[mod][pkg_name], fn)
-            else:
-                dest = os.path.join(mod.folder, fn)
+                    dest = os.path.join(mod.folder, pkg_folders[mod][pkg_name], fn)
+                else:
+                    dest = os.path.join(mod.folder, fn)
 
-            logging.debug('Copying %s to %s', src, dest)
-            shutil.copy(src, dest)
+                if not os.path.isfile(dest):
+                    dest_parent = os.path.dirname(dest)
+                    if not os.path.isdir(dest_parent):
+                        os.makedirs(dest_parent)
 
-        progress.update(1, 'Done')
+                    logging.debug('Copying %s to %s', src, dest)
+                    util.safe_copy(src, dest)
+        except Exception:
+            logging.exception('Failed to copy an old file!')
+            self._error = True
+            progress.update(1, 'Error!')
+        else:
+            progress.update(1, 'Done')
 
     def init4(self):
         self.add_work((None,))
@@ -690,7 +701,8 @@ class InstallTask(progress.MultistepTask):
             except Exception:
                 logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
-        util.get(center.settings['nebula_link'] + 'track/install/' + self.mods[0].mid)
+        # The nebula currently doesn't support tracking installations
+        # util.get(center.settings['nebula_link'] + 'track/install/' + self.mods[0].mid)
 
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
@@ -1066,6 +1078,7 @@ class UploadTask(progress.MultistepTask):
             else:
                 progress.start_task(0.0, 0.4, '%s')
 
+            7z_msg = ''
             if pkg.is_vp:
                 p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, vp_name],
                     cwd=self._dir.name, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -1089,9 +1102,13 @@ class UploadTask(progress.MultistepTask):
                 m = line_re.match(line)
                 if m:
                     progress.update(int(m.group(1)) / 100., 'Compressing...')
+                else:
+                    7z_msg += line
 
             if p.returncode != 0:
-                logging.error('Failed to build %s!' % ar_name)
+                logging.error('Failed to build %s! (%s)' % (ar_name, 7z_msg))
+                self._reason = 'bad archive'
+                self._msg = pkg.name
                 self.abort()
                 return
 
@@ -1178,6 +1195,8 @@ class UploadTask(progress.MultistepTask):
             message = 'The package %s is empty!' % self._msg
         elif self._reason == 'no exes':
             message = 'The mod has no executables selected!'
+        elif self._reason == 'bad archive':
+            message = 'Failed to pack %s!' % self._msg
         elif self._reason == 'aborted':
             return
         else:
