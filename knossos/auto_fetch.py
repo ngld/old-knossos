@@ -52,4 +52,4 @@ class AutoFetcher(Thread):
         tasks.run_task(tasks.FetchTask())
 
         if center.settings['update_notify'] and '-dev' not in center.VERSION:
-            run_task(CheckUpdateTask())
+            tasks.run_task(tasks.CheckUpdateTask())
