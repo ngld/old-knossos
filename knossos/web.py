@@ -1346,7 +1346,7 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return
 
-        tasks.run_task(tasks.CheckFilesTask(mod.packages))
+        tasks.run_task(tasks.CheckFilesTask(mod.packages, mod))
 
     @QtCore.Slot()
     def openScreenshotFolder(self):
