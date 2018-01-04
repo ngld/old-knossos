@@ -227,13 +227,17 @@ class HellWindow(Window):
 
                     mod = mvs[0]
 
-                item = mod.get()
-                item['progress'] = 0
-                item['progress_info'] = {}
-
                 installed_versions = {}
                 for m in center.installed.mods.get(mid, []):
-                    installed_versions[str(m.version)] = m.dev_mode
+                    installed_versions[str(m.version)] = m
+
+                if str(mod.version) in installed_versions:
+                    item = installed_versions[str(mod.version)].get()
+                else:
+                    item = mod.get()
+
+                item['progress'] = 0
+                item['progress_info'] = {}
 
                 rmod = center.mods.mods.get(mid, [])
                 if mod.mtype == 'engine':
@@ -268,9 +272,14 @@ class HellWindow(Window):
                 item['installed'] = len(installed_versions) > 0
                 item['versions'] = []
                 for mod in mvs:
-                    mv = mod.get()
-                    mv['installed'] = mv['version'] in installed_versions
-                    mv['dev_mode'] = installed_versions.get(mv['version'], False)
+                    if str(mod.version) in installed_versions:
+                        mv = installed_versions[str(mod.version)].get()
+                        mv['installed'] = True
+                    else:
+                        mv = mod.get()
+                        mv['installed'] = False
+                        mv['dev_mode'] = False
+
                     item['versions'].append(mv)
 
                 result.append(item)

@@ -140,11 +140,12 @@ class CheckFilesTask(progress.MultistepTask):
     _check_results = None
     _steps = 2
 
-    def __init__(self, pkgs):
+    def __init__(self, pkgs, mod=None):
         super(CheckFilesTask, self).__init__()
 
         self.title = 'Checking %d packages...' % len(pkgs)
         self.pkgs = pkgs
+        self._mod = mod
 
         self.done.connect(self.finish)
         self._threads = 1
@@ -239,9 +240,14 @@ class CheckFilesTask(progress.MultistepTask):
             msg = "An error was detected while validating the game file integrity. The following packages are invalid:"
             for pkg in bad_packages:
                 msg += "\n  - Package %s of mod %s" % (pkg.name, pkg.get_mod().title)
-            msg += "\n\nThese mods are invalid and need to be redownloaded before they can be played without errors."
+            msg += "\n\nThese mods are invalid and need to be redownloaded before they can be played without errors.\n"
+            msg += "Do that now?"
 
-            QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
+            res = QtWidgets.QMessageBox.question(None, 'Knossos', msg)
+            if res == QtWidgets.QMessageBox.Yes:
+                run_task(InstallTask(bad_packages, self._mod))
+        else:
+            QtWidgets.QMessageBox.information(None, 'Knossos', 'No problems were detected.')
 
 
 
@@ -289,10 +295,6 @@ class InstallTask(progress.MultistepTask):
 
             for item in ins_pkg.files.values():
                 self._slot_prog[id(item)] = ('%s: %s' % (pmod.title, item['filename']), 0, 'Checking...')
-
-        for m in self._mods:
-            if m not in self.mods:
-                self.mods.append(m)
 
         center.signals.repo_updated.emit()
         self.done.connect(self.finish)
@@ -718,17 +720,18 @@ class UninstallTask(progress.MultistepTask):
         self._pkgs = []
         self._mods = []
 
-        for pkg in pkgs:
-            try:
-                self._pkgs.append(center.installed.query(pkg))
-            except repo.ModNotFound:
-                logging.exception('Someone tried to uninstall a non-existant package (%s, %s)! Skipping it...', pkg.get_mod().mid, pkg.name)
+        if len(pkgs) > 0:
+            for pkg in pkgs:
+                try:
+                    self._pkgs.append(center.installed.query(pkg))
+                except repo.ModNotFound:
+                    logging.exception('Someone tried to uninstall a non-existant package (%s, %s)! Skipping it...', pkg.get_mod().mid, pkg.name)
 
-        for mod in mods:
-            try:
-                self._mods.append(center.installed.query(mod))
-            except repo.ModNotFound:
-                logging.exception('Someone tried to uninstall a non-existant %s!', mod)
+            for mod in mods:
+                try:
+                    self._mods.append(center.installed.query(mod))
+                except repo.ModNotFound:
+                    logging.exception('Someone tried to uninstall a non-existant %s!', mod)
 
         self.done.connect(self.finish)
         self.title = 'Uninstalling mods...'

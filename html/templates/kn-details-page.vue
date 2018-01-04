@@ -180,12 +180,12 @@ export default {
                     <span class="btn-text">REPORT</span>
                 </button>
 
-                <popper v-if="mod.status !== 'updating'" trigger="click" @show="updateTools(); open = true" @hide="open = false" class="dropdown dropdown-mod-btn">
+                <popper v-if="mod.status !== 'updating' && mod.installed" trigger="click" @show="updateTools(); open = true" @hide="open = false" class="dropdown dropdown-mod-btn">
                     <div class="dropdown-content">
                         <button v-for="tool in tools" @click="launchTool(tool)">Run {{ tool }}</button>
                         <button @click="uploadLog">Upload Debug Log</button>
-                        <button v-if="mod.id !== 'FS2' && mod.status !== 'updating' && mod.installed" @click="install">Modify</button>
-                        <button v-if="mod.status !== 'updating' && mod.installed && (mod.type === 'mod' || mod.type == 'tc')" @click="showFsoSettings">FSO Settings</button>
+                        <button v-if="mod.id !== 'FS2' && mod.status !== 'updating'" @click="install">Modify</button>
+                        <button v-if="mod.status !== 'updating' && (mod.type === 'mod' || mod.type == 'tc')" @click="showFsoSettings">FSO Settings</button>
                         <button v-if="mod.id !== 'FS2' && mod.status !== 'updating' && !mod.dev_mode" @click="uninstallMod">Uninstall</button>
                         <button v-if="mod.id !== 'FS2' && !mod.dev_mode" @click="verifyIntegrity">Verify file integrity</button>
                     </div>

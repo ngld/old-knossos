@@ -113,6 +113,10 @@ export default {
                     next_tab = mods.length === 0 ? 'explore' : 'home';
                     fs2mod.showTab(next_tab);
                 }
+            } else if(this.page === 'details' && !mod_table[this.detail_mod]) {
+                // The currently visible mod has been uninstalled thus making displaying this page impossible.
+                // Switch to the tab instead
+                this.exitDetails();
             }
         },
 

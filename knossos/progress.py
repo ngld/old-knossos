@@ -402,8 +402,9 @@ class MultistepTask(Task):
             self._work_lock.acquire()
 
             # Just to make sure (the lock might have caused a short delay)
-            if self.abort:
+            if self.aborted:
                 logging.warning('Task aborted during step switch!')
+                self._work_lock.release()
                 return
 
             if (self._pending == 1 and self._running == 1 and len(self._work) == 0) or self._cur_step < 0:
