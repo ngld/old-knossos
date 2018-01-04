@@ -1051,6 +1051,8 @@ class WebBridge(QtCore.QObject):
         mod.user_cmdline = cmdline
         mod.save_user()
 
+        center.main_win.update_mod_list()
+
     @QtCore.Slot(str, str, list)
     def saveModFlag(self, mid, version, mod_flag):
         mod = self._get_mod(mid, version)

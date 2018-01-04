@@ -246,6 +246,8 @@ class CheckFilesTask(progress.MultistepTask):
             res = QtWidgets.QMessageBox.question(None, 'Knossos', msg)
             if res == QtWidgets.QMessageBox.Yes:
                 run_task(InstallTask(bad_packages, self._mod))
+        else:
+            QtWidgets.QMessageBox.information(None, 'Knossos', 'No problems were detected.')
 
 
 
