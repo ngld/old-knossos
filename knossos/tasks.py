@@ -1544,7 +1544,10 @@ class CopyFolderTask(progress.Task):
         bytes_done = 0
         for src, dest in plan:
             progress.update(bytes_done / total_size, os.path.relpath(src, src_path))
-            shutil.copyfile(src, dest)
+
+            # Don't overwrite anything
+            if not os.path.isfile(dest):
+                util.safe_copy(src, dest)
 
             bytes_done += os.stat(src).st_size
 
