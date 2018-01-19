@@ -342,11 +342,15 @@ class WebBridge(QtCore.QObject):
             tasks.run_task(tasks.UpdateTask(mod))
         else:
             # Just install the new version
-            cur_pkgs = list(mod.packages)
-            for i, pkg in enumerate(cur_pkgs):
-                cur_pkgs[i] = center.mods.query(mod.mid, None, pkg.name)
+            new_pkgs = []
+            new_rel = center.mods.query(mod.mid)
+            installed_pkgs = [pkg.name for pkg in mod.packages]
 
-            tasks.run_task(tasks.InstallTask(cur_pkgs, cur_pkgs[0].get_mod()))
+            for pkg in new_rel.packages:
+                if pkg.status == 'required' or pkg.name in installed_pkgs:
+                    new_pkgs.append(pkg)
+
+            tasks.run_task(tasks.InstallTask(new_pkgs, new_rel))
 
         center.main_win.update_mod_buttons('progress')
         return 0
