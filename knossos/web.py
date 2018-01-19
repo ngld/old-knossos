@@ -342,11 +342,15 @@ class WebBridge(QtCore.QObject):
             tasks.run_task(tasks.UpdateTask(mod))
         else:
             # Just install the new version
-            cur_pkgs = list(mod.packages)
-            for i, pkg in enumerate(cur_pkgs):
-                cur_pkgs[i] = center.mods.query(mod.mid, None, pkg.name)
+            new_pkgs = []
+            new_rel = center.mods.query(mod.mid)
+            installed_pkgs = [pkg.name for pkg in mod.packages]
 
-            tasks.run_task(tasks.InstallTask(cur_pkgs, cur_pkgs[0].get_mod()))
+            for pkg in new_rel.packages:
+                if pkg.status == 'required' or pkg.name in installed_pkgs:
+                    new_pkgs.append(pkg)
+
+            tasks.run_task(tasks.InstallTask(new_pkgs, new_rel))
 
         center.main_win.update_mod_buttons('progress')
         return 0
@@ -991,6 +995,26 @@ class WebBridge(QtCore.QObject):
                 try:
                     exes = mod.get_executables()
                 except repo.NoExecutablesFound:
+                    # Remove all dependencies on engines first to make sure that we don't create conflicting dependencies
+                    for pkg in mod.packages:
+                        for i, dep in reversed(list(enumerate(pkg.dependencies))):
+                            try:
+                                d = center.installed.query(dep['id'], dep['version'])
+                            except repo.ModNotFound:
+                                # This dependency isn't installed which shouldn't happen since it'll also cause problems
+                                # elsewhere. However, we want to avoid removing a valid dependency just because of a user
+                                # mistake so let's check if the dependency is still available.
+
+                                try:
+                                    d = center.mods.query(dep['id'], dep['version'])
+                                except repo.ModNotFound:
+                                    # Still not found. Assume that this dependency doesn't exist anymore and remove it to be safe.
+                                    del pkg.dependencies[i]
+                                    continue
+
+                            if d.type == 'engine':
+                                del pkg.dependencies[i]
+
                     done = False
                     for pkg in mod.packages:
                         if pkg.status == 'required':

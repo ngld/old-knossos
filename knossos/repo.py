@@ -358,6 +358,9 @@ class Repo(object):
         # Check for conflicts (and try to resolve them if possible).
         dep_list = set()
         pref_stable = center.settings['engine_stability']
+        if pref_stable not in STABILITES:
+            pref_stable = STABILITES[-1]
+
         for mid, variants in dep_dict.items():
             if len(variants) == 1:
                 # This loop only iterates once but it's the easiest solution to get the actual value
@@ -386,20 +389,22 @@ class Repo(object):
                 else:
                     if remains[0]['#mod'].mtype == 'engine':
                         # Multiple versions qualify and this is an engine so we have to check the stability next
-                        stab = pref_stable
-                        if stab not in STABILITES:
-                            stab = STABILITES[-1]
+                        # First try the user's preferred stability and if that doesn't work, restart with the highest stability.
+                        for stab in (pref_stable, STABILITES[-1]):
+                            stab_idx = STABILITES.index(stab)
+                            candidates = []
 
-                        stab_idx = STABILITES.index(stab)
-                        candidates = []
-                        while stab_idx > -1:
-                            candidates = [m for m in remains if m['#mod'].stability == stab]
-                            if len(candidates) == 0:
-                                # Nothing found, try the next lower stability
-                                stab_idx -= 1
-                                stab = STABILITES[stab_idx]
-                            else:
-                                # Found at least one result
+                            while stab_idx > -1:
+                                candidates = [m for m in remains if m['#mod'].stability == stab]
+                                if len(candidates) == 0:
+                                    # Nothing found, try the next lower stability
+                                    stab_idx -= 1
+                                    stab = STABILITES[stab_idx]
+                                else:
+                                    # Found at least one result
+                                    break
+
+                            if len(candidates) > 0:
                                 break
 
                         # An empty remains list would trigger an index out of bounds error; avoid that
