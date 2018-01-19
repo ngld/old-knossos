@@ -72,7 +72,7 @@ export default {
         <div :class="{ 'mod-node': true, 'active': open }">
             <div class="mod-image">
                 <img :src="mod.tile ? ((mod.tile.indexOf('://') === -1 ? 'file://' : '') + mod.tile) : 'images/modstock.jpg'" class="mod-stock">
-                <div class="mod-logo-container">
+                <div class="mod-logo-container" v-if="!mod.tile">
                     <img class="mod-logo-legacy img-responsive" v-if="mod.logo" :src="(mod.logo.indexOf('://') === -1 ? 'file://' : '') + mod.logo">
                 </div>
             </div>
