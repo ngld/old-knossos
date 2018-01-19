@@ -113,7 +113,9 @@ signals = _SignalContainer()
 
 def save_settings():
     settings['hash_cache'] = dict()
-    for path, info in util.HASH_CACHE.items():
+
+    # Other threads might be using the hash cache. Make a local copy to avoid problems.
+    for path, info in list(util.HASH_CACHE.items()):
         # Skip deleted files
         if os.path.exists(path):
             settings['hash_cache'][path] = info
