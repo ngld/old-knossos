@@ -393,6 +393,7 @@ class InstallTask(progress.MultistepTask):
                     for pkg in mv.packages:
                         pf[pkg.name] = pkg.folder
         except repo.ModNotFound:
+            logging.exception('Dependency error during mod installation! Tried to install %s.' % mod)
             inst_mods = []
 
         for i, info in enumerate(mfiles):
@@ -410,7 +411,7 @@ class InstallTask(progress.MultistepTask):
                 else:
                     dest_path = util.ipath(os.path.join(mod.folder, info['filename']))
 
-                found = os.path.isfile(dest_path)
+                found = os.path.isfile(dest_path) and util.check_hash(info['checksum'], itempath)
 
             if not found:
                 for mv in inst_mods:
@@ -891,6 +892,12 @@ class UploadTask(progress.MultistepTask):
         try:
             progress.update(0, 'Performing sanity checks...')
             if self._mod.mtype in ('mod', 'tc'):
+                if self._mod.custom_build:
+                    # TODO: This should be clarified in the dev tab UI.
+                    self._reason = 'custom build'
+                    self.abort()
+                    return
+
                 try:
                     exes = self._mod.get_executables()
                 except Exception:
@@ -1200,6 +1207,9 @@ class UploadTask(progress.MultistepTask):
             message = 'The mod has no executables selected!'
         elif self._reason == 'bad archive':
             message = 'Failed to pack %s!' % self._msg
+        elif self._reason == 'custom build':
+            message = "You can't upload a mod which depends on a local FSO build. Please go to your mod's " + \
+                "FSO settings and select a build from the dropdown list."
         elif self._reason == 'aborted':
             return
         else:

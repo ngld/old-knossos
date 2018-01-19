@@ -995,6 +995,26 @@ class WebBridge(QtCore.QObject):
                 try:
                     exes = mod.get_executables()
                 except repo.NoExecutablesFound:
+                    # Remove all dependencies on engines first to make sure that we don't create conflicting dependencies
+                    for pkg in mod.packages:
+                        for i, dep in reversed(list(enumerate(pkg.dependencies))):
+                            try:
+                                d = center.installed.query(dep['id'], dep['version'])
+                            except repo.ModNotFound:
+                                # This dependency isn't installed which shouldn't happen since it'll also cause problems
+                                # elsewhere. However, we want to avoid removing a valid dependency just because of a user
+                                # mistake so let's check if the dependency is still available.
+
+                                try:
+                                    d = center.mods.query(dep['id'], dep['version'])
+                                except repo.ModNotFound:
+                                    # Still not found. Assume that this dependency doesn't exist anymore and remove it to be safe.
+                                    del pkg.dependencies[i]
+                                    continue
+
+                            if d.type == 'engine':
+                                del pkg.dependencies[i]
+
                     done = False
                     for pkg in mod.packages:
                         if pkg.status == 'required':
