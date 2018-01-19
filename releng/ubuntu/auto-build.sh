@@ -54,7 +54,7 @@ if [ "$RELEASE" = "y" ]; then
 	import_key
 	popd > /dev/null
 
-	for ubuntu in $UBUNTU_VERSIONS; do
+	for ubuntu in artful; do
 		cat > debian/changelog <<EOF
 knossos ($VERSION-1~${ubuntu}1) $ubuntu; urgency=medium
 

@@ -1,7 +1,6 @@
 GPG_KEY_ID=""
 export GITHUB_TOKEN=""
 
-UBUNTU_VERSIONS="trusty precise xenial"
 UBUNTU_KEY="$GPG_KEY_ID"
 
 AUR_USER=
