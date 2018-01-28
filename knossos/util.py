@@ -839,6 +839,15 @@ def _safe_download(url, dest):
         download(url, fobj)
 
 
+def ensure_tempdir():
+    if center.settings['base_path']:
+        path = os.path.join(center.settings['base_path'], 'temp')
+        if not os.path.isdir(path):
+            os.makedirs(path)
+
+        tempfile.tempdir = path
+
+
 class Spec(semantic_version.Spec):
 
     @classmethod

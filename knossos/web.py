@@ -467,6 +467,7 @@ class WebBridge(QtCore.QObject):
 
         center.settings['base_path'] = os.path.abspath(path)
         center.save_settings()
+        util.ensure_tempdir()
         tasks.run_task(tasks.LoadLocalModsTask())
         return True
 

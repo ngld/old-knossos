@@ -150,6 +150,7 @@ def load_settings():
     if settings['use_raven']:
         util.enable_raven()
 
+    util.ensure_tempdir()
     return settings
 
 
