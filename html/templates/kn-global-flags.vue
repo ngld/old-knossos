@@ -1,8 +1,9 @@
 <script>
 export default {
-    props: ['mods'],
+    props: [],
     
     data: () => ({
+        engine_builds: [],
         fso_build: null,
         cmdline: '',
         loading_flags: false,
@@ -13,17 +14,10 @@ export default {
         list_type: 'Graphics'
     }),
 
-    computed: {
-        engine_builds() {
-            let builds = [];
-            for(let mod of this.mods) {
-                if(mod.type === 'engine') {
-                    builds = builds.concat(mod.versions);
-                }
-            }
-
-            return builds;
-        }
+    created() {
+        call(fs2mod.getEngineBuilds, (result) => {
+            this.engine_builds = JSON.parse(result);
+        });
     },
 
     watch: {

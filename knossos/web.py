@@ -1475,6 +1475,16 @@ class WebBridge(QtCore.QObject):
 
         return runner.apply_global_flags(mod)
 
+    @QtCore.Slot(result=str)
+    def getEngineBuilds(self):
+        builds = []
+        for mvs in center.installed.mods.values():
+            if mvs[0].mtype == 'engine':
+                for mod in mvs:
+                    builds.append(mod.get())
+
+        return json.dumps(builds)
+
 
 if QtWebChannel:
     BrowserCtrl = WebBridge
