@@ -278,6 +278,7 @@ class InstallTask(progress.MultistepTask):
         if mod is not None:
             self.mods = [mod]
 
+        self._slot_prog = {}
         for pkg in pkgs:
             try:
                 pmod = center.installed.query(pkg.get_mod())
@@ -1253,7 +1254,9 @@ class GOGExtractTask(progress.Task):
         center.main_win.update_mod_buttons('home')
 
         self.mods = [center.installed.query('FS2')]
-        self._slot_prog['total'] = ('Status', 0, 'Waiting...')
+        self._slot_prog = {
+            'total': ('Status', 0, 'Waiting...')
+        }
 
         if not center.installed.has('FSO'):
             try:
@@ -1418,7 +1421,9 @@ class GOGCopyTask(progress.Task):
         center.main_win.update_mod_buttons('home')
 
         self.mods = [center.installed.query('FS2')]
-        self._slot_prog['total'] = ('Status', 0, 'Waiting...')
+        self._slot_prog = {
+            'total': ('Status', 0, 'Waiting...')
+        }
 
         if not center.installed.has('FSO'):
             try:

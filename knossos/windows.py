@@ -324,12 +324,12 @@ class HellWindow(Window):
         task.progress.connect(functools.partial(self._track_progress, task))
 
         if len(task.mods) == 0 and not self._prg_visible:
-                self._prg_visible = True
-                self.win.progressInfo.show()
-                self.win.progressLabel.setText(task.title)
-                self.win.progressBar.setValue(0)
+            self._prg_visible = True
+            self.win.progressInfo.show()
+            self.win.progressLabel.setText(task.title)
+            self.win.progressBar.setValue(0)
 
-                integration.current.show_progress(0)
+            integration.current.show_progress(0)
 
     def _track_progress(self, task, pi):
         self.browser_ctrl.bridge.taskProgress.emit(id(task), pi[0] * 100, json.dumps(pi[1]))
