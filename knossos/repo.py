@@ -252,23 +252,26 @@ class Repo(object):
             spec = util.Spec.from_version(self.pins[mid])
 
         candidates = self.mods[mid]
-        if spec is None:
-            mod = candidates[0]
-        else:
-            if isinstance(spec, semantic_version.Version):
-                logging.warning('Repo.query(): Expected Spec but got Version instead! (%s)' % repr(spec))
-                spec = util.Spec.from_version(spec)
+        version = None
 
-            if candidates[0].mtype == 'engine':
-                # Multiple versions qualify and this is an engine so we have to check the stability next
-                stab = center.settings['engine_stability']
-                if stab not in STABILITES:
-                    stab = STABILITES[-1]
+        if len(candidates) > 1 and candidates[0].mtype == 'engine':
+            # Multiple versions qualify and this is an engine so we have to check the stability next
+            pref_stab = center.settings['engine_stability']
+            if pref_stab not in STABILITES:
+                pref_stab = STABILITES[-1]
 
+            # Try the preferred stability first but if that yields no result, restart with the highest stability
+            for stab in (pref_stab, STABILITES[-1]):
                 stab_idx = STABILITES.index(stab)
-                version = None
                 while stab_idx > -1:
-                    version = spec.select([mod.version for mod in candidates if mod.stability == stab])
+                    if spec:
+                        version = spec.select([mod.version for mod in candidates if mod.stability == stab])
+                    else:
+                        for mod in candidates:
+                            if mod.stability == stab:
+                                version = mod.version
+                                break
+
                     if not version:
                         # Nothing found, try the next lower stability
                         stab_idx -= 1
@@ -277,18 +280,27 @@ class Repo(object):
                         # Found at least one result
                         break
 
-                if not version:
-                    version = spec.select([mod.version for mod in candidates])
-            else:
-                version = spec.select([mod.version for mod in candidates])
+                if version:
+                    break
+
+        if spec is None:
+            if candidates[0].mtype != 'engine':
+                version = candidates[0].version
+        else:
+            if isinstance(spec, semantic_version.Version):
+                logging.warning('Repo.query(): Expected Spec but got Version instead! (%s)' % repr(spec))
+                spec = util.Spec.from_version(spec)
 
             if not version:
-                raise ModNotFound('Mod "%s" %s wasn\'t found!' % (mid, spec), mid, spec)
+                version = spec.select([mod.version for mod in candidates])
 
-            for m in candidates:
-                if m.version == version:
-                    mod = m
-                    break
+        if not version:
+            raise ModNotFound('Mod "%s" %s wasn\'t found!' % (mid, spec), mid, spec)
+
+        for m in candidates:
+            if m.version == version:
+                mod = m
+                break
 
         if pname is not None:
             for pkg in mod.packages:

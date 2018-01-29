@@ -236,7 +236,7 @@ class NebulaClient(object):
 
         return True
 
-    def upload_file(self, name, path, fn=None, content_checksum=None):
+    def upload_file(self, name, path, fn=None, content_checksum=None, vp_checksum=None):
         _, checksum = util.gen_hash(path)
 
         result = self._call('upload/check', check_code=True, data={'checksum': checksum})
@@ -249,6 +249,7 @@ class NebulaClient(object):
         enc = MultipartEncoder({
             'checksum': checksum,
             'content_checksum': content_checksum,
+            'vp_checksum': vp_checksum,
             'file': ('upload', hdl, 'application/octet-stream')
         })
 

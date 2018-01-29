@@ -4,7 +4,8 @@ export default {
 
     data: () => ({
         last_user_build: null,
-        user_build: null
+        user_build: null,
+        mod_cmdline: null
     }),
 
     created() {
@@ -20,7 +21,12 @@ export default {
     methods: {
         updateMeta() {
             let mod = this.mod;
-            if(!mod.user_cmdline) mod.user_cmdline = mod.cmdline;
+            if(!mod.user_cmdline) {
+                //mod.user_cmdline = mod.cmdline;
+                call(fs2mod.getModCmdline, mod.id, mod.version, (result) => {
+                    mod.user_cmdline = this.mod_cmdline = result;
+                });
+            }
 
             call(fs2mod.getUserBuild, mod.id, mod.version, (result) => {
                 this.last_user_build = this.user_build = result;
@@ -29,11 +35,14 @@ export default {
 
         save() {
             this.last_user_build = this.user_build;
+            if(this.mod.user_cmdline === this.mod_cmdline) this.mod.user_cmdline = null;
             fs2mod.saveUserFsoDetails(this.mod.id, this.mod.version, this.user_build, this.mod.user_cmdline);
         },
 
         reset() {
-            this.mod.user_cmdline = this.mod.cmdline;
+            call(fs2mod.getModCmdline, this.mod.id, this.mod.version, (result) => {
+                this.mod.user_cmdline = this.mod_cmdline = result;
+            });
             this.user_build = this.last_user_build;
         }
     }

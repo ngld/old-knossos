@@ -47,6 +47,7 @@ function init() {
         'kn-dropdown',
         'kn-fso-settings',
         'kn-fso-user-settings',
+        'kn-global-flags',
         'kn-mod-home',
         'kn-mod-explore',
         'kn-scroll-container',
@@ -210,6 +211,7 @@ if(window.qt) {
     };
 
     socket.onopen = function() {
+        window.qt = true;
         new QWebChannel(socket, function (channel) {
             window.fs2mod = channel.objects.fs2mod;
             init();

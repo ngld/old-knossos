@@ -7,7 +7,7 @@
  */
 
 export default {
-    props: [],
+    props: ['mods'],
 
     data: () => ({
         retail_installed: true,
@@ -352,6 +352,22 @@ export default {
                         Directional Hit:
                         <input type="checkbox" v-model="fso.joystick_enable_hit">
                     </div>
+                </div>
+            </kn-drawer>
+
+            <kn-drawer label="Global Flags">
+                <div class="settings-exp drawer-exp">Set the FSO settings defaults for all mods</div>
+                <p>
+                    Here you can set the defaults for all mods. <em>On</em> means that this flag will be on for all mods using the selected engine version.
+                    <em>Default</em> tells Knossos to use the setting the modder chose and <em>Off</em> tells it to always turn that flag off.
+                </p>
+                <p>
+                    You can always override these settings for each mod by going to your Home tab, hovering over a mod tile, clicking on the little arrow and
+                    clicking on "FSO Settings".
+                </p>
+
+                <div class="form-group">
+                    <kn-global-flags :mods="mods"></kn-global-flags>
                 </div>
             </kn-drawer>
 

@@ -216,6 +216,7 @@ class Task(QtCore.QObject):
     _result_lock = None
     _work = None
     _work_count = 0
+    _res_count = 0
     _work_lock = None
     _done = None
     _master = None
@@ -227,6 +228,7 @@ class Task(QtCore.QObject):
     _threads = 0
     _local = None
     _slot_prog = None
+    _thread_prog = None
     background = False
     can_abort = True
     aborted = False
@@ -250,7 +252,7 @@ class Task(QtCore.QObject):
         self._progress_lock = threading.Lock()
         self._threads = threads
         self._local = threading.local()
-        self._slot_prog = {}
+        self._thread_prog = {}
         self.mods = []
 
     def _get_work(self):
@@ -277,6 +279,7 @@ class Task(QtCore.QObject):
                 self._pending -= 1
 
             self._running -= 1
+            self._res_count += 1
 
             if self._running == 0 and not self._has_work() and not self._done.is_set():
                 self._done.set()
@@ -284,14 +287,20 @@ class Task(QtCore.QObject):
 
     def _track_progress(self, prog, text):
         with self._progress_lock:
-            if hasattr(self._local, 'slot'):
-                self._slot_prog[self._local.slot] = (self._slot_prog[self._local.slot][0], prog, text)
+            if self._slot_prog:
+                if hasattr(self._local, 'slot'):
+                    self._slot_prog[self._local.slot] = (self._slot_prog[self._local.slot][0], prog, text)
 
-            total = 0
-            for label, prog, text in self._slot_prog.values():
-                total += prog
+                total = 0
+                for label, prog, text in self._slot_prog.values():
+                    total += prog
 
-            self.progress.emit((total / max(1, len(self._slot_prog)), self._slot_prog, self.title))
+                self.progress.emit((total / max(1, len(self._slot_prog)), self._slot_prog, self.title))
+            else:
+                if self._work_count == 1:
+                    self.progress.emit((prog, {}, self.title))
+                else:
+                    self.progress.emit((self._res_count / self._work_count, {}, self.title))
 
     def post(self, result):
         with self._result_lock:

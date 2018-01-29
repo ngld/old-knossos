@@ -278,6 +278,7 @@ class InstallTask(progress.MultistepTask):
         if mod is not None:
             self.mods = [mod]
 
+        self._slot_prog = {}
         for pkg in pkgs:
             try:
                 pmod = center.installed.query(pkg.get_mod())
@@ -411,7 +412,7 @@ class InstallTask(progress.MultistepTask):
                 else:
                     dest_path = util.ipath(os.path.join(mod.folder, info['filename']))
 
-                found = os.path.isfile(dest_path) and util.check_hash(info['checksum'], itempath)
+                found = os.path.isfile(dest_path) and util.check_hash(info['checksum'], dest_path)
 
             if not found:
                 for mv in inst_mods:
@@ -1045,8 +1046,8 @@ class UploadTask(progress.MultistepTask):
                 hasher.update(line.encode('utf8'))
 
             content_ck = hasher.hexdigest()
-            result, meta = self._client.is_uploaded(content_checksum=content_ck)
-            if result:
+            is_uploaded, meta = self._client.is_uploaded(content_checksum=content_ck)
+            if is_uploaded:
                 # The file is already uploaded
                 pkg.files[ar_name] = {
                     'filename': ar_name,
@@ -1055,8 +1056,23 @@ class UploadTask(progress.MultistepTask):
                     'filesize': meta['filesize']
                 }
 
-                progress.update(1, 'Done!')
-                return
+                is_done = True
+                if pkg.is_vp:
+                    if meta['vp_checksum']:
+                        vp_name = pkg.name + '.vp'
+
+                        pkg.filelist = [{
+                            'filename': vp_name,
+                            'archive': ar_name,
+                            'orig_name': vp_name,
+                            'checksum': meta['vp_checksum']
+                        }]
+                    else:
+                        is_done = False
+
+                if is_done:
+                    progress.update(1, 'Done!')
+                    return
 
             progress.update(0, 'Packing...')
             if pkg.is_vp:
@@ -1083,6 +1099,10 @@ class UploadTask(progress.MultistepTask):
                     'orig_name': vp_name,
                     'checksum': util.gen_hash(vp_path)
                 }]
+
+                if is_uploaded:
+                    progress.update(1, 'Done!')
+                    return
 
                 progress.start_task(0.1, 0.3, '%s')
             else:
@@ -1126,10 +1146,11 @@ class UploadTask(progress.MultistepTask):
             progress.start_task(0.4, 0.6, '%s')
             progress.update(0, 'Preparing upload...')
 
+            vp_checksum = util.gen_hash(ar_path)
             pkg.files[ar_name] = {
                 'filename': ar_name,
                 'dest': '',
-                'checksum': util.gen_hash(ar_path),
+                'checksum': vp_checksum,
                 'filesize': os.stat(ar_path).st_size
             }
 
@@ -1137,7 +1158,7 @@ class UploadTask(progress.MultistepTask):
             while retries > 0:
                 retries -= 1
                 try:
-                    self._client.upload_file(ar_name, ar_path, content_checksum=content_ck)
+                    self._client.upload_file(ar_name, ar_path, content_checksum=content_ck, vp_checksum=vp_checksum)
                     break
                 except nebula.RequestFailedException:
                     logging.exception('Failed upload, retrying...')
@@ -1233,7 +1254,9 @@ class GOGExtractTask(progress.Task):
         center.main_win.update_mod_buttons('home')
 
         self.mods = [center.installed.query('FS2')]
-        self._slot_prog['total'] = ('Status', 0, 'Waiting...')
+        self._slot_prog = {
+            'total': ('Status', 0, 'Waiting...')
+        }
 
         if not center.installed.has('FSO'):
             try:
@@ -1398,7 +1421,9 @@ class GOGCopyTask(progress.Task):
         center.main_win.update_mod_buttons('home')
 
         self.mods = [center.installed.query('FS2')]
-        self._slot_prog['total'] = ('Status', 0, 'Waiting...')
+        self._slot_prog = {
+            'total': ('Status', 0, 'Waiting...')
+        }
 
         if not center.installed.has('FSO'):
             try:

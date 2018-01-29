@@ -467,6 +467,7 @@ class WebBridge(QtCore.QObject):
 
         center.settings['base_path'] = os.path.abspath(path)
         center.save_settings()
+        util.ensure_tempdir()
         tasks.run_task(tasks.LoadLocalModsTask())
         return True
 
@@ -1424,7 +1425,7 @@ class WebBridge(QtCore.QObject):
 
             message += changed_at.strftime(' at %X')
             message += '. Is this when you encountered a problem?'
-            
+
             box = QtWidgets.QMessageBox()
             box.setIcon(QtWidgets.QMessageBox.Question)
             box.setText(message)
@@ -1454,6 +1455,35 @@ class WebBridge(QtCore.QObject):
                 QtWidgets.QMessageBox.critical(None, 'Knossos', 'The log upload failed for an unknown reason!')
 
         return ''
+
+    @QtCore.Slot(str, result=str)
+    def getGlobalFlags(self, build):
+        return json.dumps(center.settings['fso_flags'].get(build, {}))
+
+    @QtCore.Slot(str, str)
+    def saveGlobalFlags(self, build, flags):
+        center.settings['fso_flags'][build] = json.loads(flags)
+        center.save_settings()
+
+        QtWidgets.QMessageBox.information(None, 'Knossos', 'The settings have been successfully saved.')
+
+    @QtCore.Slot(str, str, result=str)
+    def getModCmdline(self, mid, version):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return ''
+
+        return runner.apply_global_flags(mod)
+
+    @QtCore.Slot(result=str)
+    def getEngineBuilds(self):
+        builds = []
+        for mvs in center.installed.mods.values():
+            if mvs[0].mtype == 'engine':
+                for mod in mvs:
+                    builds.append(mod.get())
+
+        return json.dumps(builds)
 
 
 if QtWebChannel:
