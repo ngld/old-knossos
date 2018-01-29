@@ -356,7 +356,7 @@ export default {
 
         <kn-scroll-container v-if="page === 'settings'" key="settings">
             <div class="info-page settings-page container-fluid">
-                <kn-settings-page></kn-settings-page>
+                <kn-settings-page :mods="mods"></kn-settings-page>
             </div>
         </kn-scroll-container>
 

@@ -59,13 +59,13 @@ settings = {
     'nebula_web': 'https://fsnebula.org/',
     'update_notify': True,
     'use_raven': True,
-    'mod_settings': {},
     'sdl2_path': None,
     'openal_path': None,
     'language': None,
     'neb_user': '',
     'neb_password': '',
-    'engine_stability': 'stable'
+    'engine_stability': 'stable',
+    'fso_flags': {}
 }
 
 if sys.platform.startswith('win'):

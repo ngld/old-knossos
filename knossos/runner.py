@@ -24,6 +24,7 @@ import time
 import ctypes.util
 import stat
 import json
+import shlex
 from subprocess import CalledProcessError
 
 from . import center, repo, util, settings
@@ -331,6 +332,8 @@ def run_mod_ex(mod, binpath, mod_flag):
 
     if mod.user_cmdline:
         cmdline = mod.user_cmdline
+    else:
+        cmdline = apply_global_flags(mod)
 
     if mod.mtype == 'mod':
         parent = mod.get_parent()
@@ -396,3 +399,39 @@ def stringify_cmdline(line):
         result.append(part)
 
     return ' '.join(result)
+
+
+def apply_global_flags(mod):
+    builds = mod.get_executables(user=True)
+    if len(builds) == 0:
+        build = None
+    else:
+        build = builds[0]
+        if build['mod'] == mod and not build['label']:
+            # a custom build
+            build = 'custom#' + build['file']
+        else:
+            build = '%s#%s' % (build['mod'].mid, build['mod'].version)
+
+    if not build:
+        logging.warn('Failed to retrieve global flags for %r because I couldn\'t determine the build.' % mod)
+        return mod.cmdline
+
+    flag_states = center.settings['fso_flags'].get(build)
+    if not flag_states:
+        # No global flags set
+        logging.debug('No global flags found for %s' % build)
+        return mod.cmdline
+
+    cmdline = shlex.split(mod.cmdline)
+    for flag, state in flag_states.items():
+        if state == 0:
+            # Off
+            if flag in cmdline:
+                cmdline.remove(flag)
+        elif state == 2:
+            # On
+            if flag not in cmdline:
+                cmdline.append(flag)
+
+    return ' '.join([shlex.quote(p) for p in cmdline])

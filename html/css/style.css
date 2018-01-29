@@ -1442,7 +1442,7 @@ iframe {
 
 .kn-drawer .drawer-exp {
     visibility: visible;
-    position: fixed;
+    position: absolute;
     width: 495px;
     text-align: center;
 }
@@ -1483,6 +1483,14 @@ iframe {
     overflow: auto;
 
     color: #000;
+}
+
+.kn-global-flags .checklist {
+    padding-left: 5px;
+}
+
+.checklist .radio-inline {
+    padding-top: 0;
 }
 
 .devel-page {
