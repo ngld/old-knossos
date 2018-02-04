@@ -1013,7 +1013,7 @@ class WebBridge(QtCore.QObject):
                                     del pkg.dependencies[i]
                                     continue
 
-                            if d.type == 'engine':
+                            if d.mtype == 'engine':
                                 del pkg.dependencies[i]
 
                     done = False

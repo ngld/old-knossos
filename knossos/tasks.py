@@ -892,6 +892,32 @@ class UploadTask(progress.MultistepTask):
 
         try:
             progress.update(0, 'Performing sanity checks...')
+            if self._mod.mtype == 'mod' and self._mod.parent != 'FS2':
+                # Make sure TC mods depend on their parents
+                found = False
+                for pkg in self._mod.packages:
+                    for dep in pkg.dependencies:
+                        if dep['id'] == self._mod.parent:
+                            found = True
+                            break
+
+                    if found:
+                        break
+
+                if not found:
+                    self._mod.packages[0].dependencies.append({
+                        'id': self._mod.parent,
+                        'version': '*',
+                        'packages': []
+                    })
+
+            try:
+                self._mod.resolve_deps(recursive=False)
+            except repo.ModNotFound:
+                self._reason = 'broken deps'
+                self.abort()
+                return
+
             if self._mod.mtype in ('mod', 'tc'):
                 if self._mod.custom_build:
                     # TODO: This should be clarified in the dev tab UI.
@@ -1231,6 +1257,8 @@ class UploadTask(progress.MultistepTask):
         elif self._reason == 'custom build':
             message = "You can't upload a mod which depends on a local FSO build. Please go to your mod's " + \
                 "FSO settings and select a build from the dropdown list."
+        elif self._reason == 'broken deps':
+            message = "The dependencies specified in your mod could not be resolved!"
         elif self._reason == 'aborted':
             return
         else:
