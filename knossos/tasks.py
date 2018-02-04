@@ -1565,6 +1565,42 @@ class WindowsUpdateTask(progress.Task):
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to launch the update!'))
 
 
+class MacUpdateTask(progress.Task):
+
+    def __init__(self):
+        super(MacUpdateTask, self).__init__()
+
+        self.done.connect(self.finish)
+        self.add_work(('',))
+        self.title = 'Installing update...'
+
+    def work(self, item):
+        update_base = util.pjoin(center.UPDATE_LINK, 'stable')
+        updater = os.path.expandvars('$HOME/Downloads/Knossos.dmg')
+
+        progress.start_task(0, 0.98, 'Downloading update...')
+        with open(updater, 'wb') as stream:
+            util.download(update_base + '/Knossos.dmg', stream)
+
+        progress.finish_task()
+        progress.update(0.99, 'Opening update...')
+
+        try:
+            subprocess.call(['open', updater])
+        except Exception:
+            logging.exception('Failed to launch updater!')
+            self.post(False)
+        else:
+            self.post(True)
+            center.app.quit()
+
+    def finish(self):
+        res = self.get_results()
+
+        if len(res) < 1 or not res[0]:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to launch the update!'))
+
+
 class CopyFolderTask(progress.Task):
 
     def __init__(self, src_path, dest_path):
