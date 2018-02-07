@@ -37,10 +37,10 @@ if len(sys.argv) > 1 and sys.argv[1] == '--cpuinfo':
         logging.exception('Failed to retrieve CPU info.')
 
     print(json.dumps(info))
-if len(sys.argv) > 1 and sys.argv[1] == '--run-cpuid':
+elif len(sys.argv) > 1 and sys.argv[1] == '--run-cpuid':
     from knossos.third_party import cpuinfo
 
-    print(cpuinfo.actual_get_cpu_info_from_cpuid())
+    print(cpuinfo._actual_get_cpu_info_from_cpuid())
 elif len(sys.argv) > 1 and sys.argv[1] == '--deviceinfo':
     import json
     from knossos import clibs
