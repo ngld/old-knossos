@@ -28,7 +28,7 @@ from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.install import Ui_InstallDialog
 from .ui.edit_description import Ui_Dialog as Ui_DescEditor
-from .tasks import run_task, InstallTask, UninstallTask, WindowsUpdateTask, LoadLocalModsTask
+from .tasks import run_task, InstallTask, UninstallTask, WindowsUpdateTask, MacUpdateTask, LoadLocalModsTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -194,12 +194,15 @@ class HellWindow(Window):
 
     def ask_update(self, version):
         # We only have an updater for windows.
-        if sys.platform.startswith('win'):
+        if sys.platform in ('win32', 'darwin'):
             msg = self.tr('There\'s an update available!\nDo you want to install Knossos %s now?') % str(version)
             buttons = QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
             result = QtWidgets.QMessageBox.question(center.app.activeWindow(), 'Knossos', msg, buttons)
             if result == QtWidgets.QMessageBox.Yes:
-                run_task(WindowsUpdateTask())
+                if sys.platform == 'win32':
+                    run_task(WindowsUpdateTask())
+                elif sys.platform == 'darwin':
+                    run_task(MacUpdateTask())
         else:
             msg = self.tr('There\'s an update available!\nYou should update to Knossos %s.') % str(version)
             QtWidgets.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)

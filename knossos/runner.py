@@ -356,6 +356,8 @@ def run_mod_ex(mod, binpath, mod_flag):
             if not found:
                 logging.debug("Mod %s doesn't depend on parent, fixing mod flags...", mod)
                 mod_flag.extend([p[0] for p in parent.get_mod_flag()[0]])
+    elif mod.mtype == 'tc':
+        basepath = os.path.dirname(mod.folder)
     elif mod.mtype:
         basepath = mod.folder
 

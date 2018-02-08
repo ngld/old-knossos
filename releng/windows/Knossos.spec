@@ -29,6 +29,7 @@ is_x64 = platform.architecture()[0] == '64bit'
 try:
     import comtypes.client as cc
     cc.GetModule('support/taskbar.tlb')
+    cc.CreateObject('SAPI.SpVoice')
 
     import comtypes.gen as cg
     gen_path = os.path.dirname(cg.__file__)
