@@ -16,4 +16,4 @@ after_build:
 
 environment:
   GITHUB_TOKEN:
-    secure: O3HGtJExInVx0l/ytgKnvWp8r91TJUqGfgEdz75RWXCtnaSONe/CLch8BD2VaLL8
+    secure: KSxLsPU0J4eghWiI/gya3J97Ld00RH5AYm3WFI542SFVXO32t5ml4VJ+g0DeJSuE

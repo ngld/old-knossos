@@ -1,5 +1,4 @@
 GPG_KEY_ID=""
-export GITHUB_TOKEN=""
 
 UBUNTU_KEY="$GPG_KEY_ID"
 
