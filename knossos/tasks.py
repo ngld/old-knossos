@@ -635,7 +635,7 @@ class InstallTask(progress.MultistepTask):
 
                 for name in dirs:
                     src_path = os.path.join(cpath, path, name)
-                    dest_path = util.ipath(os.path.join(modpath, path, name))
+                    dest_path = util.ipath(os.path.join(modpath, archive.get('dest', ''), path, name))
 
                     if os.path.islink(src_path):
                         if not os.path.lexists(dest_path):
@@ -648,7 +648,7 @@ class InstallTask(progress.MultistepTask):
                     src_path = os.path.join(cpath, path, name)
 
                     if os.path.islink(src_path):
-                        dest_path = util.ipath(os.path.join(modpath, path, name))
+                        dest_path = util.ipath(os.path.join(modpath, archive.get('dest', ''), path, name))
                         if not os.path.lexists(dest_path):
                             linkto = os.readlink(src_path)
                             os.symlink(linkto, dest_path)
