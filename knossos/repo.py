@@ -64,11 +64,9 @@ class Repo(object):
     is_link = False
     mods = None
     includes = None
-    pins = None
 
     def __init__(self, data=None):
         self.mods = {}
-        self.pins = {}
 
         if data is not None:
             self.set(data)
@@ -78,7 +76,6 @@ class Repo(object):
 
     def clear(self):
         self.mods = {}
-        self.pins = {}
 
     def load_json(self, path):
         self.base = os.path.dirname(path)
@@ -90,9 +87,6 @@ class Repo(object):
             json.dump(self.get(), stream)
 
     def set(self, info):
-        for m, v in info['pins'].items():
-            self.pins[m] = semantic_version.Version(v)
-
         for mod in info['mods']:
             self.add_mod(Mod(mod, self))
 
@@ -102,12 +96,7 @@ class Repo(object):
             for mod in v:
                 mods.append(mod.get())
 
-        pins = self.pins.copy()
-        for m, v in pins.items():
-            pins[m] = str(v)
-
         return {
-            'pins': pins,
             'mods': mods
         }
 
@@ -202,37 +191,6 @@ class Repo(object):
             for mod in mvs:
                 self.add_mod(mod)
 
-    def pin(self, mod, version=None):
-        if isinstance(mod, Package):
-            mod = mod.get_mod()
-
-        if isinstance(mod, Mod):
-            version = mod.version
-            mod = mod.mid
-
-        if not isinstance(mod, str) or not isinstance(version, semantic_version.Version):
-            raise ValueError('%s is not a string or %s is not a valid version!' % (mod, version))
-
-        self.pins[mod] = version
-
-    def unpin(self, mod):
-        if isinstance(mod, Package):
-            mod = mod.get_mod().mid
-        elif isinstance(mod, Mod):
-            mod = mod.mid
-
-        if mod in self.pins:
-            del self.pins[mod]
-
-    def get_pin(self, mod):
-        if isinstance(mod, Package):
-            mod = mod.get_mod()
-
-        if isinstance(mod, Mod):
-            mod = mod.mid
-
-        return self.pins.get(mod, None)
-
     def query(self, mid, spec=None, pname=None):
         if isinstance(mid, Package):
             mod = mid.get_mod()
@@ -248,8 +206,12 @@ class Repo(object):
         if mid not in self.mods:
             raise ModNotFound('Mod "%s" wasn\'t found!' % (mid), mid)
 
-        if spec is None and mid in self.pins:
-            spec = util.Spec.from_version(self.pins[mid])
+        if spec is not None:
+            if isinstance(spec, semantic_version.Version):
+                logging.warning('Repo.query(): Expected Spec but got Version instead! (%s)' % repr(spec))
+                spec = util.Spec.from_version(spec)
+            elif isinstance(spec, str):
+                spec = util.Spec.from_version(spec)
 
         candidates = self.mods[mid]
         version = None
@@ -283,19 +245,14 @@ class Repo(object):
                 if version:
                     break
 
-        if spec is None:
-            if candidates[0].mtype != 'engine':
+        if not version:
+            if spec is None:
                 version = candidates[0].version
-        else:
-            if isinstance(spec, semantic_version.Version):
-                logging.warning('Repo.query(): Expected Spec but got Version instead! (%s)' % repr(spec))
-                spec = util.Spec.from_version(spec)
-
-            if not version:
+            else:
                 version = spec.select([mod.version for mod in candidates])
 
-        if not version:
-            raise ModNotFound('Mod "%s" %s wasn\'t found!' % (mid, spec), mid, spec)
+            if not version:
+                raise ModNotFound('Mod "%s" %s wasn\'t found!' % (mid, spec), mid, spec)
 
         for m in candidates:
             if m.version == version:
@@ -773,18 +730,7 @@ class InstalledRepo(Repo):
     def clear(self):
         self.mods = {}
 
-    def save_pins(self, path):
-        with open(path, 'w') as stream:
-            json.dump(self.pins, stream)
-
-    def load_pins(self, path):
-        with open(path, 'r') as stream:
-            self.pins = json.load(stream)
-
     def set(self, mods):
-        for m, v in mods['pins'].items():
-            self.pins[m] = semantic_version.Version(v)
-
         for mod in mods['mods']:
             self.add_mod(InstalledMod(mod))
 
