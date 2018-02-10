@@ -987,6 +987,11 @@ class UploadTask(progress.MultistepTask):
                     for sub, dirs, files in os.walk(pkg_path):
                         relsub = os.path.relpath(sub, pkg_path)
                         for fn in files:
+                            if fn.lower().endswith('.vp'):
+                                self._reason = 'vp inception'
+                                self.abort()
+                                return
+
                             relpath = os.path.join(relsub, fn).replace('\\', '/')
 
                             pkg.filelist.append({
@@ -1107,14 +1112,17 @@ class UploadTask(progress.MultistepTask):
                 vp = vplib.VpWriter(vp_path)
                 pkg_path = os.path.join(self._mod.folder, pkg.folder)
 
-                for sub, dirs, files in os.walk(pkg_path):
-                    relsub = os.path.relpath(sub, pkg_path)
-                    for fn in files:
-                        relpath = os.path.join(relsub, fn)
-                        vp.add_file(relpath, os.path.join(sub, fn))
+                for item in pkg.filelist:
+                    vp.add_file(item['filename'], os.path.join(pkg_path, item['filename']))
 
                 progress.start_task(0.0, 0.1, '%s')
-                vp.write()
+                try:
+                    vp.write()
+                except vplib.EmptyFileException as exc:
+                    self._reason = 'empty file in vp'
+                    self._msg = exc.file
+                    self.abort()
+                    return
 
                 progress.update(1, 'Calculating checksum...')
                 progress.finish_task()
@@ -1259,6 +1267,10 @@ class UploadTask(progress.MultistepTask):
                 "FSO settings and select a build from the dropdown list."
         elif self._reason == 'broken deps':
             message = "The dependencies specified in your mod could not be resolved!"
+        elif self._reason == 'vp inception':
+            message = "You're telling me to put a VP into a VP... I don't think that's a good idea. Check your package settings! Aborted."
+        elif self._reason == 'empty file in vp':
+            message = "An empty file was detected! It's impossible to put empty files into VPs. Please either fill %s with data or remove it." % self._msg
         elif self._reason == 'aborted':
             return
         else:

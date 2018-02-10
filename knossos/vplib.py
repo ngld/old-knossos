@@ -25,6 +25,11 @@ from knossos import progress
 # See also: http://docs.python.org/library/struct.html#format-characters
 
 
+class EmptyFileException(Exception):
+    def __init__(self, fn):
+        self.file = fn
+
+
 class DataReader(object):
     _file = None
     _size = 0
@@ -184,6 +189,9 @@ class VpWriter(DataWriter):
         offset = self._file.tell()
         shutil.copyfileobj(content, self._file)
         size = self._file.tell() - offset
+
+        if size == 0:
+            raise EmptyFileException(content)
 
         if opened:
             content.close()
