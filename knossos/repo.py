@@ -211,7 +211,7 @@ class Repo(object):
                 logging.warning('Repo.query(): Expected Spec but got Version instead! (%s)' % repr(spec))
                 spec = util.Spec.from_version(spec)
             elif isinstance(spec, str):
-                spec = util.Spec.from_version(spec)
+                spec = util.Spec(spec)
 
         candidates = self.mods[mid]
         version = None
