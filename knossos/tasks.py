@@ -987,7 +987,7 @@ class UploadTask(progress.MultistepTask):
                     for sub, dirs, files in os.walk(pkg_path):
                         relsub = os.path.relpath(sub, pkg_path)
                         for fn in files:
-                            if fn.lower().endswith('.vp'):
+                            if pkg.is_vp and fn.lower().endswith('.vp'):
                                 self._reason = 'vp inception'
                                 self.abort()
                                 return
