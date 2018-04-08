@@ -663,6 +663,22 @@ export default {
                     <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">NO</button>
                 </div>
 
+                <div v-if="popup_mode == 'upload_mod'">
+                    <p>
+                        Are you sure that you want to upload {{popup_mod_name}} {{popup_mod_version}}?
+                    </p>
+
+                    <p>
+                        <label>
+                            <input type="checkbox" v-model="popup_content">
+                            Mark this release as private
+                        </label>
+                    </p>
+
+                    <button class="mod-btn btn-green" @click.prevent="sureCallback">YES</button>
+                    <button class="mod-btn btn-red pull-right" @click.prevent="popup_visible = false">NO</button>
+                </div>
+
                 <div v-if="popup_mode == 'fso_settings'">
                     <kn-fso-user-settings :mods="mods" :mod="popup_content"></kn-fso-user-settings>
                 </div>

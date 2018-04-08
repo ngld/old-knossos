@@ -2,6 +2,10 @@
 export default {
     props: ['mods'],
 
+    components: {
+        'kn-dev-staff': require('./kn-dev-staff.vue').default
+    },
+
     data: () => ({
         reloading: false,
         mod_map: {},
@@ -397,15 +401,18 @@ export default {
 
         uploadMod() {
             vm.popup_progress_message = null;
-            vm.popup_mode = 'are_you_sure';
+            vm.popup_mode = 'upload_mod';
             vm.popup_title = 'Upload mod';
-            vm.popup_sure_question = `Are you sure that you want to upload ${this.selected_mod.title} ${this.selected_mod.version}?`;
+            vm.popup_mod_name = this.selected_mod.title;
+            vm.popup_mod_version = this.selected_mod.version;
+            vm.popup_content = false;
+
             vm.sureCallback = () => {
                 vm.popup_mode = 'mod_progress';
                 // We need the original mod here because the copy doesn't contain the progress info.
                 vm.popup_mod_id = this.selected_mod.id;
 
-                fs2mod.startUpload(this.selected_mod.id, this.selected_mod.version);
+                fs2mod.startUpload(this.selected_mod.id, this.selected_mod.version, vm.popup_content);
             };
             vm.popup_visible = true;
         },
@@ -775,7 +782,7 @@ export default {
                             <h4>Staff List</h4>
 
                             <p>
-                                This page hasn't been implemented, yet.
+                                <kn-dev-staff :mid="selected_mod.id"></kn-dev-staff>
                             </p>
                         </div>
 

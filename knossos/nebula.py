@@ -88,6 +88,10 @@ class NebulaClient(object):
         result = self._call('mod/editable', 'GET', check_code=True)
         return result.json()['mods']
 
+    def is_editable(self, mid):
+        result = self._call('mod/is_editable', check_code=True, data={'mid': mid})
+        return result.json()
+
     def _upload_mod_logos(self, mod):
         chks = [None, None]
 
@@ -136,11 +140,12 @@ class NebulaClient(object):
         })
         return True
 
-    def preflight_release(self, mod):
+    def preflight_release(self, mod, private=False):
         meta = mod.get()
         meta['screenshots'] = []
         meta['attachments'] = []
         meta['banner'] = ''
+        meta['private'] = private
 
         result = self._call('mod/release/preflight', check_code=True, json=meta)
         data = result.json()
@@ -155,7 +160,7 @@ class NebulaClient(object):
 
         raise RequestFailedException(data.get('reason'))
 
-    def _prepare_release(self, mod):
+    def _prepare_release(self, mod, private):
         meta = mod.get()
 
         for prop in ('screenshots', 'attachments'):
@@ -178,10 +183,11 @@ class NebulaClient(object):
                 meta['banner'] = util.gen_hash(image)[1]
                 self.upload_file('banner', image)
 
+        meta['private'] = private
         return meta
 
-    def create_release(self, mod):
-        meta = self._prepare_release(mod)
+    def create_release(self, mod, private=False):
+        meta = self._prepare_release(mod, private)
         result = self._call('mod/release', check_code=True, json=meta)
         data = result.json()
         if not data:
@@ -195,8 +201,8 @@ class NebulaClient(object):
 
         raise RequestFailedException(data.get('reason'))
 
-    def update_release(self, mod):
-        meta = self._prepare_release(mod)
+    def update_release(self, mod, private=False):
+        meta = self._prepare_release(mod, private)
         result = self._call('mod/release/update', check_code=True, json=meta)
         data = result.json()
         if not data:
@@ -287,3 +293,18 @@ class NebulaClient(object):
             return center.settings['nebula_web'] + 'log/' + data['id']
         else:
             return None
+
+    def get_team_members(self, mid):
+        result = self._call('mod/team/fetch', check_code=True, data={'mid': mid})
+        return result.json()
+
+    def update_team_members(self, mid, members):
+        result = self._call('mod/team/update', check_code=True, json={
+            'mid': mid,
+            'members': members
+        })
+        return result.json()
+
+    def get_private_mods(self):
+        result = self._call('mod/list_private', method='GET', check_code=True)
+        return result.json()
