@@ -26,7 +26,7 @@ import semantic_version
 
 from threading import Thread
 from datetime import datetime
-from .qt import QtCore, QtGui, QtWidgets, QtWebChannel, read_file
+from .qt import QtCore, QtGui, QtWidgets, QtWebChannel, read_file, run_in_qt
 from . import center, runner, repo, windows, tasks, util, settings, nebula, clibs
 
 if not QtWebChannel:
@@ -95,10 +95,12 @@ class WebBridge(QtCore.QObject):
             self._channel.registerObject('fs2mod', self)
 
             if center.DEBUG and os.path.isdir('../html'):
-                try:
-                    from .qt import QtWebSockets, QtNetwork
-                except ImportError:
-                    logging.exception('Remote mode disabled')
+                from .qt import QtWebSockets, QtNetwork
+
+                if QtWebSockets is None:
+                    logging.warn('Remote mode disabled')
+
+                    link = 'qrc:///html/index.html'
                 else:
                     self._conns = []
                     self._server = QtWebSockets.QWebSocketServer('Knossos interface', QtWebSockets.QWebSocketServer.NonSecureMode)
@@ -110,11 +112,11 @@ class WebBridge(QtCore.QObject):
                     with open('../html/qwebchannel.js', 'w') as hdl:
                         hdl.write(read_file(':/qtwebchannel/qwebchannel.js'))
 
-                link = os.path.abspath('../html/index_debug.html')
-                if sys.platform == 'win32':
-                    link = '/' + link.replace('\\', '/')
+                    link = os.path.abspath('../html/index_debug.html')
+                    if sys.platform == 'win32':
+                        link = '/' + link.replace('\\', '/')
 
-                link = 'file://' + link
+                    link = 'file://' + link
             else:
                 link = 'qrc:///html/index.html'
 
@@ -1089,13 +1091,13 @@ class WebBridge(QtCore.QObject):
 
         center.main_win.update_mod_list()
 
-    @QtCore.Slot(str, str)
-    def startUpload(self, mid, version):
+    @QtCore.Slot(str, str, bool)
+    def startUpload(self, mid, version, private):
         mod = self._get_mod(mid, version)
         if mod in (-1, -2):
             return
 
-        tasks.run_task(tasks.UploadTask(mod))
+        tasks.run_task(tasks.UploadTask(mod, private))
 
     @QtCore.Slot(str, str)
     def nebLogin(self, user, password):
@@ -1484,6 +1486,62 @@ class WebBridge(QtCore.QObject):
                     builds.append(mod.get())
 
         return json.dumps(builds)
+
+    @QtCore.Slot(str, int)
+    def getTeamMembers(self, mid, cb_id):
+        def helper():
+            try:
+                client = nebula.NebulaClient()
+                members = client.get_team_members(mid)
+            except Exception:
+                logging.exception('Failed to retrieve members!')
+                members = {'result': False, 'reason': 'exception'}
+
+            self.asyncCbFinished.emit(cb_id, json.dumps(members))
+
+        Thread(target=helper).start()
+
+    @QtCore.Slot(str, str)
+    def updateTeamMembers(self, mid, members):
+        try:
+            members = json.loads(members)
+        except json.JSONDecodeError:
+            logging.exception('Failed to decode members!')
+
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to decode team members')
+            return
+
+        def helper():
+            try:
+                client = nebula.NebulaClient()
+                helper2(client.update_team_members(mid, members))
+            except Exception:
+                logging.exception('Failed to save team members!')
+                helper2({
+                    'result': False,
+                    'reason': 'exception'
+                })
+
+        @run_in_qt
+        def helper2(result):
+            msg = None
+            reason = result.get('reason', None)
+
+            if result['result']:
+                QtWidgets.QMessageBox.information(None, 'Knossos', 'Team members successfully saved!')
+                return
+            elif reason == 'owners_changed':
+                msg = "Your changes weren't saved because you aren't permitted to modify the mod Owners!"
+            elif reason == 'no_owners':
+                msg = "Your changes couldn't be saved because you need to specify at least one Owner!"
+            elif reason == 'member_not_found':
+                msg = 'Your changes could not be saved because the user "%s" was not found.' % result['member']
+            else:
+                msg = "Your changes couldn't be saved because an unexpected error ocurred!"
+
+            QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
+
+        Thread(target=helper).start()
 
 
 if QtWebChannel:

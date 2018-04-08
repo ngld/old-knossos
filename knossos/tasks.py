@@ -44,7 +44,9 @@ class FetchTask(progress.Task):
         super(FetchTask, self).__init__()
         self.title = 'Fetching mod list...'
         self.done.connect(self.finish)
-        self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(center.settings['repos'])])
+
+        repos = center.settings['repos'] + [('#private', 'Private Mods')]
+        self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(repos)])
 
     def work(self, params):
         if params[0] == 'repo':
@@ -53,14 +55,26 @@ class FetchTask(progress.Task):
             progress.update(0.1, 'Fetching "%s"...' % link)
 
             try:
-                raw_data = util.get(link, raw=True)
-                if not raw_data:
-                    return
-
                 data = Repo()
                 data.is_link = True
-                data.base = os.path.dirname(raw_data.url)
-                data.parse(raw_data.text)
+
+                if link == '#private':
+                    if not center.settings['neb_user']:
+                        return
+
+                    client = nebula.NebulaClient()
+                    mods = client.get_private_mods()
+
+                    data.base = '#private'
+                    data.set(mods)
+                else:
+                    raw_data = util.get(link, raw=True)
+                    if not raw_data:
+                        return
+
+                    data.base = os.path.dirname(raw_data.url)
+                    data.parse(raw_data.text)
+
             except Exception:
                 logging.exception('Failed to decode "%s"!', link)
                 return
@@ -841,6 +855,7 @@ class UploadTask(progress.MultistepTask):
     _steps = 2
     _client = None
     _mod = None
+    _private = False
     _dir = None
     _login_failed = False
     _duplicate = False
@@ -857,12 +872,13 @@ class UploadTask(progress.MultistepTask):
     _question_result = False
     _question_cond = None
 
-    def __init__(self, mod):
+    def __init__(self, mod, private=False):
         super(UploadTask, self).__init__()
 
         self.title = 'Uploading mod...'
         self.mods = [mod]
         self._mod = mod.copy()
+        self._private = private
 
         self._threads = 2
         self._slot_prog = {
@@ -941,7 +957,7 @@ class UploadTask(progress.MultistepTask):
             self._client = client = nebula.NebulaClient()
 
             try:
-                mods = client.get_editable_mods()
+                editable = client.is_editable(self._mod.mid)
             except nebula.InvalidLoginException:
                 self._login_failed = True
                 self.abort()
@@ -949,16 +965,21 @@ class UploadTask(progress.MultistepTask):
                 progress.update(0.1, 'Failed to login!')
                 return
 
+            if not editable['result']:
+                self._reason = 'unauthorized'
+                self.abort()
+                return
+
             progress.update(0.11, 'Updating metadata...')
 
-            if self._mod.mid not in mods:
+            if editable['missing']:
                 client.create_mod(self._mod)
             else:
                 client.update_mod(self._mod)
 
             progress.update(0.13, 'Performing pre-flight checks...')
             try:
-                client.preflight_release(self._mod)
+                client.preflight_release(self._mod, self._private)
             except nebula.RequestFailedException as exc:
                 if exc.args[0] == 'duplicated version':
                     with self._question_cond:
@@ -1067,6 +1088,7 @@ class UploadTask(progress.MultistepTask):
 
         ar_name = pkg.name + '.7z'
         ar_path = os.path.join(self._dir.name, ar_name)
+        vp_checksum = None
 
         try:
             progress.update(0, 'Comparing...')
@@ -1127,11 +1149,12 @@ class UploadTask(progress.MultistepTask):
                 progress.update(1, 'Calculating checksum...')
                 progress.finish_task()
 
+                vp_checksum = util.gen_hash(vp_path)
                 pkg.filelist = [{
                     'filename': vp_name,
                     'archive': ar_name,
                     'orig_name': vp_name,
-                    'checksum': util.gen_hash(vp_path)
+                    'checksum': vp_checksum
                 }]
 
                 if is_uploaded:
@@ -1180,11 +1203,10 @@ class UploadTask(progress.MultistepTask):
             progress.start_task(0.4, 0.6, '%s')
             progress.update(0, 'Preparing upload...')
 
-            vp_checksum = util.gen_hash(ar_path)
             pkg.files[ar_name] = {
                 'filename': ar_name,
                 'dest': '',
-                'checksum': vp_checksum,
+                'checksum': util.gen_hash(ar_path),
                 'filesize': os.stat(ar_path).st_size
             }
 
@@ -1217,9 +1239,9 @@ class UploadTask(progress.MultistepTask):
             progress.update(0.8, 'Finishing...')
 
             if self._duplicate:
-                self._client.update_release(self._mod)
+                self._client.update_release(self._mod, self._private)
             else:
-                self._client.create_release(self._mod)
+                self._client.create_release(self._mod, self._private)
 
             progress.update(1, 'Done')
             self._success = True
