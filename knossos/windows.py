@@ -287,7 +287,20 @@ class HellWindow(Window):
 
                 result.append(item)
 
-        result.sort(key=lambda m: m['title'])
+        # Maybe I should add "Just " to the list?
+        prefixes = ('the ', 'a ')
+
+        def build_sort_title(m):
+            title = m['title']
+
+            for p in prefixes:
+                pl = len(p)
+                if title[:pl].lower() == p:
+                    title = title[pl:]
+
+            return title
+
+        result.sort(key=build_sort_title)
         return result, self._mod_filter
 
     def update_mod_list(self):
