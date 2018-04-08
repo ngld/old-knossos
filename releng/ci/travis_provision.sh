@@ -13,27 +13,17 @@ if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     mkdir /tmp/prov
     cd /tmp/prov
 
-    # We need Python 2.x for dmgbuild. Installing it through Homebrew without compiling requires the
-    # developer tools which apparently can't be installed without user interaction. Therefore, I use
-    # the official installer from python.org, instead.
-    echo "==> Installing Python 2.7.13"
-    curl -so python2.pkg "https://www.python.org/ftp/python/2.7.13/python-2.7.13-macosx10.6.pkg"
-    sudo installer -store -pkg python2.pkg -target /
-
-    echo "==> Installing dmgbuild"
-    pip2 install dmgbuild
-
-    # We need Python 3.5 since that's the latest version PyInstaller supports.
-    echo "==> Installing Python 3.6.4"
-    curl -so python.pkg "https://www.python.org/ftp/python/3.6.4/python-3.6.4-macosx10.6.pkg"
+    # We need Python 3.6 since that's the latest version PyInstaller supports.
+    echo "==> Installing Python 3.6.5"
+    curl -so python.pkg "https://www.python.org/ftp/python/3.6.5/python-3.6.5-macosx10.6.pkg"
     sudo installer -store -pkg python.pkg -target /
 
     echo "==> Installing Python dependencies"
     pip3 install -U pip
-    pip3 install six requests requests_toolbelt ply raven semantic_version PyQt5 PyInstaller token_bucket
+    pip3 install six requests requests_toolbelt ply raven semantic_version PyQt5 PyInstaller token_bucket dmgbuild
 
     echo "==> Installing SDL2"
-    curl -so SDL2.dmg "https://libsdl.org/release/SDL2-2.0.7.dmg"
+    curl -so SDL2.dmg "https://libsdl.org/release/SDL2-2.0.8.dmg"
 
     dev="$(hdiutil attach SDL2.dmg | tail -n1 | awk '{ print $3 }')"
     sudo cp -a "$dev/SDL2.framework" /Library/Frameworks

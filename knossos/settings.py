@@ -114,15 +114,7 @@ class FlagsReader(object):
         }
 
 
-def get_settings(cb):
-    def wrapper():
-        cb(get_settings_p2())
-
-    t = Thread(target=wrapper)
-    t.start()
-
-
-def get_settings_p2():
+def get_settings():
     dev_info = get_deviceinfo()
     fso = {}
 
@@ -244,7 +236,6 @@ def get_settings_p2():
         fso['enable_efx'] = enable_efx == '1'
 
     # ---Joystick settings---
-    fso['joysticks'] = dev_info['joysticks'] if dev_info else []
     fso['joystick_enable_hit'] = joystick_enable_hit == '1'
     fso['joystick_ff_strength'] = joystick_ff_strength
     fso['joystick_guid'] = joystick_guid
@@ -463,7 +454,7 @@ def write_fso_config(sections):
 def ensure_fso_config():
     config_file = os.path.join(get_fso_profile_path(), 'fs2_open.ini')
     if not os.path.isfile(config_file):
-        settings = get_settings_p2()
+        settings = get_settings()
         save_fso_settings(settings['fso'])
 
 
@@ -481,9 +472,15 @@ def get_deviceinfo():
     return {
         'modes': clibs.get_modes(),
         'audio_devs': audio_devs,
-        'joysticks': clibs.list_guid_joysticks(),
         'voices': clibs.list_voices()
     }
+
+
+def get_joysticks():
+    from knossos import clibs
+
+    clibs.init_sdl()
+    return clibs.list_guid_joysticks()
 
 
 _flag_cache = {}

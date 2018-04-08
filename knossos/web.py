@@ -73,7 +73,6 @@ class WebBridge(QtCore.QObject):
     showModDetails = QtCore.Signal(str)
     updateModlist = QtCore.Signal(str, str)
     modProgress = QtCore.Signal(str, float, str)
-    settingsArrived = QtCore.Signal(str)
     retailInstalled = QtCore.Signal()
     hidePopup = QtCore.Signal()
     applyDevDesc = QtCore.Signal(str)
@@ -473,12 +472,21 @@ class WebBridge(QtCore.QObject):
         tasks.run_task(tasks.LoadLocalModsTask())
         return True
 
-    @QtCore.Slot()
-    def getSettings(self):
-        def cb(res):
-            self.settingsArrived.emit(json.dumps(res))
+    @QtCore.Slot(int)
+    def getSettings(self, cb_id):
+        def cb():
+            res = settings.get_settings()
+            self.asyncCbFinished.emit(cb_id, json.dumps(res))
 
-        settings.get_settings(cb)
+        Thread(target=cb).start()
+
+    @QtCore.Slot(int)
+    def getJoysticks(self, cb_id):
+        def cb():
+            res = settings.get_joysticks()
+            self.asyncCbFinished.emit(cb_id, json.dumps(res))
+
+        Thread(target=cb).start()
 
     @QtCore.Slot(str, str)
     def saveSetting(self, key, value):

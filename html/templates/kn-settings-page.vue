@@ -10,12 +10,16 @@ export default {
     props: ['mods'],
 
     data: () => ({
+        loading: false,
+
         retail_installed: true,
         knossos: {},
         fso: {},
         old_settings: {},
         sel_joystick: null,
         ff_enabled: false,
+        joysticks: [],
+        joysticks_loading: false,
 
         neb_user: '',
         neb_password: '',
@@ -23,9 +27,9 @@ export default {
     }),
 
     beforeMount() {
-        connectOnce(fs2mod.settingsArrived, (settings) => {
-            settings = JSON.parse(settings);
+        this.loading = true;
 
+        call_async(fs2mod.getSettings, (settings) => {
             this.retail_installed = settings.has_retail;
 
             this.knossos = Object.assign({}, settings.knossos);
@@ -35,8 +39,15 @@ export default {
             this.neb_user = this.knossos.neb_user;
             this.sel_joystick = this.fso.joystick_id === 'No Joystick' ? 'No Joystick' : this.fso.joystick_guid + '#' + this.fso.joystick_id;
             this.ff_enabled = settings.fso.joystick_ff_strength == 100;
+
+            this.loading = false;
         });
-        fs2mod.getSettings();
+
+        this.joysticks_loading = true;
+        call_async(fs2mod.getJoysticks, (joysticks) => {
+            this.joysticks = joysticks;
+            this.joysticks_loading = false;
+        });
     },
 
     methods: {
@@ -105,8 +116,9 @@ export default {
         <div class="col-sm-6">
             <h2>
                 Settings
-                <small><button class="mod-btn btn-blue pull-right" @click="showRetailPrompt" v-if="!retail_installed">Install Retail</button></small>
-                <small><button class="mod-btn btn-green pull-right" @click="save">Save</button></small>
+                <button class="mod-btn btn-blue pull-right" @click="showRetailPrompt" v-if="!retail_installed">Install Retail</button>
+                <button class="mod-btn btn-green pull-right" @click="save" v-if="!loading">Save</button>
+                <button class="mod-btn btn-grey pull-right" disabled v-if="loading">Loading...</button>
             </h2>
             <div class="settings-exp">Click the arrows to reveal each group's options. Click SAVE when done.</div>
 
@@ -116,7 +128,7 @@ export default {
                     <label class="col-sm-4 control-label">Data Path:</label>
                     <div class="col-sm-8">
                         <small>{{ knossos.base_path }}</small>
-                        <button @click.prevent="changeBasePath">Browse</button>
+                        <button class="mod-btn btn-link-grey pull-right" @click.prevent="changeBasePath">Browse</button>
                     </div>
                 </div>
 
@@ -326,9 +338,10 @@ export default {
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Joystick:</label>
                     <div class="col-sm-8">
-                        <select v-model="sel_joystick">
+                        <div v-if="joysticks_loading">Loading...</div>
+                        <select v-else v-model="sel_joystick">
                             <option>No Joystick</option>
-                            <option v-for="joy in fso.joysticks" :value="joy[0] + '#' + joy[1]" :key="joy[0] + '#' + joy[1]">{{ joy[2] }}</option>
+                            <option v-for="joy in joysticks" :value="joy[0] + '#' + joy[1]" :key="joy[0] + '#' + joy[1]">{{ joy[2] }}</option>
                         </select>
                     </div>
                 </div>

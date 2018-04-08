@@ -17,7 +17,7 @@ import sys
 import os.path
 import subprocess
 import platform
-import PyQt5
+from PyInstaller.utils.hooks.qt import qt_plugins_binaries
 
 onefile = False
 him = ['knossos.parsetab']
@@ -45,9 +45,6 @@ rthooks = ['version-rthook.py']
 if debug:
     rthooks.append('../../tools/common/debug-rthook.py')
 
-qt_path = os.path.dirname(PyQt5.__file__)
-qt_bin = os.path.join(qt_path, 'qt', 'bin')
-
 version = subprocess.check_output([sys.executable, '../../setup.py', 'get_version']).decode('utf-8')
 
 if not version:
@@ -72,16 +69,17 @@ pathex = []
 if crt_path:
     pathex.append(crt_path)
 
+bins = qt_plugins_binaries('styles', namespace='PyQt5')
+
 a = Analysis(['../../knossos/__main__.py'],
             pathex=pathex,
             hiddenimports=him,
+            binaries=bins,
             hookspath=[],
             runtime_hooks=rthooks,
             datas=[
                 ('../../knossos/data/hlp.ico', 'data'),
-                ('../../knossos/data/resources.rcc', 'data'),
-                ('../../knossos/parser.out', 'knossos'),
-                (os.path.join(qt_path, 'qt', 'resources'), '.')
+                ('../../knossos/data/resources.rcc', 'data')
             ])
 
 # Exclude everything we don't need.
@@ -99,8 +97,6 @@ idx = []
 for i, item in enumerate(a.pure):
     if item[0].startswith(('pydoc', 'pycparser')):
         idx.append(i)
-    elif item[0] == 'comtypes.client._code_cache':
-        a.pure[i] = (item[0], './comtypes_code_cache.py', item[2])
 
 for i in reversed(idx):
     del a.pure[i]
@@ -112,9 +108,6 @@ a.datas += [('7z.exe', 'support/7z.exe', 'BINARY'),
             ('SDL2.dll', 'support/SDL2.dll', 'BINARY'),
             ('OpenAL32.dll', 'support/OpenAL32.dll', 'BINARY'),
             ('taskbar.tlb', 'support/taskbar.tlb', 'BINARY')]
-
-for name in ('QtWebEngineProcess.exe', 'libEGL.dll', 'libGLESv2.dll'):
-    a.datas.append((name, os.path.join(qt_bin, name), 'BINARY'))
 
 
 if onefile:
