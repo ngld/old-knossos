@@ -281,9 +281,12 @@ class Task(QtCore.QObject):
             self._running -= 1
             self._res_count += 1
 
-            if self._running == 0 and not self._has_work() and not self._done.is_set():
-                self._done.set()
-                self.done.emit()
+            if self._running == 0 and not self._has_work():
+                if self._done.is_set():
+                    logging.warn('%s finished more than once!' % self.__class__.__name__)
+                else:
+                    self._done.set()
+                    self.done.emit()
 
     def _track_progress(self, prog, text):
         with self._progress_lock:
@@ -307,6 +310,13 @@ class Task(QtCore.QObject):
             self._results.append(result)
 
     def add_work(self, work):
+        if len(work) == 0:
+            # If self._work is empty after we're done, it will trip the empty task detection in add_task
+            # which will cause us to finish too early. The easiest way to avoid this is to never call add_work()
+            # with an empty list. Which is why we report this as an error.
+            logging.error('add_work() was passed an empty list! (%s)' % self.__class__.__name__)
+            return
+
         with self._work_lock:
             self._work.extend(work)
             self._work_count = max(self._work_count, len(self._work))
