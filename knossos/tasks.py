@@ -264,6 +264,7 @@ class InstallTask(progress.MultistepTask):
     _pkgs = None
     _pkg_names = None
     _mods = None
+    _editable = None
     _dls = None
     _copies = None
     _steps = 4
@@ -271,13 +272,14 @@ class InstallTask(progress.MultistepTask):
     _7z_lock = None
     check_after = True
 
-    def __init__(self, pkgs, mod=None, check_after=True):
+    def __init__(self, pkgs, mod=None, check_after=True, editable={}):
         super(InstallTask, self).__init__()
 
         self._mods = set()
         self._pkgs = []
         self._pkg_names = []
         self.check_after = check_after
+        self._editable = editable
 
         if sys.platform == 'win32':
             self._7z_lock = threading.Lock()
@@ -338,15 +340,9 @@ class InstallTask(progress.MultistepTask):
 
     def init1(self):
         if center.settings['neb_user']:
-            try:
-                neb = nebula.NebulaClient()
-                editable = neb.get_editable_mods()
-
-                for mod in self._mods:
-                    if mod.mid in editable:
-                        mod.dev_mode = True
-            except Exception:
-                logging.exception('Failed to login to the Nebula')
+            for mod in self._mods:
+                if mod.mid in self._editable:
+                    mod.dev_mode = True
 
         self._threads = 3
         self.add_work(self._mods)
