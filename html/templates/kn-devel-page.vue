@@ -59,9 +59,12 @@ export default {
                 let found = false;
 
                 for(let mod of new_list) {
-                    if(mod.id === this.selected_mod.id && mod.version === this.selected_mod.version) {
-                        this.selected_mod = Object.assign({}, mod);
+                    if(mod.id === this.selected_mod.id) {
                         found = true;
+                        let version = this.selected_mod.version;
+
+                        this.selected_mod = Object.assign({}, mod);
+                        if(version !== this.selected_mod.version) this.selectVersion(version);
                         break;
                     }
                 }
