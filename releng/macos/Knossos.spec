@@ -18,8 +18,9 @@ import os.path
 import logging
 import subprocess
 import ctypes.util
-from shutil import which, copytree
 import PyQt5
+from shutil import which, copytree
+from PyInstaller.utils.hooks.qt import qt_plugins_binaries
 
 him = ['knossos.parsetab']
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
@@ -73,7 +74,7 @@ with open('version-rthook.py', 'w') as stream:
 qt_path = os.path.join(os.path.dirname(PyQt5.__file__), 'Qt', 'lib')
 resources_dir = os.path.join(qt_path, 'QtWebEngineCore.framework', 'Resources')
 a = Analysis(['../../knossos/__main__.py'],
-            pathex=['../..'],
+            pathex=[],
             hiddenimports=him,
             hookspath=[],
             runtime_hooks=rthooks,
@@ -82,12 +83,11 @@ a = Analysis(['../../knossos/__main__.py'],
                 (os.path.join(qt_path, 'QtWebEngineCore.framework', 'Helpers', 'QtWebEngineProcess.app',
                     'Contents', 'MacOS', 'QtWebEngineProcess'),
                 os.path.join('QtWebEngineProcess.app', 'Contents', 'MacOS'))
-            ],
+            ] + qt_plugins_binaries('styles', namespace='PyQt5'),
             datas=[
                 (p7zip_path, '.'),
                 (p7zip_lib, '.'),
                 ('../../knossos/data/resources.rcc', 'data'),
-                ('../../knossos/parser.out', '.'),
 
                 # Add QtWebEngine stuff because PyInstaller's hook doesn't do anything without qmake (which PyQt5 doesn't include).
                 (os.path.join(resources_dir, 'icudtl.dat'), ''),

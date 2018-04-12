@@ -23,25 +23,8 @@ onefile = False
 him = ['knossos.parsetab']
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 is_x64 = platform.architecture()[0] == '64bit'
-
-
-# Build the TaskbarLib module.
-try:
-    import comtypes.client as cc
-    cc.GetModule('support/taskbar.tlb')
-    cc.CreateObject('SAPI.SpVoice')
-
-    import comtypes.gen as cg
-    gen_path = os.path.dirname(cg.__file__)
-
-    for fname in os.listdir(gen_path):
-        if not fname.startswith('__'):
-            him.append('comtypes.gen.' + fname.split('.')[0])
-except:
-    import logging
-    logging.exception('Failed to generate comtypes.gen.TaskbarLib!')
-
 rthooks = ['version-rthook.py']
+
 if debug:
     rthooks.append('../../tools/common/debug-rthook.py')
 
@@ -103,10 +86,14 @@ for i in reversed(idx):
 
 pyz = PYZ(a.pure)
 
+arch_prefix = ''
+if is_x64:
+    arch_prefix = 'x64/'
+
 a.datas += [('7z.exe', 'support/7z.exe', 'BINARY'),
             ('7z.dll', 'support/7z.dll', 'BINARY'),
-            ('SDL2.dll', 'support/SDL2.dll', 'BINARY'),
-            ('OpenAL32.dll', 'support/OpenAL32.dll', 'BINARY'),
+            ('SDL2.dll', 'support/%sSDL2.dll' % arch_prefix, 'BINARY'),
+            ('OpenAL32.dll', 'support/%sOpenAL32.dll'% arch_prefix, 'BINARY'),
             ('taskbar.tlb', 'support/taskbar.tlb', 'BINARY')]
 
 

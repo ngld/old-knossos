@@ -44,7 +44,12 @@ with open(path.join(here, 'knossos', 'center.py'), 'r', encoding='utf-8') as f:
                 info_file = path.join(here, '.git/logs/' + ref[1].strip())
                 if path.isfile(info_file):
                     with open(info_file) as stream:
-                        version += '+' + stream.read()[:7]
+                        data = stream.read()
+                        commit = data[:7]
+                        if commit == '0000000':
+                            commit = data.split(' ')[1][:7]
+
+                        version += '+' + commit
             elif len(ref[0]) == 40:
                 version += '+' + ref[0][:7]
             else:
