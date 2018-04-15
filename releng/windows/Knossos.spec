@@ -23,7 +23,7 @@ onefile = False
 him = ['knossos.parsetab']
 debug = os.environ.get('KN_BUILD_DEBUG') == 'yes'
 is_x64 = platform.architecture()[0] == '64bit'
-rthooks = ['version-rthook.py']
+rthooks = ['fix-comtypes-rthook.py', 'version-rthook.py']
 
 if debug:
     rthooks.append('../../tools/common/debug-rthook.py')

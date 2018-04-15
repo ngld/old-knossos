@@ -27,11 +27,6 @@ from . import center
 if sys.platform == 'win32':
     from comtypes import client as cc
 
-    if hasattr(sys, 'frozen'):
-        cc.gen_dir = os.path.join(center.settings_path, 'comtypes')
-        if not os.path.isdir(cc.gen_dir):
-            os.makedirs(cc.gen_dir)
-
     ENCODING = 'latin1'
 else:
     ENCODING = 'utf8'
@@ -444,9 +439,3 @@ def speak(voice, volume, text):
     except Exception:
         logging.exception('Failed to speak!')
         return False
-
-
-if sys.platform == 'win32':
-    libc = ctypes.cdll.msvcrt
-else:
-    libc = load_lib('c')
