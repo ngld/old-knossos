@@ -1276,7 +1276,7 @@ class WebBridge(QtCore.QObject):
             else:
                 try:
                     for exe in mod.get_executables():
-                        if not exe['label']:
+                        if not exe.get('label'):
                             flags = settings.get_fso_flags(exe['file'])
                 except repo.NoExecutablesFound:
                     pass
@@ -1483,7 +1483,10 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return ''
 
-        return runner.apply_global_flags(mod)
+        try:
+            return runner.apply_global_flags(mod)
+        except repo.NoExecutablesFound:
+            return ''
 
     @QtCore.Slot(result=str)
     def getEngineBuilds(self):
