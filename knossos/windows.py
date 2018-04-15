@@ -19,11 +19,12 @@ import sys
 import logging
 import functools
 import json
+import threading
 
 from . import uhf
 uhf(__name__)
 
-from . import center, util, integration, web, repo, ipc
+from . import center, util, integration, web, repo, ipc, nebula
 from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.install import Ui_InstallDialog
@@ -69,7 +70,7 @@ class QMainWindow(QtWidgets.QMainWindow):
         return super(QMainWindow, self).changeEvent(event)
 
 
-class Window(object):
+class Window(QtCore.QObject):
     win = None
     closed = True
     _is_window = True
@@ -380,8 +381,11 @@ class HellWindow(Window):
 
 class ModInstallWindow(Window):
     _mod = None
+    _mod_ids = None
     _pkg_checks = None
     _dep_tpl = None
+    _edit_thread = None
+    updateEditable = QtCore.Signal(dict)
 
     def __init__(self, mod, sel_pkgs=[]):
         super(ModInstallWindow, self).__init__()
@@ -403,6 +407,10 @@ class ModInstallWindow(Window):
 
         self.win.accepted.connect(self.install)
         self.win.rejected.connect(self.close)
+
+        self.updateEditable.connect(self.update_editable)
+        self._edit_thread = threading.Thread(target=self._check_editable, daemon=True)
+        self._edit_thread.start()
 
         self.open()
 
@@ -430,7 +438,9 @@ class ModInstallWindow(Window):
             mods.remove(self._mod)
 
         mods = [self._mod] + list(mods)
+        self._mod_ids = []
         for mod in mods:
+            self._mod_ids.append((mod.mid, mod.version))
             item = QtWidgets.QTreeWidgetItem(self.win.treeWidget, ['%s %s' % (mod.title, mod.version), ''])
             item.setExpanded(True)
             item.setData(0, QtCore.Qt.UserRole, mod)
@@ -492,6 +502,38 @@ class ModInstallWindow(Window):
 
         self.win.treeWidget.header().resizeSections(QtWidgets.QHeaderView.ResizeToContents)
 
+    def _check_editable(self):
+        client = nebula.NebulaClient()
+        res = {}
+        for mid, version in self._mod_ids:
+            try:
+                inst_mod = center.installed.query(mid, version)
+                res[mid] = inst_mod.dev_mode
+                continue
+            except repo.ModNotFound:
+                pass
+
+            if center.settings['neb_user']:
+                try:
+                    result = client.is_editable(mid)
+                    res[mid] = result['result']
+                except Exception:
+                    logging.exception('Failed to retrieve editable status for %s!' % mid)
+                    res[mid] = False
+
+        if not self.closed:
+            self.updateEditable.emit(res)
+
+    def update_editable(self, info):
+        tree = self.win.treeWidget
+
+        for i in range(tree.topLevelItemCount()):
+            item = tree.topLevelItem(i)
+            mid = item.data(0, QtCore.Qt.UserRole).mid
+
+            if info[mid]:
+                item.setCheckState(2, QtCore.Qt.Checked)
+
     def update_selection(self, item, col):
         obj = item.data(0, QtCore.Qt.UserRole)
         if isinstance(obj, repo.Mod):
@@ -507,23 +549,31 @@ class ModInstallWindow(Window):
     def get_selected_pkgs(self):
         to_install = []
         to_remove = []
+        editable = {}
 
         for item in self._pkg_checks:
             selected = item.checkState(0) == QtCore.Qt.Checked
             installed = item.data(0, QtCore.Qt.UserRole + 1)
-            name = item.data(0, QtCore.Qt.UserRole)
+            mod = item.data(0, QtCore.Qt.UserRole)
 
             if selected != installed:
                 if installed:
-                    to_remove.append(name)
+                    to_remove.append(mod)
                 else:
-                    to_install.append(name)
+                    to_install.append(mod)
+
+        for i in range(self.win.treeWidget.topLevelItemCount()):
+            item = self.win.treeWidget.topLevelItem(i)
+            mod = item.data(0, QtCore.Qt.UserRole)
+
+            if item.checkState(2) == QtCore.Qt.Checked:
+                editable[mod.mid] = True
 
         to_install = center.mods.process_pkg_selection(to_install)
-        return to_install, to_remove
+        return to_install, to_remove, editable
 
     def update_deps(self):
-        pkg_sel, rem_sel = self.get_selected_pkgs()
+        pkg_sel, rem_sel, editable = self.get_selected_pkgs()
         dl_size = 0
         for item in self._pkg_checks:
             pkg = item.data(0, QtCore.Qt.UserRole)
@@ -545,10 +595,18 @@ class ModInstallWindow(Window):
         self.win.notesField.setPlainText(item.data(0, QtCore.Qt.UserRole + 2))
 
     def install(self):
-        to_install, to_remove = self.get_selected_pkgs()
+        to_install, to_remove, editable = self.get_selected_pkgs()
 
-        run_task(InstallTask(to_install, self._mod))
-        run_task(UninstallTask(to_remove, mods=[self._mod]))
+        def follow_up():
+            if to_remove:
+                run_task(UninstallTask(to_remove, mods=[self._mod]))
+
+        if to_install:
+            t1 = run_task(InstallTask(to_install, self._mod, editable=editable, check_after=not to_remove))
+            t1.done.connect(follow_up)
+        else:
+            follow_up()
+
         self.close()
 
 

@@ -15,25 +15,32 @@
 from __future__ import absolute_import, print_function
 
 import sys
+import os.path
 import logging
 import ctypes.util
-
-if sys.platform == 'win32':
-    from comtypes import client as cc
-
+import threading
 from . import uhf
 uhf(__name__)
 
 from . import center
 
-
 if sys.platform == 'win32':
+    from comtypes import client as cc
+
+    if hasattr(sys, 'frozen'):
+        cc.gen_dir = os.path.join(center.settings_path, 'comtypes')
+        if not os.path.isdir(cc.gen_dir):
+            os.makedirs(cc.gen_dir)
+
     ENCODING = 'latin1'
 else:
     ENCODING = 'utf8'
 
 sdl = None
 alc = None
+
+sdl_init_lock = threading.Lock()
+alc_init_lock = threading.Lock()
 
 
 class SDL_Rect(ctypes.Structure):
@@ -112,148 +119,149 @@ def double_zero_string(val):
 def init_sdl():
     global sdl, get_modes, list_joysticks, list_guid_joysticks, get_config_path
 
-    if sdl:
-        return
+    with sdl_init_lock:
+        if sdl:
+            return
 
-    if center.settings['sdl2_path']:
-        try:
-            sdl = load_lib(center.settings['sdl2_path'])
-        except Exception:
-            logging.exception('Failed to load user-supplied SDL2!')
-
-    if not sdl:
-        # Load SDL
-        if sys.platform == 'darwin' and hasattr(sys, 'frozen'):
+        if center.settings['sdl2_path']:
             try:
-                sdl = load_lib('../Frameworks/SDL2.framework/SDL2')
+                sdl = load_lib(center.settings['sdl2_path'])
             except Exception:
-                logging.exception('Failed to load bundled SDL2!')
+                logging.exception('Failed to load user-supplied SDL2!')
 
-    if not sdl:
-        sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
+        if not sdl:
+            # Load SDL
+            if sys.platform == 'darwin' and hasattr(sys, 'frozen'):
+                try:
+                    sdl = load_lib('../Frameworks/SDL2.framework/SDL2')
+                except Exception:
+                    logging.exception('Failed to load bundled SDL2!')
 
-    # SDL constants
-    SDL_INIT_VIDEO = 0x00000020
-    SDL_INIT_JOYSTICK = 0x00000200
+        if not sdl:
+            sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
 
-    # SDL.h
-    sdl.SDL_SetMainReady.argtypes = []
-    sdl.SDL_SetMainReady.restype = None
+        # SDL constants
+        SDL_INIT_VIDEO = 0x00000020
+        SDL_INIT_JOYSTICK = 0x00000200
 
-    sdl.SDL_Init.argtypes = [ctypes.c_uint32]
-    sdl.SDL_Init.restype = ctypes.c_int
+        # SDL.h
+        sdl.SDL_SetMainReady.argtypes = []
+        sdl.SDL_SetMainReady.restype = None
 
-    sdl.SDL_InitSubSystem.argtypes = [ctypes.c_uint32]
-    sdl.SDL_InitSubSystem.restype = ctypes.c_int
+        sdl.SDL_Init.argtypes = [ctypes.c_uint32]
+        sdl.SDL_Init.restype = ctypes.c_int
 
-    sdl.SDL_QuitSubSystem.argtypes = [ctypes.c_uint32]
-    sdl.SDL_QuitSubSystem.restype = None
+        sdl.SDL_InitSubSystem.argtypes = [ctypes.c_uint32]
+        sdl.SDL_InitSubSystem.restype = ctypes.c_int
 
-    # SDL_error.h
-    sdl.SDL_GetError.argtypes = []
-    sdl.SDL_GetError.restype = ctypes.c_char_p
+        sdl.SDL_QuitSubSystem.argtypes = [ctypes.c_uint32]
+        sdl.SDL_QuitSubSystem.restype = None
 
-    # SDL_video.h
-    sdl.SDL_VideoInit.argtypes = [ctypes.c_char_p]
-    sdl.SDL_VideoInit.restype = ctypes.c_int
+        # SDL_error.h
+        sdl.SDL_GetError.argtypes = []
+        sdl.SDL_GetError.restype = ctypes.c_char_p
 
-    sdl.SDL_VideoQuit.argtypes = []
-    sdl.SDL_VideoQuit.restype = None
+        # SDL_video.h
+        sdl.SDL_VideoInit.argtypes = [ctypes.c_char_p]
+        sdl.SDL_VideoInit.restype = ctypes.c_int
 
-    sdl.SDL_GetNumVideoDisplays.argtypes = []
-    sdl.SDL_GetNumVideoDisplays.restype = ctypes.c_int
+        sdl.SDL_VideoQuit.argtypes = []
+        sdl.SDL_VideoQuit.restype = None
 
-    sdl.SDL_GetNumDisplayModes.argtypes = [ctypes.c_int]
-    sdl.SDL_GetNumDisplayModes.restype = ctypes.c_int
+        sdl.SDL_GetNumVideoDisplays.argtypes = []
+        sdl.SDL_GetNumVideoDisplays.restype = ctypes.c_int
 
-    sdl.SDL_GetDisplayMode.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(SDL_DisplayMode)]
-    sdl.SDL_GetDisplayMode.restype = ctypes.c_int
+        sdl.SDL_GetNumDisplayModes.argtypes = [ctypes.c_int]
+        sdl.SDL_GetNumDisplayModes.restype = ctypes.c_int
 
-    sdl.SDL_GetCurrentDisplayMode.argtypes = [ctypes.c_int, ctypes.POINTER(SDL_DisplayMode)]
-    sdl.SDL_GetCurrentDisplayMode.restype = ctypes.c_int
+        sdl.SDL_GetDisplayMode.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(SDL_DisplayMode)]
+        sdl.SDL_GetDisplayMode.restype = ctypes.c_int
 
-    # SDL_joystick.h
-    sdl.SDL_NumJoysticks.argtypes = []
-    sdl.SDL_NumJoysticks.restype = ctypes.c_int
+        sdl.SDL_GetCurrentDisplayMode.argtypes = [ctypes.c_int, ctypes.POINTER(SDL_DisplayMode)]
+        sdl.SDL_GetCurrentDisplayMode.restype = ctypes.c_int
 
-    sdl.SDL_JoystickNameForIndex.argtypes = [ctypes.c_int]
-    sdl.SDL_JoystickNameForIndex.restype = ctypes.c_char_p
+        # SDL_joystick.h
+        sdl.SDL_NumJoysticks.argtypes = []
+        sdl.SDL_NumJoysticks.restype = ctypes.c_int
 
-    sdl.SDL_JoystickGetDeviceGUID.argtypes = [ctypes.c_int]
-    sdl.SDL_JoystickGetDeviceGUID.restype = SDL_JoystickGUID
+        sdl.SDL_JoystickNameForIndex.argtypes = [ctypes.c_int]
+        sdl.SDL_JoystickNameForIndex.restype = ctypes.c_char_p
 
-    sdl.SDL_JoystickGetGUIDString.argtypes = [SDL_JoystickGUID, ctypes.c_char_p, ctypes.c_int]
-    sdl.SDL_JoystickGetGUIDString.restype = None
+        sdl.SDL_JoystickGetDeviceGUID.argtypes = [ctypes.c_int]
+        sdl.SDL_JoystickGetDeviceGUID.restype = SDL_JoystickGUID
 
-    # SDL_filesystem.h
-    sdl.SDL_GetPrefPath.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
-    sdl.SDL_GetPrefPath.restype = ctypes.c_char_p
+        sdl.SDL_JoystickGetGUIDString.argtypes = [SDL_JoystickGUID, ctypes.c_char_p, ctypes.c_int]
+        sdl.SDL_JoystickGetGUIDString.restype = None
 
-    sdl.SDL_SetMainReady()
-    if sdl.SDL_Init(0) != 0:
-        logging.error('Failed to init SDL!')
-        logging.error(sdl.SDL_GetError())
+        # SDL_filesystem.h
+        sdl.SDL_GetPrefPath.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+        sdl.SDL_GetPrefPath.restype = ctypes.c_char_p
 
-    def get_modes():
-        if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0 or sdl.SDL_VideoInit(None) < 0:
-            logging.error('Failed to init SDL\'s video subsystem!')
+        sdl.SDL_SetMainReady()
+        if sdl.SDL_Init(0) != 0:
+            logging.error('Failed to init SDL!')
             logging.error(sdl.SDL_GetError())
-            return []
 
-        modes = []
-        for i in range(sdl.SDL_GetNumVideoDisplays()):
-            for a in range(sdl.SDL_GetNumDisplayModes(i)):
-                m = SDL_DisplayMode()
-                sdl.SDL_GetDisplayMode(i, a, ctypes.byref(m))
+        def get_modes():
+            if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0 or sdl.SDL_VideoInit(None) < 0:
+                logging.error('Failed to init SDL\'s video subsystem!')
+                logging.error(sdl.SDL_GetError())
+                return []
 
-                if (m.w, m.h) not in modes:
-                    modes.append((m.w, m.h))
+            modes = []
+            for i in range(sdl.SDL_GetNumVideoDisplays()):
+                for a in range(sdl.SDL_GetNumDisplayModes(i)):
+                    m = SDL_DisplayMode()
+                    sdl.SDL_GetDisplayMode(i, a, ctypes.byref(m))
 
-        sdl.SDL_VideoQuit()
-        sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
-        return modes
+                    if (m.w, m.h) not in modes:
+                        modes.append((m.w, m.h))
 
-    def list_joysticks():
-        if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
-            logging.error('Failed to init SDL\'s joystick subsystem!')
-            logging.error(sdl.SDL_GetError())
-            return []
+            sdl.SDL_VideoQuit()
+            sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
+            return modes
 
-        joys = []
-        for i in range(sdl.SDL_NumJoysticks()):
-            joys.append(sdl.SDL_JoystickNameForIndex(i).decode(ENCODING))
+        def list_joysticks():
+            if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
+                logging.error('Failed to init SDL\'s joystick subsystem!')
+                logging.error(sdl.SDL_GetError())
+                return []
 
-        sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
-        return joys
+            joys = []
+            for i in range(sdl.SDL_NumJoysticks()):
+                joys.append(sdl.SDL_JoystickNameForIndex(i).decode(ENCODING))
 
-    def list_guid_joysticks():
-        if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
-            logging.error('Failed to init SDL\'s joystick subsystem!')
-            logging.error(sdl.SDL_GetError())
-            return []
+            sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
+            return joys
 
-        joys = []
-        guid_counts = {}
-        buf = ctypes.create_string_buffer(33)
-        for i in range(sdl.SDL_NumJoysticks()):
-            guid = sdl.SDL_JoystickGetDeviceGUID(i)
-            sdl.SDL_JoystickGetGUIDString(guid, buf, 33)
+        def list_guid_joysticks():
+            if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
+                logging.error('Failed to init SDL\'s joystick subsystem!')
+                logging.error(sdl.SDL_GetError())
+                return []
 
-            guid_str = buf.raw.decode(ENCODING).strip('\x00')
-            if guid_str in guid_counts:
-                guid_counts[guid_str] += 1
-            else:
-                guid_counts[guid_str] = 0
+            joys = []
+            guid_counts = {}
+            buf = ctypes.create_string_buffer(33)
+            for i in range(sdl.SDL_NumJoysticks()):
+                guid = sdl.SDL_JoystickGetDeviceGUID(i)
+                sdl.SDL_JoystickGetGUIDString(guid, buf, 33)
 
-            name = sdl.SDL_JoystickNameForIndex(i).decode(ENCODING)
-            joys.append((guid_str, guid_counts[guid_str], name))
+                guid_str = buf.raw.decode(ENCODING).strip('\x00')
+                if guid_str in guid_counts:
+                    guid_counts[guid_str] += 1
+                else:
+                    guid_counts[guid_str] = 0
 
-        sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
-        return joys
+                name = sdl.SDL_JoystickNameForIndex(i).decode(ENCODING)
+                joys.append((guid_str, guid_counts[guid_str], name))
 
-    def get_config_path():
-        # See https://github.com/scp-fs2open/fs2open.github.com/blob/master/code/osapi/osapi.cpp
-        return sdl.SDL_GetPrefPath(b'HardLightProductions', b'FreeSpaceOpen').decode('utf8')
+            sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
+            return joys
+
+        def get_config_path():
+            # See https://github.com/scp-fs2open/fs2open.github.com/blob/master/code/osapi/osapi.cpp
+            return sdl.SDL_GetPrefPath(b'HardLightProductions', b'FreeSpaceOpen').decode('utf8')
 
 
 # OpenAL constants
@@ -267,49 +275,50 @@ ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER = 0x311
 def init_openal():
     global alc, dev, ctx
 
-    if alc:
-        return
+    with alc_init_lock:
+        if alc:
+            return
 
-    # Load OpenAL
-    if center.settings['openal_path']:
-        try:
-            alc = load_lib(center.settings['openal_path'])
-        except Exception:
-            logging.exception('Failed to load user-supplied OpenAL!')
+        # Load OpenAL
+        if center.settings['openal_path']:
+            try:
+                alc = load_lib(center.settings['openal_path'])
+            except Exception:
+                logging.exception('Failed to load user-supplied OpenAL!')
 
-    if not alc:
-        try:
-            alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL', 'OpenAL32.dll')
-        except Exception:
-            logging.exception('Failed to load OpenAL!')
+        if not alc:
+            try:
+                alc = load_lib('libopenal.so.1.15.1', 'openal', 'OpenAL', 'OpenAL32.dll')
+            except Exception:
+                logging.exception('Failed to load OpenAL!')
 
-    if alc:
-        alc.alcOpenDevice.argtypes = [ctypes.c_char_p]
-        alc.alcOpenDevice.restype = ctypes.c_void_p
+        if alc:
+            alc.alcOpenDevice.argtypes = [ctypes.c_char_p]
+            alc.alcOpenDevice.restype = ctypes.c_void_p
 
-        alc.alcCreateContext.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        alc.alcCreateContext.restype = ctypes.c_void_p
+            alc.alcCreateContext.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            alc.alcCreateContext.restype = ctypes.c_void_p
 
-        alc.alcMakeContextCurrent.argtypes = [ctypes.c_void_p]
-        alc.alcMakeContextCurrent.restype = ctypes.c_bool
+            alc.alcMakeContextCurrent.argtypes = [ctypes.c_void_p]
+            alc.alcMakeContextCurrent.restype = ctypes.c_bool
 
-        alc.alcDestroyContext.argtypes = [ctypes.c_void_p]
-        alc.alcDestroyContext.restype = None
+            alc.alcDestroyContext.argtypes = [ctypes.c_void_p]
+            alc.alcDestroyContext.restype = None
 
-        alc.alcCloseDevice.argtypes = [ctypes.c_void_p]
-        alc.alcCloseDevice.restype = None
+            alc.alcCloseDevice.argtypes = [ctypes.c_void_p]
+            alc.alcCloseDevice.restype = None
 
-        alc.alcGetError.argtypes = [ctypes.c_void_p]
-        alc.alcGetError.restype = ctypes.c_char_p
+            alc.alcGetError.argtypes = [ctypes.c_void_p]
+            alc.alcGetError.restype = ctypes.c_char_p
 
-        alc.alcIsExtensionPresent.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        alc.alcIsExtensionPresent.restype = ctypes.c_bool
+            alc.alcIsExtensionPresent.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+            alc.alcIsExtensionPresent.restype = ctypes.c_bool
 
-        alc.alcGetString.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        alc.alcGetString.restype = ctypes.POINTER(ctypes.c_char)
-        return True
-    else:
-        return False
+            alc.alcGetString.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            alc.alcGetString.restype = ctypes.POINTER(ctypes.c_char)
+            return True
+        else:
+            return False
 
 
 gtk = None

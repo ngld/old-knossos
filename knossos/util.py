@@ -843,7 +843,11 @@ def ensure_tempdir():
     if center.settings['base_path']:
         path = os.path.join(center.settings['base_path'], 'temp')
         if not os.path.isdir(path):
-            os.makedirs(path)
+            try:
+                os.makedirs(path)
+            except OSError:
+                logging.warn('Failed to create temporary directory!')
+                return
 
         tempfile.tempdir = path
 

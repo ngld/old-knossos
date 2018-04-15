@@ -24,6 +24,7 @@ export default {
         edit_dep_idx: -1,
         edit_dep_mod: null,
         edit_dep_version: null,
+        edit_dep_allow_new: false,
         edit_dep_pkgs: null,
         edit_dep_pkg_sel: null,
 
@@ -59,9 +60,12 @@ export default {
                 let found = false;
 
                 for(let mod of new_list) {
-                    if(mod.id === this.selected_mod.id && mod.version === this.selected_mod.version) {
-                        this.selected_mod = Object.assign({}, mod);
+                    if(mod.id === this.selected_mod.id) {
                         found = true;
+                        let version = this.selected_mod.version;
+
+                        this.selected_mod = Object.assign({}, mod);
+                        if(version !== this.selected_mod.version) this.selectVersion(version);
                         break;
                     }
                 }
@@ -244,6 +248,7 @@ export default {
             this.edit_dep_idx = -1;
             this.edit_dep_mod = null;
             this.edit_dep_version = null;
+            this.edit_dep_allow_new = true;
             this.edit_dep_pkgs = [];
             this.edit_dep_pkg_sel = {};
             this.edit_dep = true;
@@ -253,8 +258,14 @@ export default {
             this.edit_dep_idx = idx;
             this.edit_dep_mod = dep.id;
             this.edit_dep_version = dep.version;
+            this.edit_dep_allow_new = false;
             this.edit_dep_pkg_sel = {};
             this.edit_dep = true;
+
+            if(dep.version && dep.version.substring(0, 2) === '>=') {
+                this.edit_dep_version = dep.version.substring(2);
+                this.edit_dep_allow_new = true;
+            }
 
             this.updateDepModVersion();
 
@@ -269,6 +280,7 @@ export default {
             let mod = this.mod_map[this.edit_dep_mod];
 
             this.edit_dep_version = null;
+            this.edit_dep_allow_new = false;
             this.edit_dep_pkgs = [];
             this.edit_dep_pkg_sel = {};
 
@@ -310,7 +322,7 @@ export default {
         saveDep() {
             let dep = {
                 id: this.edit_dep_mod,
-                version: this.edit_dep_version,
+                version: (this.edit_dep_allow_new ? '>=' : '') + this.edit_dep_version,
                 packages: []
             };
 
@@ -863,7 +875,12 @@ export default {
                                                 <select class="form-control" v-model="edit_dep_version" @change="updateDepModVersion" v-else>
                                                     <option :value="null" :key="'newest'">newest</option>
                                                     <option v-for="v in mod_map[edit_dep_mod].versions" :value="v.version" :key="v.version">{{ v.version }}</option>
-                                                </select>
+                                                </select><br>
+
+                                                <label>
+                                                    <input type="checkbox" v-model="edit_dep_allow_new">
+                                                    Allow newer versions
+                                                </label>
                                             </div>
                                         </div>
 
@@ -882,9 +899,10 @@ export default {
                                             </div>
                                         </div>
 
-                                        <button class="btn btn-small" @click.prevent="saveDep">Save</button>
-
+                                        <button class="btn btn-small btn-success" @click.prevent="saveDep">Save</button>
+                                        &nbsp;&nbsp;
                                         <button class="btn btn-small" @click.prevent="edit_dep = false">Cancel</button>
+
                                         <button class="btn btn-small pull-right" v-if="edit_dep_idx !== -1" @click.prevent="deleteDep">Delete</button>
                                     </div>
                                 </div>
@@ -935,7 +953,9 @@ export default {
 
                             <div class="form-group">
                                 <div class="col-xs-9 col-xs-offset-3">
-                                    <button class="mod-btn btn-green" @click.prevent="savePackage"><span class="btn-text">SAVE</span></button>
+                                    <button :class="'mod-btn btn-' + (edit_dep ? 'grey' : 'green')" @click.prevent="savePackage" :disabled="edit_dep">
+                                        <span class="btn-text">SAVE</span>
+                                    </button>
 
                                     <button class="mod-btn btn-red" @click.prevent="deletePackage">DELETE</button>
                                 </div>

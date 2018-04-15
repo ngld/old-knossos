@@ -326,23 +326,25 @@ export default {
         <div class="welcome-overlay" v-if="page === 'welcome'"></div>
 
     <!-------------------------------------------------------------------------------- Start the Details Menu ---------->
-        <div id="details-tab-bar" v-if="page === 'details'">
+        <div id="details-tab-bar" v-show="page === 'details'">
             <a href="#" class="main-btn" @click="exitDetails"><i class="fa fa-chevron-left"></i> Back</a>
             <span class="main-btn active"><i class="fa fa-exclamation-circle"></i> Details</span>
         </div>
 
     <!-------------------------------------------------------------------------------- Build the Main View container ---------->
-        <kn-scroll-container v-show="page === 'modlist'" key="modlist">
-            <div class="container-fluid mod-container">
-                <div v-if="tab === 'home'">
-                    <kn-mod-home v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-home>
+        <keep-alive>
+            <kn-scroll-container v-if="page === 'modlist'" key="modlist">
+                <div class="container-fluid mod-container">
+                    <div v-if="tab === 'home'">
+                        <kn-mod-home v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-home>
+                    </div>
+                    <div v-else>
+                        <kn-mod-explore v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-explore>
+                    </div>
+                    <div v-if="mods.length === 0" class="main-notice">No mods found.</div>
                 </div>
-                <div v-else>
-                    <kn-mod-explore v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-explore>
-                </div>
-                <div v-if="mods.length === 0" class="main-notice">No mods found.</div>
-            </div>
-        </kn-scroll-container>
+            </kn-scroll-container>
+        </keep-alive>
 
         <kn-scroll-container v-if="page === 'welcome'" key="welcome">
             <kn-welcome-page></kn-welcome-page>
@@ -360,11 +362,13 @@ export default {
             </div>
         </kn-scroll-container>
 
-        <kn-scroll-container v-if="page === 'develop'" key="develop">
-            <div class="info-page devel-page" v-if="page === 'develop'">
-                <kn-devel-page :mods="mods"></kn-devel-page>
-            </div>
-        </kn-scroll-container>
+        <keep-alive>
+            <kn-scroll-container v-if="page === 'develop'" key="develop">
+                <div class="info-page devel-page" v-if="page === 'develop'">
+                    <kn-devel-page :mods="mods"></kn-devel-page>
+                </div>
+            </kn-scroll-container>
+        </keep-alive>
 
         <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>
 
@@ -520,7 +524,7 @@ export default {
                                 </select>
 
                                 <span class="help-block">
-                                    Please select your parent TC here. If this doesn't apply to a TC, select FS2.
+                                    Please select your parent TC here. If this mod doesn't extend a TC, select "Retail FS2".
                                 </span>
                             </div>
                         </div>

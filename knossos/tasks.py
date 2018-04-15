@@ -49,43 +49,36 @@ class FetchTask(progress.Task):
         self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(repos)])
 
     def work(self, params):
-        if params[0] == 'repo':
-            _, prio, link = params
+        _, prio, link = params
 
-            progress.update(0.1, 'Fetching "%s"...' % link)
+        progress.update(0.1, 'Fetching "%s"...' % link)
 
-            try:
-                data = Repo()
-                data.is_link = True
+        try:
+            data = Repo()
+            data.is_link = True
 
-                if link == '#private':
-                    if not center.settings['neb_user']:
-                        return
+            if link == '#private':
+                if not center.settings['neb_user']:
+                    return
 
-                    client = nebula.NebulaClient()
-                    mods = client.get_private_mods()
+                client = nebula.NebulaClient()
+                mods = client.get_private_mods()
 
-                    data.base = '#private'
-                    data.set(mods)
-                else:
-                    raw_data = util.get(link, raw=True)
-                    if not raw_data:
-                        return
+                data.base = '#private'
+                data.set(mods)
+            else:
+                raw_data = util.get(link, raw=True)
+                if not raw_data:
+                    return
 
-                    data.base = os.path.dirname(raw_data.url)
-                    data.parse(raw_data.text)
+                data.base = os.path.dirname(raw_data.url)
+                data.parse(raw_data.text)
 
-            except Exception:
-                logging.exception('Failed to decode "%s"!', link)
-                return
+        except Exception:
+            logging.exception('Failed to decode "%s"!', link)
+            return
 
-            wl = []
-            for mid, mvs in data.mods.items():
-                for mod in mvs:
-                    wl.append(('mod', mod))
-
-            self.add_work(wl)
-            self.post((prio, data))
+        self.post((prio, data))
 
     def finish(self):
         if not self.aborted:
@@ -115,8 +108,7 @@ class LoadLocalModsTask(progress.Task):
             logging.warning('A LoadLocalModsTask was launched even though no base path was set!')
         else:
             center.installed.clear()
-            self.add_work((center.settings['base_path'],))
-            self.add_work(center.settings['base_dirs'])
+            self.add_work([center.settings['base_path']] + center.settings['base_dirs'])
 
     def work(self, path):
         mods = center.installed
@@ -142,7 +134,8 @@ class LoadLocalModsTask(progress.Task):
             except Exception:
                 logging.exception('Failed to parse "%s"!', sub)
 
-        self.add_work(subs)
+        if subs:
+            self.add_work(subs)
 
     def finish(self):
         center.main_win.update_mod_list()
@@ -271,6 +264,7 @@ class InstallTask(progress.MultistepTask):
     _pkgs = None
     _pkg_names = None
     _mods = None
+    _editable = None
     _dls = None
     _copies = None
     _steps = 4
@@ -278,13 +272,14 @@ class InstallTask(progress.MultistepTask):
     _7z_lock = None
     check_after = True
 
-    def __init__(self, pkgs, mod=None, check_after=True):
+    def __init__(self, pkgs, mod=None, check_after=True, editable={}):
         super(InstallTask, self).__init__()
 
         self._mods = set()
         self._pkgs = []
         self._pkg_names = []
         self.check_after = check_after
+        self._editable = editable
 
         if sys.platform == 'win32':
             self._7z_lock = threading.Lock()
@@ -340,20 +335,14 @@ class InstallTask(progress.MultistepTask):
             )
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
 
-        if not isinstance(self, UpdateTask):
+        if not isinstance(self, UpdateTask) and self.check_after:
             run_task(LoadLocalModsTask())
 
     def init1(self):
         if center.settings['neb_user']:
-            try:
-                neb = nebula.NebulaClient()
-                editable = neb.get_editable_mods()
-
-                for mod in self._mods:
-                    if mod.mid in editable:
-                        mod.dev_mode = True
-            except Exception:
-                logging.exception('Failed to login to the Nebula')
+            for mod in self._mods:
+                if mod.mid in self._editable:
+                    mod.dev_mode = True
 
         self._threads = 3
         self.add_work(self._mods)
@@ -418,15 +407,12 @@ class InstallTask(progress.MultistepTask):
             progress.update(i / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
 
             # Check if we already have this file
-            found = False
-            if mod in inst_mods:
-                # This mod is already installed, let's see if the file already exists
-                if mod.dev_mode and mod in pkg_folders:
-                    dest_path = util.ipath(os.path.join(mod.folder, pkg_folders[mod][info['package']], info['filename']))
-                else:
-                    dest_path = util.ipath(os.path.join(mod.folder, info['filename']))
+            if mod.dev_mode and mod in pkg_folders:
+                dest_path = util.ipath(os.path.join(mod.folder, pkg_folders[mod][info['package']], info['filename']))
+            else:
+                dest_path = util.ipath(os.path.join(mod.folder, info['filename']))
 
-                found = os.path.isfile(dest_path) and util.check_hash(info['checksum'], dest_path)
+            found = os.path.isfile(dest_path) and util.check_hash(info['checksum'], dest_path)
 
             if not found:
                 for mv in inst_mods:

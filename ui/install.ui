@@ -75,6 +75,9 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="horizontalScrollBarPolicy">
+          <enum>Qt::ScrollBarAlwaysOff</enum>
+         </property>
          <property name="alternatingRowColors">
           <bool>true</bool>
          </property>
@@ -95,6 +98,11 @@
          <column>
           <property name="text">
            <string>Filesize</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Dev Mode</string>
           </property>
          </column>
         </widget>
