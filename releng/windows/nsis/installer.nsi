@@ -70,8 +70,8 @@ Section
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "InstallLocation" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "DisplayIcon" "$\"$INSTDIR\Knossos.exe$\",0"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "Publisher" "ngld"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "InstallSource" "https://dev.tproxy.de/knossos/"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "URLInfoAbout" "https://dev.tproxy.de/knossos/"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "InstallSource" "https://fsnebula.org/knossos/"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "URLInfoAbout" "https://fsnebula.org/knossos/"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "DisplayVersion" "${KNOSSOS_VERSION}"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Knossos" "NoRepair" 1
@@ -92,7 +92,10 @@ Section "Desktop icon" desk_icon
 SectionEnd
 
 Section "fso:// Support" fso_support
-    ExecWait '"$INSTDIR\Knossos.exe" --install-scheme --silent'
+    WriteRegStr HKCR "fso" "Default" "URL:Knossos protocol"
+    WriteRegStr HKCR "fso" "URL Protocol" ""
+    WriteRegStr HKCR "fso\DefaultIcon" "Default" "$\"$INSTDIR\data\hlp.ico$\",1"
+    WriteRegStr HKCR "fso\shell\open\command" "Default" "$\"$INSTDIR\Knossos.exe$\" $\"%1$\""
 SectionEnd
 
 Section "Uninstall"

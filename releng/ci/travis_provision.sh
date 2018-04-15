@@ -18,6 +18,8 @@ if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     curl -so python.pkg "https://www.python.org/ftp/python/3.6.5/python-3.6.5-macosx10.6.pkg"
     sudo installer -store -pkg python.pkg -target /
 
+    export PATH="/Library/Frameworks/Python.framework/Versions/3.6/bin:$PATH"
+
     echo "==> Installing Python dependencies"
     pip3 install -U pip
     pip3 install six requests requests_toolbelt ply raven semantic_version PyQt5 PyInstaller token_bucket dmgbuild
