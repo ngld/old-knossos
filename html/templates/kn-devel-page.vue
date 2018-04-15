@@ -885,9 +885,10 @@ export default {
                                             </div>
                                         </div>
 
-                                        <button class="btn btn-small" @click.prevent="saveDep">Save</button>
-
+                                        <button class="btn btn-small btn-success" @click.prevent="saveDep">Save</button>
+                                        &nbsp;&nbsp;
                                         <button class="btn btn-small" @click.prevent="edit_dep = false">Cancel</button>
+
                                         <button class="btn btn-small pull-right" v-if="edit_dep_idx !== -1" @click.prevent="deleteDep">Delete</button>
                                     </div>
                                 </div>
@@ -938,7 +939,9 @@ export default {
 
                             <div class="form-group">
                                 <div class="col-xs-9 col-xs-offset-3">
-                                    <button class="mod-btn btn-green" @click.prevent="savePackage"><span class="btn-text">SAVE</span></button>
+                                    <button :class="'mod-btn btn-' + (edit_dep ? 'grey' : 'green')" @click.prevent="savePackage" :disabled="edit_dep">
+                                        <span class="btn-text">SAVE</span>
+                                    </button>
 
                                     <button class="mod-btn btn-red" @click.prevent="deletePackage">DELETE</button>
                                 </div>

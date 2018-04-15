@@ -524,7 +524,7 @@ export default {
                                 </select>
 
                                 <span class="help-block">
-                                    Please select your parent TC here. If this doesn't apply to a TC, select FS2.
+                                    Please select your parent TC here. If this mod doesn't extend a TC, select "Retail FS2".
                                 </span>
                             </div>
                         </div>
