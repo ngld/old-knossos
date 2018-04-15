@@ -597,12 +597,16 @@ class ModInstallWindow(Window):
     def install(self):
         to_install, to_remove, editable = self.get_selected_pkgs()
 
-        t1 = run_task(InstallTask(to_install, self._mod, editable=editable))
-
         def follow_up():
-            run_task(UninstallTask(to_remove, mods=[self._mod]))
+            if to_remove:
+                run_task(UninstallTask(to_remove, mods=[self._mod]))
 
-        t1.done.connect(follow_up)
+        if to_install:
+            t1 = run_task(InstallTask(to_install, self._mod, editable=editable, check_after=not to_remove))
+            t1.done.connect(follow_up)
+        else:
+            follow_up()
+
         self.close()
 
 

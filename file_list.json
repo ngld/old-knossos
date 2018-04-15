@@ -118,6 +118,7 @@
     "templates": [
         "html/templates/kn-details-page.vue",
         "html/templates/kn-dev-mod.vue",
+        "html/templates/kn-dev-staff.vue",
         "html/templates/kn-devel-page.vue",
         "html/templates/kn-drawer.vue",
         "html/templates/kn-dropdown.vue",

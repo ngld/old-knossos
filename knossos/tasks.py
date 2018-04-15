@@ -335,7 +335,7 @@ class InstallTask(progress.MultistepTask):
             )
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
 
-        if not isinstance(self, UpdateTask):
+        if not isinstance(self, UpdateTask) and self.check_after:
             run_task(LoadLocalModsTask())
 
     def init1(self):
@@ -407,15 +407,12 @@ class InstallTask(progress.MultistepTask):
             progress.update(i / amount, 'Checking %s: %s...' % (mod.title, info['filename']))
 
             # Check if we already have this file
-            found = False
-            if mod in inst_mods:
-                # This mod is already installed, let's see if the file already exists
-                if mod.dev_mode and mod in pkg_folders:
-                    dest_path = util.ipath(os.path.join(mod.folder, pkg_folders[mod][info['package']], info['filename']))
-                else:
-                    dest_path = util.ipath(os.path.join(mod.folder, info['filename']))
+            if mod.dev_mode and mod in pkg_folders:
+                dest_path = util.ipath(os.path.join(mod.folder, pkg_folders[mod][info['package']], info['filename']))
+            else:
+                dest_path = util.ipath(os.path.join(mod.folder, info['filename']))
 
-                found = os.path.isfile(dest_path) and util.check_hash(info['checksum'], dest_path)
+            found = os.path.isfile(dest_path) and util.check_hash(info['checksum'], dest_path)
 
             if not found:
                 for mv in inst_mods:
