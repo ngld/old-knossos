@@ -520,6 +520,8 @@ class ModInstallWindow(Window):
                 except Exception:
                     logging.exception('Failed to retrieve editable status for %s!' % mid)
                     res[mid] = False
+            else:
+                res[mid] = False
 
         if not self.closed:
             self.updateEditable.emit(res)

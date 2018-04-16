@@ -25,8 +25,6 @@ uhf(__name__)
 from . import center
 
 if sys.platform == 'win32':
-    from comtypes import client as cc
-
     ENCODING = 'latin1'
 else:
     ENCODING = 'utf8'
@@ -417,7 +415,8 @@ def list_voices():
         return []
 
     try:
-        voice = cc.CreateObject('SAPI.SpVoice')
+        import win32com.client as cc
+        voice = cc.Dispatch('SAPI.SpVoice')
         return [v.GetDescription() for v in voice.GetVoices()]
     except Exception:
         logging.exception('Failed to retrieve voices!')
@@ -429,8 +428,18 @@ def speak(voice, volume, text):
         return False
 
     try:
-        hdl = cc.CreateObject('SAPI.SpVoice')
-        hdl.Voice = hdl.GetVoices()[voice]
+        import win32com.client as cc
+
+        hdl = cc.Dispatch('SAPI.SpVoice')
+
+        # We always seem to receive an AttributeError when we try to access
+        # SetVoice the first time. It works the second time for whatever reason... >_>
+        try:
+            hdl.SetVoice
+        except AttributeError:
+            pass
+
+        hdl.SetVoice(hdl.GetVoices()[voice])
         hdl.Volume = volume
         hdl.Speak(text, 19)
         hdl.WaitUntilDone(10000)

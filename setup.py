@@ -47,7 +47,7 @@ with open(path.join(here, 'knossos', 'center.py'), 'r', encoding='utf-8') as f:
                         data = stream.read()
                         commit = data[:7]
                         if commit == '0000000':
-                            commit = data.split(' ')[1][:7]
+                            commit = data.splitlines()[-1].split(' ')[1][:7]
 
                         version += '+' + commit
             elif len(ref[0]) == 40:
