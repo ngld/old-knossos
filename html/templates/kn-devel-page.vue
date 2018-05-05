@@ -320,9 +320,14 @@ export default {
         },
 
         saveDep() {
+            let version = this.edit_dep_version;
+            if(version !== null && this.edit_dep_allow_new) {
+                version = '>=' + version;
+            }
+
             let dep = {
                 id: this.edit_dep_mod,
-                version: (this.edit_dep_allow_new ? '>=' : '') + this.edit_dep_version,
+                version: version,
                 packages: []
             };
 
