@@ -33,6 +33,7 @@ from . import center, util, bool_parser
 # You have to fill this using https://github.com/workhorsy/py-cpuinfo .
 CPU_INFO = None
 STABILITES = ('nightly', 'rc', 'stable')
+DEBUG_DEPS = False
 
 
 class ModNotFound(Exception):
@@ -296,7 +297,8 @@ class Repo(object):
         dep_dict = {}
         ndeps = pkgs
 
-        logging.debug('Dep resolution started with %s, r = %r', pkgs, recursive)
+        if DEBUG_DEPS:
+            logging.debug('Dep resolution started with %s, r = %r', pkgs, recursive)
 
         for pkg in pkgs:
             mod = pkg.get_mod()
@@ -313,7 +315,10 @@ class Repo(object):
 
             for pkg in _nd:
                 deps = pkg.resolve_deps()
-                logging.debug('%s -> %s', pkg, ['%s %s' % (pkg, str(spec)) for pkg, spec in deps])
+
+                if DEBUG_DEPS:
+                    logging.debug('%s -> %s', pkg, ['%s %s' % (pkg, str(spec)) for pkg, spec in deps])
+
                 for dep, version in deps:
                     dd = dep_dict.setdefault(dep.get_mod().mid, {})
                     dd = dd.setdefault(version, {})
@@ -388,7 +393,9 @@ class Repo(object):
                     del remains[-1]['#mod']
                     dep_list |= set(remains[-1].values())
 
-        logging.debug('Dep resolution result = %s', dep_list)
+        if DEBUG_DEPS:
+            logging.debug('Dep resolution result = %s', dep_list)
+
         return dep_list
 
     def get_dependents(self, pkgs):

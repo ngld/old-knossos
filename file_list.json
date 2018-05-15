@@ -100,6 +100,7 @@
         "knossos/clibs.py",
         "knossos/integration.py",
         "knossos/ipc.py",
+        "knossos/itaskbarlist3.py",
         "knossos/launcher.py",
         "knossos/nebula.py",
         "knossos/parsetab.py",
