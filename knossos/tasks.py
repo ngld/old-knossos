@@ -805,6 +805,55 @@ class UninstallTask(progress.MultistepTask):
         run_task(LoadLocalModsTask())
 
 
+class RemoveModFolder(progress.Task):
+    _error = None
+    _success = False
+
+    def __init__(self, mod):
+        super(RemoveModFolder, self).__init__()
+        self._mod = mod
+
+        self.title = 'Deleting %s...' % mod.folder
+        self.done.connect(self.finish)
+
+        self.add_work(('',))
+
+    def work(self, dummy):
+        items = []
+        path = self._mod.folder
+
+        for sub, d, f in os.walk(path):
+            for name in f:
+                items.append(os.path.join(path, sub, name))
+
+        count = float(len(items))
+        try:
+            for i, name in enumerate(items):
+                progress.update(i / count, 'Deleting files...')
+
+                os.unlink(name)
+
+            # Delete the remaining empty directories and other stuff
+            shutil.rmtree(path)
+        except Exception as exc:
+            logging.exception('Failed to delete mod folder for %s!' % self._mod.mid)
+            self._error = str(exc)
+        else:
+            progress.update(1, 'Done')
+            self._success = True
+
+    def finish(self):
+        if self._success:
+            QtWidgets.QMessageBox.information(None, 'Knossos', 'Successfully deleted folder for %s %s.' % (self._mod.title, self._mod.version))
+        elif self._error:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to delete %s. Reason:\n%s' % (self._mod.folder, self._error))
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to delete %s.' % self._mod.folder)
+
+        # Update the local mod list which will remove the uninstalled mod
+        run_task(LoadLocalModsTask())
+
+
 class UpdateTask(InstallTask):
     _old_mod = None
     __check_after = True

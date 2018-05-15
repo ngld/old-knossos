@@ -1201,12 +1201,12 @@ class WebBridge(QtCore.QObject):
             QtWidgets.QMessageBox.critical(None, 'Knossos',
                 'Request failed. You might have problems connecting to fsnebula.org.')
         else:
-            QtWidgets.QMessageBox.critical(None, 'Knossos', 'The release was successfully deleted.')
+            QtWidgets.QMessageBox.information(None, 'Knossos', 'The release was successfully deleted.')
 
         if fine:
             result = QtWidgets.QMessageBox.question(None, 'Knossos', 'Should the local files be deleted?')
             if result == QtWidgets.QMessageBox.Yes:
-                tasks.run_task(tasks.UninstallTask(mod.packages))
+                tasks.run_task(tasks.RemoveModFolder(mod))
 
     @QtCore.Slot(result=str)
     def selectCustomBuild(self):

@@ -541,10 +541,11 @@ class ModInstallWindow(Window):
         if isinstance(obj, repo.Mod):
             cs = item.checkState(0)
 
-            for i in range(item.childCount()):
-                child = item.child(i)
-                if not child.isDisabled():
-                    child.setCheckState(0, cs)
+            if cs != QtCore.Qt.PartiallyChecked:
+                for i in range(item.childCount()):
+                    child = item.child(i)
+                    if not child.isDisabled():
+                        child.setCheckState(0, cs)
 
         self.update_deps()
 
