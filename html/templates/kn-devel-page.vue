@@ -524,6 +524,9 @@ export default {
                 Mod Path:
                 <br>
                 <span class="version-link"><a href="#" @click.prevent="openModFolder">{{ selected_mod.folder }}</a></span>
+                <br>
+
+                <a :href="'https://fsnebula.org/mod/' + encodeURIComponent(selected_mod.id)" class="open-ext">Download Link</a>
             </div>
             <div class="dev-instructions" v-else>
                 This is the Development tab. Here you can create new mods or edit currently installed mods. This is also where you can apply experimental mod settings, work with the Freespace Mission Editor, and alter the mod flags and commandline options. <br><br>Consider this an advanced section of Knossos but also a great place to get started if you wish to learn the ins and outs of modding with Freespace 2 Open.
