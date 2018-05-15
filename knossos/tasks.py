@@ -1170,7 +1170,7 @@ class UploadTask(progress.MultistepTask):
 
             progress.update(0, 'Packing...')
             if pkg.is_vp:
-                vp_name = pkg.name + '.vp'
+                vp_name = os.path.basename(pkg.folder) + '.vp'
                 vp_path = os.path.join(self._dir.name, vp_name)
                 vp = vplib.VpWriter(vp_path)
                 pkg_path = os.path.join(self._mod.folder, pkg.folder)
