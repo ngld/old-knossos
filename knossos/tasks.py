@@ -821,7 +821,12 @@ class UpdateTask(InstallTask):
             if pkg.name in old_pkgs or pkg.status == 'required':
                 pkgs.append(pkg)
 
-        super(UpdateTask, self).__init__(pkgs, new_mod, check_after=False)
+        # carry the dev_mode setting over to the new version
+        editable = {}
+        if mod.dev_mode:
+            editable.add(mod.mid)
+
+        super(UpdateTask, self).__init__(pkgs, new_mod, check_after=False, editable=editable)
 
     def finish(self):
         super(UpdateTask, self).finish()
@@ -913,6 +918,7 @@ class UploadTask(progress.MultistepTask):
                         'packages': []
                     })
 
+            # TODO: Verify dependencies against the online repo, not against the local one.
             try:
                 self._mod.resolve_deps(recursive=False)
             except repo.ModNotFound:
