@@ -4,10 +4,11 @@ export default {
     
     data: () => ({
         engine_builds: [],
-        fso_build: null,
+        fso_build: 'invalid',
         cmdline: '',
         loading_flags: false,
         easy_flags: {},
+        custom_flags: '',
         flags: {},
         selected_easy_flags: '',
         flag_states: {},
@@ -72,7 +73,7 @@ export default {
                 }
             }
 
-            this.cmdline = cmdline;
+            this.cmdline = cmdline + this.custom_flags;
         },
 
         selectCustomBuild() {
@@ -84,11 +85,11 @@ export default {
         },
 
         isValidBuild() {
-            return this.fso_build && this.fso_build.indexOf('#') > -1;
+            return this.fso_build !== 'invalid' && this.fso_build.indexOf('#') > -1;
         },
 
         updateFsoBuild() {
-            if(this.fso_build) {
+            if(this.fso_build !== 'invalid') {
                 let sel_build = this.fso_build.split('#');
 
                 this.loading_flags = true;
@@ -98,6 +99,11 @@ export default {
                 });
                 call(fs2mod.getGlobalFlags, this.fso_build, (flags) => {
                     this.flag_states = JSON.parse(flags);
+                    if(this.flag_states['#custom']) {
+                        this.custom_flags = this.flag_states['#custom'];
+                        delete this.flag_states['#custom'];
+                    }
+
                     this.updateFlags();
                 });
             } else {
@@ -106,7 +112,10 @@ export default {
         },
 
         save() {
-            fs2mod.saveGlobalFlags(this.fso_build, JSON.stringify(this.flag_states));
+            fs2mod.saveGlobalFlags(this.fso_build, JSON.stringify({
+                ...this.flag_states,
+                '#custom': this.custom_flags
+            }));
         }
     }
 }
@@ -138,6 +147,13 @@ export default {
             </div>
         </div>
         -->
+
+        <div class="form-group">
+            <label class="col-sm-4 control-label">Custom Flags:</label>
+            <div class="col-sm-8">
+                <input type="text" class="form-control" v-model="custom_flags">
+            </div>
+        </div>
 
         <div class="form-group">
             <label class="col-sm-4 control-label">Full Commandline:</label>

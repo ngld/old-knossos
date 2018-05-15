@@ -168,8 +168,10 @@ class Master(object):
                 return None
 
             with self._tasks_lock:
-                for task in self._tasks:
-                    work = task._get_work()
+                # Only run one task at once to avoid problems caused by multiple tasks modifying
+                # the installed mods repo.
+                if self._tasks:
+                    work = self._tasks[0]._get_work()
                     if work is not None:
                         return work
 
@@ -202,6 +204,10 @@ class Master(object):
                 if not task._has_work():
                     self._tasks.remove(task)
                     task._attached = False
+
+                    # There are still tasks left. Tell the workers to start them.
+                    if self._tasks:
+                        self.wake_workers()
 
     def wake_workers(self):
         with self._worker_cond:

@@ -30,7 +30,7 @@ import re
 import hashlib
 import semantic_version
 
-from . import center, util, progress, nebula, repo, vplib
+from . import center, util, progress, nebula, repo, vplib, settings
 from .repo import Repo
 from .qt import QtCore, QtWidgets, read_file
 
@@ -805,6 +805,55 @@ class UninstallTask(progress.MultistepTask):
         run_task(LoadLocalModsTask())
 
 
+class RemoveModFolder(progress.Task):
+    _error = None
+    _success = False
+
+    def __init__(self, mod):
+        super(RemoveModFolder, self).__init__()
+        self._mod = mod
+
+        self.title = 'Deleting %s...' % mod.folder
+        self.done.connect(self.finish)
+
+        self.add_work(('',))
+
+    def work(self, dummy):
+        items = []
+        path = self._mod.folder
+
+        for sub, d, f in os.walk(path):
+            for name in f:
+                items.append(os.path.join(path, sub, name))
+
+        count = float(len(items))
+        try:
+            for i, name in enumerate(items):
+                progress.update(i / count, 'Deleting files...')
+
+                os.unlink(name)
+
+            # Delete the remaining empty directories and other stuff
+            shutil.rmtree(path)
+        except Exception as exc:
+            logging.exception('Failed to delete mod folder for %s!' % self._mod.mid)
+            self._error = str(exc)
+        else:
+            progress.update(1, 'Done')
+            self._success = True
+
+    def finish(self):
+        if self._success:
+            QtWidgets.QMessageBox.information(None, 'Knossos', 'Successfully deleted folder for %s %s.' % (self._mod.title, self._mod.version))
+        elif self._error:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to delete %s. Reason:\n%s' % (self._mod.folder, self._error))
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to delete %s.' % self._mod.folder)
+
+        # Update the local mod list which will remove the uninstalled mod
+        run_task(LoadLocalModsTask())
+
+
 class UpdateTask(InstallTask):
     _old_mod = None
     __check_after = True
@@ -821,7 +870,23 @@ class UpdateTask(InstallTask):
             if pkg.name in old_pkgs or pkg.status == 'required':
                 pkgs.append(pkg)
 
-        super(UpdateTask, self).__init__(pkgs, new_mod, check_after=False)
+        # carry the dev_mode setting over to the new version
+        editable = {}
+        if mod.dev_mode:
+            editable.add(mod.mid)
+
+        super(UpdateTask, self).__init__(pkgs, new_mod, check_after=False, editable=editable)
+
+    def work4(self, _):
+        super(UpdateTask, self).work4(_)
+
+        fso_path = settings.get_fso_profile_path()
+        old_settings = os.path.join(fso_path, os.path.basename(self._old_mod.folder))
+        new_settings = os.path.join(fso_path, os.path.basename(self._mods[0].folder))
+
+        # If we have generated files for the old mod copy them over to the new one (i.e. checkpoints and other script generated stuff).
+        if os.path.isdir(old_settings) and not os.path.isdir(new_settings):
+            shutil.copytree(old_settings, new_settings)
 
     def finish(self):
         super(UpdateTask, self).finish()
@@ -913,6 +978,7 @@ class UploadTask(progress.MultistepTask):
                         'packages': []
                     })
 
+            # TODO: Verify dependencies against the online repo, not against the local one.
             try:
                 self._mod.resolve_deps(recursive=False)
             except repo.ModNotFound:
@@ -1115,7 +1181,7 @@ class UploadTask(progress.MultistepTask):
 
             progress.update(0, 'Packing...')
             if pkg.is_vp:
-                vp_name = pkg.name + '.vp'
+                vp_name = os.path.basename(pkg.folder) + '.vp'
                 vp_path = os.path.join(self._dir.name, vp_name)
                 vp = vplib.VpWriter(vp_path)
                 pkg_path = os.path.join(self._mod.folder, pkg.folder)

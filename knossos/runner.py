@@ -425,8 +425,15 @@ def apply_global_flags(mod):
         logging.debug('No global flags found for %s' % build)
         return mod.cmdline
 
+    custom_flags = ''
+    if '#custom' in flag_states:
+        custom_flags = ' ' + flag_states['#custom']
+
     cmdline = shlex.split(mod.cmdline)
     for flag, state in flag_states.items():
+        if flag == '#custom':
+            continue
+
         if state == 0:
             # Off
             if flag in cmdline:
@@ -436,4 +443,4 @@ def apply_global_flags(mod):
             if flag not in cmdline:
                 cmdline.append(flag)
 
-    return ' '.join([shlex.quote(p) for p in cmdline])
+    return ' '.join([shlex.quote(p) for p in cmdline]) + custom_flags

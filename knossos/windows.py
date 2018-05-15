@@ -508,7 +508,7 @@ class ModInstallWindow(Window):
         for mid, version in self._mod_ids:
             try:
                 inst_mod = center.installed.query(mid, version)
-                res[mid] = inst_mod.dev_mode
+                res[mid] = (inst_mod.dev_mode, True)
                 continue
             except repo.ModNotFound:
                 pass
@@ -516,12 +516,12 @@ class ModInstallWindow(Window):
             if center.settings['neb_user']:
                 try:
                     result = client.is_editable(mid)
-                    res[mid] = result['result']
+                    res[mid] = (result['result'], False)
                 except Exception:
                     logging.exception('Failed to retrieve editable status for %s!' % mid)
-                    res[mid] = False
+                    res[mid] = (False, False)
             else:
-                res[mid] = False
+                res[mid] = (False, False)
 
         if not self.closed:
             self.updateEditable.emit(res)
@@ -533,18 +533,23 @@ class ModInstallWindow(Window):
             item = tree.topLevelItem(i)
             mid = item.data(0, QtCore.Qt.UserRole).mid
 
-            if info[mid]:
+            if info[mid][0]:
                 item.setCheckState(2, QtCore.Qt.Checked)
+                item.setData(2, QtCore.Qt.UserRole, info[mid][1])
 
     def update_selection(self, item, col):
         obj = item.data(0, QtCore.Qt.UserRole)
         if isinstance(obj, repo.Mod):
             cs = item.checkState(0)
 
-            for i in range(item.childCount()):
-                child = item.child(i)
-                if not child.isDisabled():
-                    child.setCheckState(0, cs)
+            if cs != QtCore.Qt.PartiallyChecked:
+                for i in range(item.childCount()):
+                    child = item.child(i)
+                    if not child.isDisabled():
+                        child.setCheckState(0, cs)
+
+            if item.data(2, QtCore.Qt.UserRole) and item.checkState(2) != QtCore.Qt.Checked:
+                item.setCheckState(2, QtCore.Qt.Checked)
 
         self.update_deps()
 
