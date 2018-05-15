@@ -30,7 +30,7 @@ import re
 import hashlib
 import semantic_version
 
-from . import center, util, progress, nebula, repo, vplib
+from . import center, util, progress, nebula, repo, vplib, settings
 from .repo import Repo
 from .qt import QtCore, QtWidgets, read_file
 
@@ -876,6 +876,17 @@ class UpdateTask(InstallTask):
             editable.add(mod.mid)
 
         super(UpdateTask, self).__init__(pkgs, new_mod, check_after=False, editable=editable)
+
+    def work4(self, _):
+        super(UpdateTask, self).work4(_)
+
+        fso_path = settings.get_fso_profile_path()
+        old_settings = os.path.join(fso_path, os.path.basename(self._old_mod.folder))
+        new_settings = os.path.join(fso_path, os.path.basename(self._mods[0].folder))
+
+        # If we have generated files for the old mod copy them over to the new one (i.e. checkpoints and other script generated stuff).
+        if os.path.isdir(old_settings) and not os.path.isdir(new_settings):
+            shutil.copytree(old_settings, new_settings)
 
     def finish(self):
         super(UpdateTask, self).finish()
