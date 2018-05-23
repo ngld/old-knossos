@@ -445,6 +445,10 @@ class InstallTask(progress.MultistepTask):
                 ext = os.path.splitext(img_path)[1]
                 dest = os.path.join(mod.folder, 'kn_' + prop + ext)
 
+                # Remove the image if it's just an empty file
+                if os.path.isfile(dest) and os.stat(dest).st_size == 0:
+                    os.unlink(dest)
+
                 if '://' in img_path and not os.path.isfile(dest):
                     # That's a URL
                     util.safe_download(img_path, dest)
@@ -456,6 +460,10 @@ class InstallTask(progress.MultistepTask):
             for i, path in enumerate(im_paths):
                 ext = os.path.splitext(path)[1]
                 dest = os.path.join(mod.folder, 'kn_' + prop + '_' + str(i) + ext)
+
+                # Remove the image if it's just an empty file
+                if os.path.isfile(dest) and os.stat(dest).st_size == 0:
+                    os.unlink(dest)
 
                 if '://' in path and not os.path.isfile(dest):
                     util.safe_download(path, dest)
@@ -880,13 +888,22 @@ class UpdateTask(InstallTask):
     def work4(self, _):
         super(UpdateTask, self).work4(_)
 
-        fso_path = settings.get_fso_profile_path()
-        old_settings = os.path.join(fso_path, os.path.basename(self._old_mod.folder))
-        new_settings = os.path.join(fso_path, os.path.basename(self._mods[0].folder))
+        new_mod = None
+        for mod in self._mods:
+            if mod.mid == self._old_mod.mid:
+                new_mod = mod
+                break
 
-        # If we have generated files for the old mod copy them over to the new one (i.e. checkpoints and other script generated stuff).
-        if os.path.isdir(old_settings) and not os.path.isdir(new_settings):
-            shutil.copytree(old_settings, new_settings)
+        if new_mod:
+            fso_path = settings.get_fso_profile_path()
+            old_settings = os.path.join(fso_path, os.path.basename(self._old_mod.folder))
+            new_settings = os.path.join(fso_path, os.path.basename(new_mod.folder))
+
+            # If we have generated files for the old mod copy them over to the new one (i.e. checkpoints and other script generated stuff).
+            if os.path.isdir(old_settings) and not os.path.isdir(new_settings):
+                shutil.copytree(old_settings, new_settings)
+        else:
+            logging.error('Failed to find new modpath during update of %s!' % self._old_mod)
 
     def finish(self):
         super(UpdateTask, self).finish()
@@ -1173,7 +1190,9 @@ class UploadTask(progress.MultistepTask):
                             'checksum': meta['vp_checksum']
                         }]
                     else:
+                        # The existing upload is identical but not a VP.
                         is_done = False
+                        is_uploaded = False
 
                 if is_done:
                     progress.update(1, 'Done!')

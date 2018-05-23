@@ -27,6 +27,8 @@ import json
 import shlex
 from subprocess import CalledProcessError
 
+from . import uhf
+uhf(__name__)
 from . import center, repo, util, settings
 from .qt import QtCore, QtWidgets, run_in_qt
 

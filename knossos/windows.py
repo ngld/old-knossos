@@ -14,7 +14,6 @@
 
 from __future__ import absolute_import, print_function
 
-import os
 import sys
 import logging
 import functools
@@ -28,8 +27,9 @@ from . import center, util, integration, web, repo, ipc, nebula
 from .qt import QtCore, QtWidgets, load_styles
 from .ui.hell import Ui_MainWindow as Ui_Hell
 from .ui.install import Ui_InstallDialog
+from .ui.install_update import Ui_InstallUpdateDialog
 from .ui.edit_description import Ui_Dialog as Ui_DescEditor
-from .tasks import run_task, InstallTask, UninstallTask, WindowsUpdateTask, MacUpdateTask, LoadLocalModsTask
+from .tasks import run_task, InstallTask, UpdateTask, UninstallTask, WindowsUpdateTask, MacUpdateTask, LoadLocalModsTask
 
 # Keep references to all open windows to prevent the GC from deleting them.
 _open_wins = []
@@ -380,6 +380,7 @@ class HellWindow(Window):
 
 
 class ModInstallWindow(Window):
+    _window_cls = Ui_InstallDialog
     _mod = None
     _mod_ids = None
     _pkg_checks = None
@@ -391,7 +392,7 @@ class ModInstallWindow(Window):
         super(ModInstallWindow, self).__init__()
 
         self._mod = mod
-        self._create_win(Ui_InstallDialog)
+        self._create_win(self._window_cls)
         self.win.splitter.setStretchFactor(0, 2)
         self.win.splitter.setStretchFactor(1, 1)
 
@@ -613,6 +614,22 @@ class ModInstallWindow(Window):
             t1.done.connect(follow_up)
         else:
             follow_up()
+
+        self.close()
+
+
+class ModInstallUpdateWindow(ModInstallWindow):
+    _window_cls = Ui_InstallUpdateDialog
+
+    def _check_editable(self):
+        # We just use the values from the previous version.
+        pass
+
+    def install(self):
+        to_install, _, editable = self.get_selected_pkgs()
+
+        if to_install:
+            run_task(UpdateTask(to_install, self._mod))
 
         self.close()
 

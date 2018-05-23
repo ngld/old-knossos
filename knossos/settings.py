@@ -20,9 +20,15 @@ import json
 import struct
 import logging
 from collections import OrderedDict
-from json.decoder import JSONDecodeError
-from threading import Thread
 
+try:
+    from json import JSONDecodeError
+except ImportError:
+    JSONDecodeError = ValueError
+
+
+from . import uhf
+uhf(__name__)
 from . import center, util, launcher, runner
 from .qt import QtCore, QtWidgets, QtGui
 

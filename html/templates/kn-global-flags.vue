@@ -33,6 +33,10 @@ export default {
 
             // TODO
             console.log(group);
+        },
+
+        custom_flags() {
+            this.updateFlags();
         }
     },
 

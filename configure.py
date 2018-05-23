@@ -27,6 +27,7 @@ from configlib import *
 UI_FILES = [
     'ui/hell.ui',
     'ui/install.ui',
+    'ui/install_update.ui',
     'ui/edit_description.ui'
 ]
 
