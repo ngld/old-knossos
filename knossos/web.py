@@ -337,23 +337,41 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return mod
 
+        new_rel = center.mods.query(mod.mid)
+        old_rel = center.mods.query(mod)
+
+        new_opt_pkgs = set([pkg.name for pkg in new_rel.packages if pkg.status in ('recommended', 'optional')])
+        old_opt_pkgs = set([pkg.name for pkg in old_rel.packages if pkg.status in ('recommended', 'optional')])
+
+        sel_pkgs = []
+        installed_pkgs = [pkg.name for pkg in mod.packages]
+
+        for pkg in new_rel.packages:
+            if pkg.status == 'required' or pkg.name in installed_pkgs:
+                sel_pkgs.append(pkg)
+
+        if new_opt_pkgs - old_opt_pkgs:
+            for pkg in new_rel.packages:
+                if pkg.status == 'recommended' and pkg.name not in sel_pkgs:
+                    sel_pkgs.append(pkg)
+
         all_vers = list(center.installed.query_all(mid))
         if len(all_vers) == 1 and not all_vers[0].dev_mode:
             # Only one version is installed, let's update it.
-            tasks.run_task(tasks.UpdateTask(mod))
+
+            if new_opt_pkgs - old_opt_pkgs:
+                # There are new recommended or optional packages, we'll have to ask the user.
+                windows.ModInstallUpdateWindow(new_rel, [p.name for p in sel_pkgs])
+            else:
+                tasks.run_task(tasks.UpdateTask(mod, sel_pkgs))
         else:
             # Just install the new version
-            new_pkgs = []
-            new_rel = center.mods.query(mod.mid)
-            installed_pkgs = [pkg.name for pkg in mod.packages]
+            if new_opt_pkgs - old_opt_pkgs:
+                # There are new recommended or optional packages, we'll have to ask the user.
+                windows.ModInstallWindow(new_rel, sel_pkgs, [p.name for p in sel_pkgs])
+            else:
+                tasks.run_task(tasks.InstallTask(sel_pkgs, new_rel))
 
-            for pkg in new_rel.packages:
-                if pkg.status == 'required' or pkg.name in installed_pkgs:
-                    new_pkgs.append(pkg)
-
-            tasks.run_task(tasks.InstallTask(new_pkgs, new_rel))
-
-        center.main_win.update_mod_buttons('progress')
         return 0
 
     @QtCore.Slot(float)
@@ -650,7 +668,7 @@ class WebBridge(QtCore.QObject):
         if exists:
             QtWidgets.QMessageBox.critical(None, 'Knossos',
                 self.tr('Your chosen mod ID is already being used by someone else. Please choose a different one.'))
-            return
+            return False
 
         upper_folder = os.path.dirname(mod.folder)
         if not os.path.isdir(upper_folder):

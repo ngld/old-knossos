@@ -38,7 +38,8 @@ else:
     if my_path != '':
         os.chdir(my_path)
 
-
+from . import uhf
+uhf(__name__)
 from . import center
 
 # Initialize the FileHandler early to capture all log messages.

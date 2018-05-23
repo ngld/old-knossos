@@ -29,7 +29,7 @@ import shutil
 import semantic_version
 import requests
 import token_bucket
-from threading import Condition, Event
+from threading import Condition, Event, Lock
 from collections import deque
 
 from .vplib import VpReader
@@ -99,6 +99,7 @@ HTTP_SESSION.verify = True
 QUIET = not center.DEBUG
 QUIET_EXC = False
 HASH_CACHE = dict()
+HASH_LOCK = Lock()
 _HAS_TAR = None
 DL_POOL = None
 _DL_CANCEL = Event()
@@ -526,18 +527,20 @@ def gen_hash(path, algo='sha256', use_hash_cache=True):
             # logging.debug('Found checksum for %s in cache.', path)
             return algo, chksum
 
-    logging.debug('Calculating checksum for %s...', path)
+    with HASH_LOCK:
+        logging.debug('Calculating checksum for %s...', path)
 
-    h = hashlib.new(algo)
-    with open(path, 'rb') as stream:
-        while True:
-            chunk = stream.read(16 * h.block_size)
-            if not chunk:
-                break
+        h = hashlib.new(algo)
+        with open(path, 'rb') as stream:
+            while True:
+                chunk = stream.read(16 * h.block_size)
+                if not chunk:
+                    break
 
-            h.update(chunk)
+                h.update(chunk)
 
-    chksum = h.hexdigest()
+        chksum = h.hexdigest()
+
     if algo == 'sha256':
         HASH_CACHE[path] = (chksum, info.st_mtime)
 

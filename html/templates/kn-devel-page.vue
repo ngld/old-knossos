@@ -170,6 +170,20 @@ export default {
             v_mod.progress = this.selected_mod.progress;
             v_mod.progress_info = this.selected_mod.progress_info;
             this.selected_mod = v_mod;
+
+            if(this.selected_pkg) {
+                let sel_pkg = null;
+                for(let pkg of v_mod.packages) {
+                    if(pkg.name === this.selected_pkg.name) {
+                        sel_pkg = pkg;
+                        break;
+                    }
+                }
+
+                this.selected_pkg = sel_pkg;
+            }
+
+            this.edit_dep = false;
         },
 
         switchPage(page) {
