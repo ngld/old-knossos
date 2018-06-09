@@ -773,10 +773,14 @@ export default {
                                     <p class="form-control-static">{{ selected_mod.last_update }}</p>
                                 </div>
                             </div>
-
-                            <div class="form-group">
-                                <div class="col-xs-9 col-xs-offset-3">
-                                    <button class="mod-btn btn-green" @click.prevent="saveDetails"><span class="btn-text">SAVE</span></button>
+                            <div class="save-btn-cont">
+                                <div class="form-group save-form">
+                                    <div>
+                                        <button class="mod-btn btn-green save-btn" @click.prevent="saveDetails"><span class="btn-text">SAVE</span></button>
+                                    </div>
+                                </div>
+                                <div class="success-save">
+                                    <span>Saved!</span>
                                 </div>
                             </div>
                         </div>
@@ -786,10 +790,14 @@ export default {
 
                             <kn-fso-settings :mods="mods" :fso_build.sync="fso_build" :cmdline.sync="(selected_mod || {}).cmdline"></kn-fso-settings>
 
-                            
-                            <div class="form-group">
-                                <div class="col-xs-9 col-xs-offset-3">
-                                    <button class="mod-btn btn-green" @click.prevent="saveFsoSettings"><span class="btn-text">SAVE</span></button>
+                            <div class="save-btn-cont">
+                                <div class="form-group save-form">
+                                    <div>
+                                        <button class="mod-btn btn-green save-btn" @click.prevent="saveFsoSettings"><span class="btn-text">SAVE</span></button>
+                                    </div>
+                                </div>
+                                <div class="success-save">
+                                    <span>Saved!</span>
                                 </div>
                             </div>
                         </div>
@@ -809,7 +817,16 @@ export default {
                                 {{ mod_map[dep].title }}
                             </div>
 
-                            <button class="mod-btn btn-green" @click.prevent="saveModFlag"><span class="btn-text">SAVE</span></button>
+                            <div>
+                                <div class="save-form">
+                                    <div>
+                                        <button class="mod-btn btn-green save-btn" @click.prevent="saveModFlag"><span class="btn-text">SAVE</span></button>
+                                    </div>
+                                </div>
+                                <div class="success-save">
+                                    <span>Saved!</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div v-if="!selected_pkg && page === 'team'">
@@ -973,13 +990,20 @@ export default {
                                 </div>
                             </div>
 
-                            <div class="form-group">
-                                <div class="col-xs-9 col-xs-offset-3">
-                                    <button :class="'mod-btn btn-' + (edit_dep ? 'grey' : 'green')" @click.prevent="savePackage" :disabled="edit_dep">
-                                        <span class="btn-text">SAVE</span>
-                                    </button>
+                            <div class="save-btn-cont">
+                                <div class="form-group save-form">
+                                    <div>
+                                        <button :class="'mod-btn save-btn btn-' + (edit_dep ? 'grey' : 'green')" @click.prevent="savePackage" :disabled="edit_dep">
+                                            <span class="btn-text">SAVE</span>
+                                        </button>
 
-                                    <button class="mod-btn btn-red" @click.prevent="deletePackage">DELETE</button>
+                                        <button class="mod-btn btn-red" @click.prevent="deletePackage">
+                                            <span class="btn-text">DELETE</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="success-save">
+                                    <span>Saved!</span>
                                 </div>
                             </div>
                         </div>

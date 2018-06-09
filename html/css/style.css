@@ -1675,3 +1675,28 @@ iframe {
 .devel-page .table td {
     padding: 2px;
 }
+
+.devel-page .save-btn-cont {
+    padding-left: 20%;
+}
+
+.devel-page .save-form {
+    width: 100px;
+    float: left;
+    margin-right: 20px;
+}
+
+.devel-page .success-save {
+    padding: 10px;
+    font-size: x-large;
+    color: green;
+    text-shadow: 2px 2px black;
+    /* opacity: 0;
+    visibility: hidden;
+    transition: visbility 0s, opacity 7s; */
+}
+
+.save-btn:hover ~ .success-save { /*This is not working, probably because the divs aren't actually siblings*/
+    visibility: visible;
+    opacity: 1;
+}

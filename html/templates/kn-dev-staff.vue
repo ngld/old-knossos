@@ -92,19 +92,28 @@ export default {
             <button v-if="!error" class="mod-btn btn-blue" @click.prevent="addRow">
                 <span class="btn-text">Add Member</span>
             </button>
-            <button v-if="!error" class="mod-btn btn-green" @click.prevent="save">
-                <span class="btn-text">Save</span>
-            </button>
+            <div><!--<div class="save-btn-cont">-->
+                <div class="save-form">
+                    <button v-if="!error" class="mod-btn btn-green save-btn" @click.prevent="save">
+                        <span class="btn-text">SAVE</span>
+                    </button>
+                </div>
+                <div class="success-save">
+                    <span>Saved!</span>
+                </div>
+            </div>
 
-            <hr>
+            <div style="margin-top:120px;">
+                <hr>
 
-            Here's a short explanation of the available roles:
-            <ul>
-                <li><strong>Tester</strong>: Can only download &amp; install the mod <em>(only relevant for private mods)</em></li>
-                <li><strong>Uploader</strong>: Same permissions as Tester. Can also upload releases and edit metadata.</li>
-                <li><strong>Manager</strong>: Same permissions as Uploader. Can also add and remove staff members but can't remove or add Owners.</li>
-                <li><strong>Owner</strong>: Same as Manager but can also add or remove Owners.</li>
-            </ul>
+                Here's a short explanation of the available roles:
+                <ul>
+                    <li><strong>Tester</strong>: Can only download &amp; install the mod <em>(only relevant for private mods)</em></li>
+                    <li><strong>Uploader</strong>: Same permissions as Tester. Can also upload releases and edit metadata.</li>
+                    <li><strong>Manager</strong>: Same permissions as Uploader. Can also add and remove staff members but can't remove or add Owners.</li>
+                    <li><strong>Owner</strong>: Same as Manager but can also add or remove Owners.</li>
+                </ul>
+            </div>
         </table>
     </div>
 </template>
