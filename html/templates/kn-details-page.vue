@@ -153,7 +153,7 @@ export default {
                     <span class="btn-text">PLAY</span>
                 </button>
 
-                <button class="mod-btn btn-yellow" v-if="mod.installed && mod.status === 'update'" @click="update">
+                <button class="mod-btn btn-blue" v-if="mod.installed && mod.status === 'update'" @click="update">
                     <span class="btn-text">UPDATE</span>
                 </button>
 
@@ -176,7 +176,7 @@ export default {
                     <span class="btn-text">CANCEL</span>
                 </button>
 
-                <button class="mod-btn btn-blue" v-if="mod.installed" @click="reportMod">
+                <button class="mod-btn btn-yellow" v-if="mod.installed" @click="reportMod">
                     <span class="btn-text">REPORT</span>
                 </button>
 

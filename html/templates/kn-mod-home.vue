@@ -79,13 +79,27 @@ export default {
             <div class="mod-notifier">
                 <img :src="'images/modnotify_' + mod.status + '.png'" class="notifier">
             </div>
+            <div class="mod-banner" v-if="mod.installed">
+                <div class="mod-banner mod-banner-blue" v-if="mod.status === 'update'">
+                    <span>Update Avail!</span>
+                </div>
+                <div class="mod-banner mod-banner-blue" v-else-if="mod.status === 'updating'">
+                    <span>Installing...</span>
+                </div>
+                <div class="mod-banner mod-banner-red" v-else-if="mod.status === 'error'">
+                    <span>Error!</span>
+                </div>
+                <!--<div class="mod-banner mod-banner-green" v-else>
+                    <span>Installed!</span>
+                </div>-->
+            </div>
             <div class="actions">
                 <div class="btn-wrapper">
                     <button class="mod-btn btn-green" v-if="(mod.status === 'ready' || mod.status === 'update') && (mod.type === 'mod' || mod.type == 'tc')" @click="play">
                         <span class="btn-text">PLAY</span>
                     </button>
 
-                    <button class="mod-btn btn-yellow" v-if="mod.status === 'update'" @click="update">
+                    <button class="mod-btn btn-blue" v-if="mod.status === 'update'" @click="update">
                         <span class="btn-text">UPDATE</span>
                     </button>
 
