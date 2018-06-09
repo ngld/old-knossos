@@ -89,8 +89,12 @@ export default {
             </tbody>
 
             <br>
-            <button v-if="!error" class="mod-btn btn-blue" @click.prevent="addRow">Add Member</button>
-            <button v-if="!error" class="mod-btn btn-green" @click.prevent="save">Save</button>
+            <button v-if="!error" class="mod-btn btn-blue" @click.prevent="addRow">
+                <span class="btn-text">Add Member</span>
+            </button>
+            <button v-if="!error" class="mod-btn btn-green" @click.prevent="save">
+                <span class="btn-text">Save</span>
+            </button>
 
             <hr>
 
