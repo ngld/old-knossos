@@ -581,6 +581,29 @@ class Mod(object):
     def get_dependents(self):
         return self._repo.get_dependents(self.packages)
 
+    def satisfies_stability(self, stab_check):
+        """
+        Checks if this mod satisfies the specified stability constraint. A stability constaint is satisfied if this mod
+        is as stable or more stable than the check value.
+        :param stab_check: The stability to check. Must be one of the values in STABILITES
+        :return True if the stability is satisfied, False otherwise
+        """
+        try:
+            own_idx = STABILITES.index(self.stability)
+        except ValueError:
+            # This may be invalid since the value came from a remote server
+            logging.warning('Invalid stability value "%s" for mod "%s"!' % (self.stability, self))
+            return False
+
+        try:
+            other_idx = STABILITES.index(stab_check)
+        except ValueError:
+            logging.debug('Invalid stability check value "%s"!' % self.stability)
+            return False
+
+        # STABILITES is already sorted for stability so if we have a higher or equal stability we satisfy the constraint
+        return own_idx >= other_idx
+
 
 class Package(object):
     _mod = None

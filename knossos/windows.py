@@ -225,7 +225,7 @@ class HellWindow(Window):
             if query in mvs[0].title.lower():
                 mod = mvs[0]
                 if mod.mtype == 'engine' and self._mod_filter != 'develop':
-                    mvs = [mv for mv in mvs if mv.stability == center.settings['engine_stability']]
+                    mvs = [mv for mv in mvs if mv.satisfies_stability(center.settings['engine_stability'])]
                     if len(mvs) == 0:
                         mvs = mods[mid]
 
