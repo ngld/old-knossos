@@ -18,8 +18,6 @@ import sys
 import os
 import logging
 import json
-import shutil
-import hashlib
 import semantic_version
 import six
 from datetime import datetime
@@ -359,7 +357,7 @@ class Repo(object):
                     const = ','.join(['%s (%s)' % (s, m['#mod'].mid) for s, m in variants.items()])
                     mod_titles = list(variants.values())[0]['#mod'].title
                     raise PackageNotFound('No version of mod "%s" found for these constraints: %s'
-                        % (mod_titles, const), mid, mod_titles)
+                        % (mod_titles, const), mid, mod_titles, const)
                 else:
                     if remains[0]['#mod'].mtype == 'engine':
                         # Multiple versions qualify and this is an engine so we have to check the stability next
