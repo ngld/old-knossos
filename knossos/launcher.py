@@ -197,6 +197,7 @@ def run_knossos():
             center.mods.clear()
 
     center.main_win = HellWindow()
+    center.main_win.start_init()
     center.main_win.open()
 
     app.exec_()

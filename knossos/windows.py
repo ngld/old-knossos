@@ -182,6 +182,9 @@ class HellWindow(Window):
         # won't lead to memory leaks.
         # super(HellWindow, self)._del()
 
+    def start_init(self):
+        self.browser_ctrl.load()
+
     def finish_init(self):
         if self._init_done:
             return

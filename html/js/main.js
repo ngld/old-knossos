@@ -17,7 +17,7 @@ function init() {
             let cb = args.pop();
             cb(ref.apply(null, args));
         }
-    }
+    };
 
     let cb_id = 0;
     let cb_store = {};
@@ -29,7 +29,25 @@ function init() {
 
         ref.apply(null, args);
         cb_id++;
-    }
+    };
+
+    window.call_promise = function (ref) {
+        let args = Array.prototype.slice.apply(arguments, [0]);
+
+        return new Promise((resolve) => {
+            args.push(resolve);
+            call.apply(null, args);
+        });
+    };
+
+    window.call_async_promise = function (ref) {
+        let args = Array.prototype.slice.apply(arguments, [0]);
+
+        return new Promise((resolve) => {
+            args.push(resolve);
+            call_async.apply(null, args);
+        });
+    };
 
     window.connectOnce = function (sig, cb) {
         let wrapper = function () {

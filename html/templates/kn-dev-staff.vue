@@ -2,6 +2,10 @@
 export default {
     props: ['mid'],
 
+    components: {
+        'kn-save-btn': require('./kn-save-btn.vue').default
+    },
+
     data: () => ({
         loading: false,
         error: null,
@@ -37,7 +41,7 @@ export default {
 
     methods: {
         save() {
-            call(fs2mod.updateTeamMembers, this.mid, JSON.stringify(this.members));
+            return call_async_promise(fs2mod.updateTeamMembers, this.mid, JSON.stringify(this.members));
         },
 
         addRow() {
@@ -92,16 +96,7 @@ export default {
             <button v-if="!error" class="mod-btn btn-blue" @click.prevent="addRow">
                 <span class="btn-text">Add Member</span>
             </button>
-            <div><!--<div class="save-btn-cont">-->
-                <div class="save-form">
-                    <button v-if="!error" class="mod-btn btn-green save-btn" @click.prevent="save">
-                        <span class="btn-text">SAVE</span>
-                    </button>
-                </div>
-                <div class="success-save">
-                    <span>Saved!</span>
-                </div>
-            </div>
+            <kn-save-btn :save_handler="save" v-if="!error" />
 
             <div style="margin-top:120px;">
                 <hr>
