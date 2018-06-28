@@ -142,7 +142,7 @@ class DirectoryAdapter(ArchiveAdapter):
                 sub = sub[len(self._handle):]
 
             for name in fns:
-                files.append(os.path.join(sub, name).lower())
+                files.append(os.path.join(sub, name))
 
         return files
 
@@ -183,7 +183,7 @@ class SevenAdapter(DirectoryAdapter):
         super(SevenAdapter, self).__init__(self._tmp)
 
         arname = getattr(handle, 'name')
-        if not arname or not arname.lower().endswith('.7z'):
+        if arname and arname.lower().endswith('.7z'):
             # This is a simple file on disk. We can just run 7z on it.
             subprocess.check_call(['7z', 'x', os.path.abspath(arname)], cwd=self._tmp)
         else:
