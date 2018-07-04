@@ -82,6 +82,10 @@ class WebBridge(QtCore.QObject):
     taskFinished = QtCore.Signal(float)
     taskMessage = QtCore.Signal(str)
 
+    fs2Launching = QtCore.Signal()
+    fs2Launched = QtCore.Signal()
+    fs2Quit = QtCore.Signal()
+
     def __init__(self, webView=None):
         super(WebBridge, self).__init__()
         self._view = webView

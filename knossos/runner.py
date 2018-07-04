@@ -58,6 +58,9 @@ class Fs2Watcher(threading.Thread):
         watchers.append(self)
 
     def run(self):
+        bridge = center.main_win.browser_ctrl.bridge
+        bridge.fs2Launching.emit()
+
         try:
             fs2_bin = os.path.normpath(self._params[0])
 
@@ -101,13 +104,12 @@ class Fs2Watcher(threading.Thread):
                 fail = True
 
             if fail:
-                center.signals.fs2_failed.emit(rc)
                 self.failed_msg(reason, fs2_bin)
                 return
 
-            center.signals.fs2_launched.emit()
+            bridge.fs2Launched.emit()
             p.wait()
-            center.signals.fs2_quit.emit()
+            bridge.fs2Quit.emit()
         finally:
             watchers.remove(self)
 

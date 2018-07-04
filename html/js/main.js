@@ -190,6 +190,18 @@ function init() {
         vm.popup_progress_message = msg;
     });
 
+    fs2mod.fs2Launching.connect((msg) => {
+        vm.status_message = 'FSO is launching...';
+    });
+
+    fs2mod.fs2Launched.connect((msg) => {
+        vm.status_message = 'FSO is running.';
+    });
+
+    fs2mod.fs2Quit.connect((msg) => {
+        vm.status_message = '';
+    });
+
     // Open <a href="..." target="_blank">...</a> links in the system's default browser
     document.body.addEventListener('click', (e) => {
         if(e.target && e.target.nodeName === 'A' && e.target.className && e.target.className.indexOf('open-ext') > -1) {

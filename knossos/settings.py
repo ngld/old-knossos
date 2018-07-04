@@ -653,8 +653,6 @@ def save_setting(name, value):
             center.settings['fs2_bin'] = old_bin
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
             return
-        else:
-            center.signals.fs2_bin_changed.emit()
     elif name == 'fred_bin':
         path = os.path.join(center.settings['base_path'], value)
         if not os.path.isfile(path):

@@ -166,7 +166,6 @@ class HellWindow(Window):
 
         center.signals.update_avail.connect(self.ask_update)
         center.signals.task_launched.connect(self.watch_task)
-        center.signals.repo_updated.connect(self.update_mod_list)
 
         self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
         self.win.progressInfo.hide()

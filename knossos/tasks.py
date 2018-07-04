@@ -349,7 +349,7 @@ class InstallTask(progress.MultistepTask):
             for item in ins_pkg.files.values():
                 self._slot_prog[id(item)] = ('%s: %s' % (pmod.title, item['filename']), 0, 'Checking...')
 
-        center.signals.repo_updated.emit()
+        center.main_win.update_mod_list()
         self.done.connect(self.finish)
         self.title = 'Installing mods...'
 
