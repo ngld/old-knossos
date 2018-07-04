@@ -136,6 +136,10 @@ export default {
                 '#custom': this.custom_flags,
                 '#exe': this.exe_file
             }));
+        },
+
+        applyToAll() {
+            fs2mod.applyGlobalFlagsToAll(JSON.stringify(this.flag_states), this.custom_flags);
         }
     }
 }
@@ -228,6 +232,7 @@ export default {
         <div class="form-group">
             <div class="col-sm-8 col-sm-offset-4">
                 <button class="mod-btn btn-green" @click="save">Save</button>
+                <button class="mod-btn btn-green" @click="applyToAll">Apply to all</button>
             </div>
         </div>
     </div>

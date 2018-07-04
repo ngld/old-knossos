@@ -1514,10 +1514,59 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(str, str)
     def saveGlobalFlags(self, build, flags):
-        center.settings['fso_flags'][build] = json.loads(flags)
-        center.save_settings()
+        try:
+            center.settings['fso_flags'][build] = json.loads(flags)
+        except Exception:
+            logging.exception('Failed to decode flags from JS!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to decode flags!')
+            return
 
+        center.save_settings()
         QtWidgets.QMessageBox.information(None, 'Knossos', 'The settings have been successfully saved.')
+
+    @QtCore.Slot(str, str)
+    def applyGlobalFlagsToAll(self, flags, custom_flags):
+        try:
+            flags = json.loads(flags)
+        except Exception:
+            logging.exception('Failed to decode flags from JS!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to decode flags!')
+            return
+
+        for mvs in center.installed.mods.values():
+            if mvs[0].mtype == 'engine':
+                for mod in mvs:
+                    key = '%s#%s' % (mod.mid, mod.version)
+                    build_flags = center.settings['fso_flags'].setdefault(key, {})
+                    flag_info = None
+
+                    try:
+                        exes = mod.get_executables()
+                        for exe in exes:
+                            if not exe['label']:
+                                flag_info = settings.get_fso_flags(exe['file'])
+                                break
+                    except Exception:
+                        logging.exception('Failed to retrieve flags for %s!' % mod)
+                        continue
+
+                    if not flag_info:
+                        logging.warn('Failed to retrieve flags for %s!' % mod)
+                        continue
+
+                    known_flags = set()
+                    for section in flag_info['flags'].values():
+                        for flag in section:
+                            known_flags.add(flag['name'])
+
+                    for flag, val in flags.items():
+                        if flag in known_flags:
+                            build_flags[flag] = val
+
+                    build_flags['#custom'] = custom_flags
+
+        center.save_settings()
+        QtWidgets.QMessageBox.information(None, 'Knossos', 'The settings were successfully applied to all builds.')
 
     @QtCore.Slot(str, str, result=str)
     def getModCmdline(self, mid, version):
