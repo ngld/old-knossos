@@ -109,7 +109,9 @@ class Worker(threading.Thread):
             if task is None:
                 return
 
-            self.busy = True
+            if not task[0].background:
+                self.busy = True
+
             if center.raven:
                 center.raven.context.activate()
 

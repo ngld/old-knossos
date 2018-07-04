@@ -693,6 +693,8 @@ class WebBridge(QtCore.QObject):
                 QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The chosen parent does not exist! Something went very wrong here!!'))
                 return False
 
+        os.mkdir(mod.folder)
+
         if ini_path != '':
             # We need the ini mod for determining where to pull the VPs from
             ini_mod = repo.IniMod()
@@ -759,7 +761,6 @@ class WebBridge(QtCore.QObject):
 
             return True
         else:
-            os.mkdir(mod.folder)
             mod.save()
 
             center.installed.add_mod(mod)
