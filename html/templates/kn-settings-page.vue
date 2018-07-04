@@ -37,7 +37,13 @@ export default {
             this.old_settings = settings;
 
             this.neb_user = this.knossos.neb_user;
-            this.sel_joystick = this.fso.joystick_id === 'No Joystick' ? 'No Joystick' : this.fso.joystick_guid + '#' + this.fso.joystick_id;
+            let joy = this.knossos.joystick;
+            if(joy.guid) {
+                this.sel_joystick = joy.guid + '#' + joy.id;
+            } else {
+                this.sel_joystick = this.fso.joystick_id === 'No Joystick' ? 'No Joystick' : this.fso.joystick_guid + '#' + this.fso.joystick_id;
+            }
+
             this.ff_enabled = settings.fso.joystick_ff_strength == 100;
 
             this.loading = false;

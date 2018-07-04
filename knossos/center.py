@@ -65,7 +65,11 @@ settings = {
     'neb_user': '',
     'neb_password': '',
     'engine_stability': 'stable',
-    'fso_flags': {}
+    'fso_flags': {},
+    'joystick': {
+        'guid': None,
+        'id': 99999
+    }
 }
 
 if sys.platform.startswith('win'):

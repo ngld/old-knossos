@@ -532,7 +532,8 @@ def get_fso_flags(fs2_bin):
                 # converted.
                 flags = {
                     "easy_flags": OrderedDict(),
-                    "flags": OrderedDict()
+                    "flags": OrderedDict(),
+                    'joysticks': json_flags['joysticks']
                 }
 
                 for i, easy_flag in enumerate(json_flags["easy_flags"]):

@@ -234,20 +234,14 @@ def init_sdl():
                 return []
 
             joys = []
-            guid_counts = {}
             buf = ctypes.create_string_buffer(33)
             for i in range(sdl.SDL_NumJoysticks()):
                 guid = sdl.SDL_JoystickGetDeviceGUID(i)
                 sdl.SDL_JoystickGetGUIDString(guid, buf, 33)
 
                 guid_str = buf.raw.decode(ENCODING).strip('\x00')
-                if guid_str in guid_counts:
-                    guid_counts[guid_str] += 1
-                else:
-                    guid_counts[guid_str] = 0
-
                 name = sdl.SDL_JoystickNameForIndex(i).decode(ENCODING)
-                joys.append((guid_str, guid_counts[guid_str], name))
+                joys.append((guid_str, i, name))
 
             sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
             return joys

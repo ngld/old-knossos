@@ -524,6 +524,12 @@ class WebBridge(QtCore.QObject):
         except Exception:
             logging.exception('Failed to decode new FSO settings! (%s)' % data)
         else:
+            center.settings['joystick'] = {
+                'guid': data.get('joystick_guid', None),
+                'id': data.get('joystick_id', 99999)
+            }
+            center.save_settings()
+
             settings.save_fso_settings(data)
 
     @QtCore.Slot(result=str)
