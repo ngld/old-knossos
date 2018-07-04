@@ -54,6 +54,10 @@ class PackageNotFound(ModNotFound):
         self.package = package
 
 
+class PackageConstraintNotMet(PackageNotFound):
+    pass
+
+
 class NoExecutablesFound(Exception):
     pass
 
@@ -302,9 +306,17 @@ class Repo(object):
             mod = pkg.get_mod()
             dd = dep_dict.setdefault(mod.mid, {})
 
-            dd = dd.setdefault(util.Spec('==%s' % mod.version), {})
-            dd['#mod'] = pkg.get_mod()
-            dd[pkg.name] = pkg
+            spec = util.Spec('==%s' % mod.version)
+            if spec not in dd:
+                dd[spec] = {
+                    'mod': pkg.get_mod(),
+                    'owner': pkg.get_mod(),
+                    'pkgs': {
+                        pkg.name: pkg
+                    }
+                }
+            else:
+                dd[spec]['pkgs'][pkg.name] = pkg
 
         # Resolve the pkgs' dependencies
         while len(ndeps) > 0:
@@ -317,11 +329,16 @@ class Repo(object):
                 if DEBUG_DEPS:
                     logging.debug('%s -> %s', pkg, ['%s %s' % (pkg, str(spec)) for pkg, spec in deps])
 
-                for dep, version in deps:
+                for dep, spec in deps:
                     dd = dep_dict.setdefault(dep.get_mod().mid, {})
-                    dd = dd.setdefault(version, {})
-                    dd['#mod'] = dep.get_mod()
+                    if spec not in dd:
+                        dd[spec] = {
+                            'mod': dep.get_mod(),
+                            'owner': pkg.get_mod(),
+                            'pkgs': {}
+                        }
 
+                    dd = dd[spec]['pkgs']
                     if dep.name not in dd:
                         dd[dep.name] = dep
                         if recursive:
@@ -336,9 +353,8 @@ class Repo(object):
         for mid, variants in dep_dict.items():
             if len(variants) == 1:
                 # This loop only iterates once but it's the easiest solution to get the actual value
-                for pkgs in variants.values():
-                    del pkgs['#mod']
-                    dep_list |= set(pkgs.values())
+                for dep_info in variants.values():
+                    dep_list |= set(dep_info['pkgs'].values())
             else:
                 specs = variants.keys()
                 remains = []
@@ -346,7 +362,7 @@ class Repo(object):
                 for v in variants.values():
                     ok = True
                     for spec in specs:
-                        if not spec.match(v['#mod'].version):
+                        if not spec.match(v['mod'].version):
                             ok = False
                             break
 
@@ -354,12 +370,12 @@ class Repo(object):
                         remains.append(v)
 
                 if len(remains) == 0:
-                    const = ','.join(['%s (%s)' % (s, m['#mod'].mid) for s, m in variants.items()])
-                    mod_titles = list(variants.values())[0]['#mod'].title
-                    raise PackageNotFound('No version of mod "%s" found for these constraints: %s'
+                    const = ','.join(['%s (%s)' % (s, m['owner'].title) for s, m in variants.items()])
+                    mod_titles = list(variants.values())[0]['mod'].title
+                    raise PackageConstraintNotMet('No version of mod "%s" found for these constraints: %s'
                         % (mod_titles, const), mid, mod_titles, const)
                 else:
-                    if remains[0]['#mod'].mtype == 'engine':
+                    if remains[0]['mod'].mtype == 'engine':
                         # Multiple versions qualify and this is an engine so we have to check the stability next
                         # First try the user's preferred stability and if that doesn't work, restart with the highest stability.
                         for stab in (pref_stable, STABILITES[-1]):
@@ -367,7 +383,7 @@ class Repo(object):
                             candidates = []
 
                             while stab_idx > -1:
-                                candidates = [m for m in remains if m['#mod'].stability == stab]
+                                candidates = [m for m in remains if m['mod'].stability == stab]
                                 if len(candidates) == 0:
                                     # Nothing found, try the next lower stability
                                     stab_idx -= 1
@@ -381,15 +397,14 @@ class Repo(object):
 
                         # An empty remains list would trigger an index out of bounds error; avoid that
                         if len(candidates) > 0:
-                            logging.debug('Stability filter for %s resulted in %s', remains[0]['#mod'], candidates)
+                            logging.debug('Stability filter for %s resulted in %s', remains[0]['mod'], candidates)
                             remains = candidates
                         else:
-                            logging.debug('Stability filter for %s came up empty!', remains[0]['#mod'])
+                            logging.debug('Stability filter for %s came up empty!', remains[0]['mod'])
 
                     # Pick the latest
-                    remains.sort(key=lambda v: v['#mod'].version)
-                    del remains[-1]['#mod']
-                    dep_list |= set(remains[-1].values())
+                    remains.sort(key=lambda v: v['mod'].version)
+                    dep_list |= set(remains[-1]['pkgs'].values())
 
         if DEBUG_DEPS:
             logging.debug('Dep resolution result = %s', dep_list)
