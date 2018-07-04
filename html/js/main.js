@@ -102,8 +102,8 @@ function init() {
         vm.popup_mod_id = info.id;
         vm.popup_mod_version = info.version;
         vm.popup_mod_exes = info.exes;
+        vm.popup_mod_sel_exe = info.selected_exe;
         vm.popup_mod_flag = info.mod_flag;
-        vm.popup_mod_sel_exe = info.exes[0][0];
         vm.popup_mod_flag_map = {};
 
         for(let part of info.mod_flag) {

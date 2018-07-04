@@ -402,7 +402,7 @@ class WebBridge(QtCore.QObject):
 
         labels = set()
         try:
-            for exe in mod.get_executables():
+            for exe in mod.get_executables(user=True):
                 if exe.get('label') is not None:
                     labels.add(exe['label'])
         except repo.NoExecutablesFound:
@@ -1306,20 +1306,27 @@ class WebBridge(QtCore.QObject):
 
         def helper():
             flags = None
+            exes = []
             if not mod:
                 flags = settings.get_fso_flags(version)
             else:
                 try:
                     for exe in mod.get_executables():
                         if not exe.get('label'):
-                            flags = settings.get_fso_flags(exe['file'])
+                            if not flags:
+                                flags = settings.get_fso_flags(exe['file'])
+
+                            exes.append(os.path.basename(exe['file']))
                 except repo.NoExecutablesFound:
                     pass
                 except Exception:
                     logging.exception('Failed to fetch FSO flags!')
 
             try:
-                self.asyncCbFinished.emit(cb_id, json.dumps(flags))
+                self.asyncCbFinished.emit(cb_id, json.dumps({
+                    'flags': flags,
+                    'exes': exes
+                }))
             except Exception:
                 logging.exception('Failed to encode FSO flags!')
 

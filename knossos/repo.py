@@ -32,6 +32,12 @@ from . import center, util, bool_parser
 CPU_INFO = None
 STABILITES = ('nightly', 'rc', 'stable')
 DEBUG_DEPS = False
+BUILD_WEIGHTS = {
+    'x64': 50,
+    'avx2': 3,
+    'avx': 2,
+    'sse2': 1
+}
 
 
 class ModNotFound(Exception):
@@ -659,9 +665,18 @@ class Package(object):
             self.folder = self.name
 
         for exe in values.get('executables', []):
+            props = exe.get('properties', None)
+            if not props:
+                props = {
+                    'x64': 'x64' in exe['file'],
+                    'sse2': 'SSE2' in exe['file'] or 'x64' in exe['file'],
+                    'avx': 'AVX' in exe['file']
+                }
+
             self.executables.append({
                 'file': exe['file'],
-                'label': exe.get('label', None)
+                'label': exe.get('label', None),
+                'properties': props
             })
 
         _files = values.get('files', [])
@@ -1119,14 +1134,16 @@ class InstalledMod(Mod):
                 exes.append({
                     'file': self.user_custom_build,
                     'mod': self,
-                    'label': None
+                    'label': None,
+                    'score': 900
                 })
 
         if self.custom_build:
             exes.append({
                 'file': self.custom_build,
                 'mod': self,
-                'label': None
+                'label': None,
+                'score': 800
             })
 
         if self.mtype in ('engine', 'tool'):
@@ -1158,11 +1175,19 @@ class InstalledMod(Mod):
 
                 exe['file'] = os.path.join(pkgpath, exe['file'])
                 exe['mod'] = mod
+                exe['score'] = 0
+
+                if not exe['label']:
+                    for name, is_set in exe['properties'].items():
+                        if is_set and name in BUILD_WEIGHTS:
+                            exe['score'] += BUILD_WEIGHTS[name]
+
                 exes.append(exe)
 
         if not exes:
             raise NoExecutablesFound('No engine found for "%s"!' % self.title)
 
+        exes.sort(key=lambda exe: -exe['score'])
         return exes
 
 

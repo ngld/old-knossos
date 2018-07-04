@@ -127,7 +127,7 @@ export default {
                 this.loading_flags = true;
                 call_async(fs2mod.getFsoCaps, sel_build[0], sel_build[1], (caps) => {
                     this.loading_flags = false;
-                    this.caps = caps;
+                    this.caps = caps.flags;
                 });
             } else {
                 this.$emit('update:fso_build', null);

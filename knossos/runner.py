@@ -423,17 +423,38 @@ def run_mod(mod, tool=None, exe_label=None):
                 translate('runner', '"%s" has an error in its dependencies. Aborted.' % mod))
         return
 
+    global_flags = get_global_flags(mod)
+    sel_exe = None
+    if global_flags and '#exe' in global_flags:
+        for exe in exes:
+            if os.path.basename(exe['file']) == global_flags['#exe']:
+                sel_exe = exe
+                break
+
     if mod_choice:
         # We have to ask the user
+        options = []
+        files = set()
+
+        for exe in exes:
+            if exe['file'] not in files:
+                basename = os.path.basename(exe['file'])
+                options.append((exe['file'], '%s - %s' % (exe['mod'].title, basename)))
+                files.add(exe['file'])
+
         center.main_win.browser_ctrl.bridge.showLaunchPopup.emit(json.dumps({
             'id': mod.mid,
             'version': str(mod.version),
             'title': mod.title,
-            'exes': [(x['file'], '%s - %s' % (x['mod'].title, os.path.basename(x['file']))) for x in exes],
-            'mod_flag': mod_flag
+            'exes': options,
+            'mod_flag': mod_flag,
+            'selected_exe': sel_exe['file'] if sel_exe else None
         }))
     else:
-        run_mod_ex(mod, exes[0]['file'], [path for path, label in mod_flag])
+        if not sel_exe:
+            sel_exe = exes[0]
+
+        run_mod_ex(mod, sel_exe['file'], [path for path, label in mod_flag])
 
 
 def run_mod_ex(mod, binpath, mod_flag):
@@ -513,8 +534,13 @@ def stringify_cmdline(line):
     return ' '.join(result)
 
 
-def apply_global_flags(mod):
-    builds = mod.get_executables(user=True)
+def get_global_flags(mod):
+    try:
+        builds = mod.get_executables(user=True)
+    except Exception:
+        logging.exception('Failed to retrieve flags for %s.' % mod)
+        return None
+
     if len(builds) == 0:
         build = None
     else:
@@ -527,12 +553,15 @@ def apply_global_flags(mod):
 
     if not build:
         logging.warn('Failed to retrieve global flags for %r because I couldn\'t determine the build.' % mod)
-        return mod.cmdline
+        return None
 
-    flag_states = center.settings['fso_flags'].get(build)
+    return center.settings['fso_flags'].get(build)
+
+
+def apply_global_flags(mod):
+    flag_states = get_global_flags(mod)
     if not flag_states:
         # No global flags set
-        logging.debug('No global flags found for %s' % build)
         return mod.cmdline
 
     custom_flags = ''
@@ -541,7 +570,7 @@ def apply_global_flags(mod):
 
     cmdline = shlex.split(mod.cmdline)
     for flag, state in flag_states.items():
-        if flag == '#custom':
+        if flag.startswith('#'):
             continue
 
         if state == 0:
