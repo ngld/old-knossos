@@ -81,8 +81,8 @@ check_module('requests')
 check_module('requests_toolbelt')
 check_module('ply')
 check_module('token_bucket')
-if sys.platform == 'win32':
-    check_module('comtypes')
+# if sys.platform == 'win32':
+#     check_module('comtypes')
 
 # We want to use the more modern QtWebEngine by default so we check for that first.
 webkit = False
