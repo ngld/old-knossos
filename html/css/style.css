@@ -725,6 +725,13 @@ iframe {
     background-color: rgba(0, 0, 0, 0.60);
 }
 
+.mod-node .mod-banner { /* Div for containing banners on the Home tab */
+    width: 150px;
+    height: 268px;
+    position: absolute;
+    top: 0;
+}
+
 .mod-node .mod-banner-green { /* Places the overlay for installed mods on the Explore tab */
     width: 100px;
     height: 26px;
@@ -1050,6 +1057,7 @@ iframe {
 
 .btn-text {
     color: white;
+    font-size: small;
 }
 
 .link-btn {
@@ -1122,6 +1130,7 @@ iframe {
     font-size: 10px;
     line-height: 1.1;
     display: block;
+    color: white;
 }
 
 .btn-green { /* Settings that create the Play button */

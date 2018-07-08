@@ -5,6 +5,8 @@ export default {
     data: () => ({
         engine_builds: [],
         fso_build: 'invalid',
+        exe_file: null,
+        exes: [],
         cmdline: '',
         loading_flags: false,
         easy_flags: {},
@@ -97,15 +99,28 @@ export default {
                 let sel_build = this.fso_build.split('#');
 
                 this.loading_flags = true;
+                this.exes = [];
+
                 call_async(fs2mod.getFsoCaps, sel_build[0], sel_build[1], (caps) => {
                     this.loading_flags = false;
-                    this.processCmdline(caps);
+                    this.processCmdline(caps.flags);
+                    this.exes = caps.exes;
+                    if(!this.exe_file) this.exe_file = caps.exes[0];
                 });
                 call(fs2mod.getGlobalFlags, this.fso_build, (flags) => {
                     this.flag_states = JSON.parse(flags);
                     if(this.flag_states['#custom']) {
                         this.custom_flags = this.flag_states['#custom'];
                         delete this.flag_states['#custom'];
+                    } else {
+                        this.custom_flags = '';
+                    }
+
+                    if(this.flag_states['#exe']) {
+                        this.exe_file = this.flag_states['#exe'];
+                        delete this.flag_states['#exe'];
+                    } else {
+                        this.exe_file = this.exes && this.exes.length > 0 ? this.exes[0] : null;
                     }
 
                     this.updateFlags();
@@ -118,8 +133,13 @@ export default {
         save() {
             fs2mod.saveGlobalFlags(this.fso_build, JSON.stringify({
                 ...this.flag_states,
-                '#custom': this.custom_flags
+                '#custom': this.custom_flags,
+                '#exe': this.exe_file
             }));
+        },
+
+        applyToAll() {
+            fs2mod.applyGlobalFlagsToAll(JSON.stringify(this.flag_states), this.custom_flags);
         }
     }
 }
@@ -134,6 +154,15 @@ export default {
                     <option v-for="mod in engine_builds" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
                         {{ mod.title }} {{ mod.version }}
                     </option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="col-sm-4 control-label">Executable:</label>
+            <div class="col-sm-8">
+                <select class="form-control" v-model="exe_file">
+                    <option v-for="filename in exes">{{ filename }}</option>
                 </select>
             </div>
         </div>
@@ -203,6 +232,7 @@ export default {
         <div class="form-group">
             <div class="col-sm-8 col-sm-offset-4">
                 <button class="mod-btn btn-green" @click="save">Save</button>
+                <button class="mod-btn btn-green" @click="applyToAll">Apply to all</button>
             </div>
         </div>
     </div>

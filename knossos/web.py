@@ -63,7 +63,7 @@ else:
 
 
 class WebBridge(QtCore.QObject):
-    _path = None
+    _view = None
 
     asyncCbFinished = QtCore.Signal(int, str)
     showWelcome = QtCore.Signal()
@@ -82,12 +82,18 @@ class WebBridge(QtCore.QObject):
     taskFinished = QtCore.Signal(float)
     taskMessage = QtCore.Signal(str)
 
+    fs2Launching = QtCore.Signal()
+    fs2Launched = QtCore.Signal()
+    fs2Quit = QtCore.Signal()
+
     def __init__(self, webView=None):
         super(WebBridge, self).__init__()
+        self._view = webView
 
+    def load(self):
         if QtWebChannel:
             self.bridge = self
-            page = webView.page()
+            page = self._view.page()
             self._channel = QtWebChannel.QWebChannel(page)
 
             page.setWebChannel(self._channel)
@@ -119,7 +125,7 @@ class WebBridge(QtCore.QObject):
             else:
                 link = 'qrc:///html/index.html'
 
-            webView.load(QtCore.QUrl(link))
+            self._view.load(QtCore.QUrl(link))
 
     def _acceptConnection(self):
         conn = self._server.nextPendingConnection()
@@ -396,7 +402,7 @@ class WebBridge(QtCore.QObject):
 
         labels = set()
         try:
-            for exe in mod.get_executables():
+            for exe in mod.get_executables(user=True):
                 if exe.get('label') is not None:
                     labels.add(exe['label'])
         except repo.NoExecutablesFound:
@@ -522,6 +528,12 @@ class WebBridge(QtCore.QObject):
         except Exception:
             logging.exception('Failed to decode new FSO settings! (%s)' % data)
         else:
+            center.settings['joystick'] = {
+                'guid': data.get('joystick_guid', None),
+                'id': data.get('joystick_id', 99999)
+            }
+            center.save_settings()
+
             settings.save_fso_settings(data)
 
     @QtCore.Slot(result=str)
@@ -691,6 +703,8 @@ class WebBridge(QtCore.QObject):
                 QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The chosen parent does not exist! Something went very wrong here!!'))
                 return False
 
+        os.mkdir(mod.folder)
+
         if ini_path != '':
             # We need the ini mod for determining where to pull the VPs from
             ini_mod = repo.IniMod()
@@ -748,7 +762,11 @@ class WebBridge(QtCore.QObject):
 
                 center.installed.add_mod(mod)
                 mod.update_mod_flag()
-                mod.save()
+                try:
+                    mod.save()
+                except Exception:
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+                    return
 
                 center.main_win.update_mod_list()
 
@@ -757,8 +775,11 @@ class WebBridge(QtCore.QObject):
 
             return True
         else:
-            os.mkdir(mod.folder)
-            mod.save()
+            try:
+                mod.save()
+            except Exception:
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+                return False
 
             center.installed.add_mod(mod)
             center.main_win.update_mod_list()
@@ -783,7 +804,11 @@ class WebBridge(QtCore.QObject):
         if not os.path.isdir(pkg_path):
             os.mkdir(pkg_path)
 
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return
         center.main_win.update_mod_list()
 
         return len(mod.packages) - 1
@@ -805,7 +830,11 @@ class WebBridge(QtCore.QObject):
 
         # TODO: Delete the package folder?
         del mod.packages[idx]
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
         center.main_win.update_mod_list()
 
         return True
@@ -891,25 +920,25 @@ class WebBridge(QtCore.QObject):
                 logging.debug('Removing %s from %s because it is no longer needed.', item, mod)
                 os.unlink(os.path.join(path, item))
 
-    @QtCore.Slot(str)
+    @QtCore.Slot(str, result=bool)
     def saveModDetails(self, data):
         try:
             data = json.loads(data)
         except Exception:
             logging.exception('Failed to decode mod details!')
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Internal data inconsistency. Please try again.'))
-            return
+            return False
 
         mod = self._get_mod(data['id'], data['version'])
         if mod == -1:
             logging.error('Failed find mod "%s" during save!' % data['id'])
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
-            return
+            return False
 
         if not mod.dev_mode:
             QtWidgets.QMessageBox.critical(None, 'Knossos',
                 self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
-            return
+            return False
 
         if mod.mtype == 'engine':
             mod.stability = data['stability']
@@ -939,37 +968,43 @@ class WebBridge(QtCore.QObject):
                 mod.first_release = datetime.strptime(data['first_release'], '%Y-%m-%d')
             except ValueError:
                 QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The entered first release date is invalid!'))
-                return
+                return False
 
         if data['last_update']:
             try:
                 mod.last_update = datetime.strptime(data['last_update'], '%Y-%m-%d')
             except ValueError:
                 QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The entered last update date is invalid!'))
-                return
+                return False
 
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
+
         center.main_win.update_mod_list()
+        return True
 
-    @QtCore.Slot(str, str, str, str)
+    @QtCore.Slot(str, str, str, str, result=bool)
     def savePackage(self, mid, version, pkg_name, data):
         try:
             data = json.loads(data)
         except Exception:
             logging.exception('Failed to decode mod details!')
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Internal data inconsistency. Please try again.'))
-            return
+            return False
 
         mod = self._get_mod(mid, version)
         if mod == -1:
             logging.error('Failed find mod "%s" during save!' % mid)
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
-            return
+            return False
 
         if not mod.dev_mode:
             QtWidgets.QMessageBox.critical(None, 'Knossos',
                 self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
-            return
+            return False
 
         pkg = None
         for item in mod.packages:
@@ -980,7 +1015,7 @@ class WebBridge(QtCore.QObject):
         if not pkg:
             logging.error('Failed to find package "%s" for mod "%s"!' % (pkg_name, mid))
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the package! Weird...'))
-            return
+            return False
 
         pkg.notes = data['notes']
         pkg.status = data['status']
@@ -996,21 +1031,28 @@ class WebBridge(QtCore.QObject):
             pkg.executables = []
 
         mod.update_mod_flag()
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
+
         center.main_win.update_mod_list()
 
-    @QtCore.Slot(str, str, str, str)
+        return True
+
+    @QtCore.Slot(str, str, str, str, result=bool)
     def saveModFsoDetails(self, mid, version, build, cmdline):
         mod = self._get_mod(mid, version)
         if mod == -1:
             logging.error('Failed find mod "%s" during save!' % mid)
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
-            return
+            return False
 
         if not mod.dev_mode:
             QtWidgets.QMessageBox.critical(None, 'Knossos',
                 self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
-            return
+            return False
 
         build = build.split('#')
         if len(build) != 2:
@@ -1058,6 +1100,7 @@ class WebBridge(QtCore.QObject):
                         QtWidgets.QMessageBox.critical(None, 'Error',
                             self.tr('Failed to save the selected FSO build. Make sure that you have at least one required' +
                             ' package!'))
+                        return False
                 else:
                     old_build = exes[0]['mod']
                     done = False
@@ -1078,9 +1121,14 @@ class WebBridge(QtCore.QObject):
                             % (mod, old_build, build[0]))
 
         mod.cmdline = cmdline
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
 
         center.main_win.update_mod_list()
+        return True
 
     @QtCore.Slot(str, str, str, str)
     def saveUserFsoDetails(self, mid, version, build, cmdline):
@@ -1102,20 +1150,29 @@ class WebBridge(QtCore.QObject):
                 mod.user_exe = build
 
         mod.user_cmdline = cmdline
-        mod.save_user()
+        try:
+            mod.save_user()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save user.json!'))
+            return
 
         center.main_win.update_mod_list()
 
-    @QtCore.Slot(str, str, list)
+    @QtCore.Slot(str, str, list, result=bool)
     def saveModFlag(self, mid, version, mod_flag):
         mod = self._get_mod(mid, version)
         if mod in (-1, -2):
-            return
+            return False
 
         mod.mod_flag = mod_flag
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
 
         center.main_win.update_mod_list()
+        return True
 
     @QtCore.Slot(str, str, bool)
     def startUpload(self, mid, version, private):
@@ -1289,20 +1346,27 @@ class WebBridge(QtCore.QObject):
 
         def helper():
             flags = None
+            exes = []
             if not mod:
                 flags = settings.get_fso_flags(version)
             else:
                 try:
                     for exe in mod.get_executables():
                         if not exe.get('label'):
-                            flags = settings.get_fso_flags(exe['file'])
+                            if not flags:
+                                flags = settings.get_fso_flags(exe['file'])
+
+                            exes.append(os.path.basename(exe['file']))
                 except repo.NoExecutablesFound:
                     pass
                 except Exception:
                     logging.exception('Failed to fetch FSO flags!')
 
             try:
-                self.asyncCbFinished.emit(cb_id, json.dumps(flags))
+                self.asyncCbFinished.emit(cb_id, json.dumps({
+                    'flags': flags,
+                    'exes': exes
+                }))
             except Exception:
                 logging.exception('Failed to encode FSO flags!')
 
@@ -1375,7 +1439,12 @@ class WebBridge(QtCore.QObject):
             for pkg in new_mod.packages:
                 os.mkdir(os.path.join(new_mod.folder, pkg.folder))
 
-        new_mod.save()
+        try:
+            new_mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
+
         center.installed.add_mod(new_mod)
         center.main_win.update_mod_list()
 
@@ -1490,10 +1559,59 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot(str, str)
     def saveGlobalFlags(self, build, flags):
-        center.settings['fso_flags'][build] = json.loads(flags)
-        center.save_settings()
+        try:
+            center.settings['fso_flags'][build] = json.loads(flags)
+        except Exception:
+            logging.exception('Failed to decode flags from JS!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to decode flags!')
+            return
 
+        center.save_settings()
         QtWidgets.QMessageBox.information(None, 'Knossos', 'The settings have been successfully saved.')
+
+    @QtCore.Slot(str, str)
+    def applyGlobalFlagsToAll(self, flags, custom_flags):
+        try:
+            flags = json.loads(flags)
+        except Exception:
+            logging.exception('Failed to decode flags from JS!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to decode flags!')
+            return
+
+        for mvs in center.installed.mods.values():
+            if mvs[0].mtype == 'engine':
+                for mod in mvs:
+                    key = '%s#%s' % (mod.mid, mod.version)
+                    build_flags = center.settings['fso_flags'].setdefault(key, {})
+                    flag_info = None
+
+                    try:
+                        exes = mod.get_executables()
+                        for exe in exes:
+                            if not exe['label']:
+                                flag_info = settings.get_fso_flags(exe['file'])
+                                break
+                    except Exception:
+                        logging.exception('Failed to retrieve flags for %s!' % mod)
+                        continue
+
+                    if not flag_info:
+                        logging.warn('Failed to retrieve flags for %s!' % mod)
+                        continue
+
+                    known_flags = set()
+                    for section in flag_info['flags'].values():
+                        for flag in section:
+                            known_flags.add(flag['name'])
+
+                    for flag, val in flags.items():
+                        if flag in known_flags:
+                            build_flags[flag] = val
+
+                    build_flags['#custom'] = custom_flags
+
+        center.save_settings()
+        QtWidgets.QMessageBox.information(None, 'Knossos', 'The settings were successfully applied to all builds.')
 
     @QtCore.Slot(str, str, result=str)
     def getModCmdline(self, mid, version):
@@ -1530,14 +1648,15 @@ class WebBridge(QtCore.QObject):
 
         Thread(target=helper).start()
 
-    @QtCore.Slot(str, str)
-    def updateTeamMembers(self, mid, members):
+    @QtCore.Slot(str, str, int)
+    def updateTeamMembers(self, mid, members, cb_id):
         try:
             members = json.loads(members)
         except json.JSONDecodeError:
             logging.exception('Failed to decode members!')
 
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to decode team members')
+            self.asyncCbFinished.emit(cb_id, 'false')
             return
 
         def helper():
@@ -1557,7 +1676,7 @@ class WebBridge(QtCore.QObject):
             reason = result.get('reason', None)
 
             if result['result']:
-                QtWidgets.QMessageBox.information(None, 'Knossos', 'Team members successfully saved!')
+                self.asyncCbFinished.emit(cb_id, 'true')
                 return
             elif reason == 'owners_changed':
                 msg = "Your changes weren't saved because you aren't permitted to modify the mod Owners!"
@@ -1569,6 +1688,7 @@ class WebBridge(QtCore.QObject):
                 msg = "Your changes couldn't be saved because an unexpected error ocurred!"
 
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
+            self.asyncCbFinished.emit(cb_id, 'false')
 
         Thread(target=helper).start()
 
@@ -1591,8 +1711,9 @@ else:
             frame = webView.page().mainFrame()
             frame.javaScriptWindowObjectCleared.connect(self.insert_bridge)
 
+        def load(self):
             link = 'qrc:///html/index.html'
-            webView.load(QtCore.QUrl(link))
+            self._view.load(QtCore.QUrl(link))
 
         def insert_bridge(self):
             frame = self._view.page().mainFrame()

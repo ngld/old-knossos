@@ -17,7 +17,7 @@ function init() {
             let cb = args.pop();
             cb(ref.apply(null, args));
         }
-    }
+    };
 
     let cb_id = 0;
     let cb_store = {};
@@ -29,7 +29,25 @@ function init() {
 
         ref.apply(null, args);
         cb_id++;
-    }
+    };
+
+    window.call_promise = function (ref) {
+        let args = Array.prototype.slice.apply(arguments, [0]);
+
+        return new Promise((resolve) => {
+            args.push(resolve);
+            call.apply(null, args);
+        });
+    };
+
+    window.call_async_promise = function (ref) {
+        let args = Array.prototype.slice.apply(arguments, [0]);
+
+        return new Promise((resolve) => {
+            args.push(resolve);
+            call_async.apply(null, args);
+        });
+    };
 
     window.connectOnce = function (sig, cb) {
         let wrapper = function () {
@@ -84,8 +102,8 @@ function init() {
         vm.popup_mod_id = info.id;
         vm.popup_mod_version = info.version;
         vm.popup_mod_exes = info.exes;
+        vm.popup_mod_sel_exe = info.selected_exe;
         vm.popup_mod_flag = info.mod_flag;
-        vm.popup_mod_sel_exe = info.exes[0][0];
         vm.popup_mod_flag_map = {};
 
         for(let part of info.mod_flag) {
@@ -170,6 +188,18 @@ function init() {
 
     fs2mod.taskMessage.connect((msg) => {
         vm.popup_progress_message = msg;
+    });
+
+    fs2mod.fs2Launching.connect((msg) => {
+        vm.status_message = 'FSO is launching...';
+    });
+
+    fs2mod.fs2Launched.connect((msg) => {
+        vm.status_message = 'FSO is running.';
+    });
+
+    fs2mod.fs2Quit.connect((msg) => {
+        vm.status_message = '';
     });
 
     // Open <a href="..." target="_blank">...</a> links in the system's default browser

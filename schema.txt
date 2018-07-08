@@ -50,7 +50,13 @@
                     "executables": [ // optional
                         {
                             "file": "...", // required, path to the executable (*.exe file on Windows), relative to the mod folder
-                            "label": "" // optional, should be empty for release builds and contain the name for others (i.e. "Fast Debug" or "FRED")
+                            "label": "", // optional, should be empty for release builds and contain the name for others (i.e. "Fast Debug" or "FRED")
+                            "properties": {
+                                "x64": false, // optional
+                                "sse2": false, // optional
+                                "avx": false, // optional
+                                "avx2": false // optional
+                            }
                         }
                     ],
                     "files": [

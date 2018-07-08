@@ -24,7 +24,7 @@ from .qt import QtCore # noqa
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.10.1'
+VERSION = '0.11.0'
 UPDATE_LINK = 'https://fsnebula.org/knossos'
 INNOEXTRACT_LINK = 'https://dev.tproxy.de/knossos/innoextract.txt'
 DEBUG = os.getenv('KN_DEBUG', '0').strip() == '1'
@@ -65,7 +65,11 @@ settings = {
     'neb_user': '',
     'neb_password': '',
     'engine_stability': 'stable',
-    'fso_flags': {}
+    'fso_flags': {},
+    'joystick': {
+        'guid': None,
+        'id': 99999
+    }
 }
 
 if sys.platform.startswith('win'):
@@ -97,13 +101,6 @@ else:
 
 
 class _SignalContainer(QtCore.QObject):
-    fs2_launched = QtCore.Signal()
-    fs2_failed = QtCore.Signal(int)
-    fs2_quit = QtCore.Signal()
-    fs2_path_changed = QtCore.Signal()
-    fs2_bin_changed = QtCore.Signal()
-    list_updated = QtCore.Signal()
-    repo_updated = QtCore.Signal()
     update_avail = QtCore.Signal('QVariant')
     task_launched = QtCore.Signal(QtCore.QObject)
 

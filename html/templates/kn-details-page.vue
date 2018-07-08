@@ -153,7 +153,7 @@ export default {
                     <span class="btn-text">PLAY</span>
                 </button>
 
-                <button class="mod-btn btn-yellow" v-if="mod.installed && mod.status === 'update'" @click="update">
+                <button class="mod-btn btn-blue" v-if="mod.installed && mod.status === 'update'" @click="update">
                     <span class="btn-text">UPDATE</span>
                 </button>
 
@@ -176,7 +176,7 @@ export default {
                     <span class="btn-text">CANCEL</span>
                 </button>
 
-                <button class="mod-btn btn-blue" v-if="mod.installed" @click="reportMod">
+                <button class="mod-btn btn-yellow" v-if="mod.installed" @click="reportMod">
                     <span class="btn-text">REPORT</span>
                 </button>
 
@@ -184,7 +184,7 @@ export default {
                     <div class="dropdown-content">
                         <button v-for="tool in tools" @click="launchTool(tool)">Run {{ tool }}</button>
                         <button @click="uploadLog">Upload Debug Log</button>
-                        <button v-if="mod.id !== 'FS2' && mod.status !== 'updating'" @click="install">Modify</button>
+                        <button v-if="mod.id !== 'FS2' && mod.status !== 'updating' && !mod.dev_mode" @click="install">Modify</button>
                         <button v-if="mod.status !== 'updating' && (mod.type === 'mod' || mod.type == 'tc')" @click="showFsoSettings">FSO Settings</button>
                         <button v-if="mod.id !== 'FS2' && mod.status !== 'updating' && !mod.dev_mode" @click="uninstallMod">Uninstall</button>
                         <button v-if="mod.id !== 'FS2' && !mod.dev_mode" @click="verifyIntegrity">Verify file integrity</button>

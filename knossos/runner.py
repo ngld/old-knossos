@@ -58,6 +58,9 @@ class Fs2Watcher(threading.Thread):
         watchers.append(self)
 
     def run(self):
+        bridge = center.main_win.browser_ctrl.bridge
+        bridge.fs2Launching.emit()
+
         try:
             fs2_bin = os.path.normpath(self._params[0])
 
@@ -80,7 +83,9 @@ class Fs2Watcher(threading.Thread):
                 env['LD_LIBRARY_PATH'] = ld_path
 
             logging.debug('Launching FS2: %s in %s', repr([fs2_bin] + self._params[1:]), self._cwd)
-            settings.ensure_fso_config()
+
+            if not self.prepare_fso_config(fs2_bin):
+                return
 
             fail = False
             rc = -999
@@ -99,15 +104,103 @@ class Fs2Watcher(threading.Thread):
                 fail = True
 
             if fail:
-                center.signals.fs2_failed.emit(rc)
                 self.failed_msg(reason, fs2_bin)
                 return
 
-            center.signals.fs2_launched.emit()
+            bridge.fs2Launched.emit()
             p.wait()
-            center.signals.fs2_quit.emit()
+            bridge.fs2Quit.emit()
         finally:
             watchers.remove(self)
+
+    def prepare_fso_config(self, fs2_bin):
+        cfg = settings.get_settings()
+        if not cfg['fso']['joystick_guid']:
+            # No joystick selected
+            settings.ensure_fso_config()
+            return True
+
+        sel_guid = cfg['fso']['joystick_guid']
+        found_joystick = False
+        flags = settings.get_fso_flags(fs2_bin)
+        joysticks = settings.get_joysticks()
+        if 'joysticks' in flags:
+            for joy in flags['joysticks']:
+                if joy['guid'] == sel_guid:
+                    found_joystick = True
+                    break
+        else:
+            # Old build, use our own joystick list
+            for joy in joysticks:
+                if joy[0] == sel_guid:
+                    found_joystick = True
+                    break
+
+        if found_joystick:
+            # Everything's fine
+            # NOTE: The config already exists in this case since a joystick was selected.
+            return True
+
+        sel_guid = center.settings['joystick']['guid']
+        try:
+            sel_id = int(center.settings['joystick']['id'])
+        except ValueError:
+            sel_id = 9999
+
+        sel_name = None
+        if 'joysticks' not in flags:
+            if not sel_guid:
+                self.complain_joystick()
+                return False
+
+            print(flags)
+
+            # Old build, just use our stored values
+            cfg['fso']['joystick_guid'] = sel_guid
+            cfg['fso']['joystick_id'] = sel_id
+
+            logging.info('Detected old build, used joystick GUID from Knossos settings')
+        elif not sel_guid:
+            self.complain_joystick()
+            return False
+        else:
+            # Try to guess the correct GUID and ID by using our own GUID and ID as basis
+            candidates = []
+            for joy in joysticks:
+                if joy[0] == sel_guid and joy[1] == sel_id:
+                    sel_name = joy[2]
+                    break
+
+            for i, joy in enumerate(flags['joysticks']):
+                if joy['name'] == sel_name:
+                    candidates.append((i, joy))
+
+            if len(flags['joysticks']) == 0:
+                logging.info('Skipped joystick mapping because no joysticks were detected.')
+                return True
+
+            if len(candidates) == 1:
+                # This is easy!
+                logging.info('Mapping joystick %s (%d) => %s (%d)', sel_guid, sel_id, candidates[0][1]['guid'], candidates[0][0])
+
+                cfg['fso']['joystick_guid'] = candidates[0][1]['guid']
+                cfg['fso']['joystick_id'] = candidates[0][0]
+            else:
+                joy = [j[1] for j in candidates if j[0] == sel_id]
+                if joy:
+                    logging.info('Mapping joystick %s => %s (many matched)', sel_guid, joy[0]['guid'])
+
+                    cfg['fso']['joystick_guid'] = joy[0]['guid']
+                elif len(candidates) == 0:
+                    if len(flags['joysticks']) > sel_id:
+                        logging.warning('Mapping joystick %s => %s (based on index)', sel_guid, candidates[sel_id]['guid'])
+
+                        cfg['fso']['joystick_guid'] = candidates[sel_id]['guid']
+                    else:
+                        logging.error('Joystick mapping failed!')
+
+        settings.save_fso_settings(cfg['fso'])
+        return True
 
     @run_in_qt
     def failed_msg(self, reason, fs2_bin):
@@ -127,6 +220,13 @@ class Fs2Watcher(threading.Thread):
             msg = translate('runner', "I can't start because the library %s is missing!")
 
         QtWidgets.QMessageBox.critical(None, 'Knossos', msg % util.human_list(missing))
+
+    @run_in_qt
+    def complain_joystick(self):
+        QtWidgets.QMessageBox.critical(None, 'Knossos', translate('runner',
+            "You fs2_open.ini contains a joystick which this FSO version can't detect and Knossos doesn't remember"
+            " your joystick. Please go to Knossos' settings, select your joystick, save and try again."
+        ))
 
 
 def check_elf_libs(fpath):
@@ -301,31 +401,60 @@ def run_mod(mod, tool=None, exe_label=None):
         mod_flag, mod_choice = mod.get_mod_flag()
     except repo.ModNotFound as exc:
         mod_name = exc.mid
+        if exc.spec:
+            details = ' (%s)' % exc.spec
+        else:
+            details = ''
 
         try:
             err_mod = center.mods.query(mod_name).title
-        except repo.ModNotFound:
+        except repo.ModNotFound as exc:
             err_mod = mod_name
 
         if err_mod:
-            QtWidgets.QMessageBox.critical(None, 'Knossos',
-                translate('runner', '"%s" requires "%s" which is missing!' % (mod, err_mod)))
+            if isinstance(exc, repo.PackageConstraintNotMet):
+                QtWidgets.QMessageBox.critical(None, 'Knossos',
+                    translate('runner', '"%s" (%s) requires "%s" which has conflicting requirements: %s' % (mod.title, mod.version, err_mod, exc.spec)))
+            else:
+                QtWidgets.QMessageBox.critical(None, 'Knossos',
+                    translate('runner', '"%s" (%s) requires "%s" which is missing! %s' % (mod.title, mod.version, err_mod, details)))
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos',
                 translate('runner', '"%s" has an error in its dependencies. Aborted.' % mod))
         return
 
+    global_flags = get_global_flags(mod)
+    sel_exe = None
+    if global_flags and '#exe' in global_flags:
+        for exe in exes:
+            if os.path.basename(exe['file']) == global_flags['#exe']:
+                sel_exe = exe
+                break
+
     if mod_choice:
         # We have to ask the user
+        options = []
+        files = set()
+
+        for exe in exes:
+            if exe['file'] not in files:
+                basename = os.path.basename(exe['file'])
+                options.append((exe['file'], '%s - %s' % (exe['mod'].title, basename)))
+                files.add(exe['file'])
+
         center.main_win.browser_ctrl.bridge.showLaunchPopup.emit(json.dumps({
             'id': mod.mid,
             'version': str(mod.version),
             'title': mod.title,
-            'exes': [(x['file'], '%s - %s' % (x['mod'].title, os.path.basename(x['file']))) for x in exes],
-            'mod_flag': mod_flag
+            'exes': options,
+            'mod_flag': mod_flag,
+            'selected_exe': sel_exe['file'] if sel_exe else None
         }))
     else:
-        run_mod_ex(mod, exes[0]['file'], [path for path, label in mod_flag])
+        if not sel_exe:
+            sel_exe = exes[0]
+
+        run_mod_ex(mod, sel_exe['file'], [path for path, label in mod_flag])
 
 
 def run_mod_ex(mod, binpath, mod_flag):
@@ -405,8 +534,13 @@ def stringify_cmdline(line):
     return ' '.join(result)
 
 
-def apply_global_flags(mod):
-    builds = mod.get_executables(user=True)
+def get_global_flags(mod):
+    try:
+        builds = mod.get_executables(user=True)
+    except Exception:
+        logging.exception('Failed to retrieve flags for %s.' % mod)
+        return None
+
     if len(builds) == 0:
         build = None
     else:
@@ -419,12 +553,15 @@ def apply_global_flags(mod):
 
     if not build:
         logging.warn('Failed to retrieve global flags for %r because I couldn\'t determine the build.' % mod)
-        return mod.cmdline
+        return None
 
-    flag_states = center.settings['fso_flags'].get(build)
+    return center.settings['fso_flags'].get(build)
+
+
+def apply_global_flags(mod):
+    flag_states = get_global_flags(mod)
     if not flag_states:
         # No global flags set
-        logging.debug('No global flags found for %s' % build)
         return mod.cmdline
 
     custom_flags = ''
@@ -433,7 +570,7 @@ def apply_global_flags(mod):
 
     cmdline = shlex.split(mod.cmdline)
     for flag, state in flag_states.items():
-        if flag == '#custom':
+        if flag.startswith('#'):
             continue
 
         if state == 0:

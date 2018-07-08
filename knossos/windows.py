@@ -166,7 +166,6 @@ class HellWindow(Window):
 
         center.signals.update_avail.connect(self.ask_update)
         center.signals.task_launched.connect(self.watch_task)
-        center.signals.repo_updated.connect(self.update_mod_list)
 
         self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
         self.win.progressInfo.hide()
@@ -181,6 +180,9 @@ class HellWindow(Window):
         # Since this is the main window and should only be closed whenever the application exits, skipping this
         # won't lead to memory leaks.
         # super(HellWindow, self)._del()
+
+    def start_init(self):
+        self.browser_ctrl.load()
 
     def finish_init(self):
         if self._init_done:
@@ -225,7 +227,7 @@ class HellWindow(Window):
             if query in mvs[0].title.lower():
                 mod = mvs[0]
                 if mod.mtype == 'engine' and self._mod_filter != 'develop':
-                    mvs = [mv for mv in mvs if mv.stability == center.settings['engine_stability']]
+                    mvs = [mv for mv in mvs if mv.satisfies_stability(center.settings['engine_stability'])]
                     if len(mvs) == 0:
                         mvs = mods[mid]
 

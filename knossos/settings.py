@@ -532,7 +532,8 @@ def get_fso_flags(fs2_bin):
                 # converted.
                 flags = {
                     "easy_flags": OrderedDict(),
-                    "flags": OrderedDict()
+                    "flags": OrderedDict(),
+                    'joysticks': json_flags['joysticks']
                 }
 
                 for i, easy_flag in enumerate(json_flags["easy_flags"]):
@@ -652,8 +653,6 @@ def save_setting(name, value):
             center.settings['fs2_bin'] = old_bin
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
             return
-        else:
-            center.signals.fs2_bin_changed.emit()
     elif name == 'fred_bin':
         path = os.path.join(center.settings['base_path'], value)
         if not os.path.isfile(path):

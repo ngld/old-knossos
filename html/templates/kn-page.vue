@@ -13,6 +13,7 @@ export default {
         },
 
         search_text: '',
+        status_message: '',
         tab: 'explore',
         page: 'modlist',
         show_filter: false,
@@ -288,7 +289,10 @@ export default {
                 <div class="mod-search">
                     <input v-model="search_text" type="text" placeholder="Search">
                 </div>
-                <div class="text-marquee"><span>Announcements go here!</span></div>
+                <div class="text-marquee">
+                    <!-- <span>Announcements go here!</span> -->
+                    {{ status_message }}
+                </div>
             </div>
         </div>
     <!-------------------------------------------------------------------------------- Start the Tab Menus ---------->

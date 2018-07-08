@@ -39,6 +39,7 @@ translate = QtCore.QCoreApplication.translate
 
 
 class FetchTask(progress.Task):
+    background = True
 
     def __init__(self):
         super(FetchTask, self).__init__()
@@ -95,6 +96,7 @@ class FetchTask(progress.Task):
 
 
 class LoadLocalModsTask(progress.Task):
+    background = True
     can_abort = False
     _steps = 2
 
@@ -142,7 +144,7 @@ class LoadLocalModsTask(progress.Task):
 
 
 class CheckFilesTask(progress.MultistepTask):
-    can_abort = False
+    background = True
     _mod = None
     _check_results = None
     _missing_image_mods = None
@@ -347,7 +349,7 @@ class InstallTask(progress.MultistepTask):
             for item in ins_pkg.files.values():
                 self._slot_prog[id(item)] = ('%s: %s' % (pmod.title, item['filename']), 0, 'Checking...')
 
-        center.signals.repo_updated.emit()
+        center.main_win.update_mod_list()
         self.done.connect(self.finish)
         self.title = 'Installing mods...'
 
