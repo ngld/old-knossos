@@ -96,7 +96,7 @@ export default {
             <button v-if="!error" class="mod-btn btn-blue" @click.prevent="addRow">
                 <span class="btn-text">Add Member</span>
             </button>
-            <kn-save-btn :save_handler="save" v-if="!error" />
+            <kn-save-btn :save-handler="save" v-if="!error" />
 
             <div style="margin-top:120px;">
                 <hr>

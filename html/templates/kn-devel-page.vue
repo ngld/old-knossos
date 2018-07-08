@@ -218,7 +218,7 @@ export default {
             let pkg = Object.assign({}, this.selected_pkg);
             let mod = this.selected_mod;
 
-            fs2mod.savePackage(mod.id, mod.version, pkg.name, JSON.stringify(pkg));
+            return call_promise(fs2mod.savePackage, mod.id, mod.version, pkg.name, JSON.stringify(pkg));
         },
 
         addPackage() {
@@ -776,7 +776,7 @@ export default {
                             </div>
 
                             <div class="col-xs-9 col-xs-offset-3">
-                                <kn-save-btn :save_handler="saveDetails" />
+                                <kn-save-btn :save-handler="saveDetails" />
                             </div>
                         </div>
 
@@ -786,7 +786,7 @@ export default {
                             <kn-fso-settings :mods="mods" :fso_build.sync="fso_build" :cmdline.sync="(selected_mod || {}).cmdline"></kn-fso-settings>
 
                             <div class="col-xs-9 col-xs-offset-3">
-                                <kn-save-btn :save_handler="saveFsoSettings" />
+                                <kn-save-btn :save-handler="saveFsoSettings" />
                             </div>
                         </div>
 
@@ -805,7 +805,7 @@ export default {
                                 {{ mod_map[dep].title }}
                             </div>
 
-                            <kn-save-btn :save_handler="saveModFlag" />
+                            <kn-save-btn :save-handler="saveModFlag" />
                         </div>
 
                         <div v-if="!selected_pkg && page === 'team'">
@@ -971,14 +971,17 @@ export default {
 
                             <div class="form-group">
                                 <div class="col-xs-9 col-xs-offset-3">
-                                    <!-- TODO: Use kn-save-btn -->
-                                    <button :class="'mod-btn btn-' + (edit_dep ? 'grey' : 'green')" @click.prevent="savePackage" :disabled="edit_dep">
-                                        <span class="btn-text">SAVE</span>
-                                    </button>
+                                    <kn-save-btn :save-handler="savePackage">
+                                        <template slot-scope="{ click }">
+                                            <button :class="'mod-btn btn-' + (edit_dep ? 'grey' : 'green')" @click.prevent="click" :disabled="edit_dep">
+                                                <span class="btn-text">SAVE</span>
+                                            </button>
 
-                                    <button class="mod-btn btn-red" @click.prevent="deletePackage">
-                                        <span class="btn-text">DELETE</span>
-                                    </button>
+                                            <button class="mod-btn btn-red" @click.prevent="deletePackage">
+                                                <span class="btn-text">DELETE</span>
+                                            </button>
+                                        </template>
+                                    </kn-save-btn>
                                 </div>
                             </div>
                         </div>

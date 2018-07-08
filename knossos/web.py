@@ -762,7 +762,11 @@ class WebBridge(QtCore.QObject):
 
                 center.installed.add_mod(mod)
                 mod.update_mod_flag()
-                mod.save()
+                try:
+                    mod.save()
+                except Exception:
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+                    return
 
                 center.main_win.update_mod_list()
 
@@ -771,7 +775,11 @@ class WebBridge(QtCore.QObject):
 
             return True
         else:
-            mod.save()
+            try:
+                mod.save()
+            except Exception:
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+                return False
 
             center.installed.add_mod(mod)
             center.main_win.update_mod_list()
@@ -796,7 +804,11 @@ class WebBridge(QtCore.QObject):
         if not os.path.isdir(pkg_path):
             os.mkdir(pkg_path)
 
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return
         center.main_win.update_mod_list()
 
         return len(mod.packages) - 1
@@ -818,7 +830,11 @@ class WebBridge(QtCore.QObject):
 
         # TODO: Delete the package folder?
         del mod.packages[idx]
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
         center.main_win.update_mod_list()
 
         return True
@@ -961,29 +977,34 @@ class WebBridge(QtCore.QObject):
                 QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The entered last update date is invalid!'))
                 return False
 
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
+
         center.main_win.update_mod_list()
         return True
 
-    @QtCore.Slot(str, str, str, str)
+    @QtCore.Slot(str, str, str, str, result=bool)
     def savePackage(self, mid, version, pkg_name, data):
         try:
             data = json.loads(data)
         except Exception:
             logging.exception('Failed to decode mod details!')
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Internal data inconsistency. Please try again.'))
-            return
+            return False
 
         mod = self._get_mod(mid, version)
         if mod == -1:
             logging.error('Failed find mod "%s" during save!' % mid)
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
-            return
+            return False
 
         if not mod.dev_mode:
             QtWidgets.QMessageBox.critical(None, 'Knossos',
                 self.tr("You can't edit \"%s\" because it isn't in dev mode!") % mod.title)
-            return
+            return False
 
         pkg = None
         for item in mod.packages:
@@ -994,7 +1015,7 @@ class WebBridge(QtCore.QObject):
         if not pkg:
             logging.error('Failed to find package "%s" for mod "%s"!' % (pkg_name, mid))
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the package! Weird...'))
-            return
+            return False
 
         pkg.notes = data['notes']
         pkg.status = data['status']
@@ -1010,8 +1031,15 @@ class WebBridge(QtCore.QObject):
             pkg.executables = []
 
         mod.update_mod_flag()
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
+
         center.main_win.update_mod_list()
+
+        return True
 
     @QtCore.Slot(str, str, str, str, result=bool)
     def saveModFsoDetails(self, mid, version, build, cmdline):
@@ -1093,7 +1121,11 @@ class WebBridge(QtCore.QObject):
                             % (mod, old_build, build[0]))
 
         mod.cmdline = cmdline
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
 
         center.main_win.update_mod_list()
         return True
@@ -1118,7 +1150,11 @@ class WebBridge(QtCore.QObject):
                 mod.user_exe = build
 
         mod.user_cmdline = cmdline
-        mod.save_user()
+        try:
+            mod.save_user()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save user.json!'))
+            return
 
         center.main_win.update_mod_list()
 
@@ -1129,7 +1165,11 @@ class WebBridge(QtCore.QObject):
             return False
 
         mod.mod_flag = mod_flag
-        mod.save()
+        try:
+            mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
 
         center.main_win.update_mod_list()
         return True
@@ -1399,7 +1439,12 @@ class WebBridge(QtCore.QObject):
             for pkg in new_mod.packages:
                 os.mkdir(os.path.join(new_mod.folder, pkg.folder))
 
-        new_mod.save()
+        try:
+            new_mod.save()
+        except Exception:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('Failed to save mod.json!'))
+            return False
+
         center.installed.add_mod(new_mod)
         center.main_win.update_mod_list()
 

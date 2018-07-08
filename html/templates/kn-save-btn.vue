@@ -31,7 +31,7 @@
 </style>
 <script>
 export default {
-    props: ['save_handler'],
+    props: ['saveHandler'],
 
     data: () => ({
         show_notice: false
@@ -39,7 +39,7 @@ export default {
 
     methods: {
         triggerSave() {
-            let result = this.save_handler();
+            let result = this.saveHandler();
             if(result.then) {
                 result.then(this.handleResult.bind(this));
             } else {
@@ -62,9 +62,11 @@ export default {
     <div class="save-btn-cont">
         <div class="form-group save-form">
             <div>
-                <button class="mod-btn btn-green save-btn" @click.prevent="triggerSave">
-                    <span class="btn-text">SAVE</span>
-                </button>
+                <slot :click="triggerSave">
+                    <button class="mod-btn btn-green save-btn" @click.prevent="triggerSave">
+                        <span class="btn-text">SAVE</span>
+                    </button>
+                </slot>
             </div>
         </div>
         <transition name="save-fade" v-if="show_notice">
