@@ -15,14 +15,12 @@
 from __future__ import absolute_import, print_function
 
 import sys
-import os
 import logging
-import shlex
 
 from . import uhf
 uhf(__name__)
 
-from . import center, qt, launcher
+from . import center, qt
 
 
 tr = qt.QtCore.QCoreApplication.translate
@@ -46,60 +44,11 @@ class Integration(object):
         if center.main_win and activate:
             center.app.alert(center.main_win, 3000)
 
-    def install_scheme_handler(self):
-        pass
+    def set_busy(self):
+        self.show_progress(0)
 
 
-class LinuxIntegration(Integration):
-
-    def install_scheme_handler(self):
-        my_cmd = launcher.get_cmd()
-
-        tpl_desktop = r"""[Desktop Entry]
-Name=Knossos
-Exec={PATH} %U
-Icon={ICON_PATH}
-Type=Application
-Terminal=false
-MimeType=x-scheme-handler/fso;
-"""
-
-        tpl_mime_type = 'x-scheme-handler/fso=knossos.desktop;'
-
-        applications_path = os.path.expanduser('~/.local/share/applications/')
-        desktop_file = applications_path + 'knossos.desktop'
-        mime_types_file = applications_path + 'mimeapps.list'
-        my_path = ' '.join([shlex.quote(p) for p in my_cmd])
-
-        if os.path.isfile(desktop_file) or os.path.isfile('/usr/share/applications/knossos.desktop'):
-            return True
-
-        tpl_desktop = tpl_desktop.replace('{PATH}', my_path)
-        tpl_desktop = tpl_desktop.replace('{ICON_PATH}', os.path.abspath(launcher.get_file_path('hlp.png')))
-
-        if not os.path.isdir(applications_path):
-            os.makedirs(applications_path)
-
-        with open(desktop_file, 'w') as output_file:
-            output_file.write(tpl_desktop)
-
-        found = False
-        if os.path.isfile(mime_types_file):
-            with open(mime_types_file, 'r') as lines:
-                for line in lines:
-                    if tpl_mime_type in line:
-                        found = True
-                        break
-
-        if not found:
-            with open(mime_types_file, 'a') as output_file:
-                output_file.write(tpl_mime_type)
-
-        return True
-
-
-class UnityIntegration(LinuxIntegration):
-    launcher = None
+class UnityIntegration(Integration):
 
     def __init__(self, Unity):
         try:
@@ -141,75 +90,39 @@ class UnityIntegration(LinuxIntegration):
 
 
 class WindowsIntegration(Integration):
-    TBPF_NOPROGRESS = 0x0
-    TBPF_INDETERMINATE = 0x1
-    TBPF_NORMAL = 0x2
-    TBPF_ERROR = 0x4
-    TBPF_PAUSED = 0x8
-
-    taskbar = None
-    _hwnd = None
     _win = None
+    _busy = False
 
-    def __init__(self, taskbar):
-        self.taskbar = taskbar
+    def __init__(self):
+        from PyQt5 import QtWinExtras
 
-        try:
-            taskbar.HrInit()
-        except Exception:
-            logging.exception('taskbar.HrInit() failed!')
-
-    def wid(self):
-        win = center.main_win.win
-        if win != self._win:
-            self._hwnd = win.winId()
-            self._win = win
-
-        return self._hwnd
+        self._button = QtWinExtras.QWinTaskbarButton()
+        self._button.setWindow(center.main_win.win.windowHandle())
+        self._progress = self._button.progress()
 
     def show_progress(self, value):
-        try:
-            self.taskbar.SetProgressState(self.wid(), self.TBPF_NORMAL)
-        except Exception:
-            logging.exception('COM error')
-
         self.set_progress(value)
+        self._progress.show()
 
     def set_progress(self, value):
-        try:
-            self.taskbar.SetProgressValue(self.wid(), int(value * 100), 100)
-        except Exception:
-            logging.exception('COM error')
+        if self._busy:
+            self._busy = False
+            self._progress.setRange(0, 100)
+
+        self._progress.setValue(int(value * 100))
 
     def hide_progress(self):
-        try:
-            self.taskbar.SetProgressState(self.wid(), self.TBPF_NOPROGRESS)
-        except Exception:
-            logging.exception('COM error')
+        self._progress.hide()
 
-    def install_scheme_handler(self):
-        my_cmd = launcher.get_cmd()
+    def set_busy(self):
+        if self._busy:
+            self._progress.show()
+            return
 
-        settings = qt.QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', qt.QtCore.QSettings.NativeFormat)
-        settings.setFallbacksEnabled(False)
-
-        settings.setValue('Default', 'URL:Knossos protocol')
-        settings.setValue('URL Protocol', '')
-        settings.setValue('DefaultIcon/Default', '"' + launcher.get_file_path('hlp.ico') + ',1"')
-
-        my_cmd.append('%1')
-        my_path = ' '.join(['"' + p + '"' for p in my_cmd])
-
-        settings.setValue('shell/open/command/Default', my_path)
-
-        # Check
-        # FIXME: Is there any better way to detect whether this worked or not?
-
-        settings.sync()
-        settings = qt.QtCore.QSettings('HKEY_CLASSES_ROOT\\fso', qt.QtCore.QSettings.NativeFormat)
-        settings.setFallbacksEnabled(False)
-
-        return settings.value('shell/open/command/Default') == my_path
+        self._busy = True
+        self._progress.setRange(0, 0)
+        self._progress.setValue(0)
+        self._progress.show()
 
 
 current = None
@@ -220,16 +133,12 @@ def init():
 
     if sys.platform == 'win32':
         try:
-            import comtypes.client as cc
-
-            tlb = cc.GetModule('taskbar.tlb')
-            taskbar = cc.CreateObject('{56FDF344-FD6D-11d0-958A-006097C9A090}', interface=tlb.ITaskbarList3)
-        except Exception:
-            logging.exception('Failed to load ITaskbarList3! Disabling Windows integration.')
-        else:
             logging.info('Activating Windows integration...')
-            current = WindowsIntegration(taskbar)
+            current = WindowsIntegration()
             return
+        except Exception:
+            logging.exception('Failed to activate the Windows integration.')
+
     elif sys.platform.startswith('linux'):
         try:
             import gi
@@ -248,25 +157,5 @@ def init():
             current = UnityIntegration(Unity)
             return
 
-        logging.info('Activating generic Linux integration...')
-        current = LinuxIntegration()
-        return
-
-    logging.warning('No desktop integration active.')
+    logging.info('No desktop integration active.')
     current = Integration()
-
-
-def install_scheme_handler(interactive=True):
-    logging.info('Installing scheme handler...')
-
-    try:
-        if current.install_scheme_handler():
-            if interactive:
-                qt.QtWidgets.QMessageBox.information(None, 'Knossos', tr('integration', 'Done!'))
-
-            return
-    except Exception:
-        logging.exception('Failed to install the scheme handler!')
-
-    qt.QtWidgets.QMessageBox.critical(None, 'Knossos',
-        tr('integration', 'I probably failed to install the scheme handler.\nRun me as administrator and try again.'))
