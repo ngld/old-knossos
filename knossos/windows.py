@@ -64,7 +64,7 @@ class QMainWindow(QtWidgets.QMainWindow):
             if integration.current is not None:
                 integration.current.annoy_user(False)
 
-            if center.main_win and center.main_win.win.isActiveWindow():
+            if center.main_win and center.main_win.win.isActiveWindow() and center.auto_fetcher:
                 center.auto_fetcher.trigger()
 
         return super(QMainWindow, self).changeEvent(event)
@@ -348,7 +348,7 @@ class HellWindow(Window):
             self.win.progressLabel.setText(task.title)
             self.win.progressBar.setValue(0)
 
-            integration.current.show_progress(0)
+        integration.current.set_busy()
 
     def _track_progress(self, task, pi):
         self.browser_ctrl.bridge.taskProgress.emit(id(task), pi[0] * 100, json.dumps(pi[1]))
@@ -356,8 +356,10 @@ class HellWindow(Window):
         for m in task.mods:
             self._updating_mods[m.mid] = pi[0] * 100
 
+        if len(self._tasks) == 1 and pi[0] > 0:
+                integration.current.set_progress(pi[0])
+
         if len(task.mods) == 0 and self._prg_visible:
-            integration.current.set_progress(pi[0])
             self.win.progressBar.setValue(pi[0] * 100)
 
     def _forget_task(self, task):
@@ -372,9 +374,18 @@ class HellWindow(Window):
                 del self._updating_mods[m.mid]
 
         if len(task.mods) == 0 and self._prg_visible:
-            self._prg_visible = False
-            self.win.progressInfo.hide()
-            integration.current.hide_progress()
+            global_tasks = [t for t in self._tasks.values() if len(t.mods) == 0]
+            if len(global_tasks) > 0:
+                self.win.progressLabel.setText(global_tasks[0].title)
+                self.win.progressBar.setValue(0)
+                integration.current.set_busy()
+
+            else:
+                self._prg_visible = False
+                self.win.progressInfo.hide()
+
+                if len(self._tasks) == 0:
+                    integration.current.hide_progress()
 
     def abort_task(self, task):
         if task in self._tasks:

@@ -68,7 +68,6 @@ if six.PY2:
     from . import py2_compat  # noqa
 
 from .qt import QtCore, QtGui, QtWidgets, variant as qt_variant
-from .tasks import run_task, CheckUpdateTask
 from . import util, ipc, auto_fetch
 
 
@@ -158,8 +157,11 @@ def load_settings():
 def run_knossos():
     global app
 
-    from . import repo, progress, integration
     from .windows import HellWindow
+
+    center.app = app
+    center.main_win = HellWindow()
+    app.processEvents()
 
     if sys.platform.startswith('win') and os.path.isfile('7z.exe'):
         util.SEVEN_PATH = os.path.abspath('7z.exe')
@@ -177,7 +179,8 @@ def run_knossos():
     if center.settings['download_bandwidth'] > 0.0:
         util.SPEED_LIMIT_BUCKET.set_rate(center.settings['download_bandwidth'])
 
-    center.app = app
+    from . import repo, progress, integration
+
     center.installed = repo.InstalledRepo()
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
@@ -196,9 +199,7 @@ def run_knossos():
             logging.exception('Failed to load local mod list!')
             center.mods.clear()
 
-    center.main_win = HellWindow()
     center.main_win.start_init()
-    center.main_win.open()
 
     app.exec_()
 
@@ -300,7 +301,7 @@ def main():
 
     logging.debug('Loading settings...')
     load_settings()
-    
+
     trans = QtCore.QTranslator()
     if center.settings['language']:
         lang = center.settings['language']
@@ -316,13 +317,7 @@ def main():
     ipc_conn = ipc.IPCComm(center.settings_path)
 
     if len(sys.argv) > 1:
-        if sys.argv[1] == '--install-scheme':
-            from . import integration
-
-            integration.init()
-            integration.install_scheme_handler('--silent' not in sys.argv)
-            return
-        elif sys.argv[1] == '--finish-update':
+        if sys.argv[1] == '--finish-update':
             updater = sys.argv[2]
 
             if not os.path.isfile(updater):

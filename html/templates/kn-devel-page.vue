@@ -405,8 +405,7 @@ export default {
             call(fs2mod.addPkgExe, this.selected_mod.folder, (files) => {
                 for(let path of files) {
                     this.selected_pkg.executables.push({
-                        'file': path,
-                        'debug': false
+                        'file': path
                     });
                 }
             });
@@ -419,8 +418,7 @@ export default {
                 for(let path of files) {
                     if(exes.indexOf(path) === -1) {
                         this.selected_pkg.executables.push({
-                            'file': path,
-                            'debug': false
+                            'file': path
                         });
                     }
                 }
