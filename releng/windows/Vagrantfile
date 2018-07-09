@@ -5,12 +5,10 @@ Vagrant.require_version ">= 1.6.2"
 
 Vagrant.configure("2") do |config|
     config.vm.define "knossos-builder"
-    config.vm.box = "windows_7"
+    config.vm.box = "StefanScherer/windows_10"
 
 	config.vm.synced_folder ".", "/vagrant", disabled: true
-    config.vm.synced_folder "../..", "/cygdrive/c/knossos", type: "rsync",
-    	rsync__args: ["--verbose", "-z", "-r", "-l", "-u"],
-    	rsync__exclude: ["dist", "build", "packer", ".vagrant", "node_modules"]
+    config.vm.synced_folder "../..", "/knossos_src"
 
-    config.vm.provision :shell, inline: "cd /knossos/releng/windows; cmd /C provision.bat"
+    config.vm.provision :shell, inline: "cd /knossos_src/releng/windows; cmd /C provision.bat"
 end

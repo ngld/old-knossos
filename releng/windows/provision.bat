@@ -4,31 +4,32 @@ cd %~dp0..\..
 
 cscript \Windows\system32\slmgr.vbs /ato
 
-echo ::: Installing Chocolatey...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
-SET "PATH=%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
+echo ::: Installing Scoop...
+powershell -NoProfile -ExecutionPolicy RemoteSigned -Command "iex (new-object net.webclient).downloadstring('https://get.scoop.sh')"
+SET "PATH=%PATH%;%USERPROFILE%\scoop\shims"
 
-echo ::: Installing packages...
-choco install -y --no-progress hashdeep
+call scoop install wget git
+call scoop bucket add extras
+call scoop bucket add versions
 
-rem We're stuck with Python 3.5.x until PyInstaller supports Python 3.6
-powershell -Command "(New-Object System.Net.WebClient).DownloadFile('https://www.python.org/ftp/python/3.5.3/python-3.5.3.exe', 'py3inst.exe')" <NUL
-echo ecce2576a037e6e3c6ff5a5657a01996f1f62df6dc9c944965526d27405a27ee  py3inst.exe > py.hash
-sha256deep -m py.hash py3inst.exe
-if errorlevel 1 (
-	echo Hash mismatch for Python3!
-	exit /b 1
-)
+echo ::: Installing NSIS and Python 3.6...
+call scoop install nsis
+call scoop install -a 32bit python36
 
-py3inst /quiet InstallAllUsers=1 PrependPath=1
-del py3inst.exe py.hash
+echo ::: Installing Windows 10 SDK...
+call wget https://download.microsoft.com/download/5/A/0/5A08CEF4-3EC9-494A-9578-AB687E716C12/windowssdk/winsdksetup.exe
 
-rem choco install -y --no-progress --x86 python3 --version 3.5.2
-choco install -y --no-progress --x86 vcredist2010 vcredist2015 nsis
+call winsdksetup.exe /features OptionId.DesktopCPPx86 /q
+del winsdksetup.exe
 
 echo ::: Installing python dependencies...
-py -3 -mpip install -U pip
-py -3 -mpip install PyQt5 six requests requests_toolbelt ply raven semantic_version pypiwin32 comtypes pyinstaller etaprogress token_bucket
+call python -mpip install -U pip
+call python -mpip install PyQt5 six requests requests_toolbelt ply raven semantic_version pypiwin32 etaprogress token_bucket
 
-echo ::: Downloading remaining dependencies...
-py -3 tools/common/download_archive.py releng/windows/support/support.json
+echo ::: Installing custom PyInstaller build...
+wget -O pyi.7z https://d.gruenprint.de/GBGYJD3IhcnrxjNiPTJKG7fMpR1xU4Lv.7z
+7z x pyi.7z
+cd pyinstaller
+call python setup.py install
+cd ..
+rd /S /Q pyinstaller
