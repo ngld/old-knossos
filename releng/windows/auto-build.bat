@@ -17,7 +17,7 @@ cd knossos
 git reset --hard
 git pull
 
-:update
+:sync_changes
 
 echo ==^> Syncing changes...
 cd \knossos_src

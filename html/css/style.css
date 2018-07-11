@@ -580,6 +580,10 @@ iframe {
     background-image: url(../images/scrollbtn-up-a.png);
 }
 
+.main-container.scroll-style::-webkit-scrollbar {
+    box-shadow: none;
+}
+
 /* -------------------------- Settings for the general scroll bar style ----------------------------------*/
 
 .gen-scroll-style {

@@ -122,7 +122,14 @@ export default {
                         <span class="btn-text">DETAILS</span>
                     </button>
 
-                    <popper v-if="mod.status !== 'updating'" trigger="click" @show="updateTools(); open = true" @hide="open = false" class="dropdown" boundariesSelector=".mod-container">
+                    <popper
+                        v-if="mod.status !== 'updating'"
+                        trigger="click"
+                        @show="updateTools(); open = true"
+                        @hide="open = false"
+                        class="dropdown"
+                        :options="{ modifiers: { keepTogether: { enabled: false }, arrow: { enabled: false } } }"
+                    >
                         <div class="dropdown-content">
                             <button v-for="tool in tools" v-if="(mod.status === 'ready' || mod.status === 'update') && (mod.type === 'mod' || mod.type == 'tc')" @click="launchTool(tool)">Run {{ tool }}</button>
                             <button @click="uploadLog">Upload Debug Log</button>

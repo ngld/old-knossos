@@ -205,8 +205,8 @@ class WebBridge(QtCore.QObject):
         tasks.run_task(tasks.LoadLocalModsTask())
 
     @QtCore.Slot(bool, result='QVariantList')
-    def requestModlist(self, async=False):
-        if async:
+    def requestModlist(self, async_=False):
+        if async_:
             center.main_win.update_mod_list()
             return [None]
         else:
@@ -594,7 +594,19 @@ class WebBridge(QtCore.QObject):
                 if row:
                     folders.append(row[0])
             except Exception:
-                logging.exception('Failed to read GOG Galaxy DB!')
+                logging.exception('Failed to read GOG index.db!')
+
+        gog_db = os.path.expandvars(r'%ProgramData%\GOG.com\Galaxy\storage\galaxy.db')
+        if os.path.isfile(gog_db):
+            try:
+                db = sqlite3.connect(gog_db)
+                c = db.cursor()
+                c.execute('SELECT installationPath FROM InstalledBaseProducts WHERE productId = 5')
+                row = c.fetchone()
+                if row:
+                    folders.append(row[0])
+            except Exception:
+                logging.exception('Failed to read GOG galaxy.db!')
 
         for path in folders:
             if util.is_fs2_retail_directory(path):
@@ -1691,6 +1703,10 @@ class WebBridge(QtCore.QObject):
             self.asyncCbFinished.emit(cb_id, 'false')
 
         Thread(target=helper).start()
+
+    @QtCore.Slot(str)
+    def reportError(self, msg):
+        logging.error('JS Error: %s' % msg)
 
 
 if QtWebChannel:

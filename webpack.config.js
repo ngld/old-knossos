@@ -1,14 +1,24 @@
 const path = require('path');
 const webpack = require('webpack');
+const VueLoaderPlugin = require('vue-loader/lib/plugin');
 
 const use_webkit = process.env.USE_WEBKIT === 'True';
 
 const config = {
   entry: './html/js/main.js',
   plugins: [
-    new webpack.LoaderOptionsPlugin({
-      options: {
-        buble: {
+    new VueLoaderPlugin()
+  ],
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        exclude: file => (
+          /node_modules/.test(file) &&
+          !/\.vue\.js/.test(file)
+        ),
+        loader: 'buble-loader',
+        options: {
           objectAssign: 'Object.assign',
           transforms: (use_webkit ? {
             arrow: true,
@@ -28,22 +38,17 @@ const config = {
             modules: false
           })
         }
-      }
-    })
-  ],
-  module: {
-    rules: [
-      {
-        test: /\.js$/,
-        use: ['buble-loader']
       },
       {
         test: /\.vue$/,
-        use: ['vue-loader?preserveWhitespace=false']
+        loader: 'vue-loader',
+        options: {
+          preserveWhitespace: false
+        }
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader']
+        use: ['vue-style-loader', 'css-loader']
       },
       {
         test: /\.(png|svg|gif|ttf|woff2?)$/,
@@ -55,6 +60,7 @@ const config = {
 
 module.exports = [
   Object.assign({}, config, {
+    mode: 'production',
     output: {
       filename: 'bundle.js',
       path: path.resolve(__dirname, 'html/dist'),
@@ -65,15 +71,12 @@ module.exports = [
         'process.env.NODE_ENV': '"production"',
         USE_WEBKIT: JSON.stringify(use_webkit),
         KN_DEBUG: JSON.stringify(false)
-      }),
-      new webpack.optimize.UglifyJsPlugin({
-        ecma: 5
       })
     ])
   }),
 
   Object.assign({}, config, {
-    devtool: 'eval',
+    mode: 'development',
     output: {
       filename: 'debug_bundle.js',
       path: path.resolve(__dirname, 'html/dist'),

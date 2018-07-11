@@ -44,10 +44,12 @@ class QDialog(QtWidgets.QDialog):
 
 
 class QMainWindow(QtWidgets.QMainWindow):
+    # _dragStart = None
 
     def __init__(self, *args):
         super(QMainWindow, self).__init__(*args)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        # self.setWindowFlag(QtCore.Qt.FramelessWindowHint, True)
 
     def closeEvent(self, e):
         if center.pmaster.is_busy():
@@ -68,6 +70,16 @@ class QMainWindow(QtWidgets.QMainWindow):
                 center.auto_fetcher.trigger()
 
         return super(QMainWindow, self).changeEvent(event)
+
+    # def mousePressEvent(self, event):
+    #     if event.button() == QtCore.Qt.LeftButton:
+    #         self._dragStart = event.globalPos() - self.geometry().topLeft()
+    #         event.accept()
+
+    # def mouseMoveEvent(self, event):
+    #     if event.buttons() & QtCore.Qt.LeftButton:
+    #         self.move(event.globalPos() - self._dragStart)
+    #         event.accept()
 
 
 class Window(QtCore.QObject):
@@ -169,6 +181,9 @@ class HellWindow(Window):
 
         self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
         self.win.progressInfo.hide()
+
+        self.win.cornerIcon.hide()
+        self.win.titleBar.hide()
         self.open()
 
     def _del(self):

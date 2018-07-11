@@ -23,8 +23,8 @@ call winsdksetup.exe /features OptionId.DesktopCPPx86 /q
 del winsdksetup.exe
 
 echo ::: Installing python dependencies...
-call python -mpip install -U pip
-call python -mpip install PyQt5 six requests requests_toolbelt ply raven semantic_version pypiwin32 etaprogress token_bucket
+call python -mpip install -U pip pipenv
+call python -mpipenv install --system --deploy
 
 echo ::: Installing custom PyInstaller build...
 wget -O pyi.7z https://d.gruenprint.de/GBGYJD3IhcnrxjNiPTJKG7fMpR1xU4Lv.7z
