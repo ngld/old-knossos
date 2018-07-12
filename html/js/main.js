@@ -222,7 +222,7 @@ function init() {
     }), 300);
 
     window.addEventListener('error', (e) => {
-       fs2mod.reportError(e.error ? (e.error.stack : e.error.toString()) : e.message);
+       fs2mod.reportError(e.error ? (e.error.stack || e.error.toString()) : e.message);
     });
 }
 
