@@ -663,6 +663,11 @@ def save_setting(name, value):
             util.enable_raven()
         else:
             util.disable_raven()
+    elif name == 'custom_bar':
+        if value:
+            center.main_win.show_bar()
+        else:
+            center.main_win.hide_bar()
 
     center.settings[name] = value
     center.save_settings()

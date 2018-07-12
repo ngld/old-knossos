@@ -1042,6 +1042,8 @@ class WebBridge(QtCore.QObject):
             pkg.environment = None
             pkg.executables = []
 
+        # Normalize
+        pkg.set(pkg.get())
         mod.update_mod_flag()
         try:
             mod.save()

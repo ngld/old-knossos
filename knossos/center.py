@@ -51,6 +51,7 @@ settings = {
     'fred_bin': None,
     'base_path': None,
     'base_dirs': [],
+    'custom_bar': False,
     'hash_cache': None,
     'max_downloads': 3,
     'download_bandwidth': -1.0,  # negative numbers are used to specify no limit

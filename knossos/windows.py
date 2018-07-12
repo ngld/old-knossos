@@ -44,12 +44,19 @@ class QDialog(QtWidgets.QDialog):
 
 
 class QMainWindow(QtWidgets.QMainWindow):
-    # _dragStart = None
+    _drag_start = None
+    _custom_bar = False
 
-    def __init__(self, *args):
+    def __init__(self, custom_bar=False, *args):
         super(QMainWindow, self).__init__(*args)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        # self.setWindowFlag(QtCore.Qt.FramelessWindowHint, True)
+        self.set_custom_bar(custom_bar)
+
+    def set_custom_bar(self, enabled):
+        self.setWindowFlag(QtCore.Qt.FramelessWindowHint, enabled)
+        self.hide()
+        self.show()
+        self._custom_bar = enabled
 
     def closeEvent(self, e):
         if center.pmaster.is_busy():
@@ -71,15 +78,15 @@ class QMainWindow(QtWidgets.QMainWindow):
 
         return super(QMainWindow, self).changeEvent(event)
 
-    # def mousePressEvent(self, event):
-    #     if event.button() == QtCore.Qt.LeftButton:
-    #         self._dragStart = event.globalPos() - self.geometry().topLeft()
-    #         event.accept()
+    def mousePressEvent(self, event):
+        if self._custom_bar and event.button() == QtCore.Qt.LeftButton:
+            self._dragStart = event.globalPos() - self.geometry().topLeft()
+            event.accept()
 
-    # def mouseMoveEvent(self, event):
-    #     if event.buttons() & QtCore.Qt.LeftButton:
-    #         self.move(event.globalPos() - self._dragStart)
-    #         event.accept()
+    def mouseMoveEvent(self, event):
+        if self._custom_bar and event.buttons() & QtCore.Qt.LeftButton:
+            self.move(event.globalPos() - self._dragStart)
+            event.accept()
 
 
 class Window(QtCore.QObject):
@@ -182,9 +189,22 @@ class HellWindow(Window):
         self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
         self.win.progressInfo.hide()
 
+        if center.settings['custom_bar']:
+            self.show_bar()
+        else:
+            self.hide_bar()
+
+        self.open()
+
+    def hide_bar(self):
         self.win.cornerIcon.hide()
         self.win.titleBar.hide()
-        self.open()
+        self.win.set_custom_bar(False)
+
+    def show_bar(self):
+        self.win.cornerIcon.show()
+        self.win.titleBar.show()
+        self.win.set_custom_bar(True)
 
     def _del(self):
         center.signals.update_avail.disconnect(self.ask_update)

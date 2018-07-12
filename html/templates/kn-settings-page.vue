@@ -77,7 +77,7 @@ export default {
                 fs2mod.setBasePath(this.knossos.base_path);
             }
 
-            for(let set of ['max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth', 'update_notify']) {
+            for(let set of ['max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth', 'update_notify', 'custom_bar']) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
                 }
@@ -160,6 +160,13 @@ export default {
                             <option value="rc">RCs</option>
                             <option value="nightly">Nightlies</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Custom Title Bar:</label>
+                    <div class="col-sm-8">
+                        <input type="checkbox" v-model="knossos.custom_bar">
                     </div>
                 </div>
             </kn-drawer>
