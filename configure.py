@@ -43,6 +43,7 @@ JS_FILES = [
 
 RCC_FILES = [
     'knossos/data/hlp.png',
+    'knossos/data/hlp_corner.png',
     'html/css/bootstrap.min.css',
     'html/css/font-awesome.min.css',
     'html/css/style.css',

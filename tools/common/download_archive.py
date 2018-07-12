@@ -46,7 +46,7 @@ class DownloadThread(threading.Thread):
 
             for chunk in self.response.iter_content(1024):
                 self._bytes_downloaded += len(chunk)
-                
+
                 archive.write(chunk)
                 hashgen.update(chunk)
 
@@ -97,7 +97,7 @@ def main():
     print('%s has changed or has not been downloaded, yet. Downloading...' % manifest)
 
     response = requests.get(meta['url'], stream=True)
-    content_length = None if meta.get('ignore_length', False) else int(response.headers.get('Content-Length'))
+    content_length = None if meta.get('ignore_length', False) else int(response.headers.get('Content-Length', 0))
     progress_bar = ProgressBarWget(content_length, eta_every=4)
     thread = DownloadThread(response, meta['checksum'])
     print_every_seconds = 0.25

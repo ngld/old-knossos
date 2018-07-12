@@ -424,7 +424,7 @@ def run_mod(mod, tool=None, exe_label=None):
         return
 
     global_flags = get_global_flags(mod)
-    sel_exe = None
+    sel_exe = exes[0]
     if global_flags and '#exe' in global_flags:
         for exe in exes:
             if os.path.basename(exe['file']) == global_flags['#exe']:
@@ -448,12 +448,9 @@ def run_mod(mod, tool=None, exe_label=None):
             'title': mod.title,
             'exes': options,
             'mod_flag': mod_flag,
-            'selected_exe': sel_exe['file'] if sel_exe else None
+            'selected_exe': sel_exe['file']
         }))
     else:
-        if not sel_exe:
-            sel_exe = exes[0]
-
         run_mod_ex(mod, sel_exe['file'], [path for path, label in mod_flag])
 
 

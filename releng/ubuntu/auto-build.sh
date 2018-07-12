@@ -4,26 +4,24 @@ set -eo pipefail
 
 cd /build
 sudo chown packager . src/releng/ubuntu/dist
-rsync -a --exclude=releng --exclude=node_modules src/ work/
+
+if [ -d work ]; then
+	cd work
+	git reset --hard
+	git pull
+	cd ..
+else
+	git clone src work
+fi
+
+cd src
+git diff > ../work/pp
+cd ../work
+git apply pp
+rm pp
 
 cd src
 . releng/config/config.sh
-
-if [ ! "$TRAVIS" = "y" ]; then
-	if [ ! -d releng/ubuntu/cache ]; then
-		sudo mkdir -p releng/ubuntu/cache
-	fi
-	sudo chown -R packager releng/ubuntu/cache
-
-	cd releng/ubuntu/cache
-	cp -a ../../../package.json .
-	python3 ../../../tools/common/npm_wrapper.py
-	if [ ! -d node_modules/es6-shim ]; then
-		npm install es6-shim
-	fi
-
-	cd ../../..
-fi
 cd ../work
 
 export QT_SELECT=5
@@ -32,12 +30,7 @@ if [ -z "$VERSION" ]; then
 fi
 UBUNTU_VERSION="artful"
 
-if [ "$TRAVIS" = "y" ]; then
-	python tools/common/npm_wrapper.py
-else
-	rsync -au ../src/releng/ubuntu/cache/node_modules/ node_modules/
-fi
-
+python3 tools/common/npm_wrapper.py
 python3 configure.py
 ninja resources
 

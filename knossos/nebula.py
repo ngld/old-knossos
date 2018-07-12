@@ -23,7 +23,7 @@ class NebulaClient(object):
     _sess = None
 
     def __init__(self):
-        self._sess = requests.Session()
+        self._sess = util.HTTP_SESSION
 
     def _call(self, path, method='POST', skip_login=False, check_code=False, **kwargs):
         url = center.settings['nebula_link'] + path
@@ -35,6 +35,8 @@ class NebulaClient(object):
         if self._token:
             headers = kwargs.setdefault('headers', {})
             headers['X-KN-TOKEN'] = self._token
+
+        kwargs.setdefault('timeout', 10)
 
         try:
             result = self._sess.request(method, url, **kwargs)

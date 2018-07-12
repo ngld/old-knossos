@@ -337,7 +337,7 @@ export default {
 
     <!-------------------------------------------------------------------------------- Build the Main View container ---------->
         <keep-alive>
-            <kn-scroll-container v-if="page === 'modlist'" key="modlist">
+            <kn-scroll-container v-if="page === 'modlist'" key="modlist" :dummy="mods">
                 <div class="container-fluid mod-container">
                     <div v-if="tab === 'home'">
                         <kn-mod-home v-for="mod in mods" :key="mod.id" :mod="mod" :tab="tab"></kn-mod-home>
@@ -350,24 +350,24 @@ export default {
             </kn-scroll-container>
         </keep-alive>
 
-        <kn-scroll-container v-if="page === 'welcome'" key="welcome">
+        <kn-scroll-container v-if="page === 'welcome'" key="welcome" :dummy="mods">
             <kn-welcome-page></kn-welcome-page>
         </kn-scroll-container>
 
-        <kn-scroll-container v-if="page === 'details'" key="details">
+        <kn-scroll-container v-if="page === 'details'" key="details" :dummy="mods">
             <div class="info-page" id="details-page">
                 <kn-details-page :modbundle="mod_table[detail_mod]"></kn-details-page>
             </div>
         </kn-scroll-container>
 
-        <kn-scroll-container v-if="page === 'settings'" key="settings">
+        <kn-scroll-container v-if="page === 'settings'" key="settings" :dummy="mods">
             <div class="info-page settings-page container-fluid">
                 <kn-settings-page :mods="mods"></kn-settings-page>
             </div>
         </kn-scroll-container>
 
         <keep-alive>
-            <kn-scroll-container v-if="page === 'develop'" key="develop">
+            <kn-scroll-container v-if="page === 'develop'" key="develop" :dummy="mods">
                 <div class="info-page devel-page" v-if="page === 'develop'">
                     <kn-devel-page :mods="mods"></kn-devel-page>
                 </div>

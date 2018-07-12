@@ -16,6 +16,7 @@ from __future__ import absolute_import, print_function
 
 import os
 import sys
+import platform
 import logging
 import subprocess
 import shutil
@@ -1656,7 +1657,7 @@ class CheckUpdateTask(progress.Task):
         progress.update(0, 'Checking for updates...')
 
         update_base = util.pjoin(center.UPDATE_LINK, 'stable')
-        version = util.get(update_base + '/version?me=' + center.VERSION)
+        version = util.get(update_base + '/version?arch=' + platform.machine())
 
         if version is None:
             logging.error('Update check failed!')

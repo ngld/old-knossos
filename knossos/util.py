@@ -301,7 +301,7 @@ def format_bytes(value):
     return str(round(value)) + ' ' + unit
 
 
-def get(link, headers=None, random_ua=False, raw=False):
+def get(link, headers=None, random_ua=False, raw=False, timeout=10):
     global HTTP_SESSION
 
     if random_ua:
@@ -312,7 +312,7 @@ def get(link, headers=None, random_ua=False, raw=False):
 
     result = None
     try:
-        result = HTTP_SESSION.get(link, headers=headers)
+        result = HTTP_SESSION.get(link, headers=headers, timeout=timeout)
         if result.status_code == 304:
             return 304
         elif result.status_code != 200:

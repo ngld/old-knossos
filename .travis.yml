@@ -31,7 +31,7 @@ install:
 
 script:
 - bash ./releng/ci/travis.sh macos
-- bash ./releng/ci/travis.sh ubuntu
+#- bash ./releng/ci/travis.sh ubuntu
 - bash ./releng/ci/travis.sh arch
 
 after_success:

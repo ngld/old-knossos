@@ -220,6 +220,10 @@ function init() {
             vm.page = 'welcome';
         }
     }), 300);
+
+    window.addEventListener('error', (e) => {
+       fs2mod.reportError(e.error ? (e.error.stack : e.error.toString()) : e.message);
+    });
 }
 
 if(window.qt) {
