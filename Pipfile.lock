@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "0d5052de1927bd948a49b61c352092283d3c27b712314a10363f3cd9eb40de4f"
+            "sha256": "ae6405e5c21f4c3ba2a97819c2c85146a61ee1d74a4cbb56ffbe8b3c3b4724d7"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -64,14 +64,6 @@
             "markers": "sys_platform != 'win32'",
             "version": "==3.3.1"
         },
-        "pypiwin32": {
-            "hashes": [
-                "sha256:67adf399debc1d5d14dffc1ab5acacb800da569754fafdc576b2a039485aa775",
-                "sha256:71be40c1fbd28594214ecaecb58e7aa8b708eabfa0125c8a109ebd51edbd776a"
-            ],
-            "markers": "sys_platform == 'win32'",
-            "version": "==223"
-        },
         "pyqt5": {
             "hashes": [
                 "sha256:1e652910bd1ffd23a3a48c510ecad23a57a853ed26b782cd54b16658e6f271ac",
@@ -92,6 +84,7 @@
                 "sha256:f0f0e7c82ee334dd6e888b9b5beb05fd8947355fa7a15644c810bb4ea0079ca6",
                 "sha256:fb3c85907918fd01a72ee146d323d220771dee151c0cfa5630c2f35797ffb116"
             ],
+            "markers": "sys_platform == 'win32'",
             "version": "==223"
         },
         "raven": {
