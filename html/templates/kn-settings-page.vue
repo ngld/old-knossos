@@ -89,6 +89,7 @@ export default {
             }
 
             fs2mod.saveFsoSettings(JSON.stringify(fso));
+            this.old_settings.knossos = Object.assign({}, this.knossos);
         },
 
         login() {

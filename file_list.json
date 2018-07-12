@@ -89,7 +89,19 @@
         "html/images/scrollbtn-up.png",
         "html/images/tabbox-corner.png",
         "html/images/tabedge-a.png",
-        "html/images/tabedge-i.png"
+        "html/images/tabedge-i.png",
+        "html/images/window_icons/close-a.png",
+        "html/images/window_icons/close-h.png",
+        "html/images/window_icons/close.png",
+        "html/images/window_icons/max-a.png",
+        "html/images/window_icons/max-h.png",
+        "html/images/window_icons/max.png",
+        "html/images/window_icons/min-a.png",
+        "html/images/window_icons/min-h.png",
+        "html/images/window_icons/min.png",
+        "html/images/window_icons/res-a.png",
+        "html/images/window_icons/res-h.png",
+        "html/images/window_icons/res.png"
     ],
     "python": [
         "knossos/__init__.py",
@@ -98,6 +110,7 @@
         "knossos/bool_parser.py",
         "knossos/center.py",
         "knossos/clibs.py",
+        "knossos/fsodiff.py",
         "knossos/integration.py",
         "knossos/ipc.py",
         "knossos/launcher.py",
@@ -128,6 +141,7 @@
         "html/templates/kn-mod-explore.vue",
         "html/templates/kn-mod-home.vue",
         "html/templates/kn-page.vue",
+        "html/templates/kn-save-btn.vue",
         "html/templates/kn-scroll-container.vue",
         "html/templates/kn-settings-page.vue",
         "html/templates/kn-welcome-page.vue"
