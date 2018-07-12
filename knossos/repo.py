@@ -1118,7 +1118,7 @@ class InstalledMod(Mod):
             if mod.dev_mode:
                 # Sort packages by their folder name since FSO also sorts VPs by their name.
                 # See https://github.com/ngld/knossos/issues/107 for more details.
-                for pkg in sorted(mod.packages, key=lambda pkg: pkg.folder, reverse=True):
+                for pkg in sorted(mod.packages, key=lambda pkg: pkg.folder):
                     if pkg.check_env():
                         paths.append((os.path.join(mod.folder, pkg.folder), '%s - %s' % (mod.title, pkg.name)))
                         dev_involved = True
