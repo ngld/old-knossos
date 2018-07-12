@@ -1504,6 +1504,16 @@ class WebBridge(QtCore.QObject):
         else:
             return ''
 
+    @QtCore.Slot()
+    def openFsoDebugLog(self):
+        logpath = os.path.join(settings.get_fso_profile_path(), 'data/fs2_open.log')
+        if not os.path.isfile(logpath):
+            QtWidgets.QMessageBox.warning(None, 'Knossos',
+                'Sorry, but I can\'t find the fs2_open.log file.\nDid you run the debug build?')
+            return
+
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(logpath))
+
     @QtCore.Slot(result=str)
     def uploadFsoDebugLog(self):
         try:
