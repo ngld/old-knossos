@@ -11,7 +11,6 @@
 
     .success-save {
         display: inline-block;
-        padding: 10px;
         font-size: x-large;
         color: green;
         text-shadow: 2px 2px black;
