@@ -1602,40 +1602,13 @@ class WebBridge(QtCore.QObject):
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to decode flags!')
             return
 
+        engine_mods = []
+
         for mvs in center.installed.mods.values():
             if mvs[0].mtype == 'engine':
-                for mod in mvs:
-                    key = '%s#%s' % (mod.mid, mod.version)
-                    build_flags = center.settings['fso_flags'].setdefault(key, {})
-                    flag_info = None
+                engine_mods.extend(mvs)
 
-                    try:
-                        exes = mod.get_executables()
-                        for exe in exes:
-                            if not exe['label']:
-                                flag_info = settings.get_fso_flags(exe['file'])
-                                break
-                    except Exception:
-                        logging.exception('Failed to retrieve flags for %s!' % mod)
-                        continue
-
-                    if not flag_info:
-                        logging.warn('Failed to retrieve flags for %s!' % mod)
-                        continue
-
-                    known_flags = set()
-                    for section in flag_info['flags'].values():
-                        for flag in section:
-                            known_flags.add(flag['name'])
-
-                    for flag, val in flags.items():
-                        if flag in known_flags:
-                            build_flags[flag] = val
-
-                    build_flags['#custom'] = custom_flags
-
-        center.save_settings()
-        QtWidgets.QMessageBox.information(None, 'Knossos', 'The settings were successfully applied to all builds.')
+        tasks.run_task(tasks.ApplyEngineFlagsTask(engine_mods, flags, custom_flags))
 
     @QtCore.Slot(str, str, result=str)
     def getModCmdline(self, mid, version):
