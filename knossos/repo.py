@@ -1177,10 +1177,9 @@ class InstalledMod(Mod):
                 exe['mod'] = mod
                 exe['score'] = 0
 
-                if not exe['label']:
-                    for name, is_set in exe['properties'].items():
-                        if is_set and name in BUILD_WEIGHTS:
-                            exe['score'] += BUILD_WEIGHTS[name]
+                for name, is_set in exe['properties'].items():
+                    if is_set and name in BUILD_WEIGHTS:
+                        exe['score'] += BUILD_WEIGHTS[name]
 
                 exes.append(exe)
 
