@@ -253,6 +253,10 @@ class NebulaClient(object):
             # Already uploaded
             return True
 
+        if vp_checksum:
+            assert vp_checksum[0] == 'sha256'
+            vp_checksum = vp_checksum[1]
+
         hdl = open(path, 'rb')
         enc = MultipartEncoder({
             'checksum': checksum,
