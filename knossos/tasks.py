@@ -1847,7 +1847,6 @@ class ApplyEngineFlagsTask(progress.Task):
         self.add_work(mods)
 
     def work(self, mod):
-        progress.update(0, '')
         key = '%s#%s' % (mod.mid, mod.version)
         flag_info = None
 
@@ -1860,6 +1859,8 @@ class ApplyEngineFlagsTask(progress.Task):
         except Exception:
             logging.exception('Failed to retrieve flags for %s!' % mod)
             return
+        finally:
+            progress.update(1, '')
 
         if not flag_info:
             logging.warn('Failed to retrieve flags for %s!' % mod)
