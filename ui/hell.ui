@@ -6,13 +6,13 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1116</width>
-    <height>800</height>
+    <width>1126</width>
+    <height>879</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>1116</width>
+    <width>1126</width>
     <height>700</height>
    </size>
   </property>
@@ -46,57 +46,212 @@
      <number>0</number>
     </property>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
+     <widget class="QWidget" name="titleBarArea" native="true">
+      <layout class="QHBoxLayout" name="titleBarAreaLayout">
+       <item>
+        <widget class="QLabel" name="titleBar">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="pixmap">
+          <pixmap resource="../knossos/data/resources.qrc">:/knossos/data/hlp_corner.png</pixmap>
+         </property>
+         <property name="scaledContents">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="cornerIcon">
+         <property name="font">
+          <font>
+           <family>Arial</family>
+           <pointsize>20</pointsize>
+           <weight>50</weight>
+           <bold>false</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Knossos</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="minimizeButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QPushButton {
+	border: 0;
+	background: no-repeat url(:/html/images/window_icons/min.png);
+}
+
+QPushButton:hover {
+	background: no-repeat url(:/html/images/window_icons/min-h.png);
+}
+
+QPushButton:pressed {
+	background: no-repeat url(:/html/images/window_icons/min-a.png);
+}</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="maximizeButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QPushButton {
+	border: 0;
+	background: no-repeat url(:/html/images/window_icons/max.png);
+}
+
+QPushButton:hover {
+	background: no-repeat url(:/html/images/window_icons/max-h.png);
+}
+
+QPushButton:pressed {
+	background: no-repeat url(:/html/images/window_icons/max-a.png);
+}</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="restoreButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QPushButton {
+	border: 0;
+	background: no-repeat url(:/html/images/window_icons/res.png);
+}
+
+QPushButton:hover {
+	background: no-repeat url(:/html/images/window_icons/res-h.png);
+}
+
+QPushButton:pressed {
+	background: no-repeat url(:/html/images/window_icons/res-a.png);
+}</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="closeButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QPushButton {
+	border: 0;
+	background: no-repeat url(:/html/images/window_icons/close.png);
+}
+
+QPushButton:hover {
+	background: no-repeat url(:/html/images/window_icons/close-h.png);
+}
+
+QPushButton:pressed {
+	background: no-repeat url(:/html/images/window_icons/close-a.png);
+}</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="webSpacing">
+      <property name="leftMargin">
+       <number>6</number>
+      </property>
+      <property name="topMargin">
+       <number>6</number>
+      </property>
+      <property name="rightMargin">
+       <number>6</number>
+      </property>
+      <property name="bottomMargin">
+       <number>6</number>
+      </property>
       <item>
-       <widget class="QLabel" name="titleBar">
+       <widget class="QWebEngineView" name="webView">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
-        <property name="text">
-         <string/>
+        <property name="styleSheet">
+         <string notr="true">QWebEngineView {
+  padding: 5;
+}</string>
         </property>
-        <property name="pixmap">
-         <pixmap resource="../knossos/data/resources.qrc">:/knossos/data/hlp_corner.png</pixmap>
-        </property>
-        <property name="scaledContents">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="cornerIcon">
-        <property name="font">
-         <font>
-          <family>Arial</family>
-          <pointsize>20</pointsize>
-          <weight>50</weight>
-          <bold>false</bold>
-         </font>
-        </property>
-        <property name="text">
-         <string>Knossos</string>
+        <property name="url">
+         <url>
+          <string>about:blank</string>
+         </url>
         </property>
        </widget>
       </item>
      </layout>
-    </item>
-    <item>
-     <widget class="QWebEngineView" name="webView">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="url">
-       <url>
-        <string>about:blank</string>
-       </url>
-      </property>
-     </widget>
     </item>
     <item>
      <widget class="QWidget" name="progressInfo" native="true">
@@ -128,7 +283,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1116</width>
+     <width>1126</width>
      <height>21</height>
     </rect>
    </property>

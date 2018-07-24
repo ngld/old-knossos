@@ -1834,6 +1834,60 @@ class VpExtractionTask(progress.Task):
         self.post(vp_file)
 
 
+class ApplyEngineFlagsTask(progress.Task):
+    def __init__(self, mods, flags, custom_flags):
+        super(ApplyEngineFlagsTask, self).__init__()
+
+        self.custom_flags = custom_flags
+        self.flags = flags
+
+        self.title = 'Applying engine flags...'
+        self.done.connect(self.finish)
+
+        self.add_work(mods)
+
+    def work(self, mod):
+        key = '%s#%s' % (mod.mid, mod.version)
+        flag_info = None
+
+        try:
+            exes = mod.get_executables()
+            for exe in exes:
+                if not exe['label']:
+                    flag_info = settings.get_fso_flags(exe['file'])
+                    break
+        except Exception:
+            logging.exception('Failed to retrieve flags for %s!' % mod)
+            return
+        finally:
+            progress.update(1, '')
+
+        if not flag_info:
+            logging.warn('Failed to retrieve flags for %s!' % mod)
+            return
+
+        self.post((key, flag_info))
+
+    def finish(self):
+        res = self.get_results()
+
+        for key, flag_info in res:
+            known_flags = set()
+            for section in flag_info['flags'].values():
+                for flag in section:
+                    known_flags.add(flag['name'])
+
+            build_flags = center.settings['fso_flags'].setdefault(key, {})
+            for flag, val in self.flags.items():
+                if flag in known_flags:
+                    build_flags[flag] = val
+
+            build_flags['#custom'] = self.custom_flags
+
+        center.save_settings()
+        QtWidgets.QMessageBox.information(None, 'Knossos', 'The settings were successfully applied to all builds.')
+
+
 def run_task(task, cb=None):
     def wrapper():
         cb(task.get_results())

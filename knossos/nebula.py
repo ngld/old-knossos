@@ -253,6 +253,10 @@ class NebulaClient(object):
             # Already uploaded
             return True
 
+        if vp_checksum:
+            assert vp_checksum[0] == 'sha256'
+            vp_checksum = vp_checksum[1]
+
         hdl = open(path, 'rb')
         enc = MultipartEncoder({
             'checksum': checksum,
@@ -267,7 +271,7 @@ class NebulaClient(object):
             progress.update(monitor.bytes_read / enc_len, 'Uploading %s...' % name)
 
         monitor = MultipartEncoderMonitor(enc, cb)
-        self._call('upload/file', data=monitor, headers={
+        self._call('upload/file', data=monitor, timeout=30, headers={
             'Content-Type': monitor.content_type
         }, check_code=True)
 
@@ -289,7 +293,7 @@ class NebulaClient(object):
             return False, None
 
     def upload_log(self, content):
-        result = self._call('log/upload', check_code=True, data={'log': content})
+        result = self._call('log/upload', check_code=True, skip_login=True, data={'log': content})
         data = result.json()
         if data['result']:
             return center.settings['nebula_web'] + 'log/' + data['id']
@@ -308,5 +312,5 @@ class NebulaClient(object):
         return result.json()
 
     def get_private_mods(self):
-        result = self._call('mod/list_private', method='GET', check_code=True)
+        result = self._call('mod/list_private', method='GET', timeout=20, check_code=True)
         return result.json()

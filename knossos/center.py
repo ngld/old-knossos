@@ -24,7 +24,7 @@ from .qt import QtCore # noqa
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.11.2'
+VERSION = '0.12.0'
 UPDATE_LINK = 'https://fsnebula.org/knossos'
 INNOEXTRACT_LINK = 'https://fsnebula.org/storage/knossos/innoextract.json'
 DEBUG = os.getenv('KN_DEBUG', '0').strip() == '1'
@@ -51,6 +51,7 @@ settings = {
     'fred_bin': None,
     'base_path': None,
     'base_dirs': [],
+    'custom_bar': True,
     'hash_cache': None,
     'max_downloads': 3,
     'download_bandwidth': -1.0,  # negative numbers are used to specify no limit

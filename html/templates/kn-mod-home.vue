@@ -46,6 +46,10 @@ export default {
             fs2mod.runModTool(this.mod.id, this.mod.version, '', '', label);
         },
 
+        openLog() {
+            fs2mod.openFsoDebugLog();
+        },
+
         uploadLog() {
             call(fs2mod.uploadFsoDebugLog, (result) => {
                 if(result !== '') {
@@ -132,6 +136,7 @@ export default {
                     >
                         <div class="dropdown-content">
                             <button v-for="tool in tools" v-if="(mod.status === 'ready' || mod.status === 'update') && (mod.type === 'mod' || mod.type == 'tc')" @click="launchTool(tool)">Run {{ tool }}</button>
+                            <button @click="openLog">Open Debug Log</button>
                             <button @click="uploadLog">Upload Debug Log</button>
                             <button v-if="mod.id !== 'FS2' && !mod.dev_mode" @click="install">Modify</button>
                             <button v-if="mod.type === 'mod' || mod.type == 'tc'" @click="showFsoSettings">FSO Settings</button>

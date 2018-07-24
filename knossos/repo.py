@@ -1118,7 +1118,7 @@ class InstalledMod(Mod):
             if mod.dev_mode:
                 # Sort packages by their folder name since FSO also sorts VPs by their name.
                 # See https://github.com/ngld/knossos/issues/107 for more details.
-                for pkg in sorted(mod.packages, key=lambda pkg: pkg.folder, reverse=True):
+                for pkg in sorted(mod.packages, key=lambda pkg: pkg.folder):
                     if pkg.check_env():
                         paths.append((os.path.join(mod.folder, pkg.folder), '%s - %s' % (mod.title, pkg.name)))
                         dev_involved = True
@@ -1177,10 +1177,9 @@ class InstalledMod(Mod):
                 exe['mod'] = mod
                 exe['score'] = 0
 
-                if not exe['label']:
-                    for name, is_set in exe['properties'].items():
-                        if is_set and name in BUILD_WEIGHTS:
-                            exe['score'] += BUILD_WEIGHTS[name]
+                for name, is_set in exe['properties'].items():
+                    if is_set and name in BUILD_WEIGHTS:
+                        exe['score'] += BUILD_WEIGHTS[name]
 
                 exes.append(exe)
 

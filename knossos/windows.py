@@ -44,12 +44,25 @@ class QDialog(QtWidgets.QDialog):
 
 
 class QMainWindow(QtWidgets.QMainWindow):
-    # _dragStart = None
+    _drag_start = None
+    _pos_start = None
+    _size_start = None
+    _drag = False
+    _resize = None
+    _custom_bar = False
 
-    def __init__(self, *args):
+    def __init__(self, custom_bar=False, *args):
         super(QMainWindow, self).__init__(*args)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        # self.setWindowFlag(QtCore.Qt.FramelessWindowHint, True)
+        self.set_custom_bar(custom_bar)
+
+    def set_custom_bar(self, enabled):
+        if enabled != self._custom_bar:
+            self.setWindowFlag(QtCore.Qt.FramelessWindowHint, enabled)
+            self.setMouseTracking(enabled)
+            self.hide()
+            self.show()
+            self._custom_bar = enabled
 
     def closeEvent(self, e):
         if center.pmaster.is_busy():
@@ -71,15 +84,100 @@ class QMainWindow(QtWidgets.QMainWindow):
 
         return super(QMainWindow, self).changeEvent(event)
 
-    # def mousePressEvent(self, event):
-    #     if event.button() == QtCore.Qt.LeftButton:
-    #         self._dragStart = event.globalPos() - self.geometry().topLeft()
-    #         event.accept()
+    def mousePressEvent(self, event):
+        if self._custom_bar and event.button() == QtCore.Qt.LeftButton:
+            self._drag_start = event.globalPos()
+            self._pos_start = self.pos()
+            self._size_start = self.size()
+            event.accept()
 
-    # def mouseMoveEvent(self, event):
-    #     if event.buttons() & QtCore.Qt.LeftButton:
-    #         self.move(event.globalPos() - self._dragStart)
-    #         event.accept()
+            x = event.x()
+            y = event.y()
+            w = self.width()
+            h = self.height()
+
+            left = x < 6
+            right = x > w - 6
+            top = y < 6
+            bottom = y > h - 6
+
+            if left or right or top or bottom:
+                rw = 0
+                rh = 0
+
+                if left:
+                    rw = -1
+                elif right:
+                    rw = 1
+
+                if top:
+                    rh = -1
+                elif bottom:
+                    rh = 1
+
+                self._drag = False
+                self._resize = (rw, rh)
+            elif y < 50:
+                self._resize = (0, 0)
+                self._drag = True
+
+    def mouseDoubleClickEvent(self, event):
+        if self._custom_bar and event.y() < 50:
+            event.accept()
+            self.setWindowState(self.windowState() ^ QtCore.Qt.WindowMaximized)
+
+    def mouseReleaseEvent(self, event):
+        self._drag = False
+        self._resize = None
+        self._drag_start = None
+
+    def mouseMoveEvent(self, event):
+        if self._custom_bar:
+            if self._drag:
+                self.move(event.globalPos() - self._drag_start + self._pos_start)
+                event.accept()
+            elif self._resize:
+                diff = event.globalPos() - self._drag_start
+                size = self._size_start * 1  # copy
+                pos = self._pos_start * 1  # copy
+
+                if self._resize[0] != 0:
+                    size.setWidth(size.width() + (diff.x() * self._resize[0]))
+
+                if self._resize[1] != 0:
+                    size.setHeight(size.height() + (diff.y() * self._resize[1]))
+
+                self.resize(size)
+                size_diff = self.size() - self._size_start
+
+                if self._resize[0] < 0:
+                    pos.setX(pos.x() - size_diff.width())
+
+                if self._resize[1] < 1:
+                    pos.setY(pos.y() - size_diff.height())
+
+                self.move(pos)
+            else:
+                x = event.x()
+                y = event.y()
+                w = self.width()
+                h = self.height()
+
+                left = x < 6
+                right = x > w - 6
+                top = y < 6
+                bottom = y > h - 6
+
+                if left and top or right and bottom:
+                    self.setCursor(QtCore.Qt.SizeFDiagCursor)
+                elif left and bottom or right and top:
+                    self.setCursor(QtCore.Qt.SizeBDiagCursor)
+                elif left or right:
+                    self.setCursor(QtCore.Qt.SizeHorCursor)
+                elif top or bottom:
+                    self.setCursor(QtCore.Qt.SizeVerCursor)
+                else:
+                    self.setCursor(QtCore.Qt.ArrowCursor)
 
 
 class Window(QtCore.QObject):
@@ -172,9 +270,18 @@ class HellWindow(Window):
         self._create_win(Ui_Hell, QMainWindow)
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
         self.win.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.win.titleBarAreaLayout.setContentsMargins(0, 0, 6, 0)
+        self.win.centralWidget().setAttribute(QtCore.Qt.WA_MouseTracking, True)
+        self.win.titleBarArea.setAttribute(QtCore.Qt.WA_MouseTracking, True)
+        self.win.progressInfo.setAttribute(QtCore.Qt.WA_MouseTracking, True)
+        self.win.cornerIcon.setAttribute(QtCore.Qt.WA_MouseTracking, True)
+        self.win.titleBar.setAttribute(QtCore.Qt.WA_MouseTracking, True)
 
-        self.win.webView.loadStarted.connect(self.show_indicator)
-        self.win.webView.loadFinished.connect(self.check_loaded)
+        self.win.minimizeButton.clicked.connect(
+            lambda: self.win.setWindowState(QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive))
+        self.win.maximizeButton.clicked.connect(self.toggle_win)
+        self.win.restoreButton.clicked.connect(self.toggle_win)
+        self.win.closeButton.clicked.connect(self.win.close)
 
         center.signals.update_avail.connect(self.ask_update)
         center.signals.task_launched.connect(self.watch_task)
@@ -182,9 +289,38 @@ class HellWindow(Window):
         self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
         self.win.progressInfo.hide()
 
-        self.win.cornerIcon.hide()
-        self.win.titleBar.hide()
+        if center.settings['custom_bar']:
+            self.show_bar()
+        else:
+            self.hide_bar()
+
         self.open()
+
+    def hide_bar(self):
+        self.win.titleBarArea.hide()
+        self.win.set_custom_bar(False)
+
+    def show_bar(self):
+        self.win.titleBarArea.show()
+        self.win.set_custom_bar(True)
+
+        if self.win.windowState() & QtCore.Qt.WindowMaximized:
+            self.win.maximizeButton.hide()
+            self.win.restoreButton.show()
+        else:
+            self.win.maximizeButton.show()
+            self.win.restoreButton.hide()
+
+    def toggle_win(self):
+        state = (self.win.windowState() ^ QtCore.Qt.WindowMaximized) | QtCore.Qt.WindowActive
+        self.win.setWindowState(state)
+
+        if state & QtCore.Qt.WindowMaximized:
+            self.win.maximizeButton.hide()
+            self.win.restoreButton.show()
+        else:
+            self.win.maximizeButton.show()
+            self.win.restoreButton.hide()
 
     def _del(self):
         center.signals.update_avail.disconnect(self.ask_update)
@@ -329,10 +465,7 @@ class HellWindow(Window):
                 self.browser_ctrl.bridge.updateModlist.emit(json.dumps(result), filter_)
 
     def show_indicator(self):
-        self.win.setCursor(QtCore.Qt.BusyCursor)
-
-    def check_loaded(self, success):
-        self.win.unsetCursor()
+        pass
 
     def update_mod_buttons(self, clicked=None):
         if center.settings['base_path'] is not None:

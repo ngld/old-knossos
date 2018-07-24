@@ -8,7 +8,7 @@ ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/
 echo "==> Installing build tools"
 brew update
 brew upgrade
-brew install node p7zip ninja qt5
+brew install node p7zip ninja qt5 yarn
 
 # If we don't delete qmake, PyInstaller detects this Qt installation and uses its libraries instead of PyQt5's
 # which then leads to a crash because PyQt5 isn't compatible with the version we install.
