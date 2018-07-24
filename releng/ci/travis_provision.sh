@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -exo pipefail
+base="$(pwd)"
 
 if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     echo "==> Installing build tools"
@@ -22,7 +23,10 @@ if [ "$TRAVIS_OS_NAME" == "osx" ]; then
 
     echo "==> Installing Python dependencies"
     pip3 install -U pip pipenv
+
+    cd "$base"
     pipenv install --system --deploy
+    cd /tmp/prov
 
     echo "==> Installing SDL2"
     curl -so SDL2.dmg "https://libsdl.org/release/SDL2-2.0.8.dmg"
