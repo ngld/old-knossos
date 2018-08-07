@@ -493,6 +493,15 @@ _flag_cache = {}
 def get_fso_flags(fs2_bin):
     global fso_flags
 
+    # Workaround for older FRED2 versions not providing flags properly.
+    # FSO and FRED support the same flags so fetching them from the FSO binary works as well.
+
+    if sys.platform == 'win32':
+        name = os.path.basename(fs2_bin)
+        if name.lower().startswith('fred2_open'):
+            name = name.lower().replace('fred2_open', 'fs2_open')
+            fs2_bin = os.path.join(os.path.dirname(fs2_bin), name)
+
     if not os.path.isfile(fs2_bin):
         logging.warning('Tried to get flags for missing executable "%s"!' % fs2_bin)
         return None
