@@ -36,7 +36,7 @@ class NebulaClient(object):
             headers = kwargs.setdefault('headers', {})
             headers['X-KN-TOKEN'] = self._token
 
-        kwargs.setdefault('timeout', 10)
+        kwargs.setdefault('timeout', 60)
 
         try:
             result = self._sess.request(method, url, **kwargs)
@@ -271,7 +271,8 @@ class NebulaClient(object):
             progress.update(monitor.bytes_read / enc_len, 'Uploading %s...' % name)
 
         monitor = MultipartEncoderMonitor(enc, cb)
-        self._call('upload/file', data=monitor, timeout=30, headers={
+        # TODO: Implement incremental uploads to get rid of this insanity
+        self._call('upload/file', data=monitor, timeout=3 * 60 * 60, headers={  # timeout = 3 hours
             'Content-Type': monitor.content_type
         }, check_code=True)
 
