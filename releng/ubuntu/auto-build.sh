@@ -28,7 +28,7 @@ export QT_SELECT=5
 if [ -z "$VERSION" ]; then
 	VERSION="$(python3 setup.py get_version)"
 fi
-UBUNTU_VERSION="artful"
+UBUNTU_VERSION="cosmic"
 
 python3 tools/common/npm_wrapper.py
 python3 configure.py
@@ -47,7 +47,7 @@ if [ "$RELEASE" = "y" ]; then
 	import_key
 	popd > /dev/null
 
-	for ubuntu in artful bionic cosmic; do
+	for ubuntu in bionic cosmic; do
 		cat > debian/changelog <<EOF
 knossos ($VERSION-1~${ubuntu}1) $ubuntu; urgency=medium
 
