@@ -540,7 +540,7 @@ iframe {
 
 .scroll-style::-webkit-scrollbar {
     width: 25px;
-    box-shadow: -6px 0px 15px 0px rgba(0,0,0,1);
+    /*box-shadow: -6px 0px 15px 0px rgba(0,0,0,1); */
 }
 .scroll-style::-webkit-scrollbar-track {
     background-color: #1c1c1c;    
@@ -580,9 +580,6 @@ iframe {
     background-image: url(../images/scrollbtn-up-a.png);
 }
 
-.main-container.scroll-style::-webkit-scrollbar {
-    box-shadow: none;
-}
 
 /* -------------------------- Settings for the general scroll bar style ----------------------------------*/
 

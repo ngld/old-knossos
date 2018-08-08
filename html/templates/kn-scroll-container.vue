@@ -28,7 +28,7 @@ export default {
 <template>
 	<div class="main-container scroll-style" ref="container" @scroll.stop="scroll = $refs.container.scrollTop">
 	    <div class="main-background"></div>
-	    <slot :update="$forceUpdate"></slot>
+	    <slot :update="() => $nextTick(() => $forceUpdate())"></slot>
 	    <div class="main-shadow-effect" :style="{ width: $refs.container ? $refs.container.clientWidth + 'px' : 'auto' }"></div>
 	</div>
 </template>

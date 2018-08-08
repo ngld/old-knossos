@@ -28,6 +28,11 @@ if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     pipenv install --system --deploy
     cd /tmp/prov
 
+    # Make sure our macOS dependencies are installed correctly.
+    # I should update the Pipfile to do this properly. However, I need a Mac for that
+    # and I don't have access to one right now.
+    pip3 install -U PyInstaller dmgbuild
+
     echo "==> Installing SDL2"
     curl -so SDL2.dmg "https://libsdl.org/release/SDL2-2.0.8.dmg"
 

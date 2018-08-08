@@ -301,7 +301,7 @@ def format_bytes(value):
     return str(round(value)) + ' ' + unit
 
 
-def get(link, headers=None, random_ua=False, raw=False, timeout=10):
+def get(link, headers=None, random_ua=False, raw=False, timeout=60):
     global HTTP_SESSION
 
     if random_ua:

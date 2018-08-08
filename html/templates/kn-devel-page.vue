@@ -570,7 +570,7 @@ export default {
                     </div>
                 </div>
 
-                <div class="form-content container-fluid scroll-style">
+                <div class="form-content container-fluid scroll-style" ref="container">
                     <form class="form-horizontal" v-if="selected_mod">
                         <div v-if="selected_mod.packages.length === 0">
                             <h4>Dev Help</h4>
@@ -985,6 +985,7 @@ export default {
                         </div>
                     </form>
                 </div>
+                <div class="devel-shadow-effect" :style="{ width: $refs.container ? $refs.container.clientWidth + 'px' : 'auto' }"></div>
             </div>
         </div>
     </div>

@@ -1617,7 +1617,7 @@ class WebBridge(QtCore.QObject):
             return ''
 
         try:
-            return runner.apply_global_flags(mod)
+            return ' '.join(runner.apply_global_flags(mod))
         except repo.NoExecutablesFound:
             return ''
 
