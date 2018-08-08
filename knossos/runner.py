@@ -247,7 +247,7 @@ class Fs2Watcher(threading.Thread):
     @run_in_qt
     def complain_joystick(self):
         QtWidgets.QMessageBox.critical(None, 'Knossos', translate('runner',
-            "You fs2_open.ini contains a joystick which this FSO version can't detect and Knossos doesn't remember"
+            "Your fs2_open.ini contains a joystick which this FSO version can't detect and Knossos doesn't remember"
             " your joystick. Please go to Knossos' settings, select your joystick, save and try again."
         ))
 

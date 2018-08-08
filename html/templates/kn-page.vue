@@ -354,9 +354,9 @@ export default {
             <kn-welcome-page></kn-welcome-page>
         </kn-scroll-container>
 
-        <kn-scroll-container v-if="page === 'details'" key="details" :dummy="mods">
-            <div class="info-page" id="details-page">
-                <kn-details-page :modbundle="mod_table[detail_mod]"></kn-details-page>
+        <kn-scroll-container v-if="page === 'details'" key="details" :dummy="detail_mod">
+            <div class="info-page" id="details-page" slot-scope="{ update }">
+                <kn-details-page :modbundle="mod_table[detail_mod]" :updater="update"></kn-details-page>
             </div>
         </kn-scroll-container>
 

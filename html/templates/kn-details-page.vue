@@ -9,7 +9,7 @@ import 'vue-popperjs/dist/css/vue-popper.css';
 import bbparser from '../js/bbparser';
 
 export default {
-    props: ['modbundle'],
+    props: ['modbundle', 'updater'],
 
     components: {
         popper: Popper
@@ -25,6 +25,10 @@ export default {
 
     created() {
         this.version = this.modbundle.version;
+    },
+
+    mounted() {
+        this.updater();
     },
 
     computed: {

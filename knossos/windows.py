@@ -287,6 +287,7 @@ class HellWindow(Window):
         center.signals.task_launched.connect(self.watch_task)
 
         self.win.setWindowTitle(self.win.windowTitle() + ' ' + center.VERSION)
+        self.win.titleBar.setText(self.win.windowTitle())
         self.win.progressInfo.hide()
 
         if center.settings['custom_bar']:
