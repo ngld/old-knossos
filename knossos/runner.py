@@ -14,20 +14,21 @@
 
 from __future__ import absolute_import, print_function
 
-import sys
-import os
-import logging
-import re
-import threading
-import subprocess
-import time
 import ctypes.util
-import stat
 import json
+import logging
+import os
+import re
 import shlex
+import stat
+import subprocess
+import sys
+import threading
+import time
 from subprocess import CalledProcessError
 
 from . import uhf
+
 uhf(__name__)
 from . import center, repo, util, settings
 from .qt import QtCore, QtWidgets, run_in_qt
@@ -136,9 +137,10 @@ class Fs2Watcher(threading.Thread):
 
     def prepare_fso_config(self, fs2_bin):
         cfg = settings.get_settings()
+        settings.save_fso_settings(cfg['fso'])
+
         if not cfg['fso']['joystick_guid']:
             # No joystick selected
-            settings.ensure_fso_config()
             return True
 
         sel_guid = cfg['fso']['joystick_guid']
@@ -477,10 +479,8 @@ def run_mod(mod, tool=None, exe_label=None):
 
 def run_mod_ex(mod, binpath, mod_flag):
     # Put the cmdline together
-    cmdline = mod.cmdline
-
     if mod.user_cmdline:
-        cmdline = mod.user_cmdline
+        cmdline = shlex.split(mod.user_cmdline)
     else:
         cmdline = apply_global_flags(mod)
 
@@ -514,28 +514,14 @@ def run_mod_ex(mod, binpath, mod_flag):
         # The paths for -mod must be relative to the base path.
         # TODO: Do we have to make sure that there are no special characters here or are the rules for mod.folder and
         #       pkg.folder enough to assure that?
-        cmdline += ' -mod ' + ','.join([os.path.relpath(p, basepath) for p in mod_flag])
+        cmdline.append('-mod')
+        cmdline.append(','.join([os.path.relpath(p, basepath) for p in mod_flag]))
 
-    # Look for the cmdline path.
-    path = os.path.join(settings.get_fso_profile_path(), 'data/cmdline_fso.cfg')
+    # We put all arguments in the command line so we can skip the config file
+    cmdline.append('-parse_cmdline_only')
 
-    # Create the containing folders if they are missing.
-    if not os.path.isfile(path):
-        basep = os.path.dirname(path)
-        if not os.path.isdir(basep):
-            os.makedirs(basep)
-
-    try:
-        with open(path, 'w') as stream:
-            stream.write(cmdline)
-    except Exception:
-        logging.exception('Failed to modify "%s". Not starting!!', path)
-
-        QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
-            translate('runner', 'Failed to edit "%s"! I can\'t change the current mod!') % path)
-    else:
-        logging.info('Starting mod "%s" with cmdline "%s" and tool "%s".', mod.title, cmdline, binpath)
-        Fs2Watcher([binpath], cwd=basepath)
+    logging.info('Starting mod "%s" with cmdline "%s" and tool "%s".', mod.title, cmdline, binpath)
+    Fs2Watcher([binpath] + cmdline, cwd=basepath)
 
 
 def stringify_cmdline(line):
@@ -580,11 +566,11 @@ def apply_global_flags(mod):
     flag_states = get_global_flags(mod)
     if not flag_states:
         # No global flags set
-        return mod.cmdline
+        return shlex.split(mod.cmdline)
 
-    custom_flags = ''
+    custom_flags = []
     if '#custom' in flag_states:
-        custom_flags = ' ' + flag_states['#custom']
+        custom_flags = shlex.split(flag_states['#custom'])
 
     cmdline = shlex.split(mod.cmdline)
     for flag, state in flag_states.items():
@@ -600,4 +586,4 @@ def apply_global_flags(mod):
             if flag not in cmdline:
                 cmdline.append(flag)
 
-    return ' '.join([shlex.quote(p) for p in cmdline]) + custom_flags
+    return [shlex.quote(p) for p in cmdline] + custom_flags
