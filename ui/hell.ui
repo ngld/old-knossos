@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1126</width>
-    <height>879</height>
+    <height>756</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -19,15 +19,13 @@
   <property name="windowTitle">
    <string>Knossos</string>
   </property>
-  <property name="styleSheet">
-   <string notr="true">QWidget {
-  background: #1c1c1c;
-  color: #fff;
-}</string>
-  </property>
   <widget class="QWidget" name="centralwidget">
    <property name="styleSheet">
-    <string notr="true"/>
+    <string notr="true">#centralwidget, #centralwidget &gt; QWidget &gt; QLabel {
+  background: #1c1c1c;
+  color: #fff;
+}
+</string>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
     <property name="spacing">

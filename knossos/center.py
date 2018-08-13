@@ -24,7 +24,7 @@ from .qt import QtCore # noqa
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.12.1'
+VERSION = '0.12.2'
 UPDATE_LINK = 'https://fsnebula.org/knossos'
 INNOEXTRACT_LINK = 'https://fsnebula.org/storage/knossos/innoextract.json'
 DEBUG = os.getenv('KN_DEBUG', '0').strip() == '1'
@@ -118,7 +118,7 @@ def save_settings():
         if os.path.exists(path):
             settings['hash_cache'][path] = info
 
-    with open(os.path.join(settings_path, 'settings.json'), 'w') as stream:
+    with open(os.path.join(settings_path, 'settings.json'), 'w', errors='replace') as stream:
         json.dump(settings, stream)
 
 

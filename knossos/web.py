@@ -374,7 +374,7 @@ class WebBridge(QtCore.QObject):
             # Just install the new version
             if new_opt_pkgs - old_opt_pkgs:
                 # There are new recommended or optional packages, we'll have to ask the user.
-                windows.ModInstallWindow(new_rel, sel_pkgs, [p.name for p in sel_pkgs])
+                windows.ModInstallWindow(new_rel, [p.name for p in sel_pkgs])
             else:
                 tasks.run_task(tasks.InstallTask(sel_pkgs, new_rel))
 
