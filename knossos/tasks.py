@@ -1232,7 +1232,7 @@ class UploadTask(progress.MultistepTask):
                             'filename': vp_name,
                             'archive': ar_name,
                             'orig_name': vp_name,
-                            'checksum': meta['vp_checksum']
+                            'checksum': ('sha256', meta['vp_checksum'])
                         }]
                     else:
                         # The existing upload is identical but not a VP.
