@@ -128,12 +128,12 @@ class Fs2Watcher(threading.Thread):
 
             bridge.fs2Launched.emit()
             p.wait()
-            bridge.fs2Quit.emit()
         finally:
             if launch_script:
                 os.unlink(launch_script)
 
             watchers.remove(self)
+            bridge.fs2Quit.emit()
 
     def prepare_fso_config(self, fs2_bin):
         cfg = settings.get_settings()
@@ -175,8 +175,6 @@ class Fs2Watcher(threading.Thread):
             if not sel_guid:
                 self.complain_joystick()
                 return False
-
-            print(flags)
 
             # Old build, just use our stored values
             cfg['fso']['joystick_guid'] = sel_guid
