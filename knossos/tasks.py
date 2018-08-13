@@ -910,23 +910,24 @@ class UpdateTask(InstallTask):
     _old_mod = None
     __check_after = True
 
-    def __init__(self, mod, check_after=True):
-        self._old_mod = mod
-        new_mod = center.mods.query(mod.mid)
+    def __init__(self, mod, pkgs=None, check_after=True):
         self.__check_after = check_after
+        new_mod = center.mods.query(mod.mid)
 
-        old_pkgs = [pkg.name for pkg in mod.packages]
-        pkgs = []
+        if not pkgs:
+            old_pkgs = [pkg.name for pkg in mod.packages]
+            pkgs = []
 
-        for pkg in new_mod.packages:
-            if pkg.name in old_pkgs or pkg.status == 'required':
-                pkgs.append(pkg)
+            for pkg in new_mod.packages:
+                if pkg.name in old_pkgs or pkg.status == 'required':
+                    pkgs.append(pkg)
 
         # carry the dev_mode setting over to the new version
         editable = {}
         if mod.dev_mode:
             editable.add(mod.mid)
 
+        self._old_mod = mod
         super(UpdateTask, self).__init__(pkgs, new_mod, check_after=False, editable=editable)
 
     def work4(self, _):

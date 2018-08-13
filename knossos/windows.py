@@ -791,7 +791,7 @@ class ModInstallUpdateWindow(ModInstallWindow):
         to_install, _, editable = self.get_selected_pkgs()
 
         if to_install:
-            run_task(UpdateTask(to_install, self._mod))
+            run_task(UpdateTask(self._mod, pkgs=to_install))
 
         self.close()
 
