@@ -118,7 +118,7 @@ def save_settings():
         if os.path.exists(path):
             settings['hash_cache'][path] = info
 
-    with open(os.path.join(settings_path, 'settings.json'), 'w') as stream:
+    with open(os.path.join(settings_path, 'settings.json'), 'w', errors='replace') as stream:
         json.dump(settings, stream)
 
 

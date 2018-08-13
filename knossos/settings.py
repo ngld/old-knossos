@@ -447,7 +447,7 @@ def parse_fso_config():
 def write_fso_config(sections):
     config_file = os.path.join(get_fso_profile_path(), 'fs2_open.ini')
 
-    with open(config_file, 'w') as stream:
+    with open(config_file, 'w', errors='replace') as stream:
         for name, pairs in sections.items():
             stream.write('[%s]\n' % name)
 

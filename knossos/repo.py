@@ -1052,7 +1052,7 @@ class InstalledMod(Mod):
         if im_path != self.folder:
             self.folder = im_path
 
-        with open(os.path.join(self.folder, 'mod.json'), 'w') as stream:
+        with open(os.path.join(self.folder, 'mod.json'), 'w', errors='replace') as stream:
             json.dump(self.get_relative(), stream, indent=4)
 
     def save_user(self):
@@ -1066,7 +1066,7 @@ class InstalledMod(Mod):
 
         path = os.path.join(modpath, 'user.json')
 
-        with open(path, 'w') as stream:
+        with open(path, 'w', errors='replace') as stream:
             json.dump(self.get_user(), stream)
 
     def update_mod_flag(self):
