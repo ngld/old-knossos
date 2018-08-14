@@ -783,6 +783,10 @@ class ModInstallWindow(Window):
 class ModInstallUpdateWindow(ModInstallWindow):
     _window_cls = Ui_InstallUpdateDialog
 
+    def __init__(self, mod, old_mod, sel_pkgs=None):
+        super(ModInstallUpdateWindow, self).__init__(mod, sel_pkgs)
+        self._old_mod = old_mod
+
     def _check_editable(self):
         # We just use the values from the previous version.
         pass
@@ -791,7 +795,7 @@ class ModInstallUpdateWindow(ModInstallWindow):
         to_install, _, editable = self.get_selected_pkgs()
 
         if to_install:
-            run_task(UpdateTask(self._mod, pkgs=to_install))
+            run_task(UpdateTask(self._old_mod, pkgs=to_install))
 
         self.close()
 

@@ -617,7 +617,7 @@ class InstallTask(progress.MultistepTask):
                 done = True
                 # Look for missing files
                 for item in needed_files:
-                    src_path = os.path.join(cpath, item['orig_name'])
+                    src_path = util.ipath(os.path.join(cpath, item['orig_name']))
 
                     if not os.path.isfile(src_path):
                         logging.warning('Missing file "%s" from archive "%s" for package "%s" (%s)!',
