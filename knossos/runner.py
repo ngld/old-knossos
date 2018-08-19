@@ -38,6 +38,7 @@ FILE_PATH_RE = r'[a-zA-Z0-9\./\-\_\+]+'
 LDD_RE = re.compile(r'\s*(' + FILE_PATH_RE + r') (?:=> (not found|' + FILE_PATH_RE + r'))?(?: \([^\)]+\))?\s*')
 LIB_RE = re.compile(r'lib([a-zA-Z0-9\.\-\_\+]+)\.so(?:\..*)?')
 LDCONF_RE = re.compile(r'\s*(' + FILE_PATH_RE + r') \([^\)]+\) => (' + FILE_PATH_RE + r')')
+LDDNOTDYNAMIC_RE = re.compile(r'\s*not a dynamic executable')
 _LIB_CACHE = None
 
 watchers = []
@@ -251,9 +252,19 @@ class Fs2Watcher(threading.Thread):
 
 
 def check_elf_libs(fpath):
-    out = util.check_output(['ldd', fpath], env={'LANG': 'C'}).splitlines()
-    libs = {}
+    try:
+        out = util.check_output(['ldd', fpath], env={'LANG': 'C'}).splitlines()
+    except CalledProcessError as e:
+        result = LDDNOTDYNAMIC_RE.match(e.stdout)
+        if result and e.returncode == 1:
+            logging.debug('Not continuing to check libs as the executable is not dynamic')
+            return {}
+        else:
+            raise
+    except:
+        raise
 
+    libs = {}
     for r_line in out:
         line = LDD_RE.match(r_line)
         if not line:
@@ -299,6 +310,11 @@ def get_lib_path(filename):
 def fix_missing_libs(fpath, augment_ldpath=True):
     base = os.path.dirname(fpath)
     patch_dir = os.path.join(base, '__k_plibs')
+
+    # AppImages are a bit special since they are themselves ELF executables which contain the actual FSO executable so
+    # it makes no sense to examine the binary for missing libraries. They also might be static execs
+    if fpath.lower().endswith(".appimage"):
+        return '', []
 
     libs = check_elf_libs(fpath)
     missing = []
@@ -351,9 +367,7 @@ def run_fs2_silent(params):
     # We copy the existing environment to avoid omitting any values that may be necessary for running the binary
     # properly
     env = dict(os.environ)
-    # AppImages are a bit special since they are themselves ELF executables which contain the actual FSO executable so
-    # it makes no sense to examine the binary for missing libraries
-    if sys.platform.startswith('linux') and not fs2_bin.lower().endswith(".appimage"):
+    if sys.platform.startswith('linux'):
         ld_path, missing = fix_missing_libs(fs2_bin)
         if len(missing) > 0:
             return -127, None
