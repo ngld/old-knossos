@@ -3,7 +3,7 @@ Knossos
 
 A modern mod manager and launcher for FreeSpace Open.
 
-After installing this package, you can launch Knossos with ``python -m knossos``.
+After installing this package, you can launch Knossos with ``knossos`` or ``python -m knossos``.
 
 Website:
     https://dev.tproxy.de/knossos/
