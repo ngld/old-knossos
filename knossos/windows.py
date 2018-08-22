@@ -58,6 +58,7 @@ class QMainWindow(QtWidgets.QMainWindow):
 
     def set_custom_bar(self, enabled):
         if enabled != self._custom_bar:
+            self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
             self.setWindowFlag(QtCore.Qt.FramelessWindowHint, enabled)
             self.setMouseTracking(enabled)
             self.hide()
