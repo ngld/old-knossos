@@ -458,11 +458,24 @@ export default {
         deleteMod()  {
             vm.popup_mode = 'are_you_sure';
             vm.popup_title = 'Delete mod release';
-            vm.popup_sure_question = `Are you sure that you want to delete ${this.selected_mod.title} ${this.selected_mod.version}?` +
+            vm.popup_sure_question = `Are you sure that you want to delete ${this.selected_mod.title} ${this.selected_mod.version} from the Nebula?` +
                 "\nThis will only delete this specific version.";
 
             vm.sureCallback = () => {
                 fs2mod.nebDeleteMod(this.selected_mod.id, this.selected_mod.version);
+                vm.popup_visible = false;
+            };
+            vm.popup_visible = true;
+        },
+
+        deleteModLocally()  {
+            vm.popup_mode = 'are_you_sure';
+            vm.popup_title = 'Delete mod release';
+            vm.popup_sure_question = `Are you sure that you want to delete ${this.selected_mod.title} ${this.selected_mod.version} from your computer?` +
+                "\nThis will only delete this specific version.";
+
+            vm.sureCallback = () => {
+                fs2mod.removeModFolder(this.selected_mod.id, this.selected_mod.version);
                 vm.popup_visible = false;
             };
             vm.popup_visible = true;
@@ -500,6 +513,16 @@ export default {
             if(this.selected_mod) {
                 this.selected_mod.description = desc;
             }
+        },
+
+        launchButtonColor(tool) {
+            if(tool.toLowerCase().indexOf('fred') > -1 || tool.toLowerCase().indexOf('qt') > -1) {
+                return 'orange';
+            } else if(tool.toLowerCase().indexOf('debug') > -1) {
+                return 'yellow';
+            } else {
+                return 'grey';
+            }
         }
     }
 };
@@ -518,12 +541,19 @@ export default {
 
                 <p>
                     <button @click.prevent="launchMod" class="mod-btn btn-green"><p>Play</p></button>
-                    <button v-for="tool in tools" @click.prevent="launchTool(tool)" :class="'mod-btn btn-' + (tool.toLowerCase().indexOf('fred') > -1 ? 'orange' : tool.toLowerCase().indexOf('debug') > -1 ? 'yellow' : 'grey')"><p>{{ tool }}</p></button>
+                    <button
+                        v-for="tool in tools"
+                        @click.prevent="launchTool(tool)"
+                        :class="'mod-btn btn-' + launchButtonColor(tool)"
+                    >
+                        <p>{{ tool }}</p>
+                    </button>
 
                     <br><br>
                     <button @click.prevent="reopenUploadPopup" class="mod-btn btn-link-blue" v-if="(this.mod_map[(this.selected_mod || {}).id] || {}).progress">Uploading...</button>
-                    <button @click.prevent="uploadMod" class="mod-btn btn-link-blue" v-else>Upload</button>
-                    <button @click.prevent="deleteMod" class="mod-btn btn-link-red">Delete</button><br>
+                    <button @click.prevent="uploadMod" class="mod-btn btn-link-blue" v-else>Upload</button><br>
+                    <button @click.prevent="deleteMod" class="mod-btn btn-link-red">Delete</button>
+                    <button @click.prevent="deleteModLocally" class="mod-btn btn-link-red">Local Delete</button><br>
                     <button @click.prevent="openNewVersionPopup" class="mod-btn btn-link-grey">+ Version</button>
                     <button @click.prevent="addPackage" class="mod-btn btn-link-grey">+ Package</button>
                 </p>

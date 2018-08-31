@@ -443,7 +443,7 @@ def run_mod(mod, tool=None, exe_label=None):
 
         try:
             err_mod = center.mods.query(mod_name).title
-        except repo.ModNotFound as exc:
+        except repo.ModNotFound:
             err_mod = mod_name
 
         if err_mod:

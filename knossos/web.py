@@ -201,8 +201,8 @@ class WebBridge(QtCore.QObject):
 
     @QtCore.Slot()
     def fetchModlist(self):
-        tasks.run_task(tasks.FetchTask())
         tasks.run_task(tasks.LoadLocalModsTask())
+        tasks.run_task(tasks.FetchTask())
 
     @QtCore.Slot(bool, result='QVariantList')
     def requestModlist(self, async_=False):
@@ -570,7 +570,7 @@ class WebBridge(QtCore.QObject):
             if not os.path.isfile(steam_config):
                 logging.warning('config.vdf is not where I expected it!')
             else:
-                folders.append(os.path.join(steam_config, 'steamapps', 'common', 'Freespace 2'))
+                folders.append(os.path.join(steam_path, 'steamapps', 'common', 'Freespace 2'))
 
                 with open(steam_config, 'r') as stream:
                     for m in re.finditer(r'"BaseInstallFolder_[0-9]+"\s+"([^"]+)"', stream.read()):
@@ -1278,6 +1278,8 @@ class WebBridge(QtCore.QObject):
             fine = True
         except nebula.AccessDeniedException:
             QtWidgets.QMessageBox.critical(None, 'Knossos', "You can't do that!")
+        except nebula.InvalidLoginException:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', "You can't delete this mod from the nebula until you login.")
         except nebula.RequestFailedException as exc:
             if exc.args[0] == 'not found':
                 QtWidgets.QMessageBox.information(None, 'Knossos',
@@ -1296,6 +1298,14 @@ class WebBridge(QtCore.QObject):
             result = QtWidgets.QMessageBox.question(None, 'Knossos', 'Should the local files be deleted?')
             if result == QtWidgets.QMessageBox.Yes:
                 tasks.run_task(tasks.RemoveModFolder(mod))
+
+    @QtCore.Slot(str, str)
+    def removeModFolder(self, mid, version):
+        mod = self._get_mod(mid, version)
+        if mod in (-1, -2):
+            return
+
+        tasks.run_task(tasks.RemoveModFolder(mod))
 
     @QtCore.Slot(result=str)
     def selectCustomBuild(self):
