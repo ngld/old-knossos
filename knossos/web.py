@@ -344,7 +344,11 @@ class WebBridge(QtCore.QObject):
             return mod
 
         new_rel = center.mods.query(mod.mid)
-        old_rel = center.mods.query(mod)
+
+        try:
+            old_rel = center.mods.query(mod)
+        except repo.ModNotFound:
+            old_rel = mod
 
         new_opt_pkgs = set([pkg.name for pkg in new_rel.packages if pkg.status in ('recommended', 'optional')])
         old_opt_pkgs = set([pkg.name for pkg in old_rel.packages if pkg.status in ('recommended', 'optional')])
