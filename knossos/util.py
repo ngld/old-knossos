@@ -277,6 +277,7 @@ def check_output(*args, **kwargs):
 
         kwargs['startupinfo'] = si
 
+    kwargs.setdefault('errors', 'surrogateescape')
     kwargs.setdefault('universal_newlines', True)
 
     logging.debug('Running %s', args[0])
@@ -382,7 +383,7 @@ def _get_download_chunk_size():
         return min(int(center.settings['download_bandwidth'] / 2), DEFAULT_CHUNK_SIZE)
 
 
-def download(link, dest, headers=None, random_ua=False):
+def download(link, dest, headers=None, random_ua=False, timeout=60):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
     if random_ua:
@@ -398,7 +399,7 @@ def download(link, dest, headers=None, random_ua=False):
         logging.info('Downloading "%s"...', link)
 
         try:
-            result = HTTP_SESSION.get(link, headers=headers, stream=True)
+            result = HTTP_SESSION.get(link, headers=headers, stream=True, timeout=timeout)
         except requests.exceptions.ConnectionError:
             logging.exception('Failed to load "%s"!', link)
             return False
@@ -449,8 +450,11 @@ def cancel_downloads():
     global _DL_CANCEL, DL_POOL
 
     _DL_CANCEL.set()
-    # Wait for the downloads to actually cancel.
-    while DL_POOL.get_consumed() > 0:
+    start = time.time()
+
+    # Wait for the downloads to actually cancel but don't block longer than 5 seconds.
+    # TODO: Figure out a better solution to interrupt downloads.
+    while DL_POOL.get_consumed() > 0 and time.time() - start < 5:
         time.sleep(0.2)
 
     _DL_CANCEL.clear()
@@ -466,11 +470,10 @@ def ipath(path):
 
     if not os.path.exists(parent):
         # Well, nothing we can do here...
-        return path
+        return os.path.join(parent, item)
 
-    siblings = os.listdir(parent)
     litem = item.lower()
-    for s in siblings:
+    for s in os.listdir(parent):
         if s.lower() == litem:
             logging.debug('Picking "%s" for "%s".', s, item)
             path = os.path.join(parent, s)
@@ -834,6 +837,7 @@ def safe_download(url, dest):
         return retry_helper(_safe_download, url, dest)
     except Exception:
         logging.exception('Failed to download %s to %s!' % (url, dest))
+        safe_unlink(dest)
         return False
 
 

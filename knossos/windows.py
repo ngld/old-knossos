@@ -341,11 +341,10 @@ class HellWindow(Window):
             return
 
         self._init_done = True
+        run_task(LoadLocalModsTask())
 
         center.auto_fetcher.start()
         ipc.setup()
-
-        run_task(LoadLocalModsTask())
 
     def ask_update(self, version):
         # We only have an updater for windows.

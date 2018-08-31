@@ -129,6 +129,8 @@ class LoadLocalModsTask(progress.Task):
                     mod_file = sub
         except FileNotFoundError:
             logging.warning('The directory "%s" does not exist anymore!' % path)
+        except PermissionError:
+            logging.warning('Failed to scan "%s" during mod load because access was denied!' % path)
 
         if mod_file:
             try:
@@ -440,8 +442,10 @@ class InstallTask(progress.MultistepTask):
 
                     for pkg in mv.packages:
                         pf[pkg.name] = pkg.folder
-        except repo.ModNotFound:
-            logging.exception('Dependency error during mod installation! Tried to install %s.' % mod)
+        except repo.ModNotFound as exc:
+            if exc.mid != mod.mid:
+                logging.exception('Dependency error during mod installation! Tried to install %s.' % mod)
+
             inst_mods = []
 
         for i, info in enumerate(mfiles):
@@ -481,8 +485,7 @@ class InstallTask(progress.MultistepTask):
         progress.finish_task()
         progress.start_task(0.9, 0, 'Downloading logos...')
 
-        # Make sure the images are in the mod folder so that they won't be deleted during the next
-        # FetchTask.
+        # Make sure the images are in the mod folder.
         for prop in ('logo', 'tile', 'banner'):
             img_path = getattr(mod, prop)
             if img_path:
@@ -642,7 +645,7 @@ class InstallTask(progress.MultistepTask):
                 if item['archive'] != archive['filename']:
                     continue
 
-                src_path = os.path.join(cpath, item['orig_name'])
+                src_path = util.ipath(os.path.join(cpath, item['orig_name']))
                 if dev_mode:
                     dest_path = util.ipath(os.path.join(modpath, archive['pkg'].folder, item['filename']))
                 else:
@@ -656,6 +659,7 @@ class InstallTask(progress.MultistepTask):
                     if dev_mode and archive['pkg'].is_vp:
                         progress.start_task(0.98, 0.02, '%s')
                         util.extract_vp_file(src_path, os.path.join(modpath, archive['pkg'].folder))
+                        progress.finish_task()
 
                         # Avoid confusing CheckTask with a missing VP file.
                         archive['pkg'].filelist = []
@@ -924,7 +928,7 @@ class UpdateTask(InstallTask):
 
         # carry the dev_mode setting over to the new version
         editable = {}
-        if mod.dev_mode:
+        if isinstance(mod, repo.InstalledMod) and mod.dev_mode:
             editable.add(mod.mid)
 
         self._old_mod = mod

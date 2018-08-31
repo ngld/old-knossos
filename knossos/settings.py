@@ -583,8 +583,10 @@ def get_fso_flags(fs2_bin):
 
                 break
 
-    st = os.stat(fs2_bin)
-    _flag_cache[fs2_bin] = (st.st_mtime, flags)
+    if flags:
+        st = os.stat(fs2_bin)
+        _flag_cache[fs2_bin] = (st.st_mtime, flags)
+
     return flags
 
 
