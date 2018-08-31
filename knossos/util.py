@@ -383,7 +383,7 @@ def _get_download_chunk_size():
         return min(int(center.settings['download_bandwidth'] / 2), DEFAULT_CHUNK_SIZE)
 
 
-def download(link, dest, headers=None, random_ua=False):
+def download(link, dest, headers=None, random_ua=False, timeout=60):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
     if random_ua:
@@ -399,7 +399,7 @@ def download(link, dest, headers=None, random_ua=False):
         logging.info('Downloading "%s"...', link)
 
         try:
-            result = HTTP_SESSION.get(link, headers=headers, stream=True)
+            result = HTTP_SESSION.get(link, headers=headers, stream=True, timeout=timeout)
         except requests.exceptions.ConnectionError:
             logging.exception('Failed to load "%s"!', link)
             return False
@@ -450,8 +450,11 @@ def cancel_downloads():
     global _DL_CANCEL, DL_POOL
 
     _DL_CANCEL.set()
-    # Wait for the downloads to actually cancel.
-    while DL_POOL.get_consumed() > 0:
+    start = time.time()
+
+    # Wait for the downloads to actually cancel but don't block longer than 5 seconds.
+    # TODO: Figure out a better solution to interrupt downloads.
+    while DL_POOL.get_consumed() > 0 and time.time() - start < 5:
         time.sleep(0.2)
 
     _DL_CANCEL.clear()
