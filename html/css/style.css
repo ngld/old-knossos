@@ -1676,3 +1676,38 @@ iframe {
 .devel-page .table td {
     padding: 2px;
 }
+
+.buttonpane {
+    display: none;
+    background: rgba(255, 255, 255, 0.51);
+    box-shadow: 0px 0px 5px 3px rgba(0,0,0,0.75);
+    margin-bottom: 8px;
+}
+
+#tab1:checked ~ #devbuttons, #tab2:checked ~ #managebuttons {
+    display: block;
+}
+
+#devmanagement label {
+    display: inline-block;
+    color: #bbb;
+    width: 100px;
+    height: 30px;
+    text-align: center;
+    padding-top: 7px;
+    background-image: url(../images/tabsquare-i.png);
+    margin-bottom: 0px;
+}
+
+#devmanagement label:hover {
+    cursor: pointer;
+}
+
+#devmanagement input:checked + label {
+    color: white;
+    background-image: url(../images/tabsquare-a.png);
+}
+
+#devmanagement input {
+    display: none;
+}

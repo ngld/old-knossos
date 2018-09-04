@@ -539,24 +539,33 @@ export default {
             <div class="logo-box" v-if="selected_mod">
                 <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
 
-                <p>
-                    <button @click.prevent="launchMod" class="mod-btn btn-green"><p>Play</p></button>
-                    <button
-                        v-for="tool in tools"
-                        @click.prevent="launchTool(tool)"
-                        :class="'mod-btn btn-' + launchButtonColor(tool)"
-                    >
-                        <p>{{ tool }}</p>
-                    </button>
+                <div id=devmanagement>
+                    <input id="tab1" type="radio" name="tabs" checked>
+                    <label for="tab1">FSO Dev</label>
+                    <input id="tab2" type="radio" name="tabs">
+                    <label for="tab2">Management</label>
+                    <div id="devbuttons" class="buttonpane">
+                        <button @click.prevent="launchMod" class="mod-btn btn-green"><p>Play</p></button>
+                        <button
+                            v-for="tool in tools"
+                            @click.prevent="launchTool(tool)"
+                            :class="'mod-btn btn-' + launchButtonColor(tool)"
+                        >
+                            <p>{{ tool }}</p>
+                        </button>
+                        <br>
+                    </div>
 
-                    <br><br>
-                    <button @click.prevent="reopenUploadPopup" class="mod-btn btn-link-blue" v-if="(this.mod_map[(this.selected_mod || {}).id] || {}).progress">Uploading...</button>
-                    <button @click.prevent="uploadMod" class="mod-btn btn-link-blue" v-else>Upload</button><br>
-                    <button @click.prevent="deleteMod" class="mod-btn btn-link-red">Delete</button>
-                    <button @click.prevent="deleteModLocally" class="mod-btn btn-link-red">Local Delete</button><br>
-                    <button @click.prevent="openNewVersionPopup" class="mod-btn btn-link-grey">+ Version</button>
-                    <button @click.prevent="addPackage" class="mod-btn btn-link-grey">+ Package</button>
-                </p>
+                    <div id="managebuttons" class="buttonpane">
+                        <button @click.prevent="reopenUploadPopup" class="mod-btn btn-link-blue" v-if="(this.mod_map[(this.selected_mod || {}).id] || {}).progress">Uploading...</button>
+                        <button @click.prevent="uploadMod" class="mod-btn btn-link-blue" v-else>Upload</button><br>
+                        <button @click.prevent="deleteMod" class="mod-btn btn-link-red">Delete</button>
+                        <button @click.prevent="deleteModLocally" class="mod-btn btn-link-red">Local Delete</button><br>
+                        <button @click.prevent="openNewVersionPopup" class="mod-btn btn-link-grey">+ Version</button>
+                        <button @click.prevent="addPackage" class="mod-btn btn-link-grey">+ Package</button>
+                        <br>
+                    </div>
+                </div>
 
                 Mod Versions:
                 <select class="form-control mod-version" v-model="sel_version" @change="selectVersion(sel_version)">
