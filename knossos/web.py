@@ -366,7 +366,7 @@ class WebBridge(QtCore.QObject):
                     sel_pkgs.append(pkg)
 
         all_vers = list(center.installed.query_all(mid))
-        if len(all_vers) == 1 and not all_vers[0].dev_mode:
+        if len(all_vers) == 1 and not mod.dev_mode:
             # Only one version is installed, let's update it.
 
             if new_opt_pkgs - old_opt_pkgs:
@@ -380,7 +380,11 @@ class WebBridge(QtCore.QObject):
                 # There are new recommended or optional packages, we'll have to ask the user.
                 windows.ModInstallWindow(new_rel, [p.name for p in sel_pkgs])
             else:
-                tasks.run_task(tasks.InstallTask(sel_pkgs, new_rel))
+                edit = set()
+                if mod.dev_mode:
+                    edit.add(mod.mid)
+
+                tasks.run_task(tasks.InstallTask(sel_pkgs, new_rel, editable=edit))
 
         return 0
 
