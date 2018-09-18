@@ -1179,7 +1179,17 @@ class UploadTask(progress.MultistepTask):
 
                     for fn in pkg.filelist:
                         progress.update(done / fc, fn['filename'])
-                        fn['checksum'] = util.gen_hash(os.path.join(pkg_path, fn['filename']))
+
+                        try:
+                            fn['checksum'] = util.gen_hash(os.path.join(pkg_path, fn['filename']))
+                        except Exception:
+                            logging.exception('Failed to generate checksum for file %s in package %s!' % (fn['filename'], pkg.name))
+
+                            self._reason = 'file unreadable'
+                            self._msg = (fn['filename'], pkg.name)
+                            self.abort()
+                            return
+
                         done += 1
 
                 progress.update(1, 'Done')
@@ -1413,6 +1423,8 @@ class UploadTask(progress.MultistepTask):
             message = "You're telling me to put a VP into a VP... I don't think that's a good idea. Check your package settings! Aborted."
         elif self._reason == 'empty file in vp':
             message = "An empty file was detected! It's impossible to put empty files into VPs. Please either fill %s with data or remove it." % self._msg
+        elif self._reason == 'file unreadable':
+            message = "The file %s in package %s could not be read!" % self._msg
         elif self._reason == 'aborted':
             return
         else:
@@ -1430,10 +1442,9 @@ class GOGExtractTask(progress.Task):
         self.done.connect(self.finish)
         self.add_work([(gog_path, dest_path)])
         self.title = 'Installing FS2 from GOG...'
+        self._dest_path = dest_path
 
         self._makedirs(dest_path)
-        create_retail_mod(dest_path)
-        center.main_win.update_mod_buttons('home')
 
         self.mods = [center.installed.query('FS2')]
         self._slot_prog = {
@@ -1584,6 +1595,7 @@ class GOGExtractTask(progress.Task):
                 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?'))
             return
         else:
+            create_retail_mod(self._dest_path)
             center.main_win.update_mod_list()
             center.main_win.browser_ctrl.bridge.retailInstalled.emit()
 
@@ -1597,10 +1609,9 @@ class GOGCopyTask(progress.Task):
         self.done.connect(self.finish)
         self.add_work([(gog_path, dest_path)])
         self.title = 'Copying retail files...'
+        self._dest_path = dest_path
 
         self._makedirs(dest_path)
-        create_retail_mod(dest_path)
-        center.main_win.update_mod_buttons('home')
 
         self.mods = [center.installed.query('FS2')]
         self._slot_prog = {
@@ -1645,6 +1656,7 @@ class GOGCopyTask(progress.Task):
             os.makedirs(path)
 
     def finish(self):
+        create_retail_mod(self._dest_path)
         center.main_win.update_mod_list()
         center.main_win.browser_ctrl.bridge.retailInstalled.emit()
 
@@ -1840,6 +1852,11 @@ class VpExtractionTask(progress.Task):
 
 
 class ApplyEngineFlagsTask(progress.Task):
+    # Limit to one thread because access to flags.lch causes
+    # conflicts otherwise.
+    # TODO: Will implement a better solution later
+    _threads = 1
+
     def __init__(self, mods, flags, custom_flags):
         super(ApplyEngineFlagsTask, self).__init__()
 
