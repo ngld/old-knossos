@@ -1435,6 +1435,7 @@ class UploadTask(progress.MultistepTask):
 
 class GOGExtractTask(progress.Task):
     can_abort = False
+    _reason = None
 
     def __init__(self, gog_path, dest_path):
         super(GOGExtractTask, self).__init__()
@@ -1444,7 +1445,13 @@ class GOGExtractTask(progress.Task):
         self.title = 'Installing FS2 from GOG...'
         self._dest_path = dest_path
 
-        self._makedirs(dest_path)
+        try:
+            self._makedirs(dest_path)
+        except Exception:
+            logging.exception('Failed to create data path!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'Failed to create %s!' % dest_path)
+            self.abort()
+            return
 
         self.mods = [center.installed.query('FS2')]
         self._slot_prog = {
@@ -1462,123 +1469,149 @@ class GOGExtractTask(progress.Task):
         gog_path, dest_path = paths
         self._local.slot = 'total'
 
-        progress.update(0.03, 'Looking for InnoExtract...')
-        data = util.get(center.INNOEXTRACT_LINK)
-
         try:
-            data = json.loads(data)
-        except Exception:
-            logging.exception('Failed to read JSON data!')
-            return
+            progress.update(0.03, 'Looking for InnoExtract...')
+            data = util.get(center.INNOEXTRACT_LINK)
 
-        link = None
-        path = None
-        for plat, info in data.items():
-            if sys.platform.startswith(plat):
-                link, path = info[:2]
-                break
+            try:
+                data = json.loads(data)
+            except Exception:
+                logging.exception('Failed to read JSON data!')
+                return
 
-        if link is None:
-            logging.error('Couldn\'t find an innoextract download for "%s"!', sys.platform)
-            return
+            link = None
+            path = None
+            for plat, info in data.items():
+                if sys.platform.startswith(plat):
+                    link, path = info[:2]
+                    break
 
-        if not os.path.exists(dest_path):
-            os.makedirs(dest_path)
+            if link is None:
+                logging.error('Couldn\'t find an innoextract download for "%s"!', sys.platform)
+                return
 
-        inno = os.path.join(dest_path, os.path.basename(path))
-        with tempfile.TemporaryDirectory() as tempdir:
-            archive = os.path.join(tempdir, os.path.basename(link))
+            if not os.path.exists(dest_path):
+                try:
+                    os.makedirs(dest_path)
+                except Exception:
+                    logging.exception('Failed to create data path!')
+                    self._reason = 'dest_path'
+                    return
 
-            progress.start_task(0.03, 0.10, 'Downloading InnoExtract...')
-            with open(os.path.join(dest_path, archive), 'wb') as dl:
-                util.download(link, dl)
+            inno = os.path.join(dest_path, os.path.basename(path))
+            with tempfile.TemporaryDirectory() as tempdir:
+                archive = os.path.join(tempdir, os.path.basename(link))
+
+                progress.start_task(0.03, 0.10, 'Downloading InnoExtract...')
+                if not util.safe_download(link, os.path.join(dest_path, archive)):
+                    self._reason = 'download'
+                    return
+
+                progress.finish_task()
+                progress.update(0.13, 'Extracting InnoExtract...')
+
+                try:
+                    util.extract_archive(archive, tempdir)
+                    shutil.move(os.path.join(tempdir, path), inno)
+                except Exception:
+                    logging.exception('Failed to extract innoextract!')
+                    self._reason = 'extract'
+                    return
+
+            # Make it executable
+            mode = os.stat(inno).st_mode
+            os.chmod(inno, mode | stat.S_IXUSR)
+
+            progress.start_task(0.15, 0.75, 'Extracting FS2: %s')
+            try:
+                cmd = [inno, '-L', '-s', '-p', '-e', gog_path]
+                logging.info('Running %s...', ' '.join(cmd))
+
+                opts = dict()
+                if sys.platform.startswith('win'):
+                    si = subprocess.STARTUPINFO()
+                    si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+                    si.wShowWindow = subprocess.SW_HIDE
+
+                    opts['startupinfo'] = si
+                    opts['stdin'] = subprocess.PIPE
+
+                p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=dest_path, **opts)
+
+                if sys.platform.startswith('win'):
+                    p.stdin.close()
+
+                buf = ''
+                while p.poll() is None:
+                    while '\r' not in buf:
+                        line = p.stdout.read(10)
+                        if not line:
+                            break
+                        buf += line.decode('utf8', 'replace')
+
+                    buf = buf.split('\r')
+                    line = buf.pop(0)
+                    buf = '\r'.join(buf)
+
+                    if 'MiB/s' in line:
+                        try:
+                            if ']' in line:
+                                line = line.split(']')[1]
+
+                            line = line.strip().split('MiB/s')[0] + 'MiB/s'
+                            percent = float(line.split('%')[0]) / 100
+
+                            progress.update(percent, line)
+                        except Exception:
+                            logging.exception('Failed to process InnoExtract output!')
+                    else:
+                        if line.strip() == 'not a supported Inno Setup installer':
+                            self.post(-1)
+                            return
+
+                        logging.info('InnoExtract: %s', line)
+            except Exception:
+                logging.exception('InnoExtract failed!')
+                self._reason = 'innoextract'
+                return
 
             progress.finish_task()
-            progress.update(0.13, 'Extracting InnoExtract...')
 
-            util.extract_archive(archive, tempdir)
-            shutil.move(os.path.join(tempdir, path), inno)
+            if not verify_retail_vps(os.path.join(dest_path, 'app')):
+                self._reason = 'vps'
 
-        # Make it executable
-        mode = os.stat(inno).st_mode
-        os.chmod(inno, mode | stat.S_IXUSR)
+                progress.update(0.95, 'Failed! Cleanup...')
+                try:
+                    shutil.rmtree(dest_path, ignore_errors=True)
+                except Exception:
+                    logging.exception('Cleanup failed after missing VPs!')
 
-        progress.start_task(0.15, 0.75, 'Extracting FS2: %s')
-        try:
-            cmd = [inno, '-L', '-s', '-p', '-e', gog_path]
-            logging.info('Running %s...', ' '.join(cmd))
+                return
 
-            opts = dict()
-            if sys.platform.startswith('win'):
-                si = subprocess.STARTUPINFO()
-                si.dwFlags = subprocess.STARTF_USESHOWWINDOW
-                si.wShowWindow = subprocess.SW_HIDE
+            progress.update(0.95, 'Moving files...')
+            self._makedirs(os.path.join(dest_path, 'data/players'))
+            self._makedirs(os.path.join(dest_path, 'data/movies'))
 
-                opts['startupinfo'] = si
-                opts['stdin'] = subprocess.PIPE
+            for item in glob.glob(os.path.join(dest_path, 'app', '*.vp')):
+                shutil.move(item, os.path.join(dest_path, os.path.basename(item)))
 
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=dest_path, **opts)
+            for item in glob.glob(os.path.join(dest_path, 'app/data/players', '*.hcf')):
+                shutil.move(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
 
-            if sys.platform.startswith('win'):
-                p.stdin.close()
+            for item in glob.glob(os.path.join(dest_path, 'app/data2', '*.mve')):
+                shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
-            buf = ''
-            while p.poll() is None:
-                while '\r' not in buf:
-                    line = p.stdout.read(10)
-                    if not line:
-                        break
-                    buf += line.decode('utf8', 'replace')
+            for item in glob.glob(os.path.join(dest_path, 'app/data3', '*.mve')):
+                shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
-                buf = buf.split('\r')
-                line = buf.pop(0)
-                buf = '\r'.join(buf)
+            progress.update(0.99, 'Cleanup...')
+            os.unlink(inno)
+            shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
+            shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
 
-                if 'MiB/s' in line:
-                    try:
-                        if ']' in line:
-                            line = line.split(']')[1]
-
-                        line = line.strip().split('MiB/s')[0] + 'MiB/s'
-                        percent = float(line.split('%')[0]) / 100
-
-                        progress.update(percent, line)
-                    except Exception:
-                        logging.exception('Failed to process InnoExtract output!')
-                else:
-                    if line.strip() == 'not a supported Inno Setup installer':
-                        self.post(-1)
-                        return
-
-                    logging.info('InnoExtract: %s', line)
+            self.post(dest_path)
         except Exception:
-            logging.exception('InnoExtract failed!')
-            return
-
-        progress.finish_task()
-
-        progress.update(0.95, 'Moving files...')
-        self._makedirs(os.path.join(dest_path, 'data/players'))
-        self._makedirs(os.path.join(dest_path, 'data/movies'))
-
-        for item in glob.glob(os.path.join(dest_path, 'app', '*.vp')):
-            shutil.move(item, os.path.join(dest_path, os.path.basename(item)))
-
-        for item in glob.glob(os.path.join(dest_path, 'app/data/players', '*.hcf')):
-            shutil.move(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
-
-        for item in glob.glob(os.path.join(dest_path, 'app/data2', '*.mve')):
-            shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
-
-        for item in glob.glob(os.path.join(dest_path, 'app/data3', '*.mve')):
-            shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
-
-        progress.update(0.99, 'Cleanup...')
-        os.unlink(inno)
-        shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
-        shutil.rmtree(os.path.join(dest_path, 'tmp'), ignore_errors=True)
-
-        self.post(dest_path)
+            logging.exception('Unknown exception during GOG unpacking!')
 
     def _makedirs(self, path):
         if not os.path.isdir(path):
@@ -1587,8 +1620,22 @@ class GOGExtractTask(progress.Task):
     def finish(self):
         results = self.get_results()
         if len(results) < 1:
-            QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), self.tr(
-                'The installer failed! Please read the log for more details...'))
+            if self._reason == 'dest_path':
+                msg = 'Failed to create the destination directory!'
+            elif self._reason == 'download':
+                msg = 'Failed to download InnoExtract! Make sure your AV or firewall isn\'t blocking Knossos!'
+            elif self._reason == 'extract':
+                msg = 'Failed to extract InnoExtract! Make sure your AV or firewall isn\'t blocking Knossos!'
+            elif self._reason == 'innoextract':
+                msg = 'Failed to extract the installer with InnoExtract! Make sure you selected the correct installer ' \
+                    + 'and your AV isn\'t interfering!'
+            elif self._reason == 'vps':
+                msg = 'The installer does not contain the retail files! Please make sure you selected the correct installer!'
+            else:
+                msg = 'Unpacking the GOG installer failed for unkown reasons! Make sure Knossos can write to the ' + \
+                      'selected data path or contact ngld for more information.'
+
+            QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), msg)
             return
         elif results[0] == -1:
             QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), self.tr(
@@ -1602,6 +1649,7 @@ class GOGExtractTask(progress.Task):
 
 class GOGCopyTask(progress.Task):
     can_abort = False
+    _reason = None
 
     def __init__(self, gog_path, dest_path):
         super(GOGCopyTask, self).__init__()
@@ -1629,36 +1677,50 @@ class GOGCopyTask(progress.Task):
         gog_path, dest_path = paths
         self._local.slot = 'total'
 
-        progress.update(0, 'Creating directories...')
-        self._makedirs(os.path.join(dest_path, 'data/players'))
-        self._makedirs(os.path.join(dest_path, 'data/movies'))
+        try:
+            if not verify_retail_vps(gog_path):
+                self._reason = 'vps'
+                return
 
-        progress.update(1 / 4., 'Copying VPs...')
-        for item in glob.glob(os.path.join(gog_path, '*.vp')):
-            shutil.copyfile(item, os.path.join(dest_path, os.path.basename(item)))
+            progress.update(0, 'Creating directories...')
+            self._makedirs(os.path.join(dest_path, 'data/players'))
+            self._makedirs(os.path.join(dest_path, 'data/movies'))
 
-        progress.update(2 / 4., 'Copying player profiles...')
-        for item in glob.glob(os.path.join(gog_path, 'data/players', '*.hcf')):
-            shutil.copyfile(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
+            progress.update(1 / 4., 'Copying VPs...')
+            for item in glob.glob(os.path.join(gog_path, '*.vp')):
+                shutil.copyfile(item, os.path.join(dest_path, os.path.basename(item)))
 
-        progress.update(3 / 4., 'Copying cutscenes...')
+            progress.update(2 / 4., 'Copying player profiles...')
+            for item in glob.glob(os.path.join(gog_path, 'data/players', '*.hcf')):
+                shutil.copyfile(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
 
-        for ext in ('mve', 'ogg'):
-            for sub in ('data', 'data2', 'data3'):
-                for item in glob.glob(os.path.join(gog_path, sub, '*.' + ext)):
-                    shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
+            progress.update(3 / 4., 'Copying cutscenes...')
+            for ext in ('mve', 'ogg'):
+                for sub in ('data', 'data2', 'data3'):
+                    for item in glob.glob(os.path.join(gog_path, sub, '*.' + ext)):
+                        shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
-        progress.update(1, 'Done')
-        self.post(dest_path)
+            progress.update(1, 'Done')
+            self._reason = 'done'
+        except Exception:
+            logging.exception('Unknown exception during copying of retail files!')
 
     def _makedirs(self, path):
         if not os.path.isdir(path):
             os.makedirs(path)
 
     def finish(self):
-        create_retail_mod(self._dest_path)
-        center.main_win.update_mod_list()
-        center.main_win.browser_ctrl.bridge.retailInstalled.emit()
+        if self._reason == 'done':
+            create_retail_mod(self._dest_path)
+            center.main_win.update_mod_list()
+            center.main_win.browser_ctrl.bridge.retailInstalled.emit()
+            return
+        elif self._reason == 'vps':
+            msg = 'The selected directory does not contain the required retail VPs.'
+        else:
+            msg = 'Copying the retail files failed. Please make sure Knossos can write to the data path.'
+
+        QtWidgets.QMessageBox.critical(None, 'Error', msg)
 
 
 class CheckUpdateTask(progress.Task):
@@ -1985,3 +2047,19 @@ def create_retail_mod(dest_path):
     mod.save()
 
     return mod
+
+
+def verify_retail_vps(path):
+    retail_vps = [
+        'root_fs2.vp', 'smarty_fs2.vp', 'sparky_fs2.vp', 'sparky_hi_fs2.vp', 'stu_fs2.vp',
+        'tango1_fs2.vp', 'tango2_fs2.vp', 'tango3_fs2.vp', 'warble_fs2.vp'
+    ]
+
+    # Make sure we ignore casing
+    filenames = [item.lower() for item in os.listdir(path)]
+
+    for name in retail_vps:
+        if name not in filenames:
+            return False
+
+    return True

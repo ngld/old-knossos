@@ -532,8 +532,8 @@ class HellWindow(Window):
                 self._prg_visible = False
                 self.win.progressInfo.hide()
 
-                if len(self._tasks) == 0:
-                    integration.current.hide_progress()
+        if len(self._tasks) == 0:
+            integration.current.hide_progress()
 
     def abort_task(self, task):
         if task in self._tasks:
