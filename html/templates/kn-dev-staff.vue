@@ -27,6 +27,10 @@ export default {
                         this.error = "You are not allowed to edit team members and can't view them due to this.";
                         break;
 
+                    case 'no login':
+                        this.error = "You aren't logged in. Please go to the settings page and login.";
+                        break;
+
                     default:
                         this.error = "An unexpected error ocurred!";
                         break;
@@ -80,10 +84,10 @@ export default {
                     <td><input type="text" class="form-control" v-model="mem.user"></td>
                     <td>
                         <select class="form-control" v-model="mem.role" style="min-width: 100px">
-                            <option value="0">Owner</option>
-                            <option value="10">Manager</option>
-                            <option value="20">Uploader</option>
-                            <option value="30">Tester</option>
+                            <option :value="0">Owner</option>
+                            <option :value="10">Manager</option>
+                            <option :value="20">Uploader</option>
+                            <option :value="30">Tester</option>
                         </select>
                     </td>
                     <td>

@@ -1458,7 +1458,7 @@ class WebBridge(QtCore.QObject):
             except OSError:
                 logging.exception('Failed to rename mod folder for new version!')
                 QtWidgets.QMessageBox.critical(None, self.tr('Error'),
-                    self.tr('Failed to rename folder "%s"! Make sure that no other pogram has locked it.') % mod.folder)
+                    self.tr('Failed to rename folder "%s"! Make sure that no other program has locked it.') % mod.folder)
                 return False
 
             try:
@@ -1655,6 +1655,8 @@ class WebBridge(QtCore.QObject):
             try:
                 client = nebula.NebulaClient()
                 members = client.get_team_members(mid)
+            except nebula.InvalidLoginException:
+                members = {'result': False, 'reason': 'no login'}
             except Exception:
                 logging.exception('Failed to retrieve members!')
                 members = {'result': False, 'reason': 'exception'}
