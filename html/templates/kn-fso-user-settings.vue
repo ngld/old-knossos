@@ -3,7 +3,6 @@ export default {
     props: ['mod', 'mods'],
 
     data: () => ({
-        last_user_build: null,
         user_build: null,
         mod_cmdline: null
     }),
@@ -29,21 +28,24 @@ export default {
             }
 
             call(fs2mod.getUserBuild, mod.id, mod.version, (result) => {
-                this.last_user_build = this.user_build = result;
+                this.user_build = result;
             });
         },
 
         save() {
-            this.last_user_build = this.user_build;
             if(this.mod.user_cmdline === this.mod_cmdline) this.mod.user_cmdline = null;
-            fs2mod.saveUserFsoDetails(this.mod.id, this.mod.version, this.user_build, this.mod.user_cmdline);
+
+            let build = this.user_build;
+            if(build === null) build = '';
+
+            fs2mod.saveUserFsoDetails(this.mod.id, this.mod.version, build, this.mod.user_cmdline);
         },
 
         reset() {
             call(fs2mod.getModCmdline, this.mod.id, this.mod.version, (result) => {
                 this.mod.user_cmdline = this.mod_cmdline = result;
             });
-            this.user_build = this.last_user_build;
+            this.user_build = null;
         }
     }
 }

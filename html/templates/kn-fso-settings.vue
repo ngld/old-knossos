@@ -145,6 +145,7 @@ export default {
                 <div class="input-group">
                     <select class="form-control" :value="fso_build" @input="$emit('update:fso_build', $event.target.value)">
                         <option v-if="!isValidBuild()" :key="'invalid'" value="invalid">Please select a valid build</option>
+                        <option :value="null">Mod default</option>
                         <option v-for="mod in engine_builds" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
                             {{ mod.title }} {{ mod.version }}
                         </option>
