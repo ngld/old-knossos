@@ -412,7 +412,7 @@ class HellWindow(Window):
                     rmod = rmod[0]
 
                 # TODO: Refactor (see also templates/kn-{details,devel}-page.vue)
-                if rmod and rmod.version > mod.version:
+                if rmod and (rmod.version > mod.version or rmod.last_update != mod.last_update):
                     item['status'] = 'update'
                 elif mod.mid in self._updating_mods:
                     item['status'] = 'updating'
@@ -438,6 +438,9 @@ class HellWindow(Window):
                         mv['dev_mode'] = False
 
                     item['versions'].append(mv)
+
+                if item['installed'] and not item['versions'][0]['installed']:
+                    item['status'] = 'update'
 
                 result.append(item)
 

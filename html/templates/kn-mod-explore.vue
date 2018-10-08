@@ -59,7 +59,7 @@ export default {
                 </div>
             </div>
             <div class="mod-installed" v-if="mod.installed">
-                <div class="mod-banner mod-banner-blue" v-if="!mod.versions[0].installed">
+                <div class="mod-banner mod-banner-blue" v-if="mod.status === 'update'">
                     <span>Update Avail!</span>
                 </div>
                 <div class="mod-banner mod-banner-blue" v-else-if="mod.status === 'updating'">
@@ -71,7 +71,7 @@ export default {
             </div>
             <div class="actions">
                 <div class="btn-wrapper">
-                    <button class="mod-btn btn-yellow" v-if="mod.installed && mod.status === 'update'" @click="update">
+                    <button class="mod-btn btn-yellow" v-if="mod.status === 'update'" @click="update">
                         <span class="btn-text">UPDATE</span>
                     </button>
 
@@ -79,7 +79,7 @@ export default {
                         <span class="btn-text">ERROR</span>
                     </button>
 
-                    <button class="mod-btn btn-blue" v-if="mod.status !== 'updating'" @click="install">
+                    <button class="mod-btn btn-blue" v-if="mod.status !== 'update' && mod.status !== 'updating'" @click="install">
                         <span class="btn-text">{{ mod.installed ? 'MODIFY' : 'INSTALL' }}</span>
                     </button>
 

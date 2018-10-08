@@ -912,17 +912,18 @@ class RemoveModFolder(progress.Task):
 
 class UpdateTask(InstallTask):
     _old_mod = None
+    _new_mod = None
     __check_after = True
 
     def __init__(self, mod, pkgs=None, check_after=True):
         self.__check_after = check_after
-        new_mod = center.mods.query(mod.mid)
+        self._new_mod = center.mods.query(mod.mid)
 
         if not pkgs:
             old_pkgs = [pkg.name for pkg in mod.packages]
             pkgs = []
 
-            for pkg in new_mod.packages:
+            for pkg in self._new_mod.packages:
                 if pkg.name in old_pkgs or pkg.status == 'required':
                     pkgs.append(pkg)
 
@@ -932,11 +933,12 @@ class UpdateTask(InstallTask):
             editable.add(mod.mid)
 
         self._old_mod = mod
-        super(UpdateTask, self).__init__(pkgs, new_mod, check_after=False, editable=editable)
+        super(UpdateTask, self).__init__(pkgs, self._new_mod, check_after=False, editable=editable)
 
     def work4(self, _):
         super(UpdateTask, self).work4(_)
 
+        # We can't use _new_mod here since it's a Mod but we need an InstalledMod here.
         new_mod = None
         for mod in self._mods:
             if mod.mid == self._old_mod.mid:
@@ -961,7 +963,8 @@ class UpdateTask(InstallTask):
             # The new version has been succesfully installed, remove the old version.
 
             if len(self._old_mod.get_dependents()) == 0:
-                run_task(UninstallTask(self._old_mod.packages))
+                if self._old_mod.version != self._new_mod.version:
+                    run_task(UninstallTask(self._old_mod.packages))
             else:
                 logging.debug('Not uninstalling %s after update because it still has dependents.', self._old_mod)
                 run_task(LoadLocalModsTask())
