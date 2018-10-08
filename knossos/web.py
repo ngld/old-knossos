@@ -1160,16 +1160,20 @@ class WebBridge(QtCore.QObject):
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
             return
 
-        build = build.split('#')
-        if len(build) != 2:
-            logging.error('saveModFsoDetails(): build is not correctly formatted! (%s)' % build)
+        if build == '':
+            mod.user_custom_build = None
+            mod.user_exe = None
         else:
-            if build[0] == 'custom':
-                mod.user_custom_build = build[1]
-                mod.user_exe = None
+            build = build.split('#')
+            if len(build) != 2:
+                logging.error('saveModFsoDetails(): build is not correctly formatted! (%s)' % build)
             else:
-                mod.user_custom_build = None
-                mod.user_exe = build
+                if build[0] == 'custom':
+                    mod.user_custom_build = build[1]
+                    mod.user_exe = None
+                else:
+                    mod.user_custom_build = None
+                    mod.user_exe = build
 
         mod.user_cmdline = cmdline
         try:
@@ -1712,6 +1716,14 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str)
     def reportError(self, msg):
         logging.error('JS Error: %s' % msg)
+
+    @QtCore.Slot()
+    def fixBuildSelection(self):
+        tasks.run_task(tasks.FixUserBuildSelectionTask())
+
+    @QtCore.Slot()
+    def fixImages(self):
+        tasks.run_task(tasks.FixImagesTask())
 
 
 if QtWebChannel:

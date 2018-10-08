@@ -1972,6 +1972,126 @@ class ApplyEngineFlagsTask(progress.Task):
         QtWidgets.QMessageBox.information(None, 'Knossos', 'The settings were successfully applied to all builds.')
 
 
+class FixUserBuildSelectionTask(progress.Task):
+    # Since we're doing next to no I/O, using multiple threads is pointless here.
+    _threads = 1
+
+    def __init__(self):
+        super(FixUserBuildSelectionTask, self).__init__()
+
+        self.title = 'Fixing build selections...'
+        self.done.connect(self.finish)
+
+        self._engine_cache = {}
+        self.add_work(center.installed.get_list())
+
+    def work(self, mod):
+        if mod.mtype not in ('mod', 'tc') or not mod.user_exe:
+            # Nothing to do here
+            return
+
+        spec = None
+        engine_id = None
+
+        for pkg in mod.packages:
+            for dep in pkg.dependencies:
+                is_engine = self._engine_cache.get(dep['id'])
+                if is_engine is None:
+                    try:
+                        engine = center.installed.query(dep['id'])
+                    except repo.ModNotFound:
+                        logging.warn('Build %s not found!' % dep['id'])
+                        is_engine = False
+                    else:
+                        is_engine = engine.mtype == 'engine'
+
+                    self._engine_cache[dep['id']] = is_engine
+
+                if is_engine:
+                    spec = util.Spec(dep['version'])
+                    engine_id = dep['id']
+                    break
+
+            if spec:
+                break
+
+        if not spec:
+            # No build requirement found.
+            logging.warn('Engine dependency not found for %s!' % mod)
+            return
+
+        if mod.user_exe[0] != engine_id or not spec.match(semantic_version.Version(mod.user_exe[1])):
+            logging.debug('Removed user build from %s.' % mod)
+            mod.user_exe = None
+            mod.save_user()
+
+    def finish(self):
+        QtWidgets.QMessageBox.information(None, 'Knossos', 'Done.')
+
+
+class FixImagesTask(progress.Task):
+
+    def __init__(self):
+        super(FixImagesTask, self).__init__()
+
+        self.title = 'Fixing mod images...'
+        self.done.connect(self.finish)
+        self.add_work(center.installed.get_list())
+
+    def work(self, mod):
+        done = 0
+        count = 0
+        for prop in ('logo', 'tile', 'banner'):
+            if getattr(mod, prop):
+                count += 1
+
+        for prop in ('screenshots', 'attachments'):
+            count += len(getattr(mod, prop))
+
+        # Make sure the images are in the mod folder.
+        for prop in ('logo', 'tile', 'banner'):
+            img_path = getattr(mod, prop)
+            if img_path:
+                ext = os.path.splitext(img_path)[1]
+                dest = os.path.join(mod.folder, 'kn_' + prop + ext)
+
+                # Remove the image if it's just an empty file
+                if os.path.isfile(dest) and os.stat(dest).st_size == 0:
+                    os.unlink(dest)
+
+                if '://' in img_path and not os.path.isfile(dest):
+                    # That's a URL
+                    progress.start_task(done / count, 1 / count, '%s')
+                    util.safe_download(img_path, dest)
+                    progress.finish_task()
+
+                setattr(mod, prop, dest)
+                done += 1
+
+        for prop in ('screenshots', 'attachments'):
+            im_paths = getattr(mod, prop)
+            for i, path in enumerate(im_paths):
+                ext = os.path.splitext(path)[1]
+                dest = os.path.join(mod.folder, 'kn_' + prop + '_' + str(i) + ext)
+
+                # Remove the image if it's just an empty file
+                if os.path.isfile(dest) and os.stat(dest).st_size == 0:
+                    os.unlink(dest)
+
+                if '://' in path and not os.path.isfile(dest):
+                    progress.start_task(done / count, 1 / count, '%s')
+                    util.safe_download(path, dest)
+                    progress.finish_task()
+
+                im_paths[i] = dest
+                done += 1
+
+        mod.save()
+
+    def finish(self):
+        QtWidgets.QMessageBox.information(None, 'Knossos', 'Done.')
+
+
 def run_task(task, cb=None):
     def wrapper():
         cb(task.get_results())

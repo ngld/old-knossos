@@ -296,9 +296,12 @@ class Repo(object):
         roots = set(self.mods.keys())
         return [self.mods[mid][0] for mid in roots]
 
-    def get_list(self):
+    def get_iter(self):
         for mod in self.mods.values():
             yield mod[0]
+
+    def get_list(self):
+        return list(self.get_iter())
 
     # TODO: Is this overcomplicated?
     def process_pkg_selection(self, pkgs, recursive=True):

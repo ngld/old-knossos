@@ -90,6 +90,8 @@
         "html/images/tabbox-corner.png",
         "html/images/tabedge-a.png",
         "html/images/tabedge-i.png",
+        "html/images/tabsquare-a.png",
+        "html/images/tabsquare-i.png",
         "html/images/window_icons/close-a.png",
         "html/images/window_icons/close-h.png",
         "html/images/window_icons/close.png",
@@ -144,6 +146,7 @@
         "html/templates/kn-save-btn.vue",
         "html/templates/kn-scroll-container.vue",
         "html/templates/kn-settings-page.vue",
+        "html/templates/kn-troubleshooting.vue",
         "html/templates/kn-welcome-page.vue"
     ]
 }
