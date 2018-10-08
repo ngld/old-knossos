@@ -476,6 +476,28 @@ iframe {
     background-image: url(../images/iconbtn-develop-a.png);
 }
 
+.main-btn.tab-trouble {
+    float: right;
+    margin-right: 40px;
+}
+
+.trouble-image {
+    background-image: url(../images/iconbtn-develop.png);
+    margin-left: 25px;
+}
+
+.main-btn:hover .trouble-image {
+    background-image: url(../images/iconbtn-develop-h.png);
+}
+
+.main-btn.active .trouble-image {
+    background-image: url(../images/iconbtn-develop-a.png);
+}
+
+.main-btn:focus .trouble-image {
+    background-image: url(../images/iconbtn-develop-a.png);
+}
+
 /* -------------------------- Settings for the main window view ----------------------------------*/
 
 .main-container { /* Let's make sure the mod list takes up the entire window and scrolls only vertically. */

@@ -71,7 +71,7 @@ export default {
             </div>
             <div class="actions">
                 <div class="btn-wrapper">
-                    <button class="mod-btn btn-yellow" v-if="mod.status === 'update'" @click="update">
+                    <button class="mod-btn btn-blue" v-if="mod.status === 'update'" @click="update">
                         <span class="btn-text">UPDATE</span>
                     </button>
 

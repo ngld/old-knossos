@@ -100,7 +100,7 @@ export default {
         showTab(tab) {
             // TODO: This is ugly.
             if(tab === 'trouble') {
-                this.tab = null;
+                this.tab = tab;
                 this.page = tab;
                 return;
             }
@@ -310,7 +310,7 @@ export default {
         </div>
     <!-------------------------------------------------------------------------------- Start the Tab Menus ---------->
         <div id="tab-bar" v-if="page !== 'details'">
-            <a href="#" class="main-btn" v-for="(label, name) in tabs" :class="{ active: tab === name }" @click.prevent="showTab(name)">
+            <a href="#" class="main-btn" v-for="(label, name) in tabs" :class="(tab === name ? 'active ' : '') + 'tab-' + name" @click.prevent="showTab(name)">
                 <span :class="'icon ' + name + '-image'"></span>
                 {{ label }}
             </a>
