@@ -833,12 +833,21 @@ def safe_copy(a, b):
 
 
 def safe_download(url, dest):
-    try:
-        return retry_helper(_safe_download, url, dest)
-    except Exception:
-        logging.exception('Failed to download %s to %s!' % (url, dest))
-        safe_unlink(dest)
-        return False
+    retries = 5
+
+    while retries > 0:
+        with open(dest, 'wb') as stream:
+            if download(url, stream):
+                return True
+
+        retries -= 1
+
+        if retries > 0:
+            time.sleep(random.randint(0, 1000) / 1000.)
+
+    logging.error('Failed to download %s to %s!' % (url, dest))
+    safe_unlink(dest)
+    return False
 
 
 def _safe_download(url, dest):
