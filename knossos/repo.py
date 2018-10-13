@@ -296,9 +296,12 @@ class Repo(object):
         roots = set(self.mods.keys())
         return [self.mods[mid][0] for mid in roots]
 
-    def get_list(self):
+    def get_iter(self):
         for mod in self.mods.values():
             yield mod[0]
+
+    def get_list(self):
+        return list(self.get_iter())
 
     # TODO: Is this overcomplicated?
     def process_pkg_selection(self, pkgs, recursive=True):
@@ -1056,17 +1059,13 @@ class InstalledMod(Mod):
             json.dump(self.get_relative(), stream, indent=4)
 
     def save_user(self):
-        modpath = self.folder
-        im_path = util.ipath(modpath)
+        im_path = util.ipath(self.folder)
 
         # Correct the casing of our folder if neccessary.
-        if im_path != modpath:
-            modpath = im_path
-            self.folder = modpath
+        if im_path != self.folder:
+            self.folder = im_path
 
-        path = os.path.join(modpath, 'user.json')
-
-        with open(path, 'w', errors='replace') as stream:
+        with open(os.path.join(self.folder, 'user.json'), 'w', errors='replace') as stream:
             json.dump(self.get_user(), stream)
 
     def update_mod_flag(self):

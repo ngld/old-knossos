@@ -354,6 +354,10 @@ def save_fso_settings(new_settings):
         section['SpeechIngame'] = 1 if new_settings['speech_ingame'] else 0
         section['SpeechMulti'] = 1 if new_settings['speech_multi'] else 0
 
+        # Set reasonable defaults to stop FSO from complaining about missing network settings.
+        section.setdefault('NetworkConnection', 'LAN')
+        section.setdefault('ConnectionSpeed', 'Fast')
+
         # networking
         # net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
         # new_net_connection = net_types[self._tabs['fso_network'].connectionType.currentIndex()]

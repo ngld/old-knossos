@@ -29,7 +29,8 @@ export default {
         edit_dep_pkgs: null,
         edit_dep_pkg_sel: null,
 
-        tab_scroll: -1
+        tab_scroll: -1,
+        mod_box_tab: 'fso'
     }),
 
     created() {
@@ -45,6 +46,27 @@ export default {
 
     beforeDestroy() {
         fs2mod.applyDevDesc.disconnect(this.applyDevDesc);
+    },
+
+    computed: {
+        edit_dep_versions() {
+            let mod = this.mod_map[this.edit_dep_mod];
+            if(!mod) return [];
+
+            let is_engine = mod.type === 'engine';
+            let res = [];
+            let found = {};
+
+            for(let v of mod.versions) {
+                if(is_engine) {
+                    res.push([v.version, (this.edit_dep_allow_new ? '>=' : '') + v.version]);
+                } else {
+                    res.push(['~' + v.version, '~' + v.version]);
+                }
+            }
+
+            return res;
+        }
     },
 
     watch: {
@@ -263,7 +285,7 @@ export default {
             this.edit_dep_idx = -1;
             this.edit_dep_mod = null;
             this.edit_dep_version = null;
-            this.edit_dep_allow_new = true;
+            this.edit_dep_allow_new = false;
             this.edit_dep_pkgs = [];
             this.edit_dep_pkg_sel = {};
             this.edit_dep = true;
@@ -284,7 +306,7 @@ export default {
 
             this.updateDepModVersion();
 
-            if(dep.packages !== null) {
+            if(dep.packages) {
                 for(let pkg of dep.packages) {
                     this.edit_dep_pkg_sel[pkg] = true;
                 }
@@ -295,7 +317,7 @@ export default {
             let mod = this.mod_map[this.edit_dep_mod];
 
             this.edit_dep_version = null;
-            this.edit_dep_allow_new = false;
+            this.edit_dep_allow_new = mod.type === 'engine';
             this.edit_dep_pkgs = [];
             this.edit_dep_pkg_sel = {};
 
@@ -539,24 +561,33 @@ export default {
             <div class="logo-box" v-if="selected_mod">
                 <kn-dev-mod :mod="selected_mod" tab="develop"></kn-dev-mod>
 
-                <p>
-                    <button @click.prevent="launchMod" class="mod-btn btn-green"><p>Play</p></button>
-                    <button
-                        v-for="tool in tools"
-                        @click.prevent="launchTool(tool)"
-                        :class="'mod-btn btn-' + launchButtonColor(tool)"
-                    >
-                        <p>{{ tool }}</p>
-                    </button>
+                <div class="devmanagement">
+                    <label @click="mod_box_tab = 'fso'" :class="{ active: mod_box_tab === 'fso' }">Launch FSO</label>
+                    <label @click="mod_box_tab = 'modify'" :class="{ active: mod_box_tab === 'modify' }">Modify Mod</label>
 
-                    <br><br>
-                    <button @click.prevent="reopenUploadPopup" class="mod-btn btn-link-blue" v-if="(this.mod_map[(this.selected_mod || {}).id] || {}).progress">Uploading...</button>
-                    <button @click.prevent="uploadMod" class="mod-btn btn-link-blue" v-else>Upload</button><br>
-                    <button @click.prevent="deleteMod" class="mod-btn btn-link-red">Delete</button>
-                    <button @click.prevent="deleteModLocally" class="mod-btn btn-link-red">Local Delete</button><br>
-                    <button @click.prevent="openNewVersionPopup" class="mod-btn btn-link-grey">+ Version</button>
-                    <button @click.prevent="addPackage" class="mod-btn btn-link-grey">+ Package</button>
-                </p>
+                    <div class="buttonpane" v-if="mod_box_tab === 'fso'">
+                        <button @click.prevent="launchMod" class="mod-btn btn-green"><p>Play</p></button>
+                        <button
+                            v-for="tool in tools"
+                            @click.prevent="launchTool(tool)"
+                            :class="'mod-btn btn-' + launchButtonColor(tool)"
+                            :title="tool"
+                        >
+                            <p>{{ tool }}</p>
+                        </button>
+                        <br>
+                    </div>
+
+                    <div class="buttonpane" v-if="mod_box_tab === 'modify'">
+                        <button @click.prevent="reopenUploadPopup" class="mod-btn btn-link-blue" v-if="(this.mod_map[(this.selected_mod || {}).id] || {}).progress">Uploading...</button>
+                        <button @click.prevent="uploadMod" class="mod-btn btn-link-blue" v-else>Upload</button><br>
+                        <button @click.prevent="deleteMod" class="mod-btn btn-link-red">Delete</button>
+                        <button @click.prevent="deleteModLocally" class="mod-btn btn-link-red">Local Delete</button><br>
+                        <button @click.prevent="openNewVersionPopup" class="mod-btn btn-link-grey">+ Version</button>
+                        <button @click.prevent="addPackage" class="mod-btn btn-link-grey">+ Package</button>
+                        <br>
+                    </div>
+                </div>
 
                 Mod Versions:
                 <select class="form-control mod-version" v-model="sel_version" @change="selectVersion(sel_version)">
@@ -606,13 +637,16 @@ export default {
                             <h4>Dev Help</h4>
 
                             <p class="help-block">
-                                This mod doesn't have packages.
+                                You can't edit this mod since it doesn't have any packages, yet.
                             </p>
 
                             <p class="help-block">
                                 To create a package click the "+ Package" button on the left.<br>
-                                Packages contain mod files and you will usually create one for each VP file. Knossos will create a folder for each package.<br>
-                                You have to place your mod files in these folders. If you want to, Knossos can then pack everything in that folder automatically
+                                A package is simply a folder for mod resources.  Most mods will only ever need a single
+                                package that contains everything.  Multiple packages are handy for larger mods with
+                                different installation options.  For example, a larger mod could have a main package
+                                called 'main' and an optional voice package called 'voice'.<br>
+                                If you want to, Knossos can then pack everything in that folder automatically
                                 into a VP when you upload. Click on the package name in the top tab list to edit it.
                             </p>
                         </div>
@@ -920,10 +954,10 @@ export default {
                                                 <select class="form-control" disabled v-if="!mod_map[edit_dep_mod]"></select>
                                                 <select class="form-control" v-model="edit_dep_version" @change="updateDepModVersion" v-else>
                                                     <option :value="null" :key="'newest'">newest</option>
-                                                    <option v-for="v in mod_map[edit_dep_mod].versions" :value="v.version" :key="v.version">{{ v.version }}</option>
+                                                    <option v-for="v in edit_dep_versions" :value="v[0]" :key="v[0]">{{ v[1] }}</option>
                                                 </select><br>
 
-                                                <label>
+                                                <label v-if="mod_map[edit_dep_mod] && mod_map[edit_dep_mod].type === 'engine'">
                                                     <input type="checkbox" v-model="edit_dep_allow_new">
                                                     Allow newer versions
                                                 </label>

@@ -1,15 +1,22 @@
 <script>
+import KnTroubleshooting from './kn-troubleshooting.vue';
+
 let next_tab = null;
 let first_load = true;
 
 export default {
+    components: {
+        'kn-troubleshooting': KnTroubleshooting
+    },
+
     data: () => ({
         w: window,
 
         tabs: {
             home: 'Home',
             explore: 'Explore',
-            develop: 'Development'
+            develop: 'Development',
+            trouble: 'Troubleshooting'
         },
 
         search_text: '',
@@ -91,6 +98,12 @@ export default {
         },
 
         showTab(tab) {
+            // TODO: This is ugly.
+            if(tab === 'trouble') {
+                this.tab = tab;
+                this.page = tab;
+                return;
+            }
             next_tab = tab;
 
             if(window.qt) {
@@ -297,7 +310,7 @@ export default {
         </div>
     <!-------------------------------------------------------------------------------- Start the Tab Menus ---------->
         <div id="tab-bar" v-if="page !== 'details'">
-            <a href="#" class="main-btn" v-for="(label, name) in tabs" :class="{ active: tab === name }" @click.prevent="showTab(name)">
+            <a href="#" class="main-btn" v-for="(label, name) in tabs" :class="(tab === name ? 'active ' : '') + 'tab-' + name" @click.prevent="showTab(name)">
                 <span :class="'icon ' + name + '-image'"></span>
                 {{ label }}
             </a>
@@ -373,6 +386,12 @@ export default {
                 </div>
             </kn-scroll-container>
         </keep-alive>
+
+        <kn-scroll-container v-if="page === 'trouble'" key="trouble">
+            <div class="info-page trouble-page container-fluid">
+                <kn-troubleshooting></kn-troubleshooting>
+            </div>
+        </kn-scroll-container>
 
         <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>
 

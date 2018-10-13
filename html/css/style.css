@@ -476,6 +476,28 @@ iframe {
     background-image: url(../images/iconbtn-develop-a.png);
 }
 
+.main-btn.tab-trouble {
+    float: right;
+    margin-right: 40px;
+}
+
+.trouble-image {
+    background-image: url(../images/iconbtn-tshoot.png);
+    margin-left: 25px;
+}
+
+.main-btn:hover .trouble-image {
+    background-image: url(../images/iconbtn-tshoot-h.png);
+}
+
+.main-btn.active .trouble-image {
+    background-image: url(../images/iconbtn-tshoot-a.png);
+}
+
+.main-btn:focus .trouble-image {
+    background-image: url(../images/iconbtn-tshoot-a.png);
+}
+
 /* -------------------------- Settings for the main window view ----------------------------------*/
 
 .main-container { /* Let's make sure the mod list takes up the entire window and scrolls only vertically. */
@@ -1675,4 +1697,27 @@ iframe {
 
 .devel-page .table td {
     padding: 2px;
+}
+
+.buttonpane {
+    background: #535353;
+    box-shadow: 0px 0px 5px 3px rgba(0,0,0,0.75);
+    margin-bottom: 8px;
+}
+
+.devmanagement label {
+    display: inline-block;
+    color: #bbb;
+    width: 100px;
+    height: 30px;
+    text-align: center;
+    padding-top: 7px;
+    background-image: url(../images/tabsquare-i.png);
+    margin-bottom: 0px;
+    cursor: pointer;
+}
+
+.devmanagement label.active {
+    color: white;
+    background-image: url(../images/tabsquare-a.png);
 }

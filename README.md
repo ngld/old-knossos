@@ -10,30 +10,31 @@ A modern mod manager and launcher for FreeSpace Open
 
 To run this script you'll need the following:
 * [Python][py] 2 or 3
-* [Qt 5][qt]
-* [PyQt5][pyqt]
-* [Six][six]
-* [semantic_version][sv]
-* [requests][rq]
-* [requests_toolbelt][rqtb]
-* [ply][ply]
-* [token_bucket][tb]
+* [SDL2][sdl2]
+* [OpenAL][oal]
 * [7zip][7z] (IMPORTANT: This script needs the full implementation, i.e. ```p7zip-full``` _and_ ```p7zip-rar``` on Ubuntu)
-* [raven][rv] (optional, neccessary to automatically report errors)
+* [pipenv][pipenv]
+* [yarn][yarn]
+* [ninja][ninja]
 
-[py-cpuinfo][cpuid] is included in third_party/.
+To install the Python and JavaScript dependencies run the following commands:
+
+```bash
+pipenv install
+yarn install
+```
+
+If you're on Windows, the `windows_run.bat` file will take care of this in addition to launching Knossos itself.
+
 
 ## Usage
 
-After your first checkout you will have to run `python configure.py` once. If it aborts before displaying `Writing build.ninja...`, you have to fix the error before you can continue.
+After your first checkout you will have to run the two commands above and `pipenv run python configure.py` once. If it aborts before displaying `Writing build.ninja...`, you have to fix the error before you can continue.
 If it complains that ```rcc``` is missing, you will need to install the developer packages for Qt5.
 
 Now you can use `ninja run` to launch Knossos in release mode and `ninja debug` to launch it in debug mode. In debug mode you can use a chromium-based browser to access the DevTools by navigating to http://localhost:4006/.
 
-If you delete or add files in `html/images` or `html/templates` you have to run
-`configure.py` again because it needs to rebuild the file list.
-
-If you add or remove files in `knossos`, `html/templates` or `html/images`, you need to run `tools/common/update_file_list.py` to update `file_list.json`.
+If you add or remove files in `knossos`, `html/templates` or `html/images`, you need to run `tools/common/update_file_list.py` (or `update_file_list.bat` on Windows) to update `file_list.json`.
 
 ## License
 
@@ -44,18 +45,11 @@ The icon is borrowed from [Hard Light][hl].
 
 [py]: http://www.python.org/
 [qt]: http://www.qt.io/
-[pyside]: http://pyside.org/
-[pyqt]: http://riverbankcomputing.co.uk/
-[six]: https://pypi.python.org/pypi/six/
+[sdl2]: https://libsdl.org/download-2.0.php
+[oal]: http://kcat.strangesoft.net/openal.html
 [7z]: http://www.7-zip.org/
-[rv]: https://github.com/getsentry/raven-python
-[cpuid]: https://github.com/workhorsy/py-cpuinfo
-[sv]: https://pypi.python.org/pypi/semantic_version
-[rq]: https://pypi.python.org/pypi/requests
-[rqtb]: https://pypi.python.org/pypi/requests_toolbelt
-[ply]: https://pypi.python.org/pypi/ply
-[tb]: https://pypi.python.org/pypi/token_bucket
-[pyi]: http://pyinstaller.org/
+[pipenv]: https://pipenv.readthedocs.io/en/latest/
+[yarn]: https://yarnpkg.com/en/
+[ninja]: https://ninja-build.org/
 
-[hl]: http://www.hard-light.net/
-[win_inst]: http://fsnebula.org/knossos/Knossos.exe
+[hl]: https://www.hard-light.net/

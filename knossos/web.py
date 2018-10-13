@@ -350,6 +350,11 @@ class WebBridge(QtCore.QObject):
         except repo.ModNotFound:
             old_rel = mod
 
+        try:
+            latest_ins = center.installed.query(mod.mid).version
+        except repo.ModNotFound:
+            latest_ins = None
+
         new_opt_pkgs = set([pkg.name for pkg in new_rel.packages if pkg.status in ('recommended', 'optional')])
         old_opt_pkgs = set([pkg.name for pkg in old_rel.packages if pkg.status in ('recommended', 'optional')])
 
@@ -366,21 +371,38 @@ class WebBridge(QtCore.QObject):
                     sel_pkgs.append(pkg)
 
         all_vers = list(center.installed.query_all(mid))
-        if len(all_vers) == 1 and not all_vers[0].dev_mode:
+        if len(all_vers) == 1 and not mod.dev_mode:
             # Only one version is installed, let's update it.
 
             if new_opt_pkgs - old_opt_pkgs:
                 # There are new recommended or optional packages, we'll have to ask the user.
                 windows.ModInstallUpdateWindow(new_rel, mod, [p.name for p in sel_pkgs])
             else:
-                tasks.run_task(tasks.UpdateTask(mod, sel_pkgs))
+                if latest_ins.version == new_rel.version:
+                    # Only metadata changed
+                    tasks.run_task(tasks.RewriteModMetadata([mod]))
+                else:
+                    tasks.run_task(tasks.UpdateTask(mod, sel_pkgs))
         else:
             # Just install the new version
             if new_opt_pkgs - old_opt_pkgs:
                 # There are new recommended or optional packages, we'll have to ask the user.
                 windows.ModInstallWindow(new_rel, [p.name for p in sel_pkgs])
             else:
-                tasks.run_task(tasks.InstallTask(sel_pkgs, new_rel))
+                edit = set()
+                if mod.dev_mode:
+                    edit.add(mod.mid)
+
+                if not mod.dev_mode and latest_ins.version == new_rel.version:
+                    # Only metadata changed
+                    tasks.run_task(tasks.RewriteModMetadata([mod]))
+                else:
+                    # NOTE: If a dev mod received a metadata update, we have an edge case in which this function doesn't
+                    # do anything.
+                    # * RewriteModMetadata would remove all local changes which is highly undesirable.
+                    # * InstallTask doesn't update the metadata of installed mods (updates which change the version
+                    #   number are technically new mods since they use a different folder)
+                    tasks.run_task(tasks.InstallTask(sel_pkgs, new_rel, editable=edit))
 
         return 0
 
@@ -1156,16 +1178,20 @@ class WebBridge(QtCore.QObject):
             QtWidgets.QMessageBox.critical(None, 'Error', self.tr('Failed to find the mod! Weird...'))
             return
 
-        build = build.split('#')
-        if len(build) != 2:
-            logging.error('saveModFsoDetails(): build is not correctly formatted! (%s)' % build)
+        if build == '':
+            mod.user_custom_build = None
+            mod.user_exe = None
         else:
-            if build[0] == 'custom':
-                mod.user_custom_build = build[1]
-                mod.user_exe = None
+            build = build.split('#')
+            if len(build) != 2:
+                logging.error('saveModFsoDetails(): build is not correctly formatted! (%s)' % build)
             else:
-                mod.user_custom_build = None
-                mod.user_exe = build
+                if build[0] == 'custom':
+                    mod.user_custom_build = build[1]
+                    mod.user_exe = None
+                else:
+                    mod.user_custom_build = None
+                    mod.user_exe = build
 
         mod.user_cmdline = cmdline
         try:
@@ -1454,7 +1480,7 @@ class WebBridge(QtCore.QObject):
             except OSError:
                 logging.exception('Failed to rename mod folder for new version!')
                 QtWidgets.QMessageBox.critical(None, self.tr('Error'),
-                    self.tr('Failed to rename folder "%s"! Make sure that no other pogram has locked it.') % mod.folder)
+                    self.tr('Failed to rename folder "%s"! Make sure that no other program has locked it.') % mod.folder)
                 return False
 
             try:
@@ -1651,6 +1677,8 @@ class WebBridge(QtCore.QObject):
             try:
                 client = nebula.NebulaClient()
                 members = client.get_team_members(mid)
+            except nebula.InvalidLoginException:
+                members = {'result': False, 'reason': 'no login'}
             except Exception:
                 logging.exception('Failed to retrieve members!')
                 members = {'result': False, 'reason': 'exception'}
@@ -1706,6 +1734,18 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot(str)
     def reportError(self, msg):
         logging.error('JS Error: %s' % msg)
+
+    @QtCore.Slot()
+    def fixBuildSelection(self):
+        tasks.run_task(tasks.FixUserBuildSelectionTask())
+
+    @QtCore.Slot(bool)
+    def fixImages(self, do_devs):
+        tasks.run_task(tasks.FixImagesTask(do_devs))
+
+    @QtCore.Slot()
+    def rewriteModJson(self):
+        tasks.run_task(tasks.RewriteModMetadata(center.installed.get_list()))
 
 
 if QtWebChannel:
