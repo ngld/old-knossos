@@ -378,7 +378,7 @@ class WebBridge(QtCore.QObject):
                 # There are new recommended or optional packages, we'll have to ask the user.
                 windows.ModInstallUpdateWindow(new_rel, mod, [p.name for p in sel_pkgs])
             else:
-                if latest_ins.version == new_rel.version:
+                if latest_ins == new_rel.version:
                     # Only metadata changed
                     tasks.run_task(tasks.RewriteModMetadata([mod]))
                 else:
@@ -393,7 +393,7 @@ class WebBridge(QtCore.QObject):
                 if mod.dev_mode:
                     edit.add(mod.mid)
 
-                if not mod.dev_mode and latest_ins.version == new_rel.version:
+                if not mod.dev_mode and latest_ins == new_rel.version:
                     # Only metadata changed
                     tasks.run_task(tasks.RewriteModMetadata([mod]))
                 else:
