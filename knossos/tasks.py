@@ -362,6 +362,11 @@ class InstallTask(progress.MultistepTask):
         util.cancel_downloads()
 
     def finish(self):
+        if self._mods:
+            title = self._mods[0].title
+        else:
+            title = 'UNKNOWN'
+
         if self.aborted:
             if self._cur_step == 1:
                 # Need to remove all those temporary directories.
@@ -373,11 +378,11 @@ class InstallTask(progress.MultistepTask):
             else:
                 QtWidgets.QMessageBox.critical(None, 'Knossos',
                     self.tr('The mod installation was aborted before it could finish. ' +
-                        'You might have to uninstall the partially installed mod(s).'))
+                        'Uninstall the partially installed mod %s or verify the file integrity.' % title))
         elif self._error:
             msg = self.tr(
-                'An error occured during the installation of a mod. It might be partially installed.\n' +
-                'If you need more help, ask ngld or read the debug log!'
+                'An error occured during the installation of %s. It might be partially installed.\n' +
+                'Please run a file integrity check or reinstall (uninstall + install) it.' % title
             )
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
 
@@ -968,6 +973,68 @@ class UpdateTask(InstallTask):
             else:
                 logging.debug('Not uninstalling %s after update because it still has dependents.', self._old_mod)
                 run_task(LoadLocalModsTask())
+
+
+class RewriteModMetadata(progress.Task):
+    _threads = 1
+
+    def __init__(self, mods):
+        super(RewriteModMetadata, self).__init__()
+
+        self._reasons = []
+
+        self.title = 'Rewriting local metadata...'
+        self.done.connect(self.finish)
+        self.add_work(mods)
+
+    def work(self, mod):
+        if mod.dev_mode:
+            # Skip mods in dev mode to avoid overwriting local changes.
+            return
+
+        try:
+            rmod = center.mods.query(mod)
+        except repo.ModNotFound:
+            self._reasons.append((mod, 'not found'))
+            return
+
+        installed_pkgs = [pkg.name for pkg in mod.packages]
+
+        new_mod = repo.InstalledMod.convert(rmod)
+        for pkg in rmod.packages:
+            if pkg.name in installed_pkgs:
+                new_mod.add_pkg(pkg)
+
+        try:
+            new_mod.save()
+        except Exception:
+            self._reasons.append((mod, 'save failed'))
+            return
+
+        # We have to load the user settings again
+        try:
+            new_mod = repo.InstalledMod.load(os.path.join(new_mod.folder, 'mod.json'))
+        except Exception:
+            self._reasons.append((mod, 'reload failed'))
+            return
+
+        center.installed.add_mod(new_mod)
+
+    def finish(self):
+        if self._reasons:
+            msg = 'Some mod metadata could not be saved.\n\n'
+            for mod, r in self._reasons:
+                msg += mod.title + ': '
+                if r == 'not found':
+                    msg += 'Not found on Nebula\n'
+                elif r == 'save failed':
+                    msg += 'mod.json could not be written\n'
+                elif r == 'reload failed':
+                    msg += 'mod.json could not be read\n'
+
+            QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
+        else:
+            QtWidgets.QMessageBox.information(None, 'Knossos', 'Done.')
 
 
 class UploadTask(progress.MultistepTask):
@@ -2033,15 +2100,51 @@ class FixUserBuildSelectionTask(progress.Task):
 
 
 class FixImagesTask(progress.Task):
+    _failed = 0
+    _fixed = 0
 
-    def __init__(self):
+    def __init__(self, do_devs=False):
         super(FixImagesTask, self).__init__()
+
+        self._do_devs = do_devs
 
         self.title = 'Fixing mod images...'
         self.done.connect(self.finish)
         self.add_work(center.installed.get_list())
 
     def work(self, mod):
+        if mod.dev_mode != self._do_devs:
+            # Only process dev mods if _do_devs is True (and in that case also ignore all normal mods)
+            return
+
+        if mod.mid == 'FS2':
+            # Just look for missing images
+            missing = False
+
+            for prop in ('tile', 'banner'):
+                path = getattr(mod, prop)
+                if not path or not os.path.isfile(path):
+                    missing = True
+                    break
+
+            if not missing:
+                for path in mod.screenshots:
+                    if not os.path.isfile(path):
+                        missing = True
+                        break
+
+            if missing:
+                # If anything's missing, just write everything again.
+                create_retail_mod(mod.folder)
+
+            return
+
+        try:
+            rmod = center.mods.query(mod)
+        except repo.ModNotFound:
+            rmod = repo.InstalledMod()
+
+        changed = False
         done = 0
         count = 0
         for prop in ('logo', 'tile', 'banner'):
@@ -2054,45 +2157,82 @@ class FixImagesTask(progress.Task):
         # Make sure the images are in the mod folder.
         for prop in ('logo', 'tile', 'banner'):
             img_path = getattr(mod, prop)
-            if img_path:
-                ext = os.path.splitext(img_path)[1]
-                dest = os.path.join(mod.folder, 'kn_' + prop + ext)
+            r_path = getattr(rmod, prop)
 
+            # Only process available images
+            if img_path or r_path:
                 # Remove the image if it's just an empty file
-                if os.path.isfile(dest) and os.stat(dest).st_size == 0:
-                    os.unlink(dest)
+                if img_path and os.path.isfile(img_path) and os.stat(img_path).st_size == 0:
+                    os.unlink(img_path)
 
-                if '://' in img_path and not os.path.isfile(dest):
-                    # That's a URL
-                    progress.start_task(done / count, 1 / count, '%s')
-                    util.safe_download(img_path, dest)
-                    progress.finish_task()
+                # Fix the reference if the file is missing or not recorded in the local metadata.
+                if not img_path or not os.path.isfile(img_path):
+                    changed = True
 
-                setattr(mod, prop, dest)
+                    if r_path and '://' in r_path:
+                        # Download the image
+                        ext = os.path.splitext(r_path)[1]
+                        dest = os.path.join(mod.folder, 'kn_' + prop + ext)
+
+                        progress.start_task(done / count, 1 / count, '%s')
+                        if util.safe_download(r_path, dest):
+                            setattr(mod, prop, dest)
+                            self._fixed += 1
+                        else:
+                            # Download failed
+                            setattr(mod, prop, None)
+                            self._failed += 1
+
+                        progress.finish_task()
+                    else:
+                        # Local image is missing and we can't download it. Just remove the reference.
+                        setattr(mod, prop, None)
+
                 done += 1
 
         for prop in ('screenshots', 'attachments'):
             im_paths = getattr(mod, prop)
+            r_paths = getattr(rmod, prop)
+
+            if len(im_paths) != len(r_paths):
+                # Somehow the lists don't match. Start from scratch
+                im_paths = [None] * len(r_paths)
+
             for i, path in enumerate(im_paths):
-                ext = os.path.splitext(path)[1]
-                dest = os.path.join(mod.folder, 'kn_' + prop + '_' + str(i) + ext)
-
                 # Remove the image if it's just an empty file
-                if os.path.isfile(dest) and os.stat(dest).st_size == 0:
-                    os.unlink(dest)
+                if path and os.path.isfile(path) and os.stat(path).st_size == 0:
+                    os.unlink(path)
 
-                if '://' in path and not os.path.isfile(dest):
-                    progress.start_task(done / count, 1 / count, '%s')
-                    util.safe_download(path, dest)
-                    progress.finish_task()
+                # Fix the reference if the file is missing or not recorded in the local metadata.
+                if not path or not os.path.isfile(path):
+                    changed = True
 
-                im_paths[i] = dest
+                    if '://' in r_paths[i]:
+                        # Download the image
+                        ext = os.path.splitext(r_paths[i])[1]
+                        dest = os.path.join(mod.folder, 'kn_' + prop + '_' + str(i) + ext)
+
+                        progress.start_task(done / count, 1 / count, '%s')
+                        if util.safe_download(r_paths[i], dest):
+                            im_paths[i] = dest
+                            self._fixed += 1
+                        else:
+                            # Download failed
+                            im_paths[i] = None
+                            self._failed += 1
+
+                        progress.finish_task()
+                    else:
+                        im_paths[i] = None
+
                 done += 1
 
-        mod.save()
+        if changed:
+            mod.save()
 
     def finish(self):
-        QtWidgets.QMessageBox.information(None, 'Knossos', 'Done.')
+        QtWidgets.QMessageBox.information(None, 'Knossos',
+                                          'Done. %d images fixed, %d images failed' % (self._fixed, self._failed))
 
 
 def run_task(task, cb=None):

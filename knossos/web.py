@@ -350,6 +350,11 @@ class WebBridge(QtCore.QObject):
         except repo.ModNotFound:
             old_rel = mod
 
+        try:
+            latest_ins = center.installed.query(mod.mid).version
+        except repo.ModNotFound:
+            latest_ins = None
+
         new_opt_pkgs = set([pkg.name for pkg in new_rel.packages if pkg.status in ('recommended', 'optional')])
         old_opt_pkgs = set([pkg.name for pkg in old_rel.packages if pkg.status in ('recommended', 'optional')])
 
@@ -373,7 +378,11 @@ class WebBridge(QtCore.QObject):
                 # There are new recommended or optional packages, we'll have to ask the user.
                 windows.ModInstallUpdateWindow(new_rel, mod, [p.name for p in sel_pkgs])
             else:
-                tasks.run_task(tasks.UpdateTask(mod, sel_pkgs))
+                if latest_ins.version == new_rel.version:
+                    # Only metadata changed
+                    tasks.run_task(tasks.RewriteModMetadata([mod]))
+                else:
+                    tasks.run_task(tasks.UpdateTask(mod, sel_pkgs))
         else:
             # Just install the new version
             if new_opt_pkgs - old_opt_pkgs:
@@ -384,7 +393,16 @@ class WebBridge(QtCore.QObject):
                 if mod.dev_mode:
                     edit.add(mod.mid)
 
-                tasks.run_task(tasks.InstallTask(sel_pkgs, new_rel, editable=edit))
+                if not mod.dev_mode and latest_ins.version == new_rel.version:
+                    # Only metadata changed
+                    tasks.run_task(tasks.RewriteModMetadata([mod]))
+                else:
+                    # NOTE: If a dev mod received a metadata update, we have an edge case in which this function doesn't
+                    # do anything.
+                    # * RewriteModMetadata would remove all local changes which is highly undesirable.
+                    # * InstallTask doesn't update the metadata of installed mods (updates which change the version
+                    #   number are technically new mods since they use a different folder)
+                    tasks.run_task(tasks.InstallTask(sel_pkgs, new_rel, editable=edit))
 
         return 0
 
@@ -1721,9 +1739,13 @@ class WebBridge(QtCore.QObject):
     def fixBuildSelection(self):
         tasks.run_task(tasks.FixUserBuildSelectionTask())
 
+    @QtCore.Slot(bool)
+    def fixImages(self, do_devs):
+        tasks.run_task(tasks.FixImagesTask(do_devs))
+
     @QtCore.Slot()
-    def fixImages(self):
-        tasks.run_task(tasks.FixImagesTask())
+    def rewriteModJson(self):
+        tasks.run_task(tasks.RewriteModMetadata(center.installed.get_list()))
 
 
 if QtWebChannel:
