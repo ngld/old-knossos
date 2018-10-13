@@ -362,8 +362,8 @@ class InstallTask(progress.MultistepTask):
         util.cancel_downloads()
 
     def finish(self):
-        if self._mods:
-            title = self._mods[0].title
+        if self.mods:
+            title = self.mods[0].title
         else:
             title = 'UNKNOWN'
 
@@ -1071,6 +1071,8 @@ class RewriteModMetadata(progress.Task):
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
         else:
             QtWidgets.QMessageBox.information(None, 'Knossos', 'Done.')
+
+        center.main_win.update_mod_list()
 
 
 class UploadTask(progress.MultistepTask):
