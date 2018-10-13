@@ -992,6 +992,10 @@ class RewriteModMetadata(progress.Task):
             # Skip mods in dev mode to avoid overwriting local changes.
             return
 
+        if mod.mid == 'FS2':
+            create_retail_mod(mod.folder)
+            return
+
         try:
             rmod = center.mods.query(mod)
         except repo.ModNotFound:
@@ -1017,6 +1021,38 @@ class RewriteModMetadata(progress.Task):
         except Exception:
             self._reasons.append((mod, 'reload failed'))
             return
+
+        # Make sure the images are in the mod folder.
+        for prop in ('logo', 'tile', 'banner'):
+            img_path = getattr(new_mod, prop)
+            if img_path:
+                ext = os.path.splitext(img_path)[1]
+                dest = os.path.join(new_mod.folder, 'kn_' + prop + ext)
+
+                # Remove the image if it's just an empty file
+                if os.path.isfile(dest) and os.stat(dest).st_size == 0:
+                    os.unlink(dest)
+
+                if '://' in img_path and not os.path.isfile(dest):
+                    # That's a URL
+                    util.safe_download(img_path, dest)
+
+                setattr(new_mod, prop, dest)
+
+        for prop in ('screenshots', 'attachments'):
+            im_paths = getattr(new_mod, prop)
+            for i, path in enumerate(im_paths):
+                ext = os.path.splitext(path)[1]
+                dest = os.path.join(new_mod.folder, 'kn_' + prop + '_' + str(i) + ext)
+
+                # Remove the image if it's just an empty file
+                if os.path.isfile(dest) and os.stat(dest).st_size == 0:
+                    os.unlink(dest)
+
+                if '://' in path and not os.path.isfile(dest):
+                    util.safe_download(path, dest)
+
+                im_paths[i] = dest
 
         center.installed.add_mod(new_mod)
 
