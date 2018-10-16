@@ -51,11 +51,11 @@ else:
                 if isinstance(v, QtCore.QJsonValue):
                     msg[k] = v.toVariant()
 
-            print('#-> ', json.dumps(msg))
+            # print('#-> ', json.dumps(msg))
             self._conn.sendTextMessage(json.dumps(msg))
 
         def socketMessageReceived(self, msg):
-            print('#<- ', json.loads(msg))
+            # print('#<- ', json.loads(msg))
             self.messageReceived.emit(json.loads(msg), self)
 
         def socketDisconnected(self):
