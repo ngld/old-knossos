@@ -892,7 +892,7 @@ class RemoveModFolder(progress.Task):
             for i, name in enumerate(items):
                 progress.update(i / count, 'Deleting files...')
 
-                os.unlink(name)
+                util.safe_unlink(name)
 
             # Delete the remaining empty directories and other stuff
             shutil.rmtree(path)
