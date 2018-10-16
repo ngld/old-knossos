@@ -892,7 +892,7 @@ class RemoveModFolder(progress.Task):
             for i, name in enumerate(items):
                 progress.update(i / count, 'Deleting files...')
 
-                os.unlink(name)
+                util.safe_unlink(name)
 
             # Delete the remaining empty directories and other stuff
             shutil.rmtree(path)
@@ -1561,6 +1561,7 @@ class GOGExtractTask(progress.Task):
             self.abort()
             return
 
+        create_retail_mod(self._dest_path)
         self.mods = [center.installed.query('FS2')]
         self._slot_prog = {
             'total': ('Status', 0, 'Waiting...')
@@ -1744,15 +1745,20 @@ class GOGExtractTask(progress.Task):
                       'selected data path or contact ngld for more information.'
 
             QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), msg)
-            return
         elif results[0] == -1:
             QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), self.tr(
                 'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?'))
-            return
         else:
-            create_retail_mod(self._dest_path)
             center.main_win.update_mod_list()
             center.main_win.browser_ctrl.bridge.retailInstalled.emit()
+            return
+
+        path = os.path.join(self._dest_path, 'mod.json')
+        if os.path.isfile(path):
+            os.unlink(path)
+
+        if center.installed.has('FS2'):
+            center.installed.del_mod(center.installed.query('FS2'))
 
 
 class GOGCopyTask(progress.Task):
@@ -1769,6 +1775,7 @@ class GOGCopyTask(progress.Task):
 
         self._makedirs(dest_path)
 
+        create_retail_mod(self._dest_path)
         self.mods = [center.installed.query('FS2')]
         self._slot_prog = {
             'total': ('Status', 0, 'Waiting...')
@@ -1819,7 +1826,6 @@ class GOGCopyTask(progress.Task):
 
     def finish(self):
         if self._reason == 'done':
-            create_retail_mod(self._dest_path)
             center.main_win.update_mod_list()
             center.main_win.browser_ctrl.bridge.retailInstalled.emit()
             return
@@ -1827,6 +1833,13 @@ class GOGCopyTask(progress.Task):
             msg = 'The selected directory does not contain the required retail VPs.'
         else:
             msg = 'Copying the retail files failed. Please make sure Knossos can write to the data path.'
+
+        path = os.path.join(self._dest_path, 'mod.json')
+        if os.path.isfile(path):
+            os.unlink(path)
+
+        if center.installed.has('FS2'):
+            center.installed.del_mod(center.installed.query('FS2'))
 
         QtWidgets.QMessageBox.critical(None, 'Error', msg)
 
@@ -2116,7 +2129,11 @@ class FixUserBuildSelectionTask(progress.Task):
                     self._engine_cache[dep['id']] = is_engine
 
                 if is_engine:
-                    spec = util.Spec(dep['version'])
+                    if dep['version']:
+                        spec = util.Spec(dep['version'])
+                    else:
+                        spec = util.Spec('*')
+
                     engine_id = dep['id']
                     break
 

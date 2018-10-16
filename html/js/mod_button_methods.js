@@ -4,7 +4,7 @@ export default {
     },
 
     update() {
-        fs2mod.updateMod(this.mod.id, this.mod.versions[0].installed ? this.mod.versions[0].version : '');
+        fs2mod.updateMod(this.mod.id, '');
     },
 
     install() {
