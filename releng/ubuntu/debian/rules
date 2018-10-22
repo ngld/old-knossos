@@ -8,7 +8,7 @@ export PYBUILD_INSTALL_DIR=/usr/share/knossos
 override_dh_link:
 	dh_link
 	echo '#!/bin/bash' > debian/knossos/usr/bin/knossos 
-	echo 'exec python3 /usr/share/knossos/knossos/__main__.py "\$@"' >> debian/knossos/usr/bin/knossos 
+	echo 'exec python3 /usr/share/knossos/knossos/__main__.py "$''@"' >> debian/knossos/usr/bin/knossos 
 
 %:
 	dh $@ --with python3 --buildsystem=pybuild
