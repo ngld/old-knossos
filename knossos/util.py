@@ -244,7 +244,7 @@ def call(*args, **kwargs):
 
         kwargs['startupinfo'] = si
 
-    logging.debug('Running %s', args[0])
+    logging.info('Running %s', args[0])
     return subprocess.call(*args, **kwargs)
 
 
@@ -261,7 +261,7 @@ def Popen(*args, **kwargs):
 
         kwargs['startupinfo'] = si
 
-    logging.debug('Running %s', args[0])
+    logging.info('Running %s', args[0])
     return subprocess.Popen(*args, **kwargs)
 
 
@@ -271,16 +271,18 @@ def check_output(*args, **kwargs):
         kwargs.setdefault('stdin', subprocess.DEVNULL)
         kwargs.setdefault('stderr', subprocess.DEVNULL)
 
-        si = subprocess.STARTUPINFO()
-        si.dwFlags = subprocess.STARTF_USESHOWWINDOW
-        si.wShowWindow = subprocess.SW_HIDE
-
-        kwargs['startupinfo'] = si
+        if kwargs.get('no_hide'):
+            del kwargs['no_hide']
+        else:
+            si = subprocess.STARTUPINFO()
+            si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = subprocess.SW_HIDE
+            kwargs['startupinfo'] = si
 
     kwargs.setdefault('errors', 'surrogateescape')
     kwargs.setdefault('universal_newlines', True)
 
-    logging.debug('Running %s', args[0])
+    logging.info('Running %s', args[0])
     return subprocess.check_output(*args, **kwargs)
 
 
