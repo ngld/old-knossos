@@ -15,8 +15,8 @@ if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     cd /tmp/prov
 
     # We need Python 3.6 since that's the latest version PyInstaller supports.
-    echo "==> Installing Python 3.6.6"
-    curl -so python.pkg "https://www.python.org/ftp/python/3.6.6/python-3.6.6-macosx10.6.pkg"
+    echo "==> Installing Python 3.6.7"
+    curl -so python.pkg "https://www.python.org/ftp/python/3.6.7/python-3.6.7-macosx10.6.pkg"
     sudo installer -store -pkg python.pkg -target /
 
     export PATH="/Library/Frameworks/Python.framework/Versions/3.6/bin:$PATH"
