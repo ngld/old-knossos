@@ -80,9 +80,9 @@ a = Analysis(['../../knossos/__main__.py'],
             runtime_hooks=rthooks,
             binaries=[
                 # Add QtWebEngine stuff because PyInstaller's hook doesn't do anything without qmake (which PyQt5 doesn't include).
-                (os.path.join(qt_path, 'QtWebEngineCore.framework', 'Helpers', 'QtWebEngineProcess.app',
-                    'Contents', 'MacOS', 'QtWebEngineProcess'),
-                os.path.join('QtWebEngineProcess.app', 'Contents', 'MacOS'))
+#                (os.path.join(qt_path, 'QtWebEngineCore.framework', 'Helpers', 'QtWebEngineProcess.app',
+#                    'Contents', 'MacOS', 'QtWebEngineProcess'),
+#                os.path.join('QtWebEngineProcess.app', 'Contents', 'MacOS'))
             ] + qt_plugins_binaries('styles', namespace='PyQt5'),
             datas=[
                 (p7zip_path, '.'),
