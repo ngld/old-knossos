@@ -212,6 +212,22 @@ iframe {
     width: 100px;
 }
 
+#welcome-page h1 {
+    font-size: 1.5em;
+}
+
+#welcome-page h2 {
+    font-size: 1.2em;
+}
+
+#welcome-page hr {
+    margin-bottom: 5px;
+}
+
+#welcome-footer {
+    font-size: 0.75em;
+}
+
 /* ----------------------------- This is the filter rollout button section. ------------------------------- */
 
 .filter-container {
