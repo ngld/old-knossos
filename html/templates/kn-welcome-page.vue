@@ -248,7 +248,7 @@ export default {
                         <div class="col-sm-offset-2 col-sm-8 neb-btns">
                             <button class="mod-btn btn-link-blue" @click="login">Login</button>
                             <button class="mod-btn btn-link-blue" @click="register">Register</button>
-                            <button class="mod-btn btn-link-red" @click="resetPassword">Reset Password</button>
+                            <button class="mod-btn btn-link-red" @click="resetPassword">Reset Pass</button>
                         </div>
                     </div>
                 </div>
