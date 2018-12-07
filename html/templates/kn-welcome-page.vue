@@ -38,7 +38,7 @@ export default {
 
     methods: {
         selectDataFolder() {
-            call(fs2mod.browseFolder, 'Please select a folder', this.data_path, (path) => {
+            call(fs2mod.browseFolder, 'Select a folder for Knossos', this.data_path, (path) => {
                 if(path) this.data_path = path;
             });
         },
@@ -52,7 +52,7 @@ export default {
         },
 
         selectInstaller() {
-            call(fs2mod.browseFiles, 'Please select your setup_freespace2_...exe', this.installer_path, '*.exe', (files) => {
+            call(fs2mod.browseFiles, 'Select your setup_freespace2_...exe', this.installer_path, '*.exe', (files) => {
                 if(files.length > 0) {
                     this.installer_path = files[0];
                 }
@@ -60,27 +60,29 @@ export default {
         },
 
         selectRetailFolder() {
-            call(fs2mod.browseFolder, 'Please select your FS2 folder', this.retail_path, (path) => {
+            call(fs2mod.browseFolder, 'Select your FreeSpace 2 folder', this.retail_path, (path) => {
                 if(path) this.retail_path = path;
             });
         },
 
-        processRetail() {
-            let path = this.installer_path === '' ? this.retail_path : this.installer_path;
-            call(fs2mod.copyRetailData, path, (result) => {
-                if(result) {
-                    vm.popup_visible = true;
-                    vm.popup_title = 'Installing Retail';
-                    vm.popup_mode = 'mod_progress';
-                    vm.popup_mod_id = 'FS2';
+        processRetail(has_retail) {
+            let path = has_retail ? this.retail_path : this.installer_path;
+            if(path) {
+                call(fs2mod.copyRetailData, path, (result) => {
+                    if(result) {
+                        vm.popup_visible = true;
+                        vm.popup_title = 'Installing Retail';
+                        vm.popup_mode = 'mod_progress';
+                        vm.popup_mod_id = 'FS2';
 
-                    connectOnce(fs2mod.retailInstalled, () => {
-                        vm.popup_visible = false;
-                        this.retail_installed = true;
-                        this.step++;
-                    });
-                }
-            });
+                        connectOnce(fs2mod.retailInstalled, () => {
+                            vm.popup_visible = false;
+                            this.retail_installed = true;
+                            this.step++;
+                        });
+                    }
+                });
+            }
         },
 
         skipRetail() {
@@ -126,7 +128,7 @@ export default {
                 <div class="input-group">
                     <input type="text" class="form-control" v-model="data_path">
                     <span class="input-group-btn">
-                        <button class="btn btn-default" @click.prevent="selectDataFolder">Browse...</button>
+                        <button class="btn btn-default inline-button" @click.prevent="selectDataFolder">Browse...</button>
                     </span>
                 </div>
                 <br>
@@ -141,7 +143,7 @@ export default {
         <div v-else-if="step === 2">
             <form class="form-horizontal">
                 <div v-if="retail_found">
-                    <h1>FreeSpace 2 Installation Found</h1>
+                    <h1>FreeSpace 2 installation found</h1>
                     <p>We found an existing FreeSpace 2 installation in the location below. Is this correct?</p>
 
                     <p><strong>{{ retail_path }}</strong></p>
@@ -152,63 +154,65 @@ export default {
                     </p>
                 </div>
                 <div v-else>
-                    <h1>Install FreeSpace 2</h1>
+                    <h1>Install FreeSpace 2 (optional)</h1>
                     <p>
-                        If you want to play FreeSpace 2 mods (fan-made campaigns), then you'll need a copy of retail FreeSpace 2.
+                        If you want to play FreeSpace 2 mods (fan-made campaigns), you'll need a copy of FreeSpace 2.
+                        You can buy it for cheap from
+                        <a href="https://www.gog.com/game/freespace_2" class="open-ext">GOG</a>
+                        or <a href="https://store.steampowered.com/app/273620/Freespace_2/" class="open-ext">Steam</a>.
+                    </p>
+                    <p>
+                        <strong>Note</strong>: If you want to play only "total conversion" games, which don't use FreeSpace 2 data, then click on "Skip".
                     </p>
 
-                    <h2>Already have FreeSpace 2 installed?</h2>
+                    <h2>Use an existing FreeSpace 2 installation</h2>
                     <p>
-                        Then point us to the retail data files (usually C:\Games\FreeSpace2).
+                        Select the folder that has the FreeSpace 2 data files. The folder should include the file <strong>Root_fs2.vp</strong>.
+                        Knossos will copy the files into the Knossos folder.
                     </p>
 
                     <div class="input-group">
                         <input type="text" class="form-control" v-model="retail_path">
                         <span class="input-group-btn">
-                            <button class="btn btn-default" @click.prevent="selectRetailFolder">Browse...</button>
+                            <button class="btn btn-default inline-button" @click.prevent="selectRetailFolder">Browse...</button>
+                            <button class="btn btn-primary inline-button" @click.prevent="processRetail(true)">Continue</button>
                         </span>
                     </div>
 
-                    <h2>Get FreeSpace 2</h2>
+                    <h2>Use the GOG FreeSpace 2 installer (all platforms)</h2>
+
                     <p>
-                        You can buy it from
-                        <a href="https://www.gog.com/game/freespace_2" class="open-ext">GOG.com</a> for cheap.
+                        Download the GOG FreeSpace 2 installer (example: setup_freespace2_2.0.0.8.exe) and select it.
+                        Knossos will extract the data files from the installer.
                     </p>
-
-                    <p>Then download the FreeSpace 2 installer EXE and point us to it.</p>
-                    <p>For example: C:\Program Files (x86)\GOG Galaxy\Games\Freespace 2\!Downloads\setup_freespace2_2.0.0.8.exe</p>
-
                     <div class="input-group">
                         <input type="text" class="form-control" v-model="installer_path">
                         <span class="input-group-btn">
-                            <button class="btn btn-default" @click.prevent="selectInstaller">Browse...</button>
+                            <button class="btn btn-default inline-button" @click.prevent="selectInstaller">Browse...</button>
+                            <button class="btn btn-primary inline-button" @click.prevent="processRetail(false)">Continue</button>
                         </span>
                     </div>
                     <br>
 
                     <p>
-                        <button class="btn btn-primary" @click.prevent="processRetail">Continue</button>
-                        <button class="btn btn-default pull-right" @click.prevent="wl_popup_visible = true">Skip</button>
+                        <button class="btn btn-default" @click.prevent="wl_popup_visible = true">Skip</button>
                     </p>
                 </div>
             </form>
         </div>
 
         <div v-else-if="step === 3">
-            <h1>Suit Up, Pilot!</h1>
+            <h1>Suit up, pilot!</h1>
 
             <p>
-                Now you can start playing FreeSpace Open games! You can find games on the
-                <a href="#" @click.prevent="goToExplore">Explore</a> tab.
+                Now you can start playing <span v-if="retail_installed">FreeSpace 2 retail and mods (fan-made campaigns) in addition to</span>
+                non-FreeSpace "total conversion" games for FreeSpace Open! You can find games on the <a href="#" @click.prevent="goToExplore">Explore</a> tab.
             </p>
 
-            <div v-if="retail_installed">
-                <h2>Play FreeSpace 2 with the MediaVPs</h2>
-                <p>
-                    If you want to play retail FreeSpace 2, we <strong>highly</strong> recommend you install the
-                    <a href="#" @click.prevent="goToMVPS">MediaVPs mod</a>, which greatly improves the graphics.
-                </p>
-            </div>
+            <p v-if="retail_installed">
+                If you want to play the original (retail) FreeSpace 2, we <strong>highly</strong> recommend you install the
+                <a href="#" @click.prevent="goToMVPS">MediaVPs mod</a>, which greatly improves the graphics.
+            </p>
 
             <p><button class="btn btn-primary" @click.prevent="goToExplore">Finish</button></p>
 
@@ -279,7 +283,7 @@ export default {
 
         <div class="popup" v-if="wl_popup_visible">
             <div class="title clearfix">
-                Skip FreeSpace 2 Installation?
+                Skip FreeSpace 2 installation?
 
                 <a href="" class="pull-right" @click.prevent="wl_popup_visible = false">
                     <i class="fa fa-times"></i>
@@ -288,6 +292,7 @@ export default {
             <div class="content gen-scroll-style">
                 <p>
                     Without FreeSpace 2, you won't be able to play most games that Knossos offers.
+                    However, you <strong>can</strong> still play "total conversion" (TC) games, which don't use the FreeSpace 2 data files.
                 </p>
                 <p>You can install FreeSpace 2 at any time from the Settings.</p>
 

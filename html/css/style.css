@@ -224,6 +224,10 @@ iframe {
     margin-bottom: 5px;
 }
 
+#welcome-page .inline-button {
+    margin-left: 5px;
+}
+
 #welcome-footer {
     font-size: 0.75em;
 }
