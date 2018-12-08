@@ -70,7 +70,8 @@ settings = {
     'joystick': {
         'guid': None,
         'id': 99999
-    }
+    },
+    'show_fs2_mods_without_retail': False
 }
 
 if sys.platform.startswith('win'):
