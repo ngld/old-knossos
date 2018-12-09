@@ -38,17 +38,19 @@ export default {
 
     methods: {
         selectDataFolder() {
-            call(fs2mod.browseFolder, 'Select a folder for Knossos', this.data_path, (path) => {
+            call(fs2mod.browseFolder, 'Select a folder for Knossos data', this.data_path, (path) => {
                 if(path) this.data_path = path;
             });
         },
 
         finishFirst() {
-            call(fs2mod.setBasePath, this.data_path, (result) => {
-                if(result) {
-                    this.step++;
-                }
-            });
+            if(this.data_path) {
+                call(fs2mod.setBasePath, this.data_path, (result) => {
+                    if (result) {
+                        this.step++;
+                    }
+                });
+            }
         },
 
         selectInstaller() {
@@ -144,12 +146,13 @@ export default {
             <form class="form-horizontal">
                 <div v-if="retail_found">
                     <h1>FreeSpace 2 installation found</h1>
-                    <p>We found an existing FreeSpace 2 installation in the location below. Is this correct?</p>
+                    <p>We found a FreeSpace 2 installation in the location below. Is this correct?</p>
+                    <p>If you click "Yes", Knossos will copy the FreeSpace 2 files into the Knossos folder.</p>
 
                     <p><strong>{{ retail_path }}</strong></p>
 
                     <p>
-                        <button class="btn btn-primary" @click.prevent="processRetail">Yes</button>
+                        <button class="btn btn-primary" @click.prevent="processRetail(true)">Yes</button>
                         <button class="btn btn-default pull-right" @click.prevent="retail_found = false">No</button>
                     </p>
                 </div>
@@ -162,7 +165,7 @@ export default {
                         or <a href="https://store.steampowered.com/app/273620/Freespace_2/" class="open-ext">Steam</a>.
                     </p>
                     <p>
-                        <strong>Note</strong>: If you want to play only "total conversion" games, which don't use FreeSpace 2 data, then click on "Skip".
+                        Click on "Skip" if you want to play only "total conversion" games, which don't use FreeSpace 2.
                     </p>
 
                     <h2>Use an existing FreeSpace 2 installation</h2>
@@ -210,7 +213,7 @@ export default {
             </p>
 
             <p v-if="retail_installed">
-                If you want to play the original (retail) FreeSpace 2, we <strong>highly</strong> recommend you install the
+                If you want to play the original (retail) FreeSpace 2, we <strong>highly</strong> recommend you use the
                 <a href="#" @click.prevent="goToMVPS">MediaVPs mod</a>, which greatly improves the graphics.
             </p>
 

@@ -502,12 +502,27 @@ class WebBridge(QtCore.QObject):
         if os.path.isfile(path):
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path is not a directory!'))
             return False
-        elif not os.path.isdir(path):
+        if 'C:/Program Files' in path:
+            result = QtWidgets.QMessageBox.question(None, 'Knossos',
+                self.tr('Using a folder in "Program Files" for Knossos is not recommended, because you will always have to run Knossos as Administrator. Use anyway?'))
+            if result == QtWidgets.QMessageBox.No:
+                return False
+        if os.path.isdir(path):
+            if len(os.listdir(path)) > 0:
+                result = QtWidgets.QMessageBox.question(None, 'Knossos',
+                    self.tr('Using a non-empty folder for Knossos is not recommended, because it can cause problems for Knossos. Use anyway?'))
+                if result == QtWidgets.QMessageBox.No:
+                    return False
+        if not os.path.lexists(path):
             result = QtWidgets.QMessageBox.question(None, 'Knossos',
                 self.tr('The selected path does not exist. Should I create the folder?'))
 
             if result == QtWidgets.QMessageBox.Yes:
-                os.makedirs(path)
+                try:
+                    os.makedirs(path)
+                except OSError:
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("Failed to create Knossos data folder!"))
+                    return False
             else:
                 return False
         else:
