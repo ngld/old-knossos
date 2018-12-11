@@ -7,7 +7,7 @@
  */
 
 export default {
-    props: ['mods'],
+    props: ['mods', 'retailInstallCompleted'],
 
     data: () => ({
         loading: false,
@@ -113,7 +113,7 @@ export default {
         },
 
         showRetailPrompt() {
-            vm.showRetailPrompt();
+            vm.showRetailPrompt(false);
         }
     }
 };
