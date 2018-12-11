@@ -165,7 +165,7 @@ export default {
                         or <a href="https://store.steampowered.com/app/273620/Freespace_2/" class="open-ext">Steam</a>.
                     </p>
                     <p>
-                        Click on "Skip" if you want to play only "total conversion" games, which don't use FreeSpace 2.
+                        Click "Skip" if you want to play only "total conversion" games, which don't use FreeSpace 2.
                     </p>
 
                     <h2>Use an existing FreeSpace 2 installation</h2>
