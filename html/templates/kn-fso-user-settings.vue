@@ -33,7 +33,8 @@ export default {
         },
 
         save() {
-            if(this.mod.user_cmdline === this.mod_cmdline) this.mod.user_cmdline = null;
+            // Sadly we can't use null here since the cmdline parameter for saveUserFsoDetails is a QString.
+            if(this.mod.user_cmdline === this.mod_cmdline) this.mod.user_cmdline = '#DEFAULT#';
 
             let build = this.user_build;
             if(build === null) build = '';

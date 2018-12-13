@@ -513,7 +513,7 @@ class WebBridge(QtCore.QObject):
         else:
             vp_path = util.ipath(os.path.join(path, 'root_fs2.vp'))
             if os.path.isfile(vp_path):
-                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("Please don't use an existing FS2 directory. It won't work!"))
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("Please don't use an existing FS2 directory. It won't work! Select an empty directory instead."))
                 return False
 
         center.settings['base_path'] = os.path.abspath(path)
@@ -1192,6 +1192,9 @@ class WebBridge(QtCore.QObject):
                 else:
                     mod.user_custom_build = None
                     mod.user_exe = build
+
+        if cmdline == '#DEFAULT#':
+            cmdline = None
 
         mod.user_cmdline = cmdline
         try:
