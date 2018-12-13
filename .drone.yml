@@ -14,6 +14,7 @@ steps:
         from_secret: ubuntu_key
     commands:
       - export VERSION="$(python3 setup.py get_version)"
+      - if [ "$DRONE_BUILD_EVENT" = "tag" ]; then export RELEASE=y; fi
       - bash releng/ubuntu/auto-build.sh
 
 ---
@@ -34,4 +35,5 @@ steps:
         from_secret: aur_key
     commands:
       - export VERSION="$(python3 setup.py get_version)"
+      - if [ "$DRONE_BUILD_EVENT" = "tag" ]; then export RELEASE=y; fi
       - bash releng/arch/auto-build.sh

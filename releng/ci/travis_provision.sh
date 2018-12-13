@@ -4,8 +4,11 @@ set -exo pipefail
 base="$(pwd)"
 
 if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+    # Don't waste time on updating Homebrew.
+    export HOMEBREW_NO_AUTO_UPDATE=1
+
     echo "==> Installing build tools"
-    brew install p7zip ninja qt5 yarn
+    brew install --force-bottle p7zip ninja qt5 yarn
 
     # If we don't delete qmake, PyInstaller detects this Qt installation and uses its libraries instead of PyQt5's
     # which then leads to a crash because PyQt5 isn't compatible with the version we install.

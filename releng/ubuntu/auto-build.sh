@@ -24,7 +24,9 @@ if [ -z "$CI" ]; then
 fi
 
 if [ "$DRONE" = "true" ]; then
-	echo "$UBUNTU_GPG_KEY" | gpg --import /dev/stdin
+	if [ -n "$UBUNTU_GPG_KEY" ]; then
+		echo "$UBUNTU_GPG_KEY" | gpg --import /dev/stdin
+	fi
 else
 	. releng/config/config.sh
 	import_key
