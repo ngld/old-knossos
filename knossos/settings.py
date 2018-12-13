@@ -684,9 +684,16 @@ def save_setting(name, value):
         else:
             center.main_win.hide_bar()
 
+    refresh_mod_list = False
+    if name == 'show_fs2_mods_without_retail':
+        if value != center.settings['show_fs2_mods_without_retail']:
+            refresh_mod_list = True
+
     center.settings[name] = value
     center.save_settings()
-
+    
+    if refresh_mod_list:
+        center.main_win.update_mod_list()
 
 def get_fso_log(self):
     logpath = os.path.join(get_fso_profile_path(), 'data/fs2_open.log')

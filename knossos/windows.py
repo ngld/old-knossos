@@ -363,11 +363,13 @@ class HellWindow(Window):
 
     def search_mods(self):
         mods = None
+        omit_fs2_mods = False
 
         if self._mod_filter in ('home', 'develop'):
             mods = center.installed.mods
         elif self._mod_filter == 'explore':
             mods = center.mods.mods
+            omit_fs2_mods = not center.installed.has('FS2') and not center.settings['show_fs2_mods_without_retail']
         else:
             mods = {}
 
@@ -377,6 +379,8 @@ class HellWindow(Window):
         for mid, mvs in mods.items():
             if query in mvs[0].title.lower():
                 mod = mvs[0]
+                if mod.parent == 'FS2' and omit_fs2_mods:
+                    continue
                 if mod.mtype == 'engine' and self._mod_filter != 'develop':
                     mvs = [mv for mv in mvs if mv.satisfies_stability(center.settings['engine_stability'])]
                     if len(mvs) == 0:
