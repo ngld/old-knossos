@@ -48,11 +48,18 @@ iframe {
 }
 
 .dev-instructions {
-    margin:0 auto;
-    margin-top: 10%;
-    width: 80%;
-    text-align: center;
+    margin: 0 auto;
+    margin-top: 20%;
+    width: 55%;
+    /* TODO figure out how to center teh div */
+    font-size: 1.25em;
     color: grey;
+}
+
+.dev-instructions p {
+    margin-top: 30px;
+     text-align: center;
+     /*font-size: 1.1em;*/
 }
 
 /* -------------------------- Settings for top bar elements ----------------------------------*/

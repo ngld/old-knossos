@@ -15,7 +15,7 @@ export default {
         tabs: {
             home: 'Home',
             explore: 'Explore',
-            develop: 'Development',
+            develop: 'Develop',
             trouble: 'Troubleshooting'
         },
 

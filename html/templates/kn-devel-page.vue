@@ -578,6 +578,7 @@ export default {
                         <br>
                     </div>
 
+                    <!-- TODO for any button that brings up a dialog, add the "..." -->
                     <div class="buttonpane" v-if="mod_box_tab === 'modify'">
                         <button @click.prevent="reopenUploadPopup" class="mod-btn btn-link-blue" v-if="(this.mod_map[(this.selected_mod || {}).id] || {}).progress">Uploading...</button>
                         <button @click.prevent="uploadMod" class="mod-btn btn-link-blue" v-else>Upload</button><br>
@@ -603,7 +604,19 @@ export default {
                 <a :href="'https://fsnebula.org/mod/' + encodeURIComponent(selected_mod.id)" class="open-ext">Download Link</a>
             </div>
             <div class="dev-instructions" v-else>
-                This is the Development tab. Here you can create new mods or edit currently installed mods. This is also where you can apply experimental mod settings, work with the Freespace Mission Editor, and alter the mod flags and commandline options. <br><br>Consider this an advanced section of Knossos but also a great place to get started if you wish to learn the ins and outs of modding with Freespace 2 Open.
+                <!-- TODO realign this block to upper-left. Centering looks bad. -->
+                Here you can
+                <ul>
+                    <li>create new mods</li>
+                    <li>edit installed mods</li>
+                    <li>apply experimental mod settings</li>
+                    <li>work with the mission editor (FRED)</li>
+                    <li>customize a mod's command line options (flags)</li>
+                </ul>
+                <p>
+                    This tab is both an "advanced" section and also a great place<br>
+                    to get started with FreeSpace Open modding.
+                </p>                 
             </div>
             <div class="form-box" v-if="selected_mod">
                 <div class="tabcorner"></div>
@@ -705,29 +718,30 @@ export default {
                                     </select>
 
                                     <span class="help-block" v-if="selected_mod.type === 'mod'">
-                                        This type is the default and covers most cases. Normally you'll want to use this type.
+                                        (Default) A campaign based either on FreeSpace 2 (retail) or on a total conversion (TC)<br>
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'tc'">
-                                        Use this type if your mod doesn't depend on other mods or retail files.<br>
-                                        (Mods for TCs should still use the "Mod" type.)
+                                        A standalone game that doesn't depend on other mods and doesn't use FS2 files<br>
+                                        Mods for TCs should still use the "Mod" type.
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'engine'">
-                                        This should only be used for builds FSO builds (fs2_open*.exe, fs2_open*.AppImage, etc.).
+                                        A build of the FreeSpace 2 Open (FSO) engine (fs2_open*.exe, fs2_open*.app, etc.)
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'tool'">
-                                        This is used for all executables which aren't FSO like FRED or PCS2.
+                                        Software other than the FreeSpace 2 Open (FSO) engine
+                                        Examples include FRED (mission editor) and PCS2 (model converter).
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'ext'">
-                                        This mod type is meant for overrides like custom HUD tables.
+                                        A change that overrides, such as custom HUD tables
                                     </span>
                                 </div>
                             </div>
 
-                            <div class="form-group" v-if="selected_mod.type === 'mod' || selected_mod.type === 'ext'">
+                            <div class="form-group" :style="{visibility: (selected_mod.type === 'mod' || selected_mod.type === 'ext') ? 'visible' : 'hidden'}">
                                 <label class="col-xs-3 control-label">Parent mod</label>
                                 <div class="col-xs-9">
                                     <p class="form-control-static">{{ selected_mod.parent }}</p>
@@ -742,8 +756,8 @@ export default {
                                     <button class="btn btn-small btn-default" @click.prevent="openDescEditor">Open Editor</button>
 
                                     <p class="help-block">
-                                        Please use BBCode here. To preview your description, save, go to your home tab
-                                        and go to this mod's detail page.
+                                        Use BBCode here. To preview your description, save, go to the Home tab,
+                                        and go to this mod's Details page.
                                     </p>
                                 </div>
                             </div>
@@ -768,8 +782,9 @@ export default {
                                     <img :src="'file://' + selected_mod.logo" v-if="selected_mod.logo"><br>
 
                                     <p class="help-block">
-                                        This image should be about 255&times;112 pixels large. Please only use this for legacy logos and mod images from mods predating the Knossos installer.
-                                        If you create a new mod logo or image, please use the above setting.
+                                        This image should be about 255&times;112 pixels large.<br />
+                                        Use only for legacy logos and mod images from mods predating Knossos.
+                                        If you create a new mod logo or image, use the above setting.
                                     </p>
 
                                     <button class="btn btn-small btn-default" @click.prevent="changeImage('logo')">Select Image</button>
@@ -856,7 +871,7 @@ export default {
                             <h4>-mod Flag</h4>
 
                             <p v-if="selected_mod.mod_flag.length < 1">
-                                No dependencies available. Please add your dependencies to the relevant packages and then
+                                No dependencies available. Add your dependencies to the relevant packages and then
                                 return here.
                             </p>
 
