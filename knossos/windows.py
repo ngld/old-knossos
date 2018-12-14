@@ -379,8 +379,7 @@ class HellWindow(Window):
         for mid, mvs in mods.items():
             if query in mvs[0].title.lower():
                 mod = mvs[0]
-                if mod.parent == 'FS2' and omit_fs2_mods:
-                    continue
+                
                 if mod.mtype == 'engine' and self._mod_filter != 'develop':
                     mvs = [mv for mv in mvs if mv.satisfies_stability(center.settings['engine_stability'])]
                     if len(mvs) == 0:
@@ -396,6 +395,14 @@ class HellWindow(Window):
                     item = installed_versions[str(mod.version)].get()
                 else:
                     item = mod.get()
+
+                if mod.parent == 'FS2' and not center.installed.has('FS2'):
+                    if center.settings['show_fs2_mods_without_retail']:
+                        item['retail_dependency_missing'] = True
+                    else:
+                        continue
+                else:
+                    item['retail_dependency_missing'] = False
 
                 item['progress'] = 0
                 item['progress_info'] = {}
