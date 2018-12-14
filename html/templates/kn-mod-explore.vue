@@ -51,19 +51,22 @@ export default {
 </script>
 <template>
     <div class="mod row">
-        <div :class="{ 'mod-node': true, 'active': open }">
+        <div :class="{ 'mod-node': true, 'active': open, 'retail-dependency-missing': mod.retail_dependency_missing }">
             <div class="mod-image">
                 <img :src="mod.tile ? ((mod.tile.indexOf('://') === -1 ? 'file://' : '') + mod.tile) : 'images/modstock.jpg'" class="mod-stock">
                 <div class="mod-logo-container" v-if="!mod.tile">
                     <img class="mod-logo-legacy img-responsive" v-if="mod.logo" :src="(mod.logo.indexOf('://') === -1 ? 'file://' : '') + mod.logo">
                 </div>
             </div>
-            <div class="mod-installed" v-if="mod.installed">
+            <div class="mod-status" v-if="mod.installed || mod.retail_dependency_missing">
                 <div class="mod-banner mod-banner-blue" v-if="mod.status === 'update'">
                     <span>Update Avail!</span>
                 </div>
                 <div class="mod-banner mod-banner-blue" v-else-if="mod.status === 'updating'">
                     <span>Installing...</span>
+                </div>
+                <div class="mod-banner mod-banner-grey" v-else-if="mod.retail_dependency_missing">
+                    <span>Requires FS2</span>
                 </div>
                 <div class="mod-banner mod-banner-green" v-else>
                     <span>Installed!</span>
