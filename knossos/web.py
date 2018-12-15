@@ -19,6 +19,7 @@ import os.path
 import logging
 import re
 import json
+import platform
 import stat
 import sqlite3
 import shutil
@@ -497,18 +498,32 @@ class WebBridge(QtCore.QObject):
         else:
             return []
 
+    def _filter_out_hidden_files(self, files):
+        if platform.system() != 'Windows':
+            return [file for file in files if not file.startswith('.')]
+        else: # TODO figure out how to identify hidden files on Windows
+            return files
+
+    def _is_program_files_path(self, path):
+        prog_folders = [os.environ.get('ProgramFiles', 'C:/Program Files'),
+                        os.environ.get('ProgramFiles(x86)', 'C:/Program Files (x86)')]
+        prog_folders = tuple([f.lower().replace('\\', '/') for f in prog_folders])
+        return path.lower().replace('\\', '/').startswith(prog_folders)
+
     @QtCore.Slot(str, result=bool)
     def setBasePath(self, path):
         if os.path.isfile(path):
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path is not a directory!'))
             return False
-        if 'C:/Program Files' in path:
-            result = QtWidgets.QMessageBox.question(None, 'Knossos',
-                self.tr('Using a folder in "Program Files" for Knossos is not recommended, because you will always have to run Knossos as Administrator. Use anyway?'))
-            if result == QtWidgets.QMessageBox.No:
-                return False
+        if platform.system() == 'Windows':
+            if self._is_program_files_path(path):
+                result = QtWidgets.QMessageBox.question(None, 'Knossos',
+                   self.tr('Using a folder in "Program Files" for Knossos is not recommended, because you will always have to run Knossos as Administrator. Use anyway?'))
+                if result == QtWidgets.QMessageBox.No:
+                    return False
         if os.path.isdir(path):
-            if len(os.listdir(path)) > 0:
+            # TODO skip this block if the folder has the Knossos marker JSON
+            if len(self._filter_out_hidden_files(os.listdir(path))) > 0:
                 result = QtWidgets.QMessageBox.question(None, 'Knossos',
                     self.tr('Using a non-empty folder for Knossos is not recommended, because it can cause problems for Knossos. Use anyway?'))
                 if result == QtWidgets.QMessageBox.No:
