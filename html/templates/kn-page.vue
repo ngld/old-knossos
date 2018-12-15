@@ -495,7 +495,7 @@ export default {
                         <div class="input-group" :style="{ visibility: (retail_install_option !== 'auto-detect-installation') ? 'visible' : 'hidden' }">
                             <input type="text" class="form-control" v-model="retail_data_path">
                             <span class="input-group-btn">
-                                <button class="btn btn-default inline-button" @click.prevent="selectRetailLocation">Browse...</button>
+                                <button class="btn btn-default" @click.prevent="selectRetailLocation">Browse...</button>
                             </span>
                         </div>
                     </p>
