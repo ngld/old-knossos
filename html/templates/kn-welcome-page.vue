@@ -44,13 +44,11 @@ export default {
         },
 
         finishFirst() {
-            if(this.data_path) {
-                call(fs2mod.setBasePath, this.data_path, (result) => {
-                    if (result) {
-                        this.step++;
-                    }
-                });
-            }
+            call(fs2mod.setBasePath, this.data_path, (result) => {
+                if(result) {
+                    this.step++;
+                }
+            });
         },
 
         selectInstaller() {
@@ -67,24 +65,22 @@ export default {
             });
         },
 
-        processRetail(has_retail) {
-            let path = has_retail ? this.retail_path : this.installer_path;
-            if(path) {
-                call(fs2mod.copyRetailData, path, (result) => {
-                    if(result) {
-                        vm.popup_visible = true;
-                        vm.popup_title = 'Installing Retail';
-                        vm.popup_mode = 'mod_progress';
-                        vm.popup_mod_id = 'FS2';
+        processRetail(has_retail_folder) {
+            let path = has_retail_folder ? this.retail_path : this.installer_path;
+            call(fs2mod.copyRetailData, path, (result) => {
+                if(result) {
+                    vm.popup_visible = true;
+                    vm.popup_title = 'Installing FreeSpace 2';
+                    vm.popup_mode = 'mod_progress';
+                    vm.popup_mod_id = 'FS2';
 
-                        connectOnce(fs2mod.retailInstalled, () => {
-                            vm.popup_visible = false;
-                            this.retail_installed = true;
-                            this.step++;
-                        });
-                    }
-                });
-            }
+                    connectOnce(fs2mod.retailInstalled, () => {
+                        vm.popup_visible = false;
+                        this.retail_installed = true;
+                        this.step++;
+                    });
+                }
+            });
         },
 
         skipRetail() {
@@ -130,7 +126,7 @@ export default {
                 <div class="input-group">
                     <input type="text" class="form-control" v-model="data_path">
                     <span class="input-group-btn">
-                        <button class="btn btn-default inline-button" @click.prevent="selectDataFolder">Browse...</button>
+                        <button class="btn btn-default" @click.prevent="selectDataFolder">Browse...</button>
                     </span>
                 </div>
                 <br>
@@ -177,8 +173,8 @@ export default {
                     <div class="input-group">
                         <input type="text" class="form-control" v-model="retail_path">
                         <span class="input-group-btn">
-                            <button class="btn btn-default inline-button" @click.prevent="selectRetailFolder">Browse...</button>
-                            <button class="btn btn-primary inline-button" @click.prevent="processRetail(true)">Continue</button>
+                            <button class="btn btn-default" @click.prevent="selectRetailFolder">Browse...</button>
+                            <button class="btn btn-primary" @click.prevent="processRetail(true)">Continue</button>
                         </span>
                     </div>
 
@@ -191,8 +187,8 @@ export default {
                     <div class="input-group">
                         <input type="text" class="form-control" v-model="installer_path">
                         <span class="input-group-btn">
-                            <button class="btn btn-default inline-button" @click.prevent="selectInstaller">Browse...</button>
-                            <button class="btn btn-primary inline-button" @click.prevent="processRetail(false)">Continue</button>
+                            <button class="btn btn-default" @click.prevent="selectInstaller">Browse...</button>
+                            <button class="btn btn-primary" @click.prevent="processRetail(false)">Continue</button>
                         </span>
                     </div>
                     <br>
