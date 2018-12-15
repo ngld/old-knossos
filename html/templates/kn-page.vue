@@ -463,12 +463,10 @@ export default {
                                 <input type="radio" value="auto-detect-installation" v-model="retail_install_option" @change="retailAutoDetect">
                                 Auto-detect installation
                             </label>
-                            <br>
-                            <labe class="checkbox">
+                            <label class="checkbox">
                                 <input type="radio" value="select-installation-folder" v-model="retail_install_option" @change="retail_data_path = ''">
                                 Select installation folder
-                            </labe>
-                            <br>
+                            </label>
                             <label class="checkbox">
                                 <input type="radio" value="select-installer-file" v-model="retail_install_option" @change="retail_data_path = ''">
                                 Select GOG installer file
