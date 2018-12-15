@@ -153,7 +153,7 @@ export default {
 
                     <p>
                         <button class="btn btn-primary" @click.prevent="processRetail(true)">Yes</button>
-                        <button class="btn btn-default pull-right" @click.prevent="retail_found = false">No</button>
+                        <button class="btn btn-default pull-right" @click.prevent="retail_found = false; retail_path = ''">No</button>
                     </p>
                 </div>
                 <div v-else>
