@@ -7,7 +7,7 @@
  */
 
 export default {
-    props: ['mods', 'retailInstallCompleted'],
+    props: ['mods'],
 
     data: () => ({
         loading: false,

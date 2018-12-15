@@ -68,8 +68,7 @@ export default {
         retail_found: false,
         retail_data_path: '',
         mod_install_attempted: false,
-        retail_install_option: 'auto-detect-installation',
-        retail_install_completed: false
+        retail_install_option: 'auto-detect-installation'
     }),
 
     watch: {
@@ -280,14 +279,12 @@ export default {
         },
 
         finishRetailPrompt() {
-            if(this.retail_data_path) {
-                call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
-                    if (result) {
-                        this.popup_visible = false;
-                        this.retail_install_completed = true;
-                    }
-                });
-            }
+            call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
+                if (result) {
+                    this.popup_visible = false;
+                    // TODO emit/generate event to trigger update on settings page
+                }
+            });
 
         },
 
@@ -394,7 +391,7 @@ export default {
 
         <kn-scroll-container v-if="page === 'settings'" key="settings" :dummy="mods">
             <div class="info-page settings-page container-fluid">
-                <kn-settings-page :mods="mods" :retail-install-completed="retail_install_completed"></kn-settings-page>
+                <kn-settings-page :mods="mods"></kn-settings-page>
             </div>
         </kn-scroll-container>
 
@@ -460,14 +457,20 @@ export default {
                     </p>
                     <form class="form-horizontal col-xs-12">
                         <div class="form-group">
-                            <input type="radio" id="auto-detect-installation" value="auto-detect-installation" v-model="retail_install_option" @click="retailAutoDetect">
-                            <label for="auto-detect-installation">Auto-detect installation</label>
+                            <label class="checkbox">
+                                <input type="radio" value="auto-detect-installation" v-model="retail_install_option" @change="retailAutoDetect">
+                                Auto-detect installation
+                            </label>
                             <br>
-                            <input type="radio" id="select-installation-folder" value="select-installation-folder" v-model="retail_install_option" @click="retail_data_path = ''">
-                            <label for="select-installation-folder">Select installation folder</label>
+                            <labe class="checkbox">
+                                <input type="radio" value="select-installation-folder" v-model="retail_install_option" @change="retail_data_path = ''">
+                                Select installation folder
+                            </labe>
                             <br>
-                            <input type="radio" id="select-installer-file" value="select-installer-file" v-model="retail_install_option" @click="retail_data_path = ''">
-                            <label for="select-installer-file">Select GOG installer file</label>
+                            <label class="checkbox">
+                                <input type="radio" value="select-installer-file" v-model="retail_install_option" @change="retail_data_path = ''">
+                                Select GOG installer file
+                            </label>
                         </div>
                     </form>
                     <p v-if="retail_install_option === 'select-installation-folder'">
@@ -490,7 +493,7 @@ export default {
                     </p>
                     <p>
                         <div class="input-group" :style="{ visibility: (retail_install_option !== 'auto-detect-installation') ? 'visible' : 'hidden' }">
-                            <input type="text" class="form-control" v-model="retail_data_path" :disabled="retail_searching">
+                            <input type="text" class="form-control" v-model="retail_data_path">
                             <span class="input-group-btn">
                                 <button class="btn btn-default inline-button" @click.prevent="selectRetailLocation">Browse...</button>
                             </span>
