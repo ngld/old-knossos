@@ -453,7 +453,9 @@ export default {
                 <div v-if="popup_mode === 'retail_prompt'">
                     <p>
                         <span v-if="mod_install_attempted">You need the FreeSpace 2 data files to play this mod.<br></span>
-                        Choose how you want to install FreeSpace 2.
+                        Choose how you want to install FreeSpace 2. You can buy it from
+                        <a href="https://www.gog.com/game/freespace_2" class="open-ext">GOG</a>
+                        or <a href="https://store.steampowered.com/app/273620/Freespace_2/" class="open-ext">Steam</a>.
                     </p>
                     <form class="form-horizontal col-xs-12">
                         <div class="form-group">
