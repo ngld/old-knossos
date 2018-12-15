@@ -604,19 +604,28 @@ export default {
                 <a :href="'https://fsnebula.org/mod/' + encodeURIComponent(selected_mod.id)" class="open-ext">Download Link</a>
             </div>
             <div class="dev-instructions" v-else>
-                <!-- TODO realign this block to upper-left. Centering looks bad. -->
-                Here you can
+                <p>
+                    This tab has advanced features that can help you get started
+                    with FreeSpace Open modding.
+                </p>
+                <p>
+                    Here you can
+                </p>
                 <ul>
                     <li>create new mods</li>
                     <li>edit installed mods</li>
                     <li>apply experimental mod settings</li>
-                    <li>work with the mission editor (FRED)</li>
                     <li>customize a mod's command line options (flags)</li>
                 </ul>
                 <p>
-                    This tab is both an "advanced" section and also a great place<br>
-                    to get started with FreeSpace Open modding.
-                </p>                 
+                    Players on Windows can also work with the mission editor FRED.
+                    <!-- TODO Include a link somewehre "for more information about FRED" to FS Wiki or FREDdocs or something. -->
+                </p>
+                <p>
+                     A version of FRED for all platforms called qtFRED is under development.
+                    <a href="https://www.hard-light.net/forums/index.php?topic=94565.0" class="open-ext">This forum thread</a> tracks its progress.
+                </p>
+                <!-- TODO including a few carefully chosen links to online modding resources might be a good use of space. -->
             </div>
             <div class="form-box" v-if="selected_mod">
                 <div class="tabcorner"></div>
