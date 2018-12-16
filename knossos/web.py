@@ -1750,6 +1750,14 @@ class WebBridge(QtCore.QObject):
     def rewriteModJson(self):
         tasks.run_task(tasks.RewriteModMetadata(center.installed.get_list()))
 
+    @QtCore.Slot()
+    def showTempHelpPopup(self):
+        QtWidgets.QMessageBox.information(None, 'Knossos',
+                                          'The help system isn\'t implemented yet, but you '
+                                          'can ask for help on the <a href="https://discord.gg/qfReB8t">#knossos</a> '
+                                          'channel on Discord or on the '
+                                          '<a href="https://www.hard-light.net/forums/index.php?topic=94068.0">'
+                                          'Knossos release thread</a> on the Hard Light Productions forums.')
 
 if QtWebChannel:
     BrowserCtrl = WebBridge
