@@ -112,7 +112,7 @@ export default {
 
     methods: {
         showRetailPrompt() {
-            vm.showRetailPrompt();
+            vm.showRetailPrompt(false);
         },
 
         openModFolder() {
@@ -553,7 +553,7 @@ export default {
     <div>
         <div class="scroll-style mlist">
             <button class="mod-btn btn-link-blue" @click.prevent="openCreatePopup"><span class="btn-text">CREATE</span></button>
-            <!-- <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL RETAIL</button> -->
+            <!-- <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL FS2</button> -->
 
             <a href="#" v-for="mod in mods" v-if="mod.dev_mode" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>
         </div>
