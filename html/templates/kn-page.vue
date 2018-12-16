@@ -475,11 +475,11 @@ export default {
                     </form>
                     <p v-if="retail_install_option === 'select-installation-folder'">
                         Select the folder that has the FreeSpace 2 data files. The folder should include the file <strong>Root_fs2.vp</strong>.<br>
-                        Knossos will copy the files into the Knossos folder.
+                        Knossos will copy the files into the Knossos library.
                     </p>
                     <p v-else-if="retail_install_option === 'select-installer-file'">
                         Select the GOG FreeSpace 2 installer (example: setup_freespace2_2.0.0.8.exe).<br>
-                        Knossos will extract the data files from the installer.
+                        Knossos will extract the data files from the installer into the Knossos library.
                     </p>
                     <p v-else>
                         <span v-if="retail_searching"><strong>Searching files...</strong></span>
