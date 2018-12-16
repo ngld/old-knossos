@@ -114,12 +114,18 @@ export default {
 
         showRetailPrompt() {
             vm.showRetailPrompt(false);
+        },
+
+        updateRetailInstalled() {
+            call(fs2mod.getRetailInstallStatus, (status) => {
+                this.retail_installed = status;
+            });
         }
     }
 };
 </script>
 <template>
-    <div class="row form-horizontal settings-container">
+    <div class="row form-horizontal settings-container" @retail-install-status-changed="updateRetailInstalled">
         <div class="col-sm-6">
             <h2>
                 Settings

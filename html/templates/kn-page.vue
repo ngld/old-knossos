@@ -282,7 +282,7 @@ export default {
             call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
                 if (result) {
                     this.popup_visible = false;
-                    // TODO emit/generate event to trigger update on settings page
+                    this.$emit('retail-install-status-changed');
                 }
             });
 
