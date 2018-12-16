@@ -85,7 +85,7 @@ export default {
         },
 
         showHelp() {
-            alert('Not yet implemented! Sorry.');
+            fs2mod.showTempHelpPopup();
         },
 
         updateList() {
