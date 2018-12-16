@@ -363,13 +363,11 @@ class HellWindow(Window):
 
     def search_mods(self):
         mods = None
-        omit_fs2_mods = False
 
         if self._mod_filter in ('home', 'develop'):
             mods = center.installed.mods
         elif self._mod_filter == 'explore':
             mods = center.mods.mods
-            omit_fs2_mods = not center.installed.has('FS2') and not center.settings['show_fs2_mods_without_retail']
         else:
             mods = {}
 
