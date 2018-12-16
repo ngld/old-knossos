@@ -606,7 +606,7 @@ export default {
             <div class="dev-instructions" v-else>
                 <p>
                     This tab has advanced features that can help you get started
-                    with FreeSpace Open modding.
+                    with modding for FreeSpace Open (FSO).
                 </p>
                 <p>
                     Here you can
@@ -619,13 +619,15 @@ export default {
                 </ul>
                 <p>
                     Players on Windows can also work with the mission editor FRED.
-                    <!-- TODO Include a link somewehre "for more information about FRED" to FS Wiki or FREDdocs or something. -->
                 </p>
                 <p>
-                     A version of FRED for all platforms called qtFRED is under development.
-                    <a href="https://www.hard-light.net/forums/index.php?topic=94565.0" class="open-ext">This forum thread</a> tracks its progress.
+                     A version of FRED for all platforms called qtFRED is available, but it's not yet as full-featured as FRED.<br>
+                    <a href="https://www.hard-light.net/forums/index.php?topic=94565.0" class="open-ext">This forum thread</a> tracks its development.
                 </p>
-                <!-- TODO including a few carefully chosen links to online modding resources might be a good use of space. -->
+                <p>
+                    Check out our <a href="https://docs.google.com/document/d/1oHq1YRc1eXbCgW-NqqKo1-6N_myfZzoBdwZuP16XImA/edit?pli=1#heading=h.fk85esz24kjw" class="open-ext">Mod Creation Guide</a>
+                    to help you get started.
+                </p>
             </div>
             <div class="form-box" v-if="selected_mod">
                 <div class="tabcorner"></div>
@@ -658,11 +660,11 @@ export default {
                         <div v-if="selected_mod.packages.length === 0">
                             <h4>Dev Help</h4>
 
-                            <p class="help-block">
+                            <p>
                                 You can't edit this mod since it doesn't have any packages, yet.
                             </p>
 
-                            <p class="help-block">
+                            <p>
                                 To create a package click the "+ Package" button on the left.<br>
                                 A package is simply a folder for mod resources.  Most mods will only ever need a single
                                 package that contains everything.  Multiple packages are handy for larger mods with
@@ -722,8 +724,10 @@ export default {
                                         <option value="mod">Mod</option>
                                         <option value="tc">Total Conversion</option>
                                         <option value="engine">FSO build</option>
+                                        <!-- TODO uncomment once extension and tool types are supported
                                         <option value="tool">Tool</option>
                                         <option value="ext">Extension</option>
+                                        -->
                                     </select>
 
                                     <span class="help-block" v-if="selected_mod.type === 'mod'">
@@ -736,9 +740,9 @@ export default {
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'engine'">
-                                        A build of the FreeSpace 2 Open (FSO) engine (fs2_open*.exe, fs2_open*.app, etc.)
+                                        A build of the FreeSpace 2 Open (FSO) engine (fs2_open*.exe, fs2_open*.AppImage, fs2_open*.app, etc.)
                                     </span>
-
+                                    <!-- TODO uncomment once tools and extensions are supported
                                     <span class="help-block" v-if="selected_mod.type === 'tool'">
                                         Software other than the FreeSpace 2 Open (FSO) engine
                                         Examples include FRED (mission editor) and PCS2 (model converter).
@@ -747,6 +751,7 @@ export default {
                                     <span class="help-block" v-if="selected_mod.type === 'ext'">
                                         A change that overrides, such as custom HUD tables
                                     </span>
+                                    -->
                                 </div>
                             </div>
 
