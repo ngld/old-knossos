@@ -518,14 +518,20 @@ class WebBridge(QtCore.QObject):
         if platform.system() == 'Windows':
             if self._is_program_files_path(path):
                 result = QtWidgets.QMessageBox.question(None, 'Knossos',
-                   self.tr('Using a folder in "Program Files" for Knossos is not recommended, because you will always have to run Knossos as Administrator. Use anyway?'))
+                   self.tr('Using a folder in "Program Files" for the Knossos '
+                           'library is not recommended, because you will have '
+                           'to always run Knossos as Administrator. Use anyway?'))
                 if result == QtWidgets.QMessageBox.No:
                     return False
         if os.path.isdir(path):
-            # TODO skip this block if the folder has the Knossos marker JSON
-            if len(self._filter_out_hidden_files(os.listdir(path))) > 0:
+            if os.path.exists(os.path.join(path, center.get_library_json_name())):
+                logging.info('Knossos library marker file found in selected path')
+                # TODO log info from JSON file as debug messages?
+            elif len(self._filter_out_hidden_files(os.listdir(path))) > 0:
                 result = QtWidgets.QMessageBox.question(None, 'Knossos',
-                    self.tr('Using a non-empty folder for Knossos is not recommended, because it can cause problems for Knossos. Use anyway?'))
+                    self.tr('Using a non-empty folder for the Knossos library '
+                            'is not recommended, because it can cause problems'
+                            ' for Knossos. Use anyway?'))
                 if result == QtWidgets.QMessageBox.No:
                     return False
         if not os.path.lexists(path):
@@ -552,6 +558,12 @@ class WebBridge(QtCore.QObject):
         tasks.run_task(tasks.LoadLocalModsTask())
         return True
 
+    # For when center.installed has not yet been initialized
+    @QtCore.Slot(result=bool)
+    def checkIfRetailInstalled(self):
+        fs2_json_path = os.path.join(center.settings['base_path'], 'FS2', 'mod.json')
+        return os.path.exists(fs2_json_path)
+    
     @QtCore.Slot(int)
     def getSettings(self, cb_id):
         def cb():
@@ -612,6 +624,7 @@ class WebBridge(QtCore.QObject):
         # Huge thanks go to jr2 for discovering everything implemented here to detect possible FS2 retail installs.
         # --ngld
 
+        # TODO double-check GOG Galaxy path is current (check if registry includes path to GOG Galaxy data)
         folders = [r'C:\GOG Games\Freespace2', r'C:\Games\Freespace2', r'C:\Games\Freespace 2']
 
         reg = QtCore.QSettings(r'HKEY_CURRENT_USER\Software\Valve\Steam', QtCore.QSettings.NativeFormat)

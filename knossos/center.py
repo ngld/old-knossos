@@ -109,6 +109,8 @@ class _SignalContainer(QtCore.QObject):
 
 signals = _SignalContainer()
 
+def get_library_json_name():
+    return 'kn_library.json'
 
 def save_settings():
     settings['hash_cache'] = dict()

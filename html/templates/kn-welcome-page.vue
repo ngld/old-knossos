@@ -38,7 +38,7 @@ export default {
 
     methods: {
         selectDataFolder() {
-            call(fs2mod.browseFolder, 'Select a folder for Knossos data', this.data_path, (path) => {
+            call(fs2mod.browseFolder, 'Select a folder for the Knossos library', this.data_path, (path) => {
                 if(path) this.data_path = path;
             });
         },
@@ -46,6 +46,11 @@ export default {
         finishFirst() {
             call(fs2mod.setBasePath, this.data_path, (result) => {
                 if(result) {
+                    call(fs2mod.checkIfRetailInstalled, (result) => {
+                        if(result) {
+                            this.retail_installed = true;
+                        }
+                    });
                     this.step++;
                 }
             });
@@ -120,7 +125,7 @@ export default {
         <div v-if="step === 1">
             <h1>Welcome!</h1>
 
-            <p>Select a folder where Knossos will store the game data (models, textures, etc.).</p>
+            <p>Select a folder for the Knossos library, where Knossos will store the game data (models, textures, etc.).</p>
 
             <form class="form-horizontal">
                 <div class="input-group">
@@ -140,10 +145,18 @@ export default {
 
         <div v-else-if="step === 2">
             <form class="form-horizontal">
-                <div v-if="retail_found">
+                <div v-if="retail_installed">
+                    <h1>FreeSpace 2 already installed</h1>
+                    <p>The Knossos library already has FreeSpace 2 installed.</p>
+                    <p>You will be able to play the original (retail) FreeSpace 2 and FreeSpace 2 mods (fan-made campaigns).</p>
+                    <p>
+                        <button class="btn btn-primary" @click.prevent="step++">Continue</button>
+                    </p>
+                </div>
+                <div v-else-if="retail_found">
                     <h1>FreeSpace 2 installation found</h1>
                     <p>We found a FreeSpace 2 installation in the location below. Is this correct?</p>
-                    <p>If you click "Yes", Knossos will copy the FreeSpace 2 files into the Knossos folder.</p>
+                    <p>If you click "Yes", Knossos will copy the FreeSpace 2 files into the Knossos library.</p>
 
                     <p><strong>{{ retail_path }}</strong></p>
 
@@ -167,7 +180,7 @@ export default {
                     <h2>Use an existing FreeSpace 2 installation</h2>
                     <p>
                         Select the folder that has the FreeSpace 2 data files. The folder should include the file <strong>Root_fs2.vp</strong>.
-                        Knossos will copy the files into the Knossos folder.
+                        Knossos will copy the files into the Knossos library.
                     </p>
 
                     <div class="input-group">
@@ -182,7 +195,7 @@ export default {
 
                     <p>
                         Download the GOG FreeSpace 2 installer (example: setup_freespace2_2.0.0.8.exe) and select it.
-                        Knossos will extract the data files from the installer.
+                        Knossos will extract the data files from the installer into the Knossos library.
                     </p>
                     <div class="input-group">
                         <input type="text" class="form-control" v-model="installer_path">
