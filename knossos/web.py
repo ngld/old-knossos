@@ -498,6 +498,21 @@ class WebBridge(QtCore.QObject):
         else:
             return []
 
+    @QtCore.Slot(str, result=str)
+    def verifyRootVPFolder(self, vp_path):
+        vp_path_components = os.path.split(vp_path)
+        if len(vp_path_components) != 2 or vp_path_components[1].lower() != 'root_fs2.vp':
+            QtWidgets.QMessageBox.critical(
+                None, 'Knossos', self.tr('The selected path is not to root_fs2.vp!'))
+            return ''
+        vp_dir = vp_path_components[0]
+        if not util.is_fs2_retail_directory(vp_dir):
+            QtWidgets.QMessageBox.critical(
+                None, 'Knossos', self.tr('The selected root_fs2.vp\'s folder '
+                                         'does not have the FreeSpace 2 files!'))
+            return ''
+        return vp_dir
+
     def _filter_out_hidden_files(self, files):
         if platform.system() != 'Windows':
             return [file for file in files if not file.startswith('.')]
@@ -624,7 +639,6 @@ class WebBridge(QtCore.QObject):
         # Huge thanks go to jr2 for discovering everything implemented here to detect possible FS2 retail installs.
         # --ngld
 
-        # TODO double-check GOG Galaxy path is current (check if registry includes path to GOG Galaxy data)
         folders = [r'C:\GOG Games\Freespace2', r'C:\Games\Freespace2', r'C:\Games\Freespace 2']
 
         reg = QtCore.QSettings(r'HKEY_CURRENT_USER\Software\Valve\Steam', QtCore.QSettings.NativeFormat)

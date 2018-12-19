@@ -7,6 +7,7 @@ export default {
         retail_searching: false,
         retail_found: false,
         retail_path: '',
+        root_vp_path: '',
         retail_installed: false,
 
         installer_path: '',
@@ -64,9 +65,18 @@ export default {
             });
         },
 
-        selectRetailFolder() {
-            call(fs2mod.browseFolder, 'Select your FreeSpace 2 folder', this.retail_path, (path) => {
-                if(path) this.retail_path = path;
+        selectRetailRootVP() {
+            call(fs2mod.browseFiles, 'Select your FreeSpace 2 folder\'s Root_fs2.vp', this.root_vp_path, '*.vp', (vp_files) => {
+                if (vp_files.length > 0) {
+                    this.root_vp_path = vp_files[0];
+                    call(fs2mod.verifyRootVPFolder, this.root_vp_path, (retail_path) => {
+                        if(retail_path) {
+                            this.retail_path = retail_path;
+                        } else {
+                            this.root_vp_path = '';
+                        }
+                    });
+                }
             });
         },
 
@@ -179,22 +189,22 @@ export default {
 
                     <h2>Use an existing FreeSpace 2 installation</h2>
                     <p>
-                        Select the folder that has the FreeSpace 2 data files. The folder should include the file <strong>Root_fs2.vp</strong>.
+                        Browse to the folder that has the FreeSpace 2 data files and find the file <strong>Root_fs2.vp</strong> or <strong>root_fs2.vp</strong>.<br>
                         Knossos will copy the files into the Knossos library.
                     </p>
 
                     <div class="input-group">
-                        <input type="text" class="form-control" v-model="retail_path">
+                        <input type="text" class="form-control" v-model="root_vp_path">
                         <span class="input-group-btn">
-                            <button class="btn btn-default" @click.prevent="selectRetailFolder">Browse...</button>
+                            <button class="btn btn-default" @click.prevent="selectRetailRootVP">Browse...</button>
                             <button class="btn btn-primary" @click.prevent="processRetail(true)">Continue</button>
                         </span>
                     </div>
 
-                    <h2>Use the GOG FreeSpace 2 installer (all platforms)</h2>
+                    <h2>Use the GOG FreeSpace 2 installer</h2>
 
                     <p>
-                        Download the GOG FreeSpace 2 installer (example: setup_freespace2_2.0.0.8.exe) and select it.
+                        Download the GOG FreeSpace 2 installer (example: setup_freespace2_2.0.0.8.exe) and select it.<br>
                         Knossos will extract the data files from the installer into the Knossos library.
                     </p>
                     <div class="input-group">
