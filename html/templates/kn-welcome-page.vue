@@ -227,7 +227,7 @@ export default {
             <h1>Suit up, pilot!</h1>
 
             <p>
-                Now you can start playing <span v-if="retail_installed">FreeSpace 2 retail and mods (fan-made campaigns) in addition to</span>
+                Now you can play <span v-if="retail_installed">FreeSpace 2 mods and</span>
                 non-FreeSpace "total conversion" games for FreeSpace Open! You can find games on the <a href="#" @click.prevent="goToExplore">Explore</a> tab.
             </p>
 
