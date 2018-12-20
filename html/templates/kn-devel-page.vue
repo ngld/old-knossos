@@ -661,17 +661,26 @@ export default {
                             <h4>Dev Help</h4>
 
                             <p>
-                                You can't edit this mod since it doesn't have any packages, yet.
+                                You can't edit this mod because it doesn't have any packages yet.
                             </p>
 
                             <p>
-                                To create a package click the "+ Package" button on the left.<br>
-                                A package is simply a folder for mod resources.  Most mods will only ever need a single
-                                package that contains everything.  Multiple packages are handy for larger mods with
-                                different installation options.  For example, a larger mod could have a main package
-                                called 'main' and an optional voice package called 'voice'.<br>
-                                If you want to, Knossos can then pack everything in that folder automatically
-                                into a VP when you upload. Click on the package name in the top tab list to edit it.
+                                A <em>package</em> is a folder for mod data (missions, new mdoels, etc.).
+                                Most mods need only one package that contains all of the mod's data.
+                                Splitting the data into multiple packages can be useful for larger mods,
+                                which might have a main package and optional packages for voice acting or high-detail models.
+                            </p>
+                            <p>
+                                <!-- TODO consistent terminology! what's the official term for Nebula? mod repository? server? Also what is its user-facing name? Nebula? FSNebula? FS Nebula? -->
+                                <!-- Just because the URL says fsnebula doesn't mean we have to call it "FS Nebula". I'm a fan of just calling it "Nebula". -->
+                                When you release your mod, you should pack each package into a single file called a <em>VP file</em>.
+                                VP file names end with ".vp". Knossos can automatically pack your package folders into
+                                VP files when you upload your mod to the <a href="https://fsnebula.org/" class="open-ext">Nebula</a> mod
+                                repository.
+                            </p>
+                            <p>
+                                To create a package, click the "Modify Mod" tab on the left and then click the "+ Package" button.<br>
+                                To edit a packge, click on the package name in the top tab list.
                             </p>
                         </div>
                         <div v-else-if="!selected_pkg && page === 'details'">
@@ -731,20 +740,20 @@ export default {
                                     </select>
 
                                     <span class="help-block" v-if="selected_mod.type === 'mod'">
-                                        (Default) A campaign based either on FreeSpace 2 (retail) or on a total conversion (TC)<br>
+                                        A campaign based on FreeSpace 2 (retail) or on a total conversion (TC).<br>
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'tc'">
-                                        A standalone game that doesn't depend on other mods and doesn't use FS2 files<br>
-                                        Mods for TCs should still use the "Mod" type.
+                                        A standalone game that doesn't depend on other mods and doesn't use FS2 files.<br>
+                                        <strong>Mods for TCs should use the "Mod" type.</strong>
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'engine'">
-                                        A build of the FreeSpace 2 Open (FSO) engine (fs2_open*.exe, fs2_open*.AppImage, fs2_open*.app, etc.)
+                                        A build of the FreeSpace Open (FSO) engine (fs2_open*.exe, fs2_open*.AppImage, fs2_open*.app, etc.)
                                     </span>
                                     <!-- TODO uncomment once tools and extensions are supported
                                     <span class="help-block" v-if="selected_mod.type === 'tool'">
-                                        Software other than the FreeSpace 2 Open (FSO) engine
+                                        Software other than the FreeSpace Open (FSO) engine
                                         Examples include FRED (mission editor) and PCS2 (model converter).
                                     </span>
 
