@@ -241,8 +241,10 @@ export default {
             <hr>
 
             <div class="welcome-login">
-                Are you a mod developer? Log in!
-                <div class="login-form">
+                Are you a mod developer?<br>
+                Log into the <a href="https://fsnebula.org/" class="open-ext">Nebula</a> mod repository!<br>
+                You can also log in later from the settings.
+                <div class="login-form pull-right">
                     <div class="form-group">
                         <label class="col-sm-4 welcome-label">Username:</label>
                         <div class="col-sm-8">
@@ -316,7 +318,7 @@ export default {
                     Without FreeSpace 2, you won't be able to play most games that Knossos offers.
                     However, you <strong>can</strong> still play "total conversion" (TC) games, which don't use the FreeSpace 2 data files.
                 </p>
-                <p>You can install FreeSpace 2 at any time from the Settings.</p>
+                <p>You can install FreeSpace 2 at any time from the settings.</p>
 
                 <div class="popup-buttons">
                     <button class="btn btn-default" @click.prevent="skipRetail">Skip</button>
