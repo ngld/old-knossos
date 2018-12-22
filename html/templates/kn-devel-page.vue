@@ -161,6 +161,10 @@ export default {
             this.caps = null;
             this.video_urls = mod.videos.join("\n");
 
+            if(this.selected_mod.packages.length === 0) {
+                this.mod_box_tab = 'modify';
+            }
+
             this.tools = [];
             call(fs2mod.getModTools, this.selected_mod.id, this.selected_mod.version, (tools) => {
                 this.tools = tools;
