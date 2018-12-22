@@ -281,6 +281,7 @@ iframe {
     color: #828282;
     padding: 3px;
     font-size: 16px;
+    font-weight: normal;
     border: none;
     cursor: pointer;
     width: 150px;
@@ -292,6 +293,11 @@ iframe {
 
 .filter-content-btn:active {
     color: white;
+}
+
+.filter-content-btn.selected {
+    color: white;
+    font-weight: bold;
 }
 
 .filter-lines {

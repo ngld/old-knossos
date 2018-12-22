@@ -45,6 +45,8 @@ fso_flags = None
 has_retail = None
 raven = None
 raven_handler = None
+# FIXME TODO: save sort_type between sessions
+sort_type = 'alphabetical'
 
 settings = {
     'fs2_bin': None,

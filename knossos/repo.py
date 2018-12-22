@@ -459,6 +459,7 @@ class Mod(object):
     attachments = None
     first_release = None
     last_update = None
+    last_played = None
     actions = None
     packages = None
 

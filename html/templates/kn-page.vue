@@ -66,7 +66,14 @@ export default {
         // retail prompt
         retail_searching: true,
         retail_found: false,
-        retail_data_path: ''
+        retail_data_path: '',
+        // FIXME TEMP VAR for testing
+        sort_types: ['alphabetical', 'last_played', 'last_released', 'last_updated'],
+        sort_type_index: 0,
+        // END TEMP
+        // FIXME TODO: save sort_type between sessions
+        sort_type: 'alphabetical'
+
     }),
 
     watch: {
@@ -286,6 +293,14 @@ export default {
             if(this.popup_pkg_folder === '') {
                 this.popup_pkg_folder = this.popup_pkg_name.toLowerCase().replace(/ /g, '_');
             }
+        },
+
+        setSortType(sort_type_UNUSED_FOR_NOW) {
+            // FIXME TEMP rotation of sort_type for testing
+            this.sort_type_index = (this.sort_type_index === this.sort_types.length -1) ? 0 : this.sort_type_index + 1;
+            let sort_type = this.sort_types[this.sort_type_index];
+            this.sort_type = sort_type;
+            fs2mod.setSortType(sort_type);
         }
     }
 };
@@ -316,7 +331,8 @@ export default {
             </a>
         </div>
         <div id="tab-bar-misc" class="keep-left" v-if="page === 'modlist'">
-            <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
+            <!-- FIXME TEMP little hack for testing until the button listeners are added -->
+            <a href="#" @click.prevent="setSortType('last_played'); openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
         </div>
         <div id="tab-bar-misc" class="keep-right" v-if="page !== 'modlist'">
             <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
@@ -325,17 +341,19 @@ export default {
         <div class="filter-container" v-if="page === 'modlist'">
             <button class="filterbtn" @click="show_filter = true"></button>
             <div class="filter-content" v-show="show_filter" @click="show_filter = false">
+                <!-- FIXME get event listening working!! -->
                 <div class="filter-lines">
-                    <button class="filter-content-btn last-played-btn">Last Played</button>
+                    <!-- DISCUSSME can the class binding be done by a computed property that takes the sort_type as an arg? -->
+                    <button :class="{'filter-content-btn': true,  selected: sort_type === 'alphabetical'}">Alphabetical</button>
                 </div>
                 <div class="filter-lines">
-                    <button class="filter-content-btn alphabetical-btn">Alphabetical</button>
+                    <button :class="{'filter-content-btn': true, selected: sort_type === 'last_played'}">Last Played</button>
                 </div>
                 <div class="filter-lines">
-                    <button class="filter-content-btn last-updated-log-btn">Last Updated</button>
+                    <button :class="{'filter-content-btn': true, selected: sort_type === 'last_released'}">Last Released</button>
                 </div>
                 <div class="filter-lines">
-                    <button class="filter-content-btn last-released-btn">Last Released</button>
+                    <button :class="{'filter-content-btn': true, selected: sort_type === 'last_updated'}">Last Updated</button>
                 </div>
             </div>
         </div>

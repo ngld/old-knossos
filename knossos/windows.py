@@ -251,6 +251,29 @@ class Window(QtCore.QObject):
     def tr(self, *args):
         return translate(self.__class__.__name__, *args)
 
+def _build_sort_title(mod):
+    # Maybe I should add "Just " to the list?
+    prefixes = ('the ', 'a ')
+    title = mod['title']
+
+    for p in prefixes:
+        pl = len(p)
+        if title[:pl].lower() == p:
+            title = title[pl:]
+    return title
+def _build_sort_date(mod_date):
+    if mod_date:
+        return mod_date
+    else:
+        return '0000-00-00'
+# FIXME figure out where/how to properly set last_played
+# #     to ensure it's always defined
+def _build_sort_last_played(mod):
+    return _build_sort_date(mod.get('last_played', ''))
+def _build_sort_last_released(mod):
+    return _build_sort_date(mod['first_release'])
+def _build_sort_last_updated( mod):
+    return _build_sort_date(mod['last_update'])
 
 class HellWindow(Window):
     _tasks = None
@@ -365,6 +388,15 @@ class HellWindow(Window):
         else:
             msg = self.tr('There\'s an update available!\nYou should update to Knossos %s.') % str(version)
             QtWidgets.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
+    def _get_sort_parameters(self):
+        sort_key_dict = {'alphabetical': _build_sort_title,
+                         'last_played': _build_sort_last_played,
+                         'last_released': _build_sort_last_released,
+                         'last_updated': _build_sort_last_updated
+                         }
+        sort_key = sort_key_dict[center.sort_type]
+        sort_reverse = center.sort_type != 'alphabetical'
+        return sort_key, sort_reverse
 
     def search_mods(self, search_filter=None, ignore_retail_dependency=False):
         mods = None
@@ -462,21 +494,9 @@ class HellWindow(Window):
 
                 result.append(item)
 
-        # Maybe I should add "Just " to the list?
-        prefixes = ('the ', 'a ')
-
-        def build_sort_title(m):
-            title = m['title']
-
-            for p in prefixes:
-                pl = len(p)
-                if title[:pl].lower() == p:
-                    title = title[pl:]
-
-            return title
-
-        result.sort(key=build_sort_title)
-        return result, search_filter
+       sort_key, sort_reverse = self._get_sort_parameters()
+        result.sort(key=sort_key, reverse=sort_reverse)
+        return result, self._mod_filter
 
     def _compute_mod_list_diff(self, new_mod_list):
         mod_list_cache = None
@@ -504,6 +524,9 @@ class HellWindow(Window):
 
     def get_explore_mod_list_cache_json(self):
         return json.dumps(self._explore_mod_list_cache)
+=======
+
+>>>>>>> Implement mod sorting (WIP)
 
     def update_mod_list(self):
         if center.settings['base_path'] is not None:
