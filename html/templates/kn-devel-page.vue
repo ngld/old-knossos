@@ -618,7 +618,7 @@ export default {
                     <li>customize a mod's command line options (flags)</li>
                 </ul>
                 <p>
-                    Players on Windows can also work with the mission editor FRED.
+                    Players on Windows can also make missions with the mission editor FRED.
                 </p>
                 <p>
                      A version of FRED for all platforms called qtFRED is available, but it's not yet as full-featured as FRED.<br>
@@ -679,7 +679,7 @@ export default {
                                 repository.
                             </p>
                             <p>
-                                To create a package, click the "Modify Mod" tab on the left and then click the "+ Package" button.<br>
+                                To create a package, click the "+ Package" button on the left.<br>
                                 To edit a packge, click on the package name in the top tab list.
                             </p>
                         </div>
@@ -745,7 +745,7 @@ export default {
 
                                     <span class="help-block" v-if="selected_mod.type === 'tc'">
                                         A standalone game that doesn't depend on other mods and doesn't use FS2 files.<br>
-                                        <strong>Mods for TCs should use the "Mod" type.</strong>
+                                        Mods for TCs should use the "Mod" type.
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'engine'">
@@ -753,7 +753,7 @@ export default {
                                     </span>
                                     <!-- TODO uncomment once tools and extensions are supported
                                     <span class="help-block" v-if="selected_mod.type === 'tool'">
-                                        Software other than the FreeSpace Open (FSO) engine
+                                        Software other than the FreeSpace Open (FSO) engine.<br>
                                         Examples include FRED (mission editor) and PCS2 (model converter).
                                     </span>
 
@@ -779,7 +779,7 @@ export default {
                                     <button class="btn btn-small btn-default" @click.prevent="openDescEditor">Open Editor</button>
 
                                     <p class="help-block">
-                                        Use BBCode here. To preview your description, save, go to the Home tab,
+                                        Use <a href="https://en.wikipedia.org/wiki/BBCode" class="open-ext">BBCode</a> here. To preview your description, save, go to the Home tab,
                                         and go to this mod's Details page.
                                     </p>
                                 </div>
