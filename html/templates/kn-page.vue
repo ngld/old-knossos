@@ -332,7 +332,7 @@ export default {
         </div>
         <div id="tab-bar-misc" class="keep-left" v-if="page === 'modlist'">
             <!-- FIXME TEMP little hack for testing until the button listeners are added -->
-            <a href="#" @click.prevent="setSortType('last_played'); openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
+            <a href="#" @click.prevent="setSortType(); openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
         </div>
         <div id="tab-bar-misc" class="keep-right" v-if="page !== 'modlist'">
             <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>

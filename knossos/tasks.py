@@ -2332,6 +2332,7 @@ def create_retail_mod(dest_path):
         'videos': ['https://www.youtube.com/watch?v=ufViyhrXzTE'],
         'first_release': '1999-09-30',
         'last_update': '1999-12-03',
+        'last_played': None,
         'folder': dest_path
     })
 

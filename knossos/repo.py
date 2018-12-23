@@ -497,6 +497,7 @@ class Mod(object):
         self.attachments = values.get('attachments', [])
         self.first_release = values.get('first_release', None)
         self.last_update = values.get('last_update', None)
+        self.last_played = values.get('last_played', None)
         self.actions = values.get('actions', [])
 
         self.packages = []
@@ -541,6 +542,9 @@ class Mod(object):
         if self.last_update:
             self.last_update = datetime.strptime(self.last_update, '%Y-%m-%d')
 
+        if self.last_played:
+            self.last_played = datetime.strptime(self.last_played, '%Y-%m-%d')
+
         # Enforce relative paths
         for act in self.actions:
             if 'paths' in act:
@@ -570,6 +574,7 @@ class Mod(object):
             'attachments': self.attachments,
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
             'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
+            'last_played': self.last_played.strftime('%Y-%m-%d') if self.last_played else None,
             'actions': self.actions,
             'packages': [pkg.get() for pkg in self.packages]
         }
@@ -969,6 +974,7 @@ class InstalledMod(Mod):
             'attachments': self.attachments[:],
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
             'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
+            'last_played': self.last_played.strftime('%Y-%m-%d') if self.last_played else None,
             'cmdline': self.cmdline,
             'mod_flag': self.mod_flag,
             'dev_mode': self.dev_mode,

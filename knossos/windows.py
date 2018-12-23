@@ -262,14 +262,9 @@ def _build_sort_title(mod):
             title = title[pl:]
     return title
 def _build_sort_date(mod_date):
-    if mod_date:
-        return mod_date
-    else:
-        return '0000-00-00'
-# FIXME figure out where/how to properly set last_played
-# #     to ensure it's always defined
+    return mod_date if mod_date else '0000-00-00'
 def _build_sort_last_played(mod):
-    return _build_sort_date(mod.get('last_played', ''))
+    return _build_sort_date(mod['last_played'])
 def _build_sort_last_released(mod):
     return _build_sort_date(mod['first_release'])
 def _build_sort_last_updated( mod):

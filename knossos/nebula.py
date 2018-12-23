@@ -124,6 +124,7 @@ class NebulaClient(object):
             'logo': logo_chk,
             'tile': tile_chk,
             'first_release': mod.first_release.strftime('%Y-%m-%d') if mod.first_release else None,
+            # DISCUSSME why doesn't last_update appear here? should played?
             'members': []
         })
         return True
@@ -138,6 +139,7 @@ class NebulaClient(object):
             'logo': logo_chk,
             'tile': tile_chk,
             'first_release': mod.first_release.strftime('%Y-%m-%d') if mod.first_release else None,
+            # DISCUSSME why doesn't last_update appear here? should played?
             'members': [center.settings['neb_user']]
         })
         return True

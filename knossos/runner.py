@@ -15,6 +15,7 @@
 from __future__ import absolute_import, print_function
 
 import ctypes.util
+import datetime
 import json
 import logging
 import os
@@ -486,6 +487,8 @@ def run_mod(mod, tool=None, exe_label=None):
             'selected_exe': sel_exe['file']
         }))
     else:
+        if not mod.dev_mode:
+            mod.last_played = datetime.date.today()
         run_mod_ex(mod, sel_exe['file'], [path for path, label in mod_flag])
 
 

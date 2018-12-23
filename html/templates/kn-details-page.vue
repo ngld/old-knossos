@@ -202,6 +202,8 @@ export default {
                 <div class="date-frame pull-right">
                     <div v-if="mod.first_release">Release: {{ mod.first_release }}</div>
                     <div v-if="mod.last_update"><em>Last Updated: {{ mod.last_update }}</em></div>
+                    <!-- TODO: use "Today" or "Yesterday" if applicable, perhaps computed property? or do in Python? -->
+                    <div v-if="mod.last_played"><em>Last Played: {{ mod.last_played }}</em></div>
                 </div>
 
                 <button class="link-btn btn-link-blue pull-right" v-if="mod.screenshots.length > 0" @click="showScreens(mod.screenshots)"><span class="btn-text">IMAGES</span></button>
