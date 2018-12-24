@@ -582,7 +582,6 @@ export default {
                         <br>
                     </div>
 
-                    <!-- TODO for any button that brings up a dialog, add the "..." -->
                     <div class="buttonpane" v-if="mod_box_tab === 'modify'">
                         <button @click.prevent="reopenUploadPopup" class="mod-btn btn-link-blue" v-if="(this.mod_map[(this.selected_mod || {}).id] || {}).progress">Uploading...</button>
                         <button @click.prevent="uploadMod" class="mod-btn btn-link-blue" v-else>Upload</button><br>
