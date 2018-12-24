@@ -620,18 +620,16 @@ export default {
                     <li>edit installed mods</li>
                     <li>apply experimental mod settings</li>
                     <li>customize a mod's command line options (flags)</li>
+                    <li>make missions with the mission editors FRED (Windows only, full-featured) and qtFRED (all platforms, <a href="https://www.hard-light.net/forums/index.php?topic=94565.0" class="open-ext">under development</a>)</li>
                 </ul>
                 <p>
-                    Players on Windows can also make missions with the mission editor FRED.
+                    Check out these resources to help you get started:
                 </p>
-                <p>
-                     A version of FRED for all platforms called qtFRED is available, but it's not yet as full-featured as FRED.<br>
-                    <a href="https://www.hard-light.net/forums/index.php?topic=94565.0" class="open-ext">This forum thread</a> tracks its development.
-                </p>
-                <p>
-                    Check out our <a href="https://docs.google.com/document/d/1oHq1YRc1eXbCgW-NqqKo1-6N_myfZzoBdwZuP16XImA/edit?pli=1#heading=h.fk85esz24kjw" class="open-ext">Mod Creation Guide</a>
-                    to help you get started.
-                </p>
+                <ul>
+                    <li><a href="https://docs.google.com/document/d/1oHq1YRc1eXbCgW-NqqKo1-6N_myfZzoBdwZuP16XImA/edit?pli=1#heading=h.fk85esz24kjw" class="open-ext">Knossos Mod Creation Guide</a></li>
+                    <li><a href="http://fredzone.hard-light.net/freddocs/" class="open-ext">FREDdocs</a> classic FRED tutorial</li>
+                    <!-- TODO more -->
+                </ul>
             </div>
             <div class="form-box" v-if="selected_mod">
                 <div class="tabcorner"></div>
@@ -665,27 +663,43 @@ export default {
                             <h4>Dev Help</h4>
 
                             <p>
-                                You can't edit this mod because it doesn't have any packages yet.
+                                Your mod must have at least one package before you can start editing.
                             </p>
 
                             <p>
-                                A <em>package</em> is a folder for mod data (missions, new mdoels, etc.).
-                                Most mods need only one package that contains all of the mod's data.
-                                Splitting the data into multiple packages can be useful for larger mods,
-                                which might have a main package and optional packages for voice acting or high-detail models.
+                                A <em>package</em> is a folder for mod data (missions, models, etc).
+                                Smaller mods might need only one package that contains all of the mod's data.
+                                Larger mods should split their data into multiple packages, such as
                             </p>
+                            <ul>
+                                <li>Core for textual data such as missions and tables</li>
+                                <li>Models for new models and Maps for their textures</li>
+                                <li>Packages for media such as Movies, Music, Sound Effects, and Voice Acting</li>
+                                <li>Optional packages such as high-detail models/textures</li>
+                            </ul>
                             <p>
-                                <!-- TODO consistent terminology! what's the official term for Nebula? mod repository? server? Also what is its user-facing name? Nebula? FSNebula? FS Nebula? -->
-                                <!-- Just because the URL says fsnebula doesn't mean we have to call it "FS Nebula". I'm a fan of just calling it "Nebula". -->
-                                When you release your mod, you should pack each package into a single file called a <em>VP file</em>.
-                                VP file names end with ".vp". Knossos can automatically pack your package folders into
+                                When you release your mod, you should pack each package into an FSO-specific type of uncompressed file called a <em>VP file</em>.
+                                VP file names end with ".vp". Knossos can automatically pack your packages into
                                 VP files when you upload your mod to the <a href="https://fsnebula.org/" class="open-ext">Nebula</a> mod
                                 repository.
                             </p>
                             <p>
                                 To create a package, click the "+ Package" button on the left.<br>
-                                To edit a packge, click on the package name in the top tab list.
+                                To edit a package, click on the package name in the top tab list.
                             </p>
+                            <p>
+                                Some things to consider when deciding how to package your mod:
+                            </p>
+                            <ul>
+                                <li>A VP file can be at most 2 GB.</li>
+                                <li>Each compressed archive file on Nebula contains a single VP file.<br>
+                                Thus a player with an unreliable Internet connection who has to restart a download
+                                will benefit from your mod having packages that aren't huge.</li>
+                                <li>When you upload a new version of your mod, only modified packages are uploaded.<br>
+                                Thus if a new version has just mission fixes and your missions are in
+                                a separate package from models/textures, the new version will have a new missions
+                                package only, meaning a smaller upload for you and smaller downloads for players.</li>
+                            </ul>
                         </div>
                         <div v-else-if="!selected_pkg && page === 'details'">
                             <h4>Mod Details</h4>
@@ -894,7 +908,7 @@ export default {
                             </div>
                         </div>
 
-                        <div v-if="!selected_pkg && page === 'mod_flag'">
+                        <div v-else-if="!selected_pkg && page === 'mod_flag'">
                             <h4>-mod Flag</h4>
 
                             <p v-if="selected_mod.mod_flag.length < 1">
@@ -912,7 +926,7 @@ export default {
                             <kn-save-btn :save-handler="saveModFlag" />
                         </div>
 
-                        <div v-if="!selected_pkg && page === 'team'">
+                        <div v-else-if="!selected_pkg && page === 'team'">
                             <h4>Staff List</h4>
 
                             <p>

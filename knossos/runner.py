@@ -424,10 +424,11 @@ def run_mod(mod, tool=None, exe_label=None):
             exes = mod.get_executables(user=True)
         except repo.NoExecutablesFound:
             logging.error('"%s" provided no executable.' % mod.mid)
+            msg = 'No executable was found for this mod!'
+            if mod.dev_mode:
+                msg += ' Make sure you have an FSO build selected on the FSO tab.'
             QtWidgets.QMessageBox.critical(
-                None, 'Knossos',
-                translate('runner', 'No executable was found for this mod!'
-                          ' Make sure you have an FSO build selected on the FSO tab.'))
+                None, 'Knossos', translate('runner', msg))
             return
         except Exception:
             logging.exception('Failed to retrieve binaries for "%s"!' % mod.mid)
