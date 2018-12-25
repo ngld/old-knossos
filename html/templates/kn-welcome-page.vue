@@ -241,10 +241,12 @@ export default {
             <hr>
 
             <div class="welcome-login">
-                Are you a mod developer?<br>
-                Log into the <a href="https://fsnebula.org/" class="open-ext">Nebula</a> mod repository!<br>
-                You can also log in later from the settings.
-                <div class="login-form pull-right">
+                <div class="login-instructions">
+                    <p>Are you a mod developer?</p>
+                    <p>Log into the <a href="https://fsnebula.org/" class="open-ext">Nebula</a> mod repository!</p>
+                    <p>You can also log in from the settings.</p>
+                </div>
+                <div class="login-form">
                     <div class="form-group">
                         <label class="col-sm-4 welcome-label">Username:</label>
                         <div class="col-sm-8">

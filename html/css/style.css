@@ -195,13 +195,21 @@ iframe {
 }
 
 .welcome-login {
-    height: 220px;
-    padding-top: 50px;
+    height: 165px;
+    padding-top: 10px;
 }
 
 .login-form {
     float: right;
     width: 65%;
+}
+.login-instructions {
+    float: left;
+    width: 35%;
+}
+
+.login-instructions p {
+    margin-bottom: 3px;
 }
 
 .welcome-login input.neb-input {
