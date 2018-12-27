@@ -259,6 +259,8 @@ class HellWindow(Window):
     _updating_mods = None
     _init_done = False
     _prg_visible = False
+    _mod_list_cache = None
+    _installed_mod_list_cache = None
     browser_ctrl = None
     progress_win = None
 
@@ -266,6 +268,8 @@ class HellWindow(Window):
         super(HellWindow, self).__init__(window)
         self._tasks = {}
         self._updating_mods = {}
+        self._mod_list_cache = {}
+        self._installed_mod_list_cache = {}
 
         self._create_win(Ui_Hell, QMainWindow)
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
@@ -471,12 +475,36 @@ class HellWindow(Window):
         result.sort(key=build_sort_title)
         return result, self._mod_filter
 
+    def _compute_mod_list_diff(self, new_mod_list):
+        current_mod_list_cache = None
+        if self._mod_filter in ('home', 'develop'):
+            current_mod_list_cache = self._installed_mod_list_cache
+        elif self._mod_filter == 'explore':
+            current_mod_list_cache = self._mod_list_cache
+        else:
+            raise Exception('_compute_mod_list_diff: unknown mod filter type %s' % self._mod_filter)
+
+        updated_mods = {}
+        for item in new_mod_list:
+            try:
+                old_item = current_mod_list_cache.get(item['id'], None)
+            except Exception:
+                logging.error('mid not foudn in current item! %s', item)
+                raise
+            if item != old_item:
+                updated_mods[item['id']] = item
+                current_mod_list_cache[item['id']] = item
+
+        return updated_mods
+
     def update_mod_list(self):
         if center.settings['base_path'] is not None:
             result, filter_ = self.search_mods()
 
             if filter_ in ('home', 'explore', 'develop'):
-                self.browser_ctrl.bridge.updateModlist.emit(json.dumps(result), filter_)
+                updated_mods = self._compute_mod_list_diff(result)
+                mod_order = [item['id'] for item in result]
+                self.browser_ctrl.bridge.updateModlist.emit(json.dumps(updated_mods), filter_, mod_order)
 
     def show_indicator(self):
         pass

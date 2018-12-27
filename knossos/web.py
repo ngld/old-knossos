@@ -71,7 +71,7 @@ class WebBridge(QtCore.QObject):
     showRetailPrompt = QtCore.Signal()
     showLaunchPopup = QtCore.Signal(str)
     showModDetails = QtCore.Signal(str)
-    updateModlist = QtCore.Signal(str, str)
+    updateModlist = QtCore.Signal(str, str, list)
     modProgress = QtCore.Signal(str, float, str)
     retailInstalled = QtCore.Signal()
     hidePopup = QtCore.Signal()

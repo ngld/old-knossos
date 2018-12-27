@@ -21,11 +21,13 @@ export default {
 
         search_text: '',
         status_message: '',
-        tab: 'explore',
+        tab: 'explore', // FIXME shouldn't this be initialized to 'home'? isn't that what's assumed elsewhere like in center?
         page: 'modlist',
         show_filter: false,
         mods: [],
         mod_table: {},
+        installed_mod_table: {},
+        mod_order: [],
 
         // details page
         detail_mod: null,
@@ -75,7 +77,40 @@ export default {
         }
     },
 
+    computed: {
+        current_mod_table() {
+            return this.getCurrentModTable();
+        }
+
+    },
+
     methods: {
+        getCurrentModTable() {
+            if (this.tab === 'explore') {
+                return this.mod_table;
+            } else if (this.tab === 'home' || this.tab === 'develop') {
+                return this.installed_mod_table;
+            } else {
+                // FIXME TODO throw exception or warning or something
+                return this.mod_table;
+            }
+        },
+
+        computeCurrentMods(current_mod_table, mod_order) {
+            let mods = [];
+
+            for(let mid of mod_order) {
+                let mod = current_mod_table[mid];
+                if(mod) {
+                    mods.push(mod);
+                } else {
+                    // TODO print error/warning about mod not found in mod_table
+                }
+            }
+            
+            return mods;
+        },
+
         openLink(url) {
             fs2mod.openExternal(url);
         },
@@ -113,8 +148,12 @@ export default {
             }
         },
 
-        updateModlist(mods) {
-            this.mods = mods;
+        updateModlist(updated_mods, mod_order) {
+            let current_mod_table = this.getCurrentModTable();
+            for(let mid of Object.keys(updated_mods)) {
+                current_mod_table[mid] = updated_mods[mid]
+            }
+            this.mods = this.computeCurrentMods(current_mod_table, mod_order);
 
             if(next_tab) {
                 this.tab = next_tab;
@@ -124,10 +163,10 @@ export default {
                 first_load = false;
 
                 if(this.page !== 'welcome') {
-                    next_tab = mods.length === 0 ? 'explore' : 'home';
+                    next_tab = this.mods.length === 0 ? 'explore' : 'home';
                     fs2mod.showTab(next_tab);
                 }
-            } else if(this.page === 'details' && !mod_table[this.detail_mod]) {
+            } else if(this.page === 'details' && !current_mod_table[this.detail_mod]) {
                 // The currently visible mod has been uninstalled thus making displaying this page impossible.
                 // Switch to the tab instead
                 this.exitDetails();
@@ -369,7 +408,7 @@ export default {
 
         <kn-scroll-container v-if="page === 'details'" key="details" :dummy="detail_mod">
             <div class="info-page" id="details-page" slot-scope="{ update }">
-                <kn-details-page :modbundle="mod_table[detail_mod]" :updater="update"></kn-details-page>
+                <kn-details-page :modbundle="current_mod_table[detail_mod]" :updater="update"></kn-details-page>
             </div>
         </kn-scroll-container>
 

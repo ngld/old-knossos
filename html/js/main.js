@@ -79,7 +79,7 @@ function init() {
 
     window.vm = new Vue(Object.assign({ el: '#loading' }, KnPage));
 
-    let mod_table = null;
+    let current_mod_table = null;
     window.task_mod_map = {};
 
     fs2mod.asyncCbFinished.connect((id, data) => {
@@ -114,7 +114,7 @@ function init() {
     });
     fs2mod.showModDetails.connect((mid) => {
         function cb() {
-            if(!mod_table || !mod_table[mid]) {
+            if (!current_mod_table || !current_mod_table[mid]) {
                 setTimeout(cb, 300);
                 return;
             }
@@ -125,16 +125,12 @@ function init() {
 
         cb();
     });
-    fs2mod.updateModlist.connect((mods, type) => {
-        window.mod_table = mod_table = {};
-        mods = JSON.parse(mods);
+    fs2mod.updateModlist.connect((updated_mods, type, mod_order) => {
+        current_mod_table = vm.getCurrentModTable();
+        window.mod_table = current_mod_table;
+        updated_mods = JSON.parse(updated_mods);
 
-        for(let mod of mods) {
-            Vue.set(mod_table, mod.id, mod);
-        }
-
-        vm.mod_table = mod_table;
-        vm.updateModlist(mods);
+        vm.updateModlist(updated_mods, mod_order);
     });
     fs2mod.hidePopup.connect(() => vm.popup_visible = false);
 
@@ -151,8 +147,8 @@ function init() {
         tasks[tid] = { title, mods };
 
         for(let mid of mods) {
-            if(mod_table[mid]) {
-                Vue.set(mod_table[mid], 'status', 'updating');
+            if(current_mod_table[mid]) {
+                Vue.set(current_mod_table[mid], 'status', 'updating');
                 task_mod_map[mid] = tid;
             }
         }
@@ -163,9 +159,9 @@ function init() {
 
         details = JSON.parse(details);
         for(let mid of tasks[tid].mods) {
-            if(mod_table[mid]) {
-                Vue.set(mod_table[mid], 'progress', progress);
-                Vue.set(mod_table[mid], 'progress_info', details);
+            if(current_mod_table[mid]) {
+                Vue.set(current_mod_table[mid], 'progress', progress);
+                Vue.set(current_mod_table[mid], 'progress_info', details);
                 vm.$set(vm.popup_progress, mid, details);
             }
         }
@@ -175,9 +171,9 @@ function init() {
         if(!tasks) return;
 
         for(let mid of tasks[tid].mods) {
-            if(mod_table[mid]) {
-                Vue.set(mod_table[mid], 'progress', 0);
-                Vue.set(mod_table[mid], 'status', 'ready');
+            if (current_mod_table[mid]) {
+                Vue.set(current_mod_table[mid], 'progress', 0);
+                Vue.set(current_mod_table[mid], 'status', 'ready');
             }
 
             if(task_mod_map[mid]) delete task_mod_map[mid];
