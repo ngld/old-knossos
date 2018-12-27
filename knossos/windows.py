@@ -259,7 +259,7 @@ class HellWindow(Window):
     _updating_mods = None
     _init_done = False
     _prg_visible = False
-    _mod_list_cache = None
+    _explore_mod_list_cache = None
     _installed_mod_list_cache = None
     browser_ctrl = None
     progress_win = None
@@ -268,7 +268,7 @@ class HellWindow(Window):
         super(HellWindow, self).__init__(window)
         self._tasks = {}
         self._updating_mods = {}
-        self._mod_list_cache = {}
+        self._explore_mod_list_cache = {}
         self._installed_mod_list_cache = {}
 
         self._create_win(Ui_Hell, QMainWindow)
@@ -476,24 +476,20 @@ class HellWindow(Window):
         return result, self._mod_filter
 
     def _compute_mod_list_diff(self, new_mod_list):
-        current_mod_list_cache = None
+        mod_list_cache = None
         if self._mod_filter in ('home', 'develop'):
-            current_mod_list_cache = self._installed_mod_list_cache
+            mod_list_cache = self._installed_mod_list_cache
         elif self._mod_filter == 'explore':
-            current_mod_list_cache = self._mod_list_cache
+            mod_list_cache = self._explore_mod_list_cache
         else:
             raise Exception('_compute_mod_list_diff: unknown mod filter type %s' % self._mod_filter)
 
         updated_mods = {}
         for item in new_mod_list:
-            try:
-                old_item = current_mod_list_cache.get(item['id'], None)
-            except Exception:
-                logging.error('mid not foudn in current item! %s', item)
-                raise
+            old_item = mod_list_cache.get(item['id'], None)
             if item != old_item:
                 updated_mods[item['id']] = item
-                current_mod_list_cache[item['id']] = item
+                mod_list_cache[item['id']] = item
 
         return updated_mods
 

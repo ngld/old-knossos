@@ -79,8 +79,35 @@ function init() {
 
     window.vm = new Vue(Object.assign({ el: '#loading' }, KnPage));
 
-    let current_mod_table = null;
+    let explore_mod_table = {};
+    let installed_mod_table = {};
+    let mod_table = null;
     window.task_mod_map = {};
+
+    let getModTable = function (type) {
+        if(type === 'explore') {
+            return explore_mod_table;
+        } else if(type === 'home' || type === 'develop') {
+            return installed_mod_table;
+        } else {
+            // TODO print error/warning unknown type!
+            return explore_mod_table;
+        }
+    };
+
+    let buildModArray = function (mod_order) {
+        let mods = [];
+
+        for(let mod_id of mod_order) {
+            let mod = mod_table[mod_id];
+            if(mod) {
+                mods.push(mod);
+            } else {
+                // TODO print error/warning about mod not found in mod_table
+            }
+        }
+        return mods;
+    };
 
     fs2mod.asyncCbFinished.connect((id, data) => {
         cb_store[id](JSON.parse(data));
@@ -114,7 +141,7 @@ function init() {
     });
     fs2mod.showModDetails.connect((mid) => {
         function cb() {
-            if (!current_mod_table || !current_mod_table[mid]) {
+            if(!mod_table || !mod_table[mid]) {
                 setTimeout(cb, 300);
                 return;
             }
@@ -126,11 +153,18 @@ function init() {
         cb();
     });
     fs2mod.updateModlist.connect((updated_mods, type, mod_order) => {
-        current_mod_table = vm.getCurrentModTable();
-        window.mod_table = current_mod_table;
+        mod_table = getModTable(type);
+        window.mod_table = mod_table;
         updated_mods = JSON.parse(updated_mods);
 
-        vm.updateModlist(updated_mods, mod_order);
+        for(let mod_id of Object.keys(updated_mods)) {
+            Vue.set(mod_table, mod_id, updated_mods[mod_id]);
+        }
+        vm.mod_table = mod_table;
+
+        let mods = buildModArray(mod_order);
+        
+        vm.updateModlist(mods);
     });
     fs2mod.hidePopup.connect(() => vm.popup_visible = false);
 
@@ -147,8 +181,8 @@ function init() {
         tasks[tid] = { title, mods };
 
         for(let mid of mods) {
-            if(current_mod_table[mid]) {
-                Vue.set(current_mod_table[mid], 'status', 'updating');
+            if(mod_table[mid]) {
+                Vue.set(mod_table[mid], 'status', 'updating');
                 task_mod_map[mid] = tid;
             }
         }
@@ -159,9 +193,9 @@ function init() {
 
         details = JSON.parse(details);
         for(let mid of tasks[tid].mods) {
-            if(current_mod_table[mid]) {
-                Vue.set(current_mod_table[mid], 'progress', progress);
-                Vue.set(current_mod_table[mid], 'progress_info', details);
+            if(mod_table[mid]) {
+                Vue.set(mod_table[mid], 'progress', progress);
+                Vue.set(mod_table[mid], 'progress_info', details);
                 vm.$set(vm.popup_progress, mid, details);
             }
         }
@@ -171,9 +205,9 @@ function init() {
         if(!tasks) return;
 
         for(let mid of tasks[tid].mods) {
-            if (current_mod_table[mid]) {
-                Vue.set(current_mod_table[mid], 'progress', 0);
-                Vue.set(current_mod_table[mid], 'status', 'ready');
+            if(mod_table[mid]) {
+                Vue.set(mod_table[mid], 'progress', 0);
+                Vue.set(mod_table[mid], 'status', 'ready');
             }
 
             if(task_mod_map[mid]) delete task_mod_map[mid];
