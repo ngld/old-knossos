@@ -295,6 +295,13 @@ export default {
             }
         },
 
+        sortButtonClass(sort_button_type) {
+            return [
+                'filter-content-btn',
+                this.sort_type === sort_button_type ? 'selected' : ''
+            ];
+        },
+
         setSortType(sort_type_UNUSED_FOR_NOW) {
             // FIXME TEMP rotation of sort_type for testing
             this.sort_type_index = (this.sort_type_index === this.sort_types.length -1) ? 0 : this.sort_type_index + 1;
@@ -343,17 +350,16 @@ export default {
             <div class="filter-content" v-show="show_filter" @click="show_filter = false">
                 <!-- FIXME get event listening working!! -->
                 <div class="filter-lines">
-                    <!-- DISCUSSME can the class binding be done by a computed property that takes the sort_type as an arg? -->
-                    <button :class="{'filter-content-btn': true,  selected: sort_type === 'alphabetical'}">Alphabetical</button>
+                    <button :class="sortButtonClass('alphabetical')">Alphabetical</button>
                 </div>
                 <div class="filter-lines">
-                    <button :class="{'filter-content-btn': true, selected: sort_type === 'last_played'}">Last Played</button>
+                    <button :class="sortButtonClass('last_played')">Last Played</button>
                 </div>
                 <div class="filter-lines">
-                    <button :class="{'filter-content-btn': true, selected: sort_type === 'last_released'}">Last Released</button>
+                    <button :class="sortButtonClass('last_released')">Last Released</button>
                 </div>
                 <div class="filter-lines">
-                    <button :class="{'filter-content-btn': true, selected: sort_type === 'last_updated'}">Last Updated</button>
+                    <button :class="sortButtonClass('last_updated')">Last Updated</button>
                 </div>
             </div>
         </div>
