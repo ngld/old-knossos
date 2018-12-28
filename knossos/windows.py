@@ -489,9 +489,9 @@ class HellWindow(Window):
 
                 result.append(item)
 
-       sort_key, sort_reverse = self._get_sort_parameters()
+        sort_key, sort_reverse = self._get_sort_parameters()
         result.sort(key=sort_key, reverse=sort_reverse)
-        return result, self._mod_filter
+        return result, search_filter
 
     def _compute_mod_list_diff(self, new_mod_list):
         mod_list_cache = None
@@ -519,9 +519,6 @@ class HellWindow(Window):
 
     def get_explore_mod_list_cache_json(self):
         return json.dumps(self._explore_mod_list_cache)
-=======
-
->>>>>>> Implement mod sorting (WIP)
 
     def update_mod_list(self):
         if center.settings['base_path'] is not None:
