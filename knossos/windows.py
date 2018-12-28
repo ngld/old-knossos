@@ -345,6 +345,7 @@ class HellWindow(Window):
             return
 
         self._init_done = True
+        self._init_explore_mod_list_cache()
         run_task(LoadLocalModsTask())
 
         center.auto_fetcher.start()
@@ -365,13 +366,15 @@ class HellWindow(Window):
             msg = self.tr('There\'s an update available!\nYou should update to Knossos %s.') % str(version)
             QtWidgets.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
 
-    def search_mods(self):
+    def search_mods(self, search_filter=None, ignore_retail_dependency=False):
         mods = None
         omit_fs2_mods = False
+        if search_filter is None:
+            search_filter = self._mod_filter
 
-        if self._mod_filter in ('home', 'develop'):
+        if search_filter in ('home', 'develop'):
             mods = center.installed.mods
-        elif self._mod_filter == 'explore':
+        elif search_filter == 'explore':
             mods = center.mods.mods
             omit_fs2_mods = not center.installed.has('FS2') and not center.settings['show_fs2_mods_without_retail']
         else:
@@ -384,7 +387,7 @@ class HellWindow(Window):
             if query in mvs[0].title.lower():
                 mod = mvs[0]
                 
-                if mod.mtype == 'engine' and self._mod_filter != 'develop':
+                if mod.mtype == 'engine' and search_filter != 'develop':
                     mvs = [mv for mv in mvs if mv.satisfies_stability(center.settings['engine_stability'])]
                     if len(mvs) == 0:
                         mvs = mods[mid]
@@ -400,7 +403,7 @@ class HellWindow(Window):
                 else:
                     item = mod.get()
 
-                if mod.parent == 'FS2' and not center.installed.has('FS2'):
+                if mod.parent == 'FS2' and not center.installed.has('FS2') and not ignore_retail_dependency:
                     if center.settings['show_fs2_mods_without_retail']:
                         item['retail_dependency_missing'] = True
                     else:
@@ -435,7 +438,7 @@ class HellWindow(Window):
                 else:
                     item['status'] = 'ready'
 
-                    if self._mod_filter == 'home':
+                    if search_filter == 'home':
                         for pkg in mod.packages:
                             if pkg.files_checked > 0 and pkg.files_ok < pkg.files_checked:
                                 item['status'] = 'error'
@@ -473,7 +476,7 @@ class HellWindow(Window):
             return title
 
         result.sort(key=build_sort_title)
-        return result, self._mod_filter
+        return result, search_filter
 
     def _compute_mod_list_diff(self, new_mod_list):
         mod_list_cache = None
@@ -492,6 +495,15 @@ class HellWindow(Window):
                 mod_list_cache[item['id']] = item
 
         return updated_mods
+
+    def _init_explore_mod_list_cache(self):
+        if center.settings['base_path'] is not None:
+            explore_result, explore_filter = self.search_mods('explore', True)
+            for item in explore_result:
+                self._explore_mod_list_cache[item['id']] = item
+
+    def get_explore_mod_list_cache_json(self):
+        return json.dumps(self._explore_mod_list_cache)
 
     def update_mod_list(self):
         if center.settings['base_path'] is not None:

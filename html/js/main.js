@@ -249,6 +249,11 @@ function init() {
         if(res.welcome) {
             vm.page = 'welcome';
         }
+
+        let explore_mods = JSON.parse(res.explore_mods);
+        for(let mod_id of Object.keys(explore_mods)) {
+            explore_mod_table[mod_id] = explore_mods[mod_id];
+        }
     }), 300);
 
     window.addEventListener('error', (e) => {

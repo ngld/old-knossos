@@ -141,7 +141,8 @@ class WebBridge(QtCore.QObject):
         return json.dumps({
             't': trs,
             'platform': sys.platform,
-            'welcome': 'KN_WELCOME' in os.environ or center.settings['base_path'] is None
+            'welcome': 'KN_WELCOME' in os.environ or center.settings['base_path'] is None,
+            'explore_mods': center.main_win.get_explore_mod_list_cache_json()
         })
 
     @QtCore.Slot(result=str)
