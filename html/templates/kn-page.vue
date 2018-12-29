@@ -74,7 +74,6 @@ export default {
         sort_types: ['alphabetical', 'last_released', 'last_updated'],
         // FIXME TODO: save sort_type between sessions
         sort_type: 'alphabetical'
-
     }),
 
     watch: {
@@ -344,22 +343,19 @@ export default {
             </a>
         </div>
         <div id="tab-bar-misc" class="keep-left" v-if="page === 'modlist'">
-            <!-- FIXME TEMP little hack for testing until the button listeners are added -->
-            <a href="#" @click.prevent="setSortType(); openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
+            <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
         </div>
         <div id="tab-bar-misc" class="keep-right" v-if="page !== 'modlist'">
             <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
         </div>
     <!-------------------------------------------------------------------------------- Start the Filter Button ---------->
-        <!-- TODO review the options to make sure they're waht you want -->
-        <!-- TODO do we still need show_filter? -->
         <popper v-if="page === 'modlist'"
                 trigger="click"
                 @show="show_filter = true"
                 @hide="show_filter = false"
                 class="filter-container"
-                :options="{ placement: 'bottom' }">
-            <div> <!--class="filter-content">-->
+                :options="{ placement: 'bottom-end', modifiers: { keepTogether: { enabeld: false }, arrow: { enabled: false }}}">
+            <div class="filter-content">
                 <template v-for="sort_type in sort_types">
                     <div class="filter-lines">
                         <button :class="sortButtonClass(sort_type)" @click="setSortType(sort_type)">{{ getSortTypeDisplayName(sort_type) }}</button>
@@ -367,7 +363,7 @@ export default {
                 </template>
             </div>
 
-            <button class="filterbtn" slot="reference"></button>
+            <button :class="['filterbtn', show_filter ? 'filter-active' : '']" slot="reference"></button>
         </popper>
 
         <div class="welcome-overlay" v-if="page === 'welcome'"></div>

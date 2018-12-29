@@ -244,8 +244,8 @@ iframe {
     background-image: url(../images/icon-filter.png);
 }
 
-.filterbtn:hover {
-    background-image: url(../images/icon-filter-h.png);
+.filterbtn.filter-active {
+    background-image: url(../images/icon-filter-a.png);
     outline: none;
 }
 
@@ -255,21 +255,28 @@ iframe {
 }
 
 .filterbtn:focus {
+    background-image: url(../images/icon-filter.png);
+    outline: none;
+}
+
+.filterbtn.filter-active:focus {
     background-image: url(../images/icon-filter-a.png);
     outline: none;
 }
 
+.filterbtn:hover {
+    background-image: url(../images/icon-filter-h.png);
+    outline: none;
+}
+
 .filter-content {
-    display: none;
     padding: 5px;
     position: absolute;
     background-color: #131313;
     min-width: 125px;
     box-shadow: 6px 6px 8px 0px rgba(0,0,0,1);
-    z-index: 100 !important;
+    z-index: 997;
     border: 1px solid black;
-    /*top: 0px;
-    right: 26px;*/
 }
 
 .filterbtn:focus ~ .filter-content {
