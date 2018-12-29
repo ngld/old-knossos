@@ -1,4 +1,6 @@
 <script>
+import Popper from 'vue-popperjs';
+import 'vue-popperjs/dist/css/vue-popper.css';
 import KnTroubleshooting from './kn-troubleshooting.vue';
 
 let next_tab = null;
@@ -6,7 +8,8 @@ let first_load = true;
 
 export default {
     components: {
-        'kn-troubleshooting': KnTroubleshooting
+        'kn-troubleshooting': KnTroubleshooting,
+        popper: Popper
     },
 
     data: () => ({
@@ -67,10 +70,8 @@ export default {
         retail_searching: true,
         retail_found: false,
         retail_data_path: '',
-        // FIXME TEMP VAR for testing
-        sort_types: ['alphabetical', 'last_played', 'last_released', 'last_updated'],
-        sort_type_index: 0,
-        // END TEMP
+        // TODO add 'last_played' once that's supported
+        sort_types: ['alphabetical', 'last_released', 'last_updated'],
         // FIXME TODO: save sort_type between sessions
         sort_type: 'alphabetical'
 
@@ -302,12 +303,17 @@ export default {
             ];
         },
 
-        setSortType(sort_type_UNUSED_FOR_NOW) {
-            // FIXME TEMP rotation of sort_type for testing
-            this.sort_type_index = (this.sort_type_index === this.sort_types.length -1) ? 0 : this.sort_type_index + 1;
-            let sort_type = this.sort_types[this.sort_type_index];
-            this.sort_type = sort_type;
-            fs2mod.setSortType(sort_type);
+        setSortType(sort_type) {
+            call(fs2mod.setSortType, sort_type, (type) => {
+                if (type) this.sort_type = type;
+            });
+        },
+
+        getSortTypeDisplayName(sort_type) {
+            // adapted from https://flaviocopes.com/how-to-uppercase-first-letter-javascript/
+            return sort_type.split('_').map(function (type) {
+                return type.charAt(0).toUpperCase() + type.slice(1);
+            }).join(' ');
         }
     }
 };
@@ -345,24 +351,24 @@ export default {
             <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
         </div>
     <!-------------------------------------------------------------------------------- Start the Filter Button ---------->
-        <div class="filter-container" v-if="page === 'modlist'">
-            <button class="filterbtn" @click="show_filter = true"></button>
-            <div class="filter-content" v-show="show_filter" @click="show_filter = false">
-                <!-- FIXME get event listening working!! -->
-                <div class="filter-lines">
-                    <button :class="sortButtonClass('alphabetical')">Alphabetical</button>
-                </div>
-                <div class="filter-lines">
-                    <button :class="sortButtonClass('last_played')">Last Played</button>
-                </div>
-                <div class="filter-lines">
-                    <button :class="sortButtonClass('last_released')">Last Released</button>
-                </div>
-                <div class="filter-lines">
-                    <button :class="sortButtonClass('last_updated')">Last Updated</button>
-                </div>
+        <!-- TODO review the options to make sure they're waht you want -->
+        <!-- TODO do we still need show_filter? -->
+        <popper v-if="page === 'modlist'"
+                trigger="click"
+                @show="show_filter = true"
+                @hide="show_filter = false"
+                class="filter-container"
+                :options="{ placement: 'bottom' }">
+            <div> <!--class="filter-content">-->
+                <template v-for="sort_type in sort_types">
+                    <div class="filter-lines">
+                        <button :class="sortButtonClass(sort_type)" @click="setSortType(sort_type)">{{ getSortTypeDisplayName(sort_type) }}</button>
+                    </div>
+                </template>
             </div>
-        </div>
+
+            <button class="filterbtn" slot="reference"></button>
+        </popper>
 
         <div class="welcome-overlay" v-if="page === 'welcome'"></div>
 
@@ -482,7 +488,7 @@ export default {
                             </div>
                         </div>
                     </form>
-                    
+
                     <p><button class="btn btn-primary" @click="finishRetailPrompt">Continue</button></p>
                 </div>
 

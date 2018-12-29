@@ -264,12 +264,12 @@ iframe {
     padding: 5px;
     position: absolute;
     background-color: #131313;
-    min-width: 150px;
+    min-width: 125px;
     box-shadow: 6px 6px 8px 0px rgba(0,0,0,1);
-    z-index: 997;
+    z-index: 100 !important;
     border: 1px solid black;
-    top: 0px;
-    right: 26px;
+    /*top: 0px;
+    right: 26px;*/
 }
 
 .filterbtn:focus ~ .filter-content {
@@ -284,7 +284,7 @@ iframe {
     font-weight: normal;
     border: none;
     cursor: pointer;
-    width: 150px;
+    width: 125px;
     height: 19px;
     outline: none;
     text-align: left;
@@ -301,7 +301,7 @@ iframe {
 }
 
 .filter-lines {
-    width: 150px;
+    width: 125px;
     z-index: 998;
 }
 

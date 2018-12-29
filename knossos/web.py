@@ -1760,10 +1760,11 @@ class WebBridge(QtCore.QObject):
                                           '<a href="https://www.hard-light.net/forums/index.php?topic=94068.0">'
                                           'Knossos release thread</a> on the Hard Light Productions forums.')
 
-    @QtCore.Slot(str)
+    @QtCore.Slot(str, result=str)
     def setSortType(self, sort_type):
         center.sort_type = sort_type
         center.main_win.update_mod_list()
+        return sort_type
 
 if QtWebChannel:
     BrowserCtrl = WebBridge
