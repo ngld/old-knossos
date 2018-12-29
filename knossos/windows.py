@@ -431,7 +431,7 @@ class HellWindow(Window):
                 if str(mod.version) in installed_versions:
                     item = installed_versions[str(mod.version)].get()
                 else:
-                    item = mod.get()
+                    item = mod.get(True)
 
                 if mod.parent == 'FS2' and not center.installed.has('FS2') and not ignore_retail_dependency:
                     if center.settings['show_fs2_mods_without_retail']:

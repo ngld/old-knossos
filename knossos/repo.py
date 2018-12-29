@@ -459,7 +459,6 @@ class Mod(object):
     attachments = None
     first_release = None
     last_update = None
-    last_played = None
     actions = None
     packages = None
 
@@ -497,7 +496,6 @@ class Mod(object):
         self.attachments = values.get('attachments', [])
         self.first_release = values.get('first_release', None)
         self.last_update = values.get('last_update', None)
-        self.last_played = values.get('last_played', None)
         self.actions = values.get('actions', [])
 
         self.packages = []
@@ -542,9 +540,6 @@ class Mod(object):
         if self.last_update:
             self.last_update = datetime.strptime(self.last_update, '%Y-%m-%d')
 
-        if self.last_played:
-            self.last_played = datetime.strptime(self.last_played, '%Y-%m-%d')
-
         # Enforce relative paths
         for act in self.actions:
             if 'paths' in act:
@@ -553,8 +548,8 @@ class Mod(object):
             if 'dest' in act:
                 act['dest'] = act['dest'].lstrip('/')
 
-    def get(self):
-        return {
+    def get(self, include_last_played=False):
+        result = {
             'id': self.mid,
             'title': self.title,
             'type': self.mtype,
@@ -574,10 +569,18 @@ class Mod(object):
             'attachments': self.attachments,
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
             'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
-            'last_played': self.last_played.strftime('%Y-%m-%d') if self.last_played else None,
             'actions': self.actions,
             'packages': [pkg.get() for pkg in self.packages]
         }
+
+        if include_last_played:
+            last_played = None
+            try:
+                last_played = center.installed.query(self).last_played
+            except ModNotFound:
+                pass
+            result['last_played'] = last_played.strftime('%Y-%m-%d') if last_played else None
+        return result
 
     def copy(self):
         return self.__class__(self.get(), self._repo)
@@ -881,6 +884,11 @@ class InstalledRepo(Repo):
 
         return updates
 
+    def save_modified(self):
+        for mod in self.mods.values():
+            for mod_version in mod:
+                if mod_version.modified:
+                    mod_version.save()
 
 class InstalledMod(Mod):
     check_notes = ''
@@ -891,6 +899,8 @@ class InstalledMod(Mod):
     user_cmdline = None
     user_custom_build = None
     _path = None
+    last_played = None
+    modified = False
 
     @staticmethod
     def load(path):
@@ -936,6 +946,10 @@ class InstalledMod(Mod):
         self.dev_mode = values.get('dev_mode', False)
         self.custom_build = values.get('custom_build', None)
         self.check_notes = values.get('check_notes', '')
+        self.last_played = values.get('last_played', None)
+        
+        if self.last_played:
+            self.last_played = datetime.strptime(self.last_played, '%Y-%m-%d')
 
         if not self.mod_flag:
             # Fix broken metadata
@@ -953,7 +967,7 @@ class InstalledMod(Mod):
         self.user_cmdline = values.get('cmdline')
         self.user_custom_build = values.get('custom_build')
 
-    def get(self):
+    def get(self, include_last_played=True):
         return {
             'installed': True,
             'id': self.mid,
@@ -1195,6 +1209,10 @@ class InstalledMod(Mod):
         exes.sort(key=lambda exe: -exe['score'])
         return exes
 
+    def update_last_played(self):
+        self.last_played = datetime.today()
+        self.modified = True
+        center.main_win.update_mod_list()
 
 class IniMod(InstalledMod):
     _pr_list = None

@@ -35,7 +35,11 @@ export default {
         mod() {
             for(let mod of this.modbundle.versions) {
                 if(mod.version === this.version) {
+                    let last_played_values = this.modbundle.versions.map(version => version.last_played).filter(value => value);
+                    last_played_values.sort().reverse();
+                    let last_played = last_played_values ? last_played_values[0] : null;
                     return Object.assign(mod, {
+                        last_played: last_played,
                         status: this.modbundle.status,
                         progress: this.modbundle.progress,
                         progress_info: this.modbundle.progress_info

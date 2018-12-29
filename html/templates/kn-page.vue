@@ -70,8 +70,7 @@ export default {
         retail_searching: true,
         retail_found: false,
         retail_data_path: '',
-        // TODO add 'last_played' once that's supported
-        sort_types: ['alphabetical', 'last_released', 'last_updated'],
+        sort_types: ['alphabetical', 'last_played', 'last_released', 'last_updated'],
         // FIXME TODO: save sort_type between sessions
         sort_type: 'alphabetical'
     }),
@@ -310,9 +309,7 @@ export default {
 
         getSortTypeDisplayName(sort_type) {
             // adapted from https://flaviocopes.com/how-to-uppercase-first-letter-javascript/
-            return sort_type.split('_').map(function (type) {
-                return type.charAt(0).toUpperCase() + type.slice(1);
-            }).join(' ');
+            return sort_type.split('_').map(type => type.charAt(0).toUpperCase() + type.slice(1)).join(' ');
         }
     }
 };

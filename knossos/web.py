@@ -464,7 +464,7 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return
 
-        runner.run_mod_ex(mod, exe, mod_flag)
+        runner.run_mod_ex(mod, exe, mod_flag, False)
 
     @QtCore.Slot(str, str, result=int)
     def vercmp(self, a, b):
