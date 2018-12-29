@@ -354,7 +354,7 @@ export default {
                 @show="show_filter = true"
                 @hide="show_filter = false"
                 class="filter-container"
-                :options="{ placement: 'bottom-end', modifiers: { keepTogether: { enabeld: false }, arrow: { enabled: false }}}">
+                :options="{ placement: 'bottom-end', modifiers: { keepTogether: { enabeld: false }, arrow: { enabled: false }, offset: { offset: '0px, 7px' }}}">
             <div class="filter-content">
                 <template v-for="sort_type in sort_types">
                     <div class="filter-lines">
