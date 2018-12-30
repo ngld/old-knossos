@@ -548,7 +548,7 @@ class Mod(object):
             if 'dest' in act:
                 act['dest'] = act['dest'].lstrip('/')
 
-    def get(self, include_last_played=False):
+    def get(self, user_facing_format=False):
         result = {
             'id': self.mid,
             'title': self.title,
@@ -573,13 +573,14 @@ class Mod(object):
             'packages': [pkg.get() for pkg in self.packages]
         }
 
-        if include_last_played:
+        if user_facing_format:
             last_played = None
             try:
                 last_played = center.installed.query(self).last_played
             except ModNotFound:
                 pass
-            result['last_played'] = last_played.strftime('%Y-%m-%d') if last_played else None
+            result['last_played'] = last_played.strftime('%Y-%m-%d %H:%M:%S') if last_played else None
+            result['last_played_display'] = last_played.strftime('%Y-%m-%d') if last_played else None
         return result
 
     def copy(self):
@@ -949,7 +950,7 @@ class InstalledMod(Mod):
         self.last_played = values.get('last_played', None)
         
         if self.last_played:
-            self.last_played = datetime.strptime(self.last_played, '%Y-%m-%d')
+            self.last_played = datetime.strptime(self.last_played, '%Y-%m-%d %H:%M:%S')
 
         if not self.mod_flag:
             # Fix broken metadata
@@ -967,8 +968,8 @@ class InstalledMod(Mod):
         self.user_cmdline = values.get('cmdline')
         self.user_custom_build = values.get('custom_build')
 
-    def get(self, include_last_played=True):
-        return {
+    def get(self, user_facing_format=False):
+        result = {
             'installed': True,
             'id': self.mid,
             'title': self.title,
@@ -988,7 +989,7 @@ class InstalledMod(Mod):
             'attachments': self.attachments[:],
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
             'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
-            'last_played': self.last_played.strftime('%Y-%m-%d') if self.last_played else None,
+            'last_played': self.last_played.strftime('%Y-%m-%d %H:%M:%S') if self.last_played else None,
             'cmdline': self.cmdline,
             'mod_flag': self.mod_flag,
             'dev_mode': self.dev_mode,
@@ -999,6 +1000,9 @@ class InstalledMod(Mod):
             'user_cmdline': self.user_cmdline,
             'user_custom_build': self.user_custom_build
         }
+        if user_facing_format:
+            result['last_played_display'] = self.last_played.strftime('%Y-%m-%d') if self.last_played else None
+        return result
 
     def get_user(self):
         return {
@@ -1210,7 +1214,7 @@ class InstalledMod(Mod):
         return exes
 
     def update_last_played(self):
-        self.last_played = datetime.today()
+        self.last_played = datetime.now()
         self.modified = True
         center.main_win.update_mod_list()
 
