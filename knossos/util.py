@@ -271,13 +271,14 @@ def check_output(*args, **kwargs):
         kwargs.setdefault('stdin', subprocess.DEVNULL)
         kwargs.setdefault('stderr', subprocess.DEVNULL)
 
-        if kwargs.get('no_hide'):
-            del kwargs['no_hide']
-        else:
+        if not kwargs.get('no_hide'):
             si = subprocess.STARTUPINFO()
             si.dwFlags = subprocess.STARTF_USESHOWWINDOW
             si.wShowWindow = subprocess.SW_HIDE
             kwargs['startupinfo'] = si
+
+    # Remove the no_hide parameter that is irrelevant to subprocess.check_output
+    kwargs.pop('no_hide', None)
 
     kwargs.setdefault('errors', 'surrogateescape')
     kwargs.setdefault('universal_newlines', True)
