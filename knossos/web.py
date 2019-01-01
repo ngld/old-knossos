@@ -19,6 +19,7 @@ import os.path
 import logging
 import re
 import json
+import platform
 import stat
 import sqlite3
 import shutil
@@ -497,17 +498,67 @@ class WebBridge(QtCore.QObject):
         else:
             return []
 
+    @QtCore.Slot(str, result=str)
+    def verifyRootVPFolder(self, vp_path):
+        vp_path_components = os.path.split(vp_path)
+        if len(vp_path_components) != 2 or vp_path_components[1].lower() != 'root_fs2.vp':
+            QtWidgets.QMessageBox.critical(
+                None, 'Knossos', self.tr('The selected path is not to root_fs2.vp!'))
+            return ''
+        vp_dir = vp_path_components[0]
+        if not util.is_fs2_retail_directory(vp_dir):
+            QtWidgets.QMessageBox.critical(
+                None, 'Knossos', self.tr('The selected root_fs2.vp\'s folder '
+                                         'does not have the FreeSpace 2 files!'))
+            return ''
+        return vp_dir
+
+    def _filter_out_hidden_files(self, files):
+        if platform.system() != 'Windows':
+            return [file for file in files if not file.startswith('.')]
+        else: # TODO figure out how to identify hidden files on Windows
+            return files
+
+    def _is_program_files_path(self, path):
+        prog_folders = [os.environ.get('ProgramFiles', 'C:/Program Files'),
+                        os.environ.get('ProgramFiles(x86)', 'C:/Program Files (x86)')]
+        prog_folders = tuple([f.lower().replace('\\', '/') for f in prog_folders])
+        return path.lower().replace('\\', '/').startswith(prog_folders)
+
     @QtCore.Slot(str, result=bool)
     def setBasePath(self, path):
         if os.path.isfile(path):
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path is not a directory!'))
             return False
-        elif not os.path.isdir(path):
+        if platform.system() == 'Windows':
+            if self._is_program_files_path(path):
+                result = QtWidgets.QMessageBox.question(None, 'Knossos',
+                   self.tr('Using a folder in "Program Files" for the Knossos '
+                           'library is not recommended, because you will have '
+                           'to always run Knossos as Administrator. Use anyway?'))
+                if result == QtWidgets.QMessageBox.No:
+                    return False
+        if os.path.isdir(path):
+            if os.path.exists(os.path.join(path, center.get_library_json_name())):
+                logging.info('Knossos library marker file found in selected path')
+                # TODO log info from JSON file as debug messages?
+            elif len(self._filter_out_hidden_files(os.listdir(path))) > 0:
+                result = QtWidgets.QMessageBox.question(None, 'Knossos',
+                    self.tr('Using a non-empty folder for the Knossos library '
+                            'is not recommended, because it can cause problems'
+                            ' for Knossos. Use anyway?'))
+                if result == QtWidgets.QMessageBox.No:
+                    return False
+        if not os.path.lexists(path):
             result = QtWidgets.QMessageBox.question(None, 'Knossos',
                 self.tr('The selected path does not exist. Should I create the folder?'))
 
             if result == QtWidgets.QMessageBox.Yes:
-                os.makedirs(path)
+                try:
+                    os.makedirs(path)
+                except OSError:
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("Failed to create Knossos data folder!"))
+                    return False
             else:
                 return False
         else:
@@ -522,6 +573,12 @@ class WebBridge(QtCore.QObject):
         tasks.run_task(tasks.LoadLocalModsTask())
         return True
 
+    # For when center.installed has not yet been initialized
+    @QtCore.Slot(result=bool)
+    def checkIfRetailInstalled(self):
+        fs2_json_path = os.path.join(center.settings['base_path'], 'FS2', 'mod.json')
+        return os.path.exists(fs2_json_path)
+    
     @QtCore.Slot(int)
     def getSettings(self, cb_id):
         def cb():
