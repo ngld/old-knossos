@@ -679,7 +679,7 @@ export default {
                             <p>
                                 When you release your mod, you should pack each package into an FSO-specific type of uncompressed file called a <em>VP file</em>.
                                 VP file names end with ".vp". Knossos can automatically pack your packages into
-                                VP files when you upload your mod to the <a href="https://fsnebula.org/" class="open-ext">Nebula</a> mod
+                                VP files and compress them for you when you upload your mod to the <a href="https://fsnebula.org/" class="open-ext">Nebula</a> mod
                                 repository.
                             </p>
                             <p>
@@ -691,7 +691,7 @@ export default {
                             </p>
                             <ul>
                                 <li>A VP file can be at most 2 GB.</li>
-                                <li>Each compressed archive file on Nebula contains a single VP file.<br>
+                                <li>Knossos's automatic VP packing packs each VP file into its own compressed archive file.<br>
                                 Thus a player with an unreliable Internet connection who has to restart a download
                                 will benefit from your mod having packages that aren't huge.</li>
                                 <li>When you upload a new version of your mod, only modified packages are uploaded.<br>
