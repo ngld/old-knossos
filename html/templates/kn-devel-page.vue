@@ -899,6 +899,9 @@ export default {
 
                         <div v-else-if="!selected_pkg && page === 'fso'">
                             <h4>FSO Settings</h4>
+                            <p>
+                                These settings apply when you run FSO from the Develop tab and will apply to players.
+                            </p>
 
                             <kn-fso-settings :mods="mods" :fso_build.sync="fso_build" :cmdline.sync="(selected_mod || {}).cmdline"></kn-fso-settings>
 

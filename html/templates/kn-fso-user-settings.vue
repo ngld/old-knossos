@@ -53,6 +53,9 @@ export default {
 </script>
 <template>
     <div>
+        <p v-if="mod.dev_mode">
+            These settings apply only to your Home tab. To make changes that will apply to players, use the Develop tab.
+        </p>
         <kn-fso-settings :mods="mods" :fso_build.sync="user_build" :cmdline.sync="mod.user_cmdline"></kn-fso-settings>
 
         <div class="form-group">
