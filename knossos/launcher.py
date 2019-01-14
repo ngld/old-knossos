@@ -204,7 +204,6 @@ def run_knossos():
     app.exec_()
 
     center.save_settings()
-    center.installed.save_modified()
     ipc.shutdown()
 
 

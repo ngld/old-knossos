@@ -482,15 +482,16 @@ def run_mod(mod, tool=None, exe_label=None):
             'version': str(mod.version),
             'title': mod.title,
             'exes': options,
+            'is_tool': bool(tool),
             'mod_flag': mod_flag,
             'selected_exe': sel_exe['file']
         }))
     else:
-        run_mod_ex(mod, sel_exe['file'], [path for path, label in mod_flag], True if tool else False)
+        run_mod_ex(mod, sel_exe['file'], [path for path, label in mod_flag], bool(tool))
 
 
 def run_mod_ex(mod, binpath, mod_flag, is_tool):
-    if not is_tool and not mod.dev_mode:
+    if not is_tool:
         mod.update_last_played()
 
     # Put the cmdline together

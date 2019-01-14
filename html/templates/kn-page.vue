@@ -56,6 +56,7 @@ export default {
         popup_mod_exes: [],
         popup_mod_flag: [],
         popup_mod_sel_exe: null,
+        popup_mod_is_tool: false,
         popup_mod_flag_map: {},
 
         popup_pkg_name: '',
@@ -71,7 +72,6 @@ export default {
         retail_found: false,
         retail_data_path: '',
         sort_types: ['alphabetical', 'last_played', 'last_released', 'last_updated'],
-        // FIXME TODO: save sort_type between sessions
         sort_type: 'alphabetical'
     }),
 
@@ -284,7 +284,7 @@ export default {
                 if(this.popup_mod_flag_map[part[0]]) mod_flag.push(part[0]);
             }
 
-            fs2mod.runModAdvanced(this.popup_mod_id, this.popup_mod_version, this.popup_mod_sel_exe, mod_flag);
+            fs2mod.runModAdvanced(this.popup_mod_id, this.popup_mod_version, this.popup_mod_sel_exe, this.popup_mod_is_tool, mod_flag);
             this.popup_visible = false;
         },
 

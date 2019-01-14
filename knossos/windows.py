@@ -252,6 +252,7 @@ class Window(QtCore.QObject):
     def tr(self, *args):
         return translate(self.__class__.__name__, *args)
 
+
 class HellWindow(Window):
     _tasks = None
     _mod_filter = 'home'
@@ -429,9 +430,13 @@ class HellWindow(Window):
                     installed_versions[str(m.version)] = m
 
                 if str(mod.version) in installed_versions:
-                    item = installed_versions[str(mod.version)].get(True)
+                    item = installed_versions[str(mod.version)].get()
                 else:
-                    item = mod.get(True)
+                    item = mod.get()
+
+                last_playeds = [mod.get_user()['last_played'] for mod in installed_versions.values()]
+                last_playeds = sorted(list(filter(lambda lp: lp is not None, last_playeds)), reverse=True)
+                item['last_played'] = last_playeds[0] if len(last_playeds) > 0 else None
 
                 if mod.parent == 'FS2' and not center.installed.has('FS2') and not ignore_retail_dependency:
                     if center.settings['show_fs2_mods_without_retail']:
@@ -478,10 +483,10 @@ class HellWindow(Window):
                 item['versions'] = []
                 for mod in mvs:
                     if str(mod.version) in installed_versions:
-                        mv = installed_versions[str(mod.version)].get(True)
+                        mv = installed_versions[str(mod.version)].get()
                         mv['installed'] = True
                     else:
-                        mv = mod.get(True)
+                        mv = mod.get()
                         mv['installed'] = False
                         mv['dev_mode'] = False
 
@@ -489,10 +494,6 @@ class HellWindow(Window):
 
                 if item['installed'] and not item['versions'][0]['installed']:
                     item['status'] = 'update'
-
-                last_played_ops = [ver['last_played_display'] for ver in item['versions'] if ver['last_played_display'] is not None]
-                last_played_ops.sort(reverse=True)
-                item['last_played_display'] = last_played_ops[0] if last_played_ops else None
 
                 result.append(item)
 

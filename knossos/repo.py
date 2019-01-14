@@ -548,8 +548,8 @@ class Mod(object):
             if 'dest' in act:
                 act['dest'] = act['dest'].lstrip('/')
 
-    def get(self, user_facing_format=False):
-        result = {
+    def get(self):
+        return {
             'id': self.mid,
             'title': self.title,
             'type': self.mtype,
@@ -572,16 +572,6 @@ class Mod(object):
             'actions': self.actions,
             'packages': [pkg.get() for pkg in self.packages]
         }
-
-        if user_facing_format:
-            last_played = None
-            try:
-                last_played = center.installed.query(self).last_played
-            except ModNotFound:
-                pass
-            result['last_played'] = last_played.strftime('%Y-%m-%d %H:%M:%S') if last_played else None
-            result['last_played_display'] = last_played.strftime('%Y-%m-%d') if last_played else None
-        return result
 
     def copy(self):
         return self.__class__(self.get(), self._repo)
@@ -885,11 +875,6 @@ class InstalledRepo(Repo):
 
         return updates
 
-    def save_modified(self):
-        for mod in self.mods.values():
-            for mod_version in mod:
-                if mod_version.modified:
-                    mod_version.save()
 
 class InstalledMod(Mod):
     check_notes = ''
@@ -899,9 +884,8 @@ class InstalledMod(Mod):
     user_exe = None
     user_cmdline = None
     user_custom_build = None
+    user_last_played = None
     _path = None
-    last_played = None
-    modified = False
 
     @staticmethod
     def load(path):
@@ -947,10 +931,6 @@ class InstalledMod(Mod):
         self.dev_mode = values.get('dev_mode', False)
         self.custom_build = values.get('custom_build', None)
         self.check_notes = values.get('check_notes', '')
-        self.last_played = values.get('last_played', None)
-        
-        if self.last_played:
-            self.last_played = datetime.strptime(self.last_played, '%Y-%m-%d %H:%M:%S')
 
         if not self.mod_flag:
             # Fix broken metadata
@@ -967,9 +947,13 @@ class InstalledMod(Mod):
         self.user_exe = values.get('exe')
         self.user_cmdline = values.get('cmdline')
         self.user_custom_build = values.get('custom_build')
+        self.user_last_played = values.get('last_played', None)
 
-    def get(self, user_facing_format=False):
-        result = {
+        if self.user_last_played:
+            self.user_last_played = datetime.strptime(self.user_last_played, '%Y-%m-%d %H:%M:%S')
+
+    def get(self):
+        return {
             'installed': True,
             'id': self.mid,
             'title': self.title,
@@ -989,7 +973,6 @@ class InstalledMod(Mod):
             'attachments': self.attachments[:],
             'first_release': self.first_release.strftime('%Y-%m-%d') if self.first_release else None,
             'last_update': self.last_update.strftime('%Y-%m-%d') if self.last_update else None,
-            'last_played': self.last_played.strftime('%Y-%m-%d %H:%M:%S') if self.last_played else None,
             'cmdline': self.cmdline,
             'mod_flag': self.mod_flag,
             'dev_mode': self.dev_mode,
@@ -1000,15 +983,13 @@ class InstalledMod(Mod):
             'user_cmdline': self.user_cmdline,
             'user_custom_build': self.user_custom_build
         }
-        if user_facing_format:
-            result['last_played_display'] = self.last_played.strftime('%Y-%m-%d') if self.last_played else None
-        return result
 
     def get_user(self):
         return {
             'exe': self.user_exe,
             'cmdline': self.user_cmdline,
-            'custom_build': self.user_custom_build
+            'custom_build': self.user_custom_build,
+            'last_played': self.user_last_played .strftime('%Y-%m-%d %H:%M:%S') if self.user_last_played else None
         }
 
     def get_relative(self):
@@ -1214,8 +1195,8 @@ class InstalledMod(Mod):
         return exes
 
     def update_last_played(self):
-        self.last_played = datetime.now()
-        self.modified = True
+        self.user_last_played  = datetime.now()
+        self.save_user()
         center.main_win.update_mod_list()
 
 class IniMod(InstalledMod):
