@@ -119,6 +119,12 @@ class FlagsReader(object):
             'sdl': self.sdl
         }
 
+# TODO verify constant values against FSO code
+# Network setting constants
+net_types = ['None', 'Dialup', 'LAN']
+default_net_type_index = len(net_types) - 1
+net_speeds = ['None', 'Slow', '56K', 'ISDN', 'Cable', 'Fast']
+default_net_speed_index = len(net_speeds) - 1
 
 def get_settings():
     dev_info = get_deviceinfo()
@@ -169,11 +175,14 @@ def get_settings():
     speech_multi = section.get('SpeechMulti', 0)
 
     # network settings
-    net_connection = section.get('NetworkConnection', None)
-    net_speed = section.get('ConnectionSpeed', None)
-    net_port = section.get('ForcePort', None)
+    net_type = section.get('NetworkConnection',
+                           net_types[default_net_type_index])
+    net_speed = section.get('ConnectionSpeed',
+                            net_speeds[default_net_speed_index])
+    net_port = section.get('ForcePort', '')
 
-    net_ip = section.get('Network/CustomIP', None)
+    section = config.get('Network', {})
+    net_ip = section.get('CustomIP', '')
 
     # sound settings
     section = config.get('Sound', {})
@@ -265,19 +274,17 @@ def get_settings():
     fso['speech_multi'] = speech_multi == '1'
 
     # ---Network settings---
-    net_connections_read = {'none': 0, 'dialup': 1, 'LAN': 2}
-    if net_connection in net_connections_read:
-        index = net_connections_read[net_connection]
+    if net_type in net_types:
+        index = net_types.index(net_type)
     else:
-        index = 2
+        index = default_net_type_index
 
     fso['net_type'] = index
 
-    net_speeds_read = {'none': 0, 'Slow': 1, '56K': 2, 'ISDN': 3, 'Cable': 4, 'Fast': 5}
-    if net_speed in net_speeds_read:
-        index = net_speeds_read[net_speed]
+    if net_speed in net_speeds:
+        index = net_speeds.index(net_speed)
     else:
-        index = 5
+        index = default_net_speed_index
 
     fso['net_speed'] = index
     fso['net_ip'] = net_ip
@@ -320,8 +327,10 @@ def save_fso_settings(new_settings):
         section = config.setdefault('Sound', {})
 
         section['PlaybackDevice'] = new_settings.get('active_audio_dev', '')
-        # ^ wxlauncher uses the same string as CaptureDevice, instead of what openal identifies as the playback device.
-        # ^ So I do it the way openal is supposed to work, but I'm not sure FS2 really behaves that way
+        # ^ wxlauncher uses the same string as CaptureDevice, instead of what
+        # openal identifies as the playback device.
+        # ^ So I do it the way openal is supposed to work, but I'm not sure FS2
+        # really behaves that way
 
         section['CaptureDevice'] = new_settings.get('active_cap_dev', '')
 
@@ -354,41 +363,59 @@ def save_fso_settings(new_settings):
         section['SpeechIngame'] = 1 if new_settings['speech_ingame'] else 0
         section['SpeechMulti'] = 1 if new_settings['speech_multi'] else 0
 
-        # Set reasonable defaults to stop FSO from complaining about missing network settings.
-        section.setdefault('NetworkConnection', 'LAN')
-        section.setdefault('ConnectionSpeed', 'Fast')
-
         # networking
-        # net_types = {0: 'none', 1: 'dialup', 2: 'LAN'}
-        # new_net_connection = net_types[self._tabs['fso_network'].connectionType.currentIndex()]
-        # section['NetworkConnection'] = new_net_connection
+        try:
+            new_net_type_index = int(new_settings['net_type'])
+        except ValueError:
+            new_net_type_index = default_net_type_index
 
-        # net_speeds = {0: 'none', 1: 'Slow', 2: '56K', 3: 'ISDN', 4: 'Cable', 5: 'Fast'}
-        # new_net_speed = net_speeds[self._tabs['fso_network'].connectionSpeed.currentIndex()]
-        # section['ConnectionSpeed'] = new_net_speed
+        try:
+            new_net_type = net_types[new_net_type_index]
+        except IndexError:
+            new_net_type = net_types[default_net_type_index]
+            # TODO log warning? this case shouldn't happen
 
-        # new_net_ip = self._tabs['fso_network'].forceAddress.text()
-        # if new_net_ip == '...':
-        #     new_net_ip = ''
+        section['NetworkConnection'] = new_net_type
+      
+        try:
+            new_net_speed_index = int(new_settings['net_speed'])
+        except ValueError:
+            new_net_speed_index = default_net_speed_index
 
-        # if new_net_ip == '':
-        #     config.remove('Network/CustomIP')
-        # else:
-        #     config.setValue('Network/CustomIP'] = new_net_ip
+        try:
+            new_net_speed = net_speeds[new_net_speed_index]
+        except IndexError:
+            new_net_speed = net_speeds[default_net_speed_index]
+            # TODO log warning? this case shouldn't happen
 
-        # new_net_port = self._tabs['fso_network'].localPort.text()
-        # if new_net_port == '0':
-        #     new_net_port = ''
-        # elif new_net_port != '':
-        #     try:
-        #         new_net_port = int(new_net_port)
-        #     except ValueError:
-        #         new_net_port = ''
+        section['ConnectionSpeed'] = new_net_speed
 
-        # if new_net_port == '':
-        #     config.remove(section + 'ForcePort')
-        # else:
-        #     section['ForcePort'] = new_net_port
+        new_net_port = new_settings['net_port']
+        if new_net_port == '0':
+            new_net_port = None
+        elif new_net_port is not None:
+            try:
+                new_net_port = int(new_net_port)
+            except ValueError:
+                new_net_port = None
+
+        if new_net_port is None:
+            # TODO right?
+            if 'ForcePort' in section:
+                del section['ForcePort']
+        else:
+            section['ForcePort'] = new_net_port
+
+        section = config.setdefault('Network', {})
+
+        new_net_ip = new_settings['net_ip']
+        if new_net_ip == '...' or len(new_net_ip) == 0:
+            new_net_ip = None
+
+        if new_net_ip is None:
+            del config['Network']
+        else:
+            section['CustomIP'] = new_net_ip
 
         # Save the new configuration.
         write_fso_config(config)
@@ -452,6 +479,7 @@ def write_fso_config(sections):
     config_file = os.path.join(get_fso_profile_path(), 'fs2_open.ini')
 
     with open(config_file, 'w', errors='replace') as stream:
+        # FIXME TODO I'm not sure this is correct. I think Default may need to come first.
         for name, pairs in sections.items():
             stream.write('[%s]\n' % name)
 
