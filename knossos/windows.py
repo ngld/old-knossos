@@ -367,7 +367,7 @@ class HellWindow(Window):
             msg = self.tr('There\'s an update available!\nYou should update to Knossos %s.') % str(version)
             QtWidgets.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
 
-    def _get_sort_parameters(self):
+    def _get_sort_parameters(self, sort_type):
         # Maybe I should add "Just " to the list?
         prefixes = ('the ', 'a ')
         def _build_sort_title(mod):
@@ -393,15 +393,19 @@ class HellWindow(Window):
             'last_released': _build_sort_last_released,
             'last_updated': _build_sort_last_updated
             }
-        sort_key = sort_key_dict[center.sort_type]
-        sort_reverse = center.sort_type != 'alphabetical'
+        sort_key = sort_key_dict[sort_type]
+        sort_reverse = sort_type != 'alphabetical'
         return sort_key, sort_reverse
 
-    def search_mods(self, search_filter=None, ignore_retail_dependency=False):
+    def search_mods(self, search_filter=None, query=None, sort_type=None, ignore_retail_dependency=False):
         mods = None
         omit_fs2_mods = False
         if search_filter is None:
             search_filter = self._mod_filter
+        if query is None:
+            query = self._search_text
+        if sort_type is None:
+            sort_type = center.sort_type
 
         if search_filter in ('home', 'develop'):
             mods = center.installed.mods
@@ -412,7 +416,6 @@ class HellWindow(Window):
             mods = {}
 
         # Now filter the mods.
-        query = self._search_text
         result = []
         for mid, mvs in mods.items():
             if query in mvs[0].title.lower():
@@ -497,7 +500,7 @@ class HellWindow(Window):
 
                 result.append(item)
 
-        sort_key, sort_reverse = self._get_sort_parameters()
+        sort_key, sort_reverse = self._get_sort_parameters(sort_type)
         result.sort(key=sort_key, reverse=sort_reverse)
         return result, search_filter
 
@@ -521,12 +524,21 @@ class HellWindow(Window):
 
     def _init_explore_mod_list_cache(self):
         if center.settings['base_path'] is not None:
-            explore_result, explore_filter = self.search_mods('explore', True)
+            explore_result, explore_filter = self.search_mods('explore', '', None, True)
             for item in explore_result:
                 self._explore_mod_list_cache[item['id']] = item
 
     def get_explore_mod_list_cache_json(self):
         return json.dumps(self._explore_mod_list_cache)
+
+    def get_last_played_mod(self):
+        mod = None
+        sort_result, search_filter = self.search_mods('home', '', 'last_played')
+        if len(sort_result) > 0:
+            first_mod = sort_result[0]
+            if first_mod['last_played'] is not None:
+                mod = first_mod
+        return mod
 
     def update_mod_list(self):
         if center.settings['base_path'] is not None:

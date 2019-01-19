@@ -84,6 +84,25 @@ function init() {
     let mod_table = null;
     window.task_mod_map = {};
 
+    window.addEventListener('keyup', (event) => {
+        let key = event.keyCode ? event.keyCode : event.which;
+
+        switch(key) {
+            case 27: // Esc
+                vm.exitDetails();
+                break;
+            case 112: // F1
+                vm.showHelp();
+                break;
+            case 113: // F2
+                vm.launchLastPlayedMod();
+                break;
+            case 114: // F3
+                alert('Running FRED with last played mod not yet implemented!');
+                break;
+        }
+    });
+
     let getModTable = function (type) {
         if(type === 'explore') {
             return explore_mod_table;

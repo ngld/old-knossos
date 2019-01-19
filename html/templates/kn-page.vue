@@ -141,7 +141,9 @@ export default {
         },
 
         exitDetails() {
-            this.page = 'modlist';
+            if (this.page === 'details') {
+                this.page = 'modlist';
+            }
         },
 
         createMod() {
@@ -276,6 +278,10 @@ export default {
             call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
                 if(result) this.popup_visible = false;
             });
+        },
+
+        launchLastPlayedMod() {
+            fs2mod.runLastPlayedMod();
         },
 
         launchModAdvanced() {

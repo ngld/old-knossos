@@ -412,14 +412,27 @@ class WebBridge(QtCore.QObject):
         if hasattr(center.main_win, 'abort_task'):
             center.main_win.abort_task(int(tid))
 
-    @QtCore.Slot(str, str, result=int)
-    def runMod(self, mid, spec=None):
+    def _run_mod(self, mid, spec):
         mod = self._get_mod(mid, spec)
         if mod in (-1, -2):
             return mod
 
         runner.run_mod(mod)
         return 0
+
+    @QtCore.Slot(str, str, result=int)
+    def runMod(self, mid, spec=None):
+        return self._run_mod(mid, spec)
+
+    @QtCore.Slot(result=int)
+    def runLastPlayedMod(self):
+        mod = center.main_win.get_last_played_mod()
+        if mod is not None:
+            # FIXME what about running the specific version oft he mod that was last played?
+            return self._run_mod(mod['id'], None)
+        else:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('No last played mod found!'))
+            return -3
 
     @QtCore.Slot(str, str, result=list)
     def getModTools(self, mid, spec):
@@ -1754,11 +1767,17 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot()
     def showTempHelpPopup(self):
         QtWidgets.QMessageBox.information(None, 'Knossos',
-                                          'The help system isn\'t implemented yet, but you '
+                                          '<p>The help system isn\'t implemented yet, but you '
                                           'can ask for help on the <a href="https://discord.gg/qfReB8t">#knossos</a> '
                                           'channel on Discord or on the '
                                           '<a href="https://www.hard-light.net/forums/index.php?topic=94068.0">'
-                                          'Knossos release thread</a> on the Hard Light Productions forums.')
+                                          'Knossos release thread</a> on the Hard Light Productions forums.</p>'
+                                          'Keyboard shortcuts:<table>'
+                                          '<tr><td>F1  </td><td>Show this help popup</td></tr>'
+                                          '<tr><td>F2  </td><td>Run last played mod/TC</td></tr>'
+                                          '<tr><td>F3  </td><td>Run FRED (qtFRED on macOS/Linux) with last played mod/TC</td></tr>'
+                                          '<tr><td>Esc  </td><td>Exit mod details page</td></tr>'
+                                          '</table>')
 
     @QtCore.Slot(str, result=str)
     def setSortType(self, sort_type):
