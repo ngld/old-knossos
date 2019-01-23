@@ -77,7 +77,7 @@ export default {
                 fs2mod.setBasePath(this.knossos.base_path);
             }
 
-            for(let set of ['max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth', 'update_notify', 'custom_bar', 'show_fs2_mods_without_retail']) {
+            for(let set of ['max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth', 'update_notify', 'custom_bar', 'show_fs2_mods_without_retail', 'show_fso_builds']) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
                 }
@@ -175,6 +175,13 @@ export default {
                     <label class="col-sm-4 control-label">Show FreeSpace 2 Mods:</label>
                     <div class="col-sm-8">
                         <input type="checkbox" v-model="knossos.show_fs2_mods_without_retail">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Show Engine Builds In Mod List:</label>
+                    <div class="col-sm-8">
+                        <input type="checkbox" v-model="knossos.show_fso_builds">
                     </div>
                 </div>
             </kn-drawer>

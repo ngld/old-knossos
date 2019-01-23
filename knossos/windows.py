@@ -381,6 +381,9 @@ class HellWindow(Window):
                 mod = mvs[0]
                 
                 if mod.mtype == 'engine' and self._mod_filter != 'develop':
+                    if not center.settings['show_fso_builds']:
+                        continue
+
                     mvs = [mv for mv in mvs if mv.satisfies_stability(center.settings['engine_stability'])]
                     if len(mvs) == 0:
                         mvs = mods[mid]
