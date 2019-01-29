@@ -15,7 +15,7 @@ export default {
         tabs: {
             home: 'Home',
             explore: 'Explore',
-            develop: 'Development',
+            develop: 'Develop',
             trouble: 'Troubleshooting'
         },
 
@@ -512,30 +512,34 @@ export default {
                                     <option value="mod">Mod</option>
                                     <option value="tc" v-if="popup_mode === 'create_mod'">Total Conversion</option>
                                     <option value="engine" v-if="popup_mode === 'create_mod'">FSO build</option>
+                                    <!-- TODO uncomment once Tool and Extension are supported
                                     <option value="tool" v-if="popup_mode === 'create_mod'">Tool</option>
                                     <option value="ext">Extension</option>
+                                    -->
                                 </select>
 
                                 <span class="help-block" v-if="popup_mod_type === 'mod'">
-                                    This type is the default and covers most cases. Normally you'll want to use this type.
+                                    A campaign based on FreeSpace 2 (retail) or on a total conversion (TC).<br>
                                 </span>
 
                                 <span class="help-block" v-if="popup_mod_type === 'tc'">
-                                    Use this type if your mod doesn't depend on other mods or retail files.<br>
-                                    (Mods for TCs should still use the "Mod" type.)
+                                    A standalone game that doesn't depend on other mods and doesn't use FS2 files.<br>
+                                    Mods for TCs should use the "Mod" type.
                                 </span>
 
                                 <span class="help-block" v-if="popup_mod_type === 'engine'">
-                                    This should only be used for builds FSO builds (fs2_open*.exe, fs2_open*.AppImage, etc.).
+                                    A build of the FreeSpace Open (FSO) engine (fs2_open*.exe, fs2_open*.AppImage, fs2_open*.app, etc.)
                                 </span>
-
+                                <!-- TODO uncomment once tools and extensions are supported
                                 <span class="help-block" v-if="popup_mod_type === 'tool'">
-                                    This is used for all executables which aren't FSO like FRED or PCS2.
+                                    Software other than the FreeSpace Open (FSO) engine.<br>
+                                    Examples include FRED (mission editor) and PCS2 (model converter).
                                 </span>
 
                                 <span class="help-block" v-if="popup_mod_type === 'ext'">
-                                    This mod type is meant for overrides like custom HUD tables.
+                                    A change that overrides, such as custom HUD tables
                                 </span>
+                                -->
                             </div>
                         </div>
 
@@ -547,7 +551,7 @@ export default {
                                 </select>
 
                                 <span class="help-block">
-                                    Please select your parent TC here. If this mod doesn't extend a TC, select "Retail FS2".
+                                    The game your mod is based on, either FreeSpace 2 ("Retail FS2") or a total conversion (TC).
                                 </span>
                             </div>
                         </div>
@@ -616,7 +620,7 @@ export default {
 
                                 <label class="checkbox">
                                     <input type="radio" name="v_popup_mod_method" value="empty" v-model="popup_mod_method">
-                                    Create a new, empty folder
+                                    Create a new folder
                                 </label>
                             </div>
                         </div>
@@ -692,7 +696,7 @@ export default {
 
                 <div v-if="popup_mode == 'upload_mod'">
                     <p>
-                        Are you sure that you want to upload {{popup_mod_name}} {{popup_mod_version}}?
+                        Upload {{popup_mod_name}} {{popup_mod_version}} to Nebula?
                     </p>
 
                     <p>
