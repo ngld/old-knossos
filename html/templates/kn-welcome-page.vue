@@ -7,7 +7,6 @@ export default {
         retail_searching: false,
         retail_found: false,
         retail_path: '',
-        root_vp_path: '',
         retail_installed: false,
 
         installer_path: '',
@@ -65,15 +64,14 @@ export default {
             });
         },
 
-        selectRetailRootVP() {
-            call(fs2mod.browseFiles, 'Select your FreeSpace 2 folder\'s Root_fs2.vp', this.root_vp_path, '*.vp', (vp_files) => {
-                if (vp_files.length > 0) {
-                    this.root_vp_path = vp_files[0];
-                    call(fs2mod.verifyRootVPFolder, this.root_vp_path, (retail_path) => {
-                        if(retail_path) {
-                            this.retail_path = retail_path;
-                        } else {
-                            this.root_vp_path = '';
+        selectRetailFolder() {
+            call(fs2mod.browseFiles, 'Select your FreeSpace 2 folder\'s Root_fs2.vp', '', '*.vp', (vp_files) => {
+                if(vp_files.length > 0) {
+                    let root_vp_path = vp_files[0];
+
+                    call(fs2mod.verifyRootVPFolder, root_vp_path, (result) => {
+                        if(result) {
+                            this.retail_path = result;
                         }
                     });
                 }
@@ -194,9 +192,9 @@ export default {
                     </p>
 
                     <div class="input-group">
-                        <input type="text" class="form-control" v-model="root_vp_path">
+                        <input type="text" class="form-control" v-model="retail_path">
                         <span class="input-group-btn">
-                            <button class="btn btn-default" @click.prevent="selectRetailRootVP">Browse...</button>
+                            <button class="btn btn-default" @click.prevent="selectRetailFolder">Browse...</button>
                             <button class="btn btn-primary" @click.prevent="processRetail(true)">Continue</button>
                         </span>
                     </div>

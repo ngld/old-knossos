@@ -58,7 +58,7 @@ export default {
 
     methods: {
         changeBasePath() {
-            call(fs2mod.browseFolder, 'Please select a folder', this.knossos.base_path || '', (path) => {
+            call(fs2mod.browseFolder, 'Select a folder for the Knossos library', this.knossos.base_path || '', (path) => {
                 if(path) this.knossos.base_path = path;
             });
         },
@@ -113,7 +113,7 @@ export default {
         },
 
         showRetailPrompt() {
-            vm.showRetailPrompt();
+            vm.showRetailPrompt(false);
         }
     }
 };
@@ -132,7 +132,7 @@ export default {
             <kn-drawer label="Knossos">
                 <div class="settings-exp drawer-exp">Settings for basic Knossos options, errors, and data</div>
                 <div class="form-group">
-                    <label class="col-sm-4 control-label">Data Path:</label>
+                    <label class="col-sm-4 control-label">Library Path:</label>
                     <div class="col-sm-8">
                         <small>{{ knossos.base_path }}</small>
                         <button class="mod-btn btn-link-grey pull-right" @click.prevent="changeBasePath">Browse</button>

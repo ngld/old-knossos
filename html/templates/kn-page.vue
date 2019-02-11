@@ -66,7 +66,12 @@ export default {
         // retail prompt
         retail_searching: true,
         retail_found: false,
-        retail_data_path: ''
+        detected_retail_path: '',
+        retail_folder_path: '',
+        gog_installer_path: '',
+        retail_data_path: '', // TODO remove once no longer needed
+        mod_install_attempted: false,
+        retail_install_option: 'auto-detect-installation'
     }),
 
     watch: {
@@ -215,12 +220,17 @@ export default {
             this.popup_visible = true;
         },
 
-        showRetailPrompt() {
+        showRetailPrompt(mod_install_attempted) {
             this.popup_mode = 'retail_prompt';
-            this.popup_title = 'Retail data missing';
+            this.popup_title = mod_install_attempted ? 'FreeSpace 2 data missing' : "Install FreeSpace 2";
             this.popup_visible = true;
 
             this.retail_data_path = '';
+            this.detected_retail_path = '';
+            this.retail_folder_path = '';
+            this.gog_installer_path = '';
+            this.retail_install_option = 'auto-detect-installation';
+            this.mod_install_attempted = mod_install_attempted;
             this.retailAutoDetect();
         },
 
@@ -233,26 +243,42 @@ export default {
 
                 if(path !== '') {
                     this.retail_found = true;
-                    this.retail_data_path = path;
+                    this.detected_retail_path = path;
                 }
             });
         },
 
         selectRetailFolder() {
-            call(fs2mod.browseFolder, 'Please select your FS2 folder', this.retail_data_path, (path) => {
-                if(path) this.retail_data_path = path;
-            });
-        },
-
-        selectRetailFile() {
-            call(fs2mod.browseFiles, 'Please select your setup_freespace2_...exe', this.retail_data_path, '*.exe', (files) => {
-                if(files.length > 0) {
-                    this.retail_data_path = files[0];
+            call(fs2mod.browseFiles, 'Select your FreeSpace 2 folder\'s Root_fs2.vp', '', '*.vp', (vp_files) => {
+                if(vp_files.length > 0) {
+                    let root_vp_path = vp_files[0];
+                    call(fs2mod.verifyRootVPFolder, root_vp_path, (result) => {
+                        if(result) {
+                            this.retail_folder_path = result;
+                        }
+                    });
                 }
             });
         },
 
+        selectRetailFile() {
+            call(fs2mod.browseFiles, 'Select your setup_freespace2_...exe', this.gog_installer_path, '*.exe', (files) => {
+                if (files.length > 0) {
+                    this.gog_installer_path = files[0];
+                }
+            });
+        },
+
+        selectRetailLocation() {
+            if(this.retail_install_option === 'select-installation-folder') {
+                this.selectRetailFolder();
+            } else {
+                this.selectRetailFile();
+            }
+        },
+
         selectModIni() {
+            // FIXME shouldn't retail_data_path be popup_ini_path?
             call(fs2mod.browseFiles, 'Please select the desired mod.ini', this.retail_data_path, 'mod.ini', (files) => {
                 if(files.length > 0) {
                     this.popup_ini_path = files[0];
@@ -267,8 +293,20 @@ export default {
         },
 
         finishRetailPrompt() {
-            call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
-                if(result) this.popup_visible = false;
+            let path = '';
+            if(this.retail_install_option === 'select-installation-folder') {
+                path = this.retail_folder_path;
+            } else if(this.retail_install_option === 'select-installer-file') {
+                path = this.gog_installer_path;
+            } else {
+                path = this.detected_retail_path;
+            }
+            call(fs2mod.copyRetailData, path, (result) => {
+                if (result) {
+                    // FIXME TODO show install popup and connectOnce retail installed signal
+                    // see welcome page and PR comments
+                    this.popup_visible = false;
+                }
             });
         },
 
@@ -436,30 +474,58 @@ export default {
 
                 <div v-if="popup_mode === 'retail_prompt'">
                     <p>
-                        You're trying to install an FS2 mod which requires retail files which you don't have.<br>
-                        Please select the folder of your FS2 installation or the FS2 installer from GOG (setup_freespace2_....exe).
+                        <span v-if="mod_install_attempted">You need the FreeSpace 2 data files to play this mod.<br></span>
+                        Choose how you want to install FreeSpace 2. You can buy it from
+                        <a href="https://www.gog.com/game/freespace_2" class="open-ext">GOG</a>
+                        or <a href="https://store.steampowered.com/app/273620/Freespace_2/" class="open-ext">Steam</a>.
                     </p>
-                    <p>
-                        <strong v-if="retail_searching">Searching files...</strong>
-                        <strong v-else-if="retail_found">Folder found!</strong>
-                        <strong v-else>
-                            Nothing found, please select the appropriate folder or install FS2 and
-                            <a href="#" @click.prevent="retailAutoDetect">try again</a>.
-                        </strong>
-                    </p>
-                    <form class="form-horizontal">
+                    <form class="form-horizontal col-xs-12">
                         <div class="form-group">
-                            <div class="col-xs-8">
-                                <input type="text" class="form-control" v-model="retail_data_path" :disabled="retail_searching">
-                            </div>
-                            <div class="col-xs-4">
-                                <button class="btn btn-default" @click.prevent="selectRetailFolder">Browse...</button>
-                                <button class="btn btn-default" @click.prevent="selectRetailFile">Select .exe</button>
-                            </div>
+                            <label class="checkbox">
+                                <input type="radio" value="auto-detect-installation" v-model="retail_install_option" @change="retailAutoDetect">
+                                Auto-detect installation
+                            </label>
+                            <label class="checkbox">
+                                <input type="radio" value="select-installation-folder" v-model="retail_install_option">
+                                Select installation folder
+                            </label>
+                            <label class="checkbox">
+                                <input type="radio" value="select-installer-file" v-model="retail_install_option">
+                                Select GOG installer file
+                            </label>
                         </div>
                     </form>
-                    
-                    <p><button class="btn btn-primary" @click="finishRetailPrompt">Continue</button></p>
+                    <p v-if="retail_install_option === 'select-installation-folder'">
+                        Browse to the folder that has the FreeSpace 2 data files and find the file <strong>Root_fs2.vp</strong> or <strong>root_fs2.vp</strong>.<br>
+                        Knossos will copy the files into the Knossos library.
+                    </p>
+                    <p v-else-if="retail_install_option === 'select-installer-file'">
+                        Select the GOG FreeSpace 2 installer (example: setup_freespace2_2.0.0.8.exe).<br>
+                        Knossos will extract the data files from the installer into the Knossos library.
+                    </p>
+                    <p v-else>
+                        <span v-if="retail_searching"><strong>Searching files...</strong></span>
+                        <span v-else-if="retail_found"><strong>FreeSpace 2 folder found</strong> at<br>
+                        {{  detected_retail_path  }}</span>
+                        <span v-else>
+                            <strong>FreeSpace 2 folder auto-detection failed.</strong><br>
+                            Choose another install option or install FreeSpace 2 and
+                            <a href="#" @click.prevent="retailAutoDetect">try again</a>.
+                        </span>
+                    </p>
+                    <p>
+                        <div class="input-group" :style="{ visibility: (retail_install_option !== 'auto-detect-installation') ? 'visible' : 'hidden' }">
+                            <input v-if="retail_install_option === 'select-installation-folder'" type="text" class="form-control" v-model="retail_folder_path">
+                            <input v-else type="text" class="form-control" v-model="gog_installer_path">
+                            <span class="input-group-btn">
+                                <button class="btn btn-default" @click.prevent="selectRetailLocation">Browse...</button>
+                            </span>
+                        </div>
+                    </p>
+                    <p>
+                        <button class="btn btn-primary" @click="finishRetailPrompt">Continue</button>
+                        <button class="btn btn-default pull-right" @click.prevent="popup_visible = false">Cancel</button>
+                    </p>
                 </div>
 
                 <div v-if="popup_mode === 'create_mod'">

@@ -1816,6 +1816,7 @@ class WebBridge(QtCore.QObject):
                                           '<a href="https://www.hard-light.net/forums/index.php?topic=94068.0">'
                                           'Knossos release thread</a> on the Hard Light Productions forums.')
 
+
 if QtWebChannel:
     BrowserCtrl = WebBridge
 else:

@@ -92,7 +92,7 @@ function init() {
         vm.page = 'details';
     });
     fs2mod.showRetailPrompt.connect(() => {
-        vm.showRetailPrompt();
+        vm.showRetailPrompt(true);
     });
     fs2mod.showLaunchPopup.connect((info) => {
         info = JSON.parse(info);
