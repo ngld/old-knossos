@@ -79,8 +79,35 @@ function init() {
 
     window.vm = new Vue(Object.assign({ el: '#loading' }, KnPage));
 
+    let explore_mod_table = {};
+    let installed_mod_table = {};
     let mod_table = null;
     window.task_mod_map = {};
+
+    let getModTable = function (type) {
+        if(type === 'explore') {
+            return explore_mod_table;
+        } else if(type === 'home' || type === 'develop') {
+            return installed_mod_table;
+        } else {
+            // TODO print error/warning unknown type!
+            return explore_mod_table;
+        }
+    };
+
+    let buildModArray = function (mod_order) {
+        let mods = [];
+
+        for(let mod_id of mod_order) {
+            let mod = mod_table[mod_id];
+            if(mod) {
+                mods.push(mod);
+            } else {
+                // TODO print error/warning about mod not found in mod_table
+            }
+        }
+        return mods;
+    };
 
     fs2mod.asyncCbFinished.connect((id, data) => {
         cb_store[id](JSON.parse(data));
@@ -125,15 +152,18 @@ function init() {
 
         cb();
     });
-    fs2mod.updateModlist.connect((mods, type) => {
-        window.mod_table = mod_table = {};
-        mods = JSON.parse(mods);
+    fs2mod.updateModlist.connect((updated_mods, type, mod_order) => {
+        mod_table = getModTable(type);
+        window.mod_table = mod_table;
+        updated_mods = JSON.parse(updated_mods);
 
-        for(let mod of mods) {
-            Vue.set(mod_table, mod.id, mod);
+        for(let mod_id of Object.keys(updated_mods)) {
+            Vue.set(mod_table, mod_id, updated_mods[mod_id]);
         }
-
         vm.mod_table = mod_table;
+
+        let mods = buildModArray(mod_order);
+        
         vm.updateModlist(mods);
     });
     fs2mod.hidePopup.connect(() => vm.popup_visible = false);
@@ -219,6 +249,11 @@ function init() {
 
         if(res.welcome) {
             vm.page = 'welcome';
+        }
+
+        let explore_mods = JSON.parse(res.explore_mods);
+        for(let mod_id of Object.keys(explore_mods)) {
+            explore_mod_table[mod_id] = explore_mods[mod_id];
         }
     }), 300);
 
