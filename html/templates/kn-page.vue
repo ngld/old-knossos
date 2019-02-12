@@ -149,7 +149,6 @@ export default {
                 return;
             }
 
-
             if(this.popup_mod_name === '') {
                 alert('You need to enter a mod name!');
                 return;
@@ -303,9 +302,13 @@ export default {
             }
             call(fs2mod.copyRetailData, path, (result) => {
                 if (result) {
-                    // FIXME TODO show install popup and connectOnce retail installed signal
-                    // see welcome page and PR comments
-                    this.popup_visible = false;
+                    this.popup_mod_id = 'FS2';
+                    this.popup_title = 'FreeSpace 2';
+                    this.popup_mode = 'mod_progress';
+
+                    connectOnce(fs2mod.retailInstalled, () => {
+                        this.popup_visible = false;
+                    });
                 }
             });
         },
@@ -323,6 +326,13 @@ export default {
         popupProposeFolder() {
             if(this.popup_pkg_folder === '') {
                 this.popup_pkg_folder = this.popup_pkg_name.toLowerCase().replace(/ /g, '_');
+            }
+        },
+
+        closePopup() {
+            // There's no way to reopen the popup during the welcome assistant so just don't close it at that point.
+            if(this.page !== 'welcome') {
+                this.popup_visible = false;
             }
         }
     }
@@ -431,13 +441,13 @@ export default {
             </div>
         </kn-scroll-container>
 
-        <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>
+        <div class="popup-bg" v-if="popup_visible" @click="closePopup"></div>
 
         <div class="popup" v-if="popup_visible">
             <div class="title clearfix">
                 {{ popup_title }}
 
-                <a href="" class="pull-right" @click.prevent="popup_visible = false">
+                <a href="" class="pull-right" @click.prevent="closePopup">
                     <i class="fa fa-times"></i>
                 </a>
             </div>

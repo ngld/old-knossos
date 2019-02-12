@@ -1567,13 +1567,6 @@ class GOGExtractTask(progress.Task):
             'total': ('Status', 0, 'Waiting...')
         }
 
-        if not center.installed.has('FSO'):
-            try:
-                fso = center.mods.query('FSO')
-                run_task(InstallTask(fso.resolve_deps()))
-            except repo.ModNotFound:
-                logging.warning('Installing retail files but FSO is missing!')
-
     def work(self, paths):
         gog_path, dest_path = paths
         self._local.slot = 'total'
@@ -1751,6 +1744,13 @@ class GOGExtractTask(progress.Task):
         else:
             center.main_win.update_mod_list()
             center.main_win.browser_ctrl.bridge.retailInstalled.emit()
+
+            if not center.installed.has('FSO'):
+                try:
+                    fso = center.mods.query('FSO')
+                    run_task(InstallTask(fso.resolve_deps()))
+                except repo.ModNotFound:
+                    logging.warning('Installing retail files but FSO is missing!')
             return
 
         path = os.path.join(self._dest_path, 'mod.json')
@@ -1780,13 +1780,6 @@ class GOGCopyTask(progress.Task):
         self._slot_prog = {
             'total': ('Status', 0, 'Waiting...')
         }
-
-        if not center.installed.has('FSO'):
-            try:
-                fso = center.mods.query('FSO')
-                run_task(InstallTask(fso.resolve_deps()))
-            except repo.ModNotFound:
-                logging.warning('Installing retail files but FSO is missing!')
 
     def work(self, paths):
         gog_path, dest_path = paths
@@ -1828,6 +1821,13 @@ class GOGCopyTask(progress.Task):
         if self._reason == 'done':
             center.main_win.update_mod_list()
             center.main_win.browser_ctrl.bridge.retailInstalled.emit()
+
+            if not center.installed.has('FSO'):
+                try:
+                    fso = center.mods.query('FSO')
+                    run_task(InstallTask(fso.resolve_deps()))
+                except repo.ModNotFound:
+                    logging.warning('Installing retail files but FSO is missing!')
             return
         elif self._reason == 'vps':
             msg = 'The selected directory does not contain the required retail VPs.'

@@ -166,8 +166,9 @@ function init() {
             if(mod_table[mid]) {
                 Vue.set(mod_table[mid], 'progress', progress);
                 Vue.set(mod_table[mid], 'progress_info', details);
-                vm.$set(vm.popup_progress, mid, details);
             }
+
+            vm.$set(vm.popup_progress, mid, details);
         }
     });
 

@@ -122,8 +122,9 @@ export default {
         },
 
         goToMVPS() {
-            vm.page = 'details';
-            vm.mod = mod_table.MVPS;
+            // Make sure the user ends up on the explore tab if they press Back on the details page.
+            vm.tab = 'explore';
+            fs2mod.showMod('MVPS');
         }
     }
 };
@@ -204,6 +205,11 @@ export default {
                     <p>
                         Download the GOG FreeSpace 2 installer (example: setup_freespace2_2.0.0.8.exe) and select it.<br>
                         Knossos will extract the data files from the installer into the Knossos library.
+                    </p>
+                    <p>
+                        If you select FreeSpace 2 in your game library, download the installer beneath the
+                        "Download offline backup game installers" heading. Do <strong>not</strong> click the big blue
+                        "Download and install now" button. That's the GOG Galaxy installer which we can't use.
                     </p>
                     <div class="input-group">
                         <input type="text" class="form-control" v-model="installer_path">

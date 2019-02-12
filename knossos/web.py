@@ -221,6 +221,15 @@ class WebBridge(QtCore.QObject):
             logging.exception('Failed to switch tabs!')
 
     @QtCore.Slot(str)
+    def showMod(self, mid):
+        # Make sure the mod list is puplated.
+        try:
+            center.main_win.update_mod_buttons('explore')
+            self.showModDetails.emit(mid)
+        except Exception:
+            logging.exception('Failed to show mod %s!' % mid)
+
+    @QtCore.Slot(str)
     def triggerSearch(self, term):
         center.main_win.perform_search(term)
 

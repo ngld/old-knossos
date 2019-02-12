@@ -377,7 +377,7 @@ class HellWindow(Window):
         for mid, mvs in mods.items():
             if query in mvs[0].title.lower():
                 mod = mvs[0]
-                
+
                 if mod.mtype == 'engine' and self._mod_filter != 'develop':
                     mvs = [mv for mv in mvs if mv.satisfies_stability(center.settings['engine_stability'])]
                     if len(mvs) == 0:
@@ -517,7 +517,7 @@ class HellWindow(Window):
             self._updating_mods[m.mid] = pi[0] * 100
 
         if len(self._tasks) == 1 and pi[0] > 0:
-                integration.current.set_progress(pi[0])
+            integration.current.set_progress(pi[0])
 
         if len(task.mods) == 0 and self._prg_visible:
             self.win.progressBar.setValue(pi[0] * 100)
