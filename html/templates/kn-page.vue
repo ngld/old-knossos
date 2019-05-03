@@ -1,4 +1,6 @@
 <script>
+import Popper from 'vue-popperjs';
+import 'vue-popperjs/dist/css/vue-popper.css';
 import KnTroubleshooting from './kn-troubleshooting.vue';
 
 let next_tab = null;
@@ -6,7 +8,8 @@ let first_load = true;
 
 export default {
     components: {
-        'kn-troubleshooting': KnTroubleshooting
+        'kn-troubleshooting': KnTroubleshooting,
+        popper: Popper
     },
 
     data: () => ({
@@ -54,6 +57,7 @@ export default {
         popup_mod_exes: [],
         popup_mod_flag: [],
         popup_mod_sel_exe: null,
+        popup_mod_is_tool: false,
         popup_mod_flag_map: {},
 
         popup_pkg_name: '',
@@ -75,6 +79,10 @@ export default {
         retail_data_path: '', // TODO remove once no longer needed
         mod_install_attempted: false,
         retail_install_option: 'auto-detect-installation'
+
+        retail_data_path: '',
+        sort_types: ['alphabetical', 'last_played', 'last_released', 'last_updated'],
+        sort_type: 'alphabetical'
     }),
 
     watch: {
@@ -328,7 +336,7 @@ export default {
                 if(this.popup_mod_flag_map[part[0]]) mod_flag.push(part[0]);
             }
 
-            fs2mod.runModAdvanced(this.popup_mod_id, this.popup_mod_version, this.popup_mod_sel_exe, mod_flag);
+            fs2mod.runModAdvanced(this.popup_mod_id, this.popup_mod_version, this.popup_mod_sel_exe, this.popup_mod_is_tool, mod_flag);
             this.popup_visible = false;
         },
 
@@ -343,6 +351,24 @@ export default {
             if(this.page !== 'welcome') {
                 this.popup_visible = false;
             }
+        },
+
+        sortButtonClass(sort_button_type) {
+            return [
+                'filter-content-btn',
+                this.sort_type === sort_button_type ? 'selected' : ''
+            ];
+        },
+
+        setSortType(sort_type) {
+            call(fs2mod.setSortType, sort_type, (type) => {
+                if (type) this.sort_type = type;
+            });
+        },
+
+        getSortTypeDisplayName(sort_type) {
+            // adapted from https://flaviocopes.com/how-to-uppercase-first-letter-javascript/
+            return sort_type.split('_').map(type => type.charAt(0).toUpperCase() + type.slice(1)).join(' ');
         }
     }
 };
@@ -379,23 +405,22 @@ export default {
             <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
         </div>
     <!-------------------------------------------------------------------------------- Start the Filter Button ---------->
-        <div class="filter-container" v-if="page === 'modlist'">
-            <button class="filterbtn" @click="show_filter = true"></button>
-            <div class="filter-content" v-show="show_filter" @click="show_filter = false">
-                <div class="filter-lines">
-                    <button class="filter-content-btn last-played-btn">Last Played</button>
-                </div>
-                <div class="filter-lines">
-                    <button class="filter-content-btn alphabetical-btn">Alphabetical</button>
-                </div>
-                <div class="filter-lines">
-                    <button class="filter-content-btn last-updated-log-btn">Last Updated</button>
-                </div>
-                <div class="filter-lines">
-                    <button class="filter-content-btn last-released-btn">Last Released</button>
-                </div>
+        <popper v-if="page === 'modlist'"
+                trigger="click"
+                @show="show_filter = true"
+                @hide="show_filter = false"
+                class="filter-container"
+                :options="{ placement: 'bottom-end', modifiers: { keepTogether: { enabeld: false }, arrow: { enabled: false }, offset: { offset: '0px, 7px' }}}">
+            <div class="filter-content">
+                <template v-for="sort_type in sort_types">
+                    <div class="filter-lines">
+                        <button :class="sortButtonClass(sort_type)" @click="setSortType(sort_type)">{{ getSortTypeDisplayName(sort_type) }}</button>
+                    </div>
+                </template>
             </div>
-        </div>
+
+            <button :class="['filterbtn', show_filter ? 'filter-active' : '']" slot="reference"></button>
+        </popper>
 
         <div class="welcome-overlay" v-if="page === 'welcome'"></div>
 
@@ -518,6 +543,7 @@ export default {
                             </label>
                         </div>
                     </form>
+
                     <p v-if="retail_install_option === 'select-installation-folder'">
                         Browse to the folder that has the FreeSpace 2 data files and find the file <strong>Root_fs2.vp</strong> or <strong>root_fs2.vp</strong>.<br>
                         Knossos will copy the files into the Knossos library.

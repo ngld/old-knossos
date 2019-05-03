@@ -19,6 +19,7 @@ import logging
 import functools
 import json
 import threading
+import datetime
 
 from . import uhf
 uhf(__name__)
@@ -374,6 +375,36 @@ class HellWindow(Window):
             msg = self.tr('There\'s an update available!\nYou should update to Knossos %s.') % str(version)
             QtWidgets.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
 
+    def _get_sort_parameters(self):
+        # Maybe I should add "Just " to the list?
+        prefixes = ('the ', 'a ')
+        def _build_sort_title(mod):
+            title = mod['title']
+            for p in prefixes:
+                pl = len(p)
+                if title[:pl].lower() == p:
+                    title = title[pl:]
+            return title
+        min_date_str = datetime.date.min.strftime('%Y-%m-%d')
+        def _build_sort_date(mod_date):
+            return mod_date if mod_date else min_date_str
+        def _build_sort_last_played(mod):
+            return _build_sort_date(mod['last_played'])
+        def _build_sort_last_released(mod):
+            return _build_sort_date(mod['first_release'])
+        def _build_sort_last_updated(mod):
+            return _build_sort_date(mod['last_update'])
+
+        sort_key_dict = {
+            'alphabetical': _build_sort_title,
+            'last_played': _build_sort_last_played,
+            'last_released': _build_sort_last_released,
+            'last_updated': _build_sort_last_updated
+            }
+        sort_key = sort_key_dict[center.sort_type]
+        sort_reverse = center.sort_type != 'alphabetical'
+        return sort_key, sort_reverse
+
     def search_mods(self, search_filter=None, ignore_retail_dependency=False):
         mods = None
         if search_filter is None:
@@ -408,6 +439,10 @@ class HellWindow(Window):
                     item = installed_versions[str(mod.version)].get()
                 else:
                     item = mod.get()
+
+                last_playeds = [mod.get_user()['last_played'] for mod in installed_versions.values()]
+                last_playeds = sorted(list(filter(lambda lp: lp is not None, last_playeds)), reverse=True)
+                item['last_played'] = last_playeds[0] if len(last_playeds) > 0 else None
 
                 if mod.parent == 'FS2' and not center.installed.has('FS2') and not ignore_retail_dependency:
                     if center.settings['show_fs2_mods_without_retail']:
@@ -471,20 +506,8 @@ class HellWindow(Window):
 
                 result.append(item)
 
-        # Maybe I should add "Just " to the list?
-        prefixes = ('the ', 'a ')
-
-        def build_sort_title(m):
-            title = m['title']
-
-            for p in prefixes:
-                pl = len(p)
-                if title[:pl].lower() == p:
-                    title = title[pl:]
-
-            return title
-
-        result.sort(key=build_sort_title)
+        sort_key, sort_reverse = self._get_sort_parameters()
+        result.sort(key=sort_key, reverse=sort_reverse)
         return result, search_filter
 
     def _compute_mod_list_diff(self, new_mod_list):

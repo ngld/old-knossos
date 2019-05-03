@@ -469,13 +469,13 @@ class WebBridge(QtCore.QObject):
         runner.run_mod(mod, tool, label)
         return 0
 
-    @QtCore.Slot(str, str, str, list)
-    def runModAdvanced(self, mid, version, exe, mod_flag):
+    @QtCore.Slot(str, str, str, bool, list)
+    def runModAdvanced(self, mid, version, exe, is_tool, mod_flag):
         mod = self._get_mod(mid, version)
         if mod in (-1, -2):
             return
 
-        runner.run_mod_ex(mod, exe, mod_flag)
+        runner.run_mod_ex(mod, exe, mod_flag, is_tool)
 
     @QtCore.Slot(str, str, result=int)
     def vercmp(self, a, b):
@@ -1832,6 +1832,12 @@ class WebBridge(QtCore.QObject):
                                           'channel on Discord or on the '
                                           '<a href="https://www.hard-light.net/forums/index.php?topic=94068.0">'
                                           'Knossos release thread</a> on the Hard Light Productions forums.')
+
+    @QtCore.Slot(str, result=str)
+    def setSortType(self, sort_type):
+        center.sort_type = sort_type
+        center.main_win.update_mod_list()
+        return sort_type
 
 
 if QtWebChannel:

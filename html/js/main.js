@@ -130,6 +130,7 @@ function init() {
         vm.popup_mod_version = info.version;
         vm.popup_mod_exes = info.exes;
         vm.popup_mod_sel_exe = info.selected_exe;
+        vm.popup_mod_is_tool = info.is_tool;
         vm.popup_mod_flag = info.mod_flag;
         vm.popup_mod_flag_map = {};
 

@@ -53,6 +53,7 @@ fso_flags = None
 has_retail = None
 raven = None
 raven_handler = None
+sort_type = 'alphabetical'
 
 settings = {
     'fs2_bin': None,
