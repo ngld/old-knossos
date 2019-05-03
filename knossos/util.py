@@ -386,7 +386,7 @@ def _get_download_chunk_size():
         return min(int(center.settings['download_bandwidth'] / 2), DEFAULT_CHUNK_SIZE)
 
 
-def download(link, dest, headers=None, random_ua=False, timeout=60):
+def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=False):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
     if random_ua:
@@ -394,6 +394,9 @@ def download(link, dest, headers=None, random_ua=False, timeout=60):
             headers = {}
 
         headers['User-Agent'] = get_user_agent(True)
+
+    if continue_:
+        headers['Range'] = 'bytes=%d-' % dest.tell()
 
     with DL_POOL:
         if _DL_CANCEL.is_set():
@@ -409,7 +412,7 @@ def download(link, dest, headers=None, random_ua=False, timeout=60):
 
         if result.status_code == 304:
             return 304
-        elif result.status_code == 206:
+        elif result.status_code == 206 and not continue_:
             # sectorgame.com/fsfiles/ always returns code 206 which makes this necessary.
             logging.warning('"%s" returned "206 Partial Content", the downloaded file might be incomplete.', link)
         elif result.status_code != 200:
@@ -421,6 +424,9 @@ def download(link, dest, headers=None, random_ua=False, timeout=60):
         except Exception:
             logging.exception('Failed to parse Content-Length header!')
             size = 1024 ** 4  # = 1 TB
+
+        if result.status_code != 206 or not continue_:
+            dest.seek(0)
 
         try:
             start = dest.tell()

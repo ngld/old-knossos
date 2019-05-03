@@ -458,6 +458,9 @@ class HellWindow(Window):
                 if item['installed'] and not item['versions'][0]['installed']:
                     item['status'] = 'update'
 
+                if self._mod_filter != 'develop':
+                    del item['packages']
+
                 result.append(item)
 
         # Maybe I should add "Just " to the list?

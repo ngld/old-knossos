@@ -148,6 +148,11 @@ export default {
             vm.popup_mod_version = this.selected_mod.version;
             vm.popup_mod_new_version = this.selected_mod.version;
             vm.popup_visible = true;
+            vm.popup_finished = (result) => {
+                if(result) {
+                    this.selectVersion(vm.popup_mod_new_version);
+                }
+            };
         },
 
         selectMod(mod) {
@@ -467,6 +472,9 @@ export default {
                 vm.popup_mode = 'mod_progress';
                 // We need the original mod here because the copy doesn't contain the progress info.
                 vm.popup_mod_id = this.selected_mod.id;
+                vm.popup_progress_cancel = () => {
+                    fs2mod.cancelUpload();
+                };
 
                 fs2mod.startUpload(this.selected_mod.id, this.selected_mod.version, vm.popup_content);
             };
@@ -478,6 +486,9 @@ export default {
             vm.popup_title = 'Upload mod';
             vm.popup_progress_message = null;
             vm.popup_mod_id = this.selected_mod.id;
+            vm.popup_progress_cancel = () => {
+                fs2mod.cancelUpload();
+            };
             vm.popup_visible = true;
         },
 

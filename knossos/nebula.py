@@ -38,22 +38,28 @@ class FileWrapper:
 
     def __init__(self, hdl, size):
         self._hdl = hdl
-        self.len = size
-        self._end = hdl.tell() + size
         self._hasher = hashlib.new('sha256')
 
-    def read(self, size=None):
-        pos = self._hdl.tell()
+        pos = hdl.tell()
+        hdl.seek(0, os.SEEK_END)
 
+        # Correct the size if the remaining amount of data is less
+        self._end = min(pos + size, hdl.tell())
+        self.len = self._end - pos
+
+        hdl.seek(pos)
+
+    def read(self, size=None):
         if not size:
-            size = self._end - pos
-        elif pos >= self._end:
-            return None
-        elif pos + size > self._end:
-            size = self._end - pos
+            size = self.len
+        elif self.len <= 0:
+            return b''
+        elif size > self.len:
+            size = self.len
 
         chunk = self._hdl.read(size)
         self._hasher.update(chunk)
+        self.len -= size
         return chunk
 
     def get_hash(self):
@@ -63,6 +69,8 @@ class FileWrapper:
 class UploadWorker(Thread):
 
     def __init__(self, manager):
+        super(UploadWorker, self).__init__()
+
         self._manager = manager
         self.daemon = True
         self.start()
@@ -83,21 +91,21 @@ class UploadWorker(Thread):
                 hdl.seek(offset)
 
                 try:
-                    result = neb._call('multiupload/check', data={
-                        'id': uid,
-                        'part': idx
-                    })
-                    data = result.json()
+                    # result = neb._call('multiupload/check', data={
+                    #     'id': uid,
+                    #     'part': idx
+                    # })
+                    # data = result.json()
 
-                    if data.get('result'):
-                        # Already uploaded
-                        self._manager.done(idx)
-                        continue
+                    # if data.get('result'):
+                    #     # Already uploaded
+                    #     self._manager.done(idx)
+                    #     continue
 
                     wrapper = FileWrapper(hdl, self._manager.part_size)
                     enc = BufferingMultipartEncoder({
                         'id': uid,
-                        'part': idx,
+                        'part': str(idx),
                         'file': ('upload', wrapper, 'application/octet-stream')
                     })
 
@@ -114,7 +122,7 @@ class UploadWorker(Thread):
 
                     result = neb._call('multiupload/verify_part', data={
                         'id': uid,
-                        'idx': idx,
+                        'part': str(idx),
                         'checksum': wrapper.get_hash()
                     })
                     data = result.json()
@@ -124,19 +132,21 @@ class UploadWorker(Thread):
                     else:
                         self._manager.failed(idx)
                 except Exception:
-                    logging.exception('Failed to upload part %d for upload %s' % self._manager.name)
+                    logging.exception('Failed to upload part %d for upload %s' % (idx, self._manager.name))
                     self._manager.failed(idx)
 
         except Exception:
             logging.exception('Worker exception during multi-upload for %s' % self._manager.name)
         finally:
             hdl.close()
+            self._manager._remove_worker(self)
 
 
 class MultipartUploader:
     upload_id = None
     part_size = 10 * 1024 * 1024  # 10 MiB
     _retries = 0
+    _aborted = False
 
     def __init__(self, nebula, name, path, content_checksum, vp_checksum):
         self.neb = nebula
@@ -148,6 +158,7 @@ class MultipartUploader:
         self._parts_left = []
         self._parts_done = set()
         self._parts_lock = Lock()
+        self._progress = None
 
     def run(self, worker_count=3):
         progress.update(0, 'Hashing...')
@@ -184,13 +195,21 @@ class MultipartUploader:
 
         progress.update(0.1, 'Starting workers...')
         for i in range(worker_count):
-            self._workers = UploadWorker(self)
+            self._workers.append(UploadWorker(self))
 
         self._update_status()
 
         # Wait for them to finish
-        for w in self._workers:
-            w.join()
+        while self._workers:
+            time.sleep(0.5)
+
+            if self._progress:
+                # Forward progress updates from the worker threads
+                progress.update(*self._progress)
+                self._progress = None
+
+        if self._aborted:
+            return False
 
         progress.update(0.95, 'Verifying...')
         try:
@@ -198,7 +217,7 @@ class MultipartUploader:
                 'id': checksum,
                 'checksum': checksum,
                 'content_checksum': self._content_checksum,
-                'vp_checksum': self.vp_checksum
+                'vp_checksum': self._vp_checksum
             })
             data = result.json()
 
@@ -211,39 +230,51 @@ class MultipartUploader:
         progress.update(1, 'Done')
         return True
 
+    def _remove_worker(self, w):
+        if w in self._workers:
+            self._workers.remove(w)
+
     def get_hdl(self):
         return open(self._path, 'rb')
 
     def get_part(self):
         with self._parts_lock:
-            if self._parts_left:
+            if self._parts_left and not self._aborted:
                 p = self._parts_left.pop(0)
                 return (p, self.part_size * p)
             else:
-                return None
+                return (None, None)
 
     def done(self, idx):
         logging.debug('%s: Part %d done.' % (self.name, idx))
-        self._update_status()
 
         with self._parts_lock:
             self._parts_done.add(idx)
-            self._parts_left.remove(idx)
+            self._update_status()
 
     def failed(self, idx):
         logging.debug('%s: Part %d failed.' % (self.name, idx))
         self._retries += 1
-        self._update_status()
 
         with self._parts_lock:
             self._parts_left.append(idx)
+            self._update_status()
 
     def _update_status(self):
         done = len(self._parts_done)
         left = len(self._parts_left)
         total = float(done + left)
 
-        progress.update((done / total * 0.85) + 0.1, 'Uploading... %3d / %3d, %d retried' % (done, total, self._retries))
+        self._progress = (
+            (done / total * 0.85) + 0.1,
+            'Uploading... %3d / %3d, %d retried' % (done, total, self._retries)
+        )
+
+    def abort(self):
+        self._aborted = True
+
+        with self._parts_lock:
+            self._parts_left = []
 
 
 class NebulaClient(object):
@@ -252,9 +283,10 @@ class NebulaClient(object):
 
     def __init__(self):
         self._sess = util.HTTP_SESSION
+        self._uploads = []
 
     def _call(self, path, method='POST', skip_login=False, check_code=True, retry=3, **kwargs):
-        url = center.settings['nebula_link'] + path
+        url = center.API + path
 
         if not skip_login and not self._token:
             if not self.login():
@@ -518,17 +550,27 @@ class NebulaClient(object):
         return True
 
     def multiupload_file(self, name, path, fn=None, content_checksum=None, vp_checksum=None):
-        progress.start_task(1, '%s: %%s' % name)
+        progress.start_task(0, 1, '%s: %%s' % name)
 
+        uploader = None
         try:
             uploader = MultipartUploader(self, name, path, content_checksum, vp_checksum)
+            self._uploads.append(uploader)
+
             result = uploader.run()
         except Exception:
             logging.exception('MultipartUploader bug!')
             result = False
+        finally:
+            if uploader in self._uploads:
+                self._uploads.remove(uploader)
 
         progress.finish_task()
         return result
+
+    def abort_uploads(self):
+        for up in self._uploads:
+            up.abort()
 
     def is_uploaded(self, checksum=None, content_checksum=None):
         assert checksum or content_checksum
@@ -549,7 +591,7 @@ class NebulaClient(object):
         result = self._call('log/upload', skip_login=True, data={'log': content})
         data = result.json()
         if data['result']:
-            return center.settings['nebula_web'] + 'log/' + data['id']
+            return center.WEB + 'log/' + data['id']
         else:
             return None
 

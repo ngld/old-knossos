@@ -86,6 +86,7 @@ export default {
                     vm.popup_title = 'Installing FreeSpace 2';
                     vm.popup_mode = 'mod_progress';
                     vm.popup_mod_id = 'FS2';
+                    vm.popup_progress_cancel = null;
 
                     connectOnce(fs2mod.retailInstalled, () => {
                         vm.popup_visible = false;

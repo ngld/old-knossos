@@ -65,6 +65,7 @@ else:
 
 class WebBridge(QtCore.QObject):
     _view = None
+    _last_upload = None
 
     asyncCbFinished = QtCore.Signal(int, str)
     showWelcome = QtCore.Signal()
@@ -1294,7 +1295,13 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return
 
-        tasks.run_task(tasks.UploadTask(mod, private))
+        self._last_upload = tasks.run_task(tasks.UploadTask(mod, private))
+
+    @QtCore.Slot()
+    def cancelUpload(self):
+        if self._last_upload:
+            self._last_upload.abort()
+            self._last_upload = None
 
     @QtCore.Slot(str, str)
     def nebLogin(self, user, password):

@@ -37,6 +37,7 @@ export default {
 
         popup_progress_message: null,
         popup_progress: {},
+        popup_progress_cancel: null,
 
         popup_mod_name: '',
         popup_mod_id: '',
@@ -62,6 +63,8 @@ export default {
 
         popup_sure_question: '',
         sureCallback: null,
+
+        popup_finished: null,
 
         // retail prompt
         retail_searching: true,
@@ -193,6 +196,10 @@ export default {
                 if(result) {
                     this.popup_visible = false;
                 }
+
+                if(this.popup_finished) {
+                    this.popup_finished(result);
+                }
             });
         },
 
@@ -216,6 +223,7 @@ export default {
             this.popup_mod_id = this.mod.id;
             this.popup_title = 'Installation Details';
             this.popup_mode = 'mod_progress';
+            this.popup_progress_cancel = null;
             this.popup_visible = true;
         },
 
@@ -305,6 +313,7 @@ export default {
                     this.popup_mod_id = 'FS2';
                     this.popup_title = 'FreeSpace 2';
                     this.popup_mode = 'mod_progress';
+                    this.popup_progress_cancel = null;
 
                     connectOnce(fs2mod.retailInstalled, () => {
                         this.popup_visible = false;
@@ -470,6 +479,10 @@ export default {
                     <p v-if="!popup_progress[popup_mod_id]">
                         Preparing...
                     </p>
+
+                    <button v-if="popup_progress_cancel" class="mod-btn btn-link-red" @click="popup_progress_cancel">
+                        Cancel
+                    </button>
 
                     <div v-for="row in (popup_progress[popup_mod_id] || [])" :key="row[0]" class="row">
                         <div class="col-xs-4 mod-prog-label">{{ row[0] }}</div>
