@@ -389,10 +389,10 @@ def _get_download_chunk_size():
 def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=False):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
-    if random_ua:
-        if headers is None:
-            headers = {}
+    if headers is None:
+        headers = {}
 
+    if random_ua:
         headers['User-Agent'] = get_user_agent(True)
 
     if continue_:
@@ -412,9 +412,10 @@ def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=Fa
 
         if result.status_code == 304:
             return 304
-        elif result.status_code == 206 and not continue_:
-            # sectorgame.com/fsfiles/ always returns code 206 which makes this necessary.
-            logging.warning('"%s" returned "206 Partial Content", the downloaded file might be incomplete.', link)
+        elif result.status_code == 206:
+            if not continue_:
+                # sectorgame.com/fsfiles/ always returns code 206 which makes this necessary.
+                logging.warning('"%s" returned "206 Partial Content", the downloaded file might be incomplete.', link)
         elif result.status_code != 200:
             logging.error('Failed to load "%s"! (%d %s)', link, result.status_code, result.reason)
             return False
@@ -429,14 +430,13 @@ def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=Fa
             dest.seek(0)
 
         try:
-            start = dest.tell()
             sc = SpeedCalc()
             for chunk in _get_download_iterator(result, _get_download_chunk_size()):
                 dest.write(chunk)
 
                 if sc.push(dest.tell()) != -1:
                     if size > 0:
-                        by_done = dest.tell() - start
+                        by_done = dest.tell()
                         speed = sc.get_speed()
                         p = by_done / size
                         text = format_bytes(speed) + '/s, '
@@ -720,10 +720,16 @@ def human_list(items):
 
 
 def is_fs2_retail_directory(path):
-    if os.path.isdir(path):
+    if not os.path.isdir(path):
+        path = os.path.dirname(path)
+
+    try:
         for item in os.listdir(path):
             if item.lower() == 'root_fs2.vp':
                 return True
+
+    except FileNotFoundError:
+        pass
 
     return False
 

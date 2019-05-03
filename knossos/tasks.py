@@ -597,6 +597,7 @@ class InstallTask(progress.MultistepTask):
                             return
 
                         logging.error('Download of "%s" failed!', url)
+                        time.sleep(0.3)
                         continue
 
                     progress.finish_task()
@@ -611,6 +612,8 @@ class InstallTask(progress.MultistepTask):
                     else:
                         logging.error('File "%s" is corrupted!', url)
                         stream = open(arpath, 'wb')
+
+                time.sleep(2)
 
             if not done:
                 logging.error('Missing file "%s"!', archive['filename'])
@@ -1817,7 +1820,7 @@ class GOGExtractTask(progress.Task):
             QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), msg)
         elif results[0] == -1:
             QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), self.tr(
-                'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?'))
+                'The selected file wasn\'t a proper Inno Setup installer. Are you sure you selected the right file?'))
         else:
             center.main_win.update_mod_list()
             center.main_win.browser_ctrl.bridge.retailInstalled.emit()
