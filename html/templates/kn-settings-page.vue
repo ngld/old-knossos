@@ -21,6 +21,7 @@ export default {
         joysticks: [],
         joysticks_loading: false,
 
+        neb_logged_in: false,
         neb_user: '',
         neb_password: '',
         neb_email: ''
@@ -37,6 +38,8 @@ export default {
             this.old_settings = settings;
 
             this.neb_user = this.knossos.neb_user;
+            this.neb_logged_in = this.neb_user !== '';
+
             let joy = this.knossos.joystick;
             if(joy.guid) {
                 this.sel_joystick = joy.guid + '#' + joy.id;
@@ -96,7 +99,20 @@ export default {
         },
 
         login() {
-            fs2mod.nebLogin(this.neb_user, this.neb_password);
+            call(fs2mod.nebLogin, this.neb_user, this.neb_password, (result) => {
+                if(result) {
+                    this.neb_logged_in = true;
+                }
+            });
+        },
+
+        logout() {
+            call(fs2mod.nebLogout, (result) => {
+                if(result) {
+                    this.neb_user = '';
+                    this.neb_logged_in = false;
+                }
+            });
         },
 
         register() {
@@ -318,15 +334,18 @@ export default {
                 <div class="settings-exp drawer-exp">Manage your network settings for multiplayer</div>
                 <div class="form-group">
                     <label class="col-sm-4 control-label">Connection Type:</label>
-                    <div class="col-sm-4">
+                    <div class="col-sm-8">
                         <select v-model="fso.net_type">
                             <option value="0">None</option>
                             <option value="1">Dialup</option>
                             <option value="2">Broadband/LAN</option>
                         </select>
                     </div>
-                    <label class="col-sm-2 control-label">Force Local Port:</label>
-                    <div class="col-sm-2">
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Force Local Port:</label>
+                    <div class="col-sm-8">
                         <input type="number" min="0" max="65535" maxlength="5" v-model="fso.net_port">
                     </div>
                 </div>
@@ -343,12 +362,16 @@ export default {
                             <option value="5">Cable/Fiber/LAN</option>
                         </select>
                     </div>
-                    <label class="col-sm-2 control-label">Force IP Address:</label>
-                    <div class="col-sm-2">
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Force IP Address:</label>
+                    <div class="col-sm-8">
                         <input type="text" v-model="fso.net_ip">
                     </div>
                 </div>
             </kn-drawer>
+
             <kn-drawer label="Speech" v-if="fso.has_voice">
                 <div class="settings-exp drawer-exp">Manage settings related to Text-To-Speech</div>
                 <div class="form-group">
@@ -428,34 +451,48 @@ export default {
             </kn-drawer>
             <kn-drawer label="Nebula">
                 <div class="settings-exp drawer-exp">Login and manage your Nebula credentials</div>
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">Username:</label>
-                    <div class="col-sm-8">
-                        <input type="text" class="neb-input" v-model="neb_user">
-                    </div>
-                </div>
 
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">Password:</label>
-                    <div class="col-sm-8">
-                        <input type="password" class="neb-input" v-model="neb_password">
+                <template v-if="!neb_logged_in">
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">Username:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="neb-input" v-model="neb_user">
+                        </div>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">E-Mail:</label>
-                    <div class="col-sm-8">
-                        <input type="email" class="neb-input" v-model="neb_email" placeholder="only required for registration">
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">Password:</label>
+                        <div class="col-sm-8">
+                            <input type="password" class="neb-input" v-model="neb_password">
+                        </div>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <div class="col-sm-offset-4 col-sm-4 neb-btns">
-                        <button class="mod-btn btn-link-blue" @click="login">Login</button>
-                        <button class="mod-btn btn-link-blue" @click="register">Register</button>
-                        <button class="mod-btn btn-link-red" @click="resetPassword">Reset Pass</button>
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">E-Mail:</label>
+                        <div class="col-sm-8">
+                            <input type="email" class="neb-input" v-model="neb_email" placeholder="only required for registration">
+                        </div>
                     </div>
-                </div>
+
+                    <div class="form-group">
+                        <div class="col-sm-offset-4 col-sm-8 neb-btns">
+                            <button class="mod-btn btn-link-blue" @click="login">Login</button>
+                            <button class="mod-btn btn-link-blue" @click="register">Register</button>
+                            <button class="mod-btn btn-link-red" @click="resetPassword">Reset Pass</button>
+                        </div>
+                    </div>
+                </template>
+                <template v-else>
+                    <div class="form-group">
+                        <div class="col-sm-offset-4 col-sm-8">
+                            <p>
+                                Logged in as <strong>{{ neb_user }}</strong>
+                            </p>
+
+                            <button class="mod-btn btn-link-red" @click="logout">Logout</button>
+                        </div>
+                    </div>
+                </template>
             </kn-drawer>
 
             <kn-drawer label="Global Flags">

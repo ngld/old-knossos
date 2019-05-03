@@ -1303,7 +1303,7 @@ class WebBridge(QtCore.QObject):
             self._last_upload.abort()
             self._last_upload = None
 
-    @QtCore.Slot(str, str)
+    @QtCore.Slot(str, str, result=bool)
     def nebLogin(self, user, password):
         client = nebula.NebulaClient()
         try:
@@ -1319,8 +1319,18 @@ class WebBridge(QtCore.QObject):
             center.settings['neb_user'] = user
             center.settings['neb_password'] = password
             center.save_settings()
+
+            return True
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'Login failed.')
+
+    @QtCore.Slot(result=bool)
+    def nebLogout(self):
+        center.settings['neb_user'] = ''
+        center.settings['neb_password'] = ''
+        center.save_settings()
+
+        return True
 
     @QtCore.Slot(str, str, str)
     def nebRegister(self, user, password, email):
