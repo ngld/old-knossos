@@ -1452,7 +1452,7 @@ class UploadTask(progress.MultistepTask):
             while retries > 0:
                 retries -= 1
                 try:
-                    self._client.upload_file(ar_name, ar_path, content_checksum=content_ck, vp_checksum=vp_checksum)
+                    self._client.multiupload_file(ar_name, ar_path, content_checksum=content_ck, vp_checksum=vp_checksum)
                     break
                 except nebula.RequestFailedException:
                     logging.exception('Failed upload, retrying...')
