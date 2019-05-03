@@ -730,12 +730,7 @@ class Package(object):
     def resolve_deps(self):
         result = []
         for dep in self.dependencies:
-            version = dep.get('version', '*') or '*'
-            if version != '*' and not SpecItem.re_spec.match(version):
-                # Make a spec out of this version
-                version = '==' + version
-
-            version = util.Spec(version)
+            version = util.Spec.from_version(dep.get('version', '*') or '*')
             mod = self._mod._repo.query(dep['id'], version)
             pkgs = dep.get('packages', [])
             found_pkgs = []
@@ -884,6 +879,7 @@ class InstalledMod(Mod):
     user_exe = None
     user_cmdline = None
     user_custom_build = None
+    user_last_played = None
     _path = None
 
     @staticmethod
@@ -946,6 +942,10 @@ class InstalledMod(Mod):
         self.user_exe = values.get('exe')
         self.user_cmdline = values.get('cmdline')
         self.user_custom_build = values.get('custom_build')
+        self.user_last_played = values.get('last_played', None)
+
+        if self.user_last_played:
+            self.user_last_played = datetime.strptime(self.user_last_played, '%Y-%m-%d %H:%M:%S')
 
     def get(self):
         return {
@@ -983,7 +983,8 @@ class InstalledMod(Mod):
         return {
             'exe': self.user_exe,
             'cmdline': self.user_cmdline,
-            'custom_build': self.user_custom_build
+            'custom_build': self.user_custom_build,
+            'last_played': self.user_last_played .strftime('%Y-%m-%d %H:%M:%S') if self.user_last_played else None
         }
 
     def get_relative(self):
@@ -1188,6 +1189,10 @@ class InstalledMod(Mod):
         exes.sort(key=lambda exe: -exe['score'])
         return exes
 
+    def update_last_played(self):
+        self.user_last_played  = datetime.now()
+        self.save_user()
+        center.main_win.update_mod_list()
 
 class IniMod(InstalledMod):
     _pr_list = None

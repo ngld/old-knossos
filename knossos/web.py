@@ -19,6 +19,7 @@ import os.path
 import logging
 import re
 import json
+import platform
 import stat
 import sqlite3
 import shutil
@@ -64,6 +65,7 @@ else:
 
 class WebBridge(QtCore.QObject):
     _view = None
+    _last_upload = None
 
     asyncCbFinished = QtCore.Signal(int, str)
     showWelcome = QtCore.Signal()
@@ -71,7 +73,7 @@ class WebBridge(QtCore.QObject):
     showRetailPrompt = QtCore.Signal()
     showLaunchPopup = QtCore.Signal(str)
     showModDetails = QtCore.Signal(str)
-    updateModlist = QtCore.Signal(str, str)
+    updateModlist = QtCore.Signal(str, str, list)
     modProgress = QtCore.Signal(str, float, str)
     retailInstalled = QtCore.Signal()
     hidePopup = QtCore.Signal()
@@ -141,7 +143,8 @@ class WebBridge(QtCore.QObject):
         return json.dumps({
             't': trs,
             'platform': sys.platform,
-            'welcome': 'KN_WELCOME' in os.environ or center.settings['base_path'] is None
+            'welcome': 'KN_WELCOME' in os.environ or center.settings['base_path'] is None,
+            'explore_mods': center.main_win.get_explore_mod_list_cache_json()
         })
 
     @QtCore.Slot(result=str)
@@ -218,6 +221,15 @@ class WebBridge(QtCore.QObject):
             center.main_win.update_mod_buttons(name)
         except Exception:
             logging.exception('Failed to switch tabs!')
+
+    @QtCore.Slot(str)
+    def showMod(self, mid):
+        # Make sure the mod list is puplated.
+        try:
+            center.main_win.update_mod_buttons('explore')
+            self.showModDetails.emit(mid)
+        except Exception:
+            logging.exception('Failed to show mod %s!' % mid)
 
     @QtCore.Slot(str)
     def triggerSearch(self, term):
@@ -457,13 +469,13 @@ class WebBridge(QtCore.QObject):
         runner.run_mod(mod, tool, label)
         return 0
 
-    @QtCore.Slot(str, str, str, list)
-    def runModAdvanced(self, mid, version, exe, mod_flag):
+    @QtCore.Slot(str, str, str, bool, list)
+    def runModAdvanced(self, mid, version, exe, is_tool, mod_flag):
         mod = self._get_mod(mid, version)
         if mod in (-1, -2):
             return
 
-        runner.run_mod_ex(mod, exe, mod_flag)
+        runner.run_mod_ex(mod, exe, mod_flag, is_tool)
 
     @QtCore.Slot(str, str, result=int)
     def vercmp(self, a, b):
@@ -497,23 +509,73 @@ class WebBridge(QtCore.QObject):
         else:
             return []
 
+    @QtCore.Slot(str, result=str)
+    def verifyRootVPFolder(self, vp_path):
+        vp_path_components = os.path.split(vp_path)
+        if len(vp_path_components) != 2 or vp_path_components[1].lower() != 'root_fs2.vp':
+            QtWidgets.QMessageBox.critical(
+                None, 'Knossos', self.tr('The selected path is not to root_fs2.vp!'))
+            return ''
+        vp_dir = vp_path_components[0]
+        if not util.is_fs2_retail_directory(vp_dir):
+            QtWidgets.QMessageBox.critical(
+                None, 'Knossos', self.tr('The selected root_fs2.vp\'s folder '
+                                         'does not have the FreeSpace 2 files!'))
+            return ''
+        return vp_dir
+
+    def _filter_out_hidden_files(self, files):
+        if platform.system() != 'Windows':
+            return [file for file in files if not file.startswith('.')]
+        else: # TODO figure out how to identify hidden files on Windows
+            return files
+
+    def _is_program_files_path(self, path):
+        prog_folders = [os.environ.get('ProgramFiles', 'C:/Program Files'),
+                        os.environ.get('ProgramFiles(x86)', 'C:/Program Files (x86)')]
+        prog_folders = tuple([f.lower().replace('\\', '/') for f in prog_folders])
+        return path.lower().replace('\\', '/').startswith(prog_folders)
+
     @QtCore.Slot(str, result=bool)
     def setBasePath(self, path):
         if os.path.isfile(path):
             QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr('The selected path is not a directory!'))
             return False
-        elif not os.path.isdir(path):
+        if platform.system() == 'Windows':
+            if self._is_program_files_path(path):
+                result = QtWidgets.QMessageBox.question(None, 'Knossos',
+                   self.tr('Using a folder in "Program Files" for the Knossos '
+                           'library is not recommended, because you will have '
+                           'to always run Knossos as Administrator. Use anyway?'))
+                if result == QtWidgets.QMessageBox.No:
+                    return False
+        if os.path.isdir(path):
+            if os.path.exists(os.path.join(path, center.get_library_json_name())):
+                logging.info('Knossos library marker file found in selected path')
+                # TODO log info from JSON file as debug messages?
+            elif len(self._filter_out_hidden_files(os.listdir(path))) > 0:
+                result = QtWidgets.QMessageBox.question(None, 'Knossos',
+                    self.tr('Using a non-empty folder for the Knossos library '
+                            'is not recommended, because it can cause problems'
+                            ' for Knossos. Use anyway?'))
+                if result == QtWidgets.QMessageBox.No:
+                    return False
+        if not os.path.lexists(path):
             result = QtWidgets.QMessageBox.question(None, 'Knossos',
                 self.tr('The selected path does not exist. Should I create the folder?'))
 
             if result == QtWidgets.QMessageBox.Yes:
-                os.makedirs(path)
+                try:
+                    os.makedirs(path)
+                except OSError:
+                    QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("Failed to create Knossos data folder!"))
+                    return False
             else:
                 return False
         else:
             vp_path = util.ipath(os.path.join(path, 'root_fs2.vp'))
             if os.path.isfile(vp_path):
-                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("Please don't use an existing FS2 directory. It won't work!"))
+                QtWidgets.QMessageBox.critical(None, 'Knossos', self.tr("Please don't use an existing FS2 directory. It won't work! Select an empty directory instead."))
                 return False
 
         center.settings['base_path'] = os.path.abspath(path)
@@ -521,6 +583,12 @@ class WebBridge(QtCore.QObject):
         util.ensure_tempdir()
         tasks.run_task(tasks.LoadLocalModsTask())
         return True
+
+    # For when center.installed has not yet been initialized
+    @QtCore.Slot(result=bool)
+    def checkIfRetailInstalled(self):
+        fs2_json_path = os.path.join(center.settings['base_path'], 'FS2', 'mod.json')
+        return os.path.exists(fs2_json_path)
 
     @QtCore.Slot(int)
     def getSettings(self, cb_id):
@@ -1193,6 +1261,9 @@ class WebBridge(QtCore.QObject):
                     mod.user_custom_build = None
                     mod.user_exe = build
 
+        if cmdline == '#DEFAULT#':
+            cmdline = None
+
         mod.user_cmdline = cmdline
         try:
             mod.save_user()
@@ -1224,9 +1295,15 @@ class WebBridge(QtCore.QObject):
         if mod in (-1, -2):
             return
 
-        tasks.run_task(tasks.UploadTask(mod, private))
+        self._last_upload = tasks.run_task(tasks.UploadTask(mod, private))
 
-    @QtCore.Slot(str, str)
+    @QtCore.Slot()
+    def cancelUpload(self):
+        if self._last_upload:
+            self._last_upload.abort()
+            self._last_upload = None
+
+    @QtCore.Slot(str, str, result=bool)
     def nebLogin(self, user, password):
         client = nebula.NebulaClient()
         try:
@@ -1242,8 +1319,18 @@ class WebBridge(QtCore.QObject):
             center.settings['neb_user'] = user
             center.settings['neb_password'] = password
             center.save_settings()
+
+            return True
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'Login failed.')
+
+    @QtCore.Slot(result=bool)
+    def nebLogout(self):
+        center.settings['neb_user'] = ''
+        center.settings['neb_password'] = ''
+        center.save_settings()
+
+        return True
 
     @QtCore.Slot(str, str, str)
     def nebRegister(self, user, password, email):
@@ -1617,6 +1704,53 @@ class WebBridge(QtCore.QObject):
 
         return ''
 
+    @QtCore.Slot()
+    def openKnossosLog(self):
+        from .launcher import log_path
+
+        if not os.path.isfile(log_path):
+            QtWidgets.QMessageBox.warning(None, 'Knossos',
+                'Sorry, but I can\'t find the Knossos log. Something went *really* wrong.')
+            return
+
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(log_path))
+
+    @QtCore.Slot(result=str)
+    def uploadKnossosLog(self):
+        log_link = None
+
+        try:
+            from .launcher import log_path
+
+            if not os.path.isfile(log_path):
+                QtWidgets.QMessageBox.warning(None, 'Knossos',
+                    'Sorry, but I can\'t find the Knossos log. Something went *really* wrong.')
+                return ''
+
+            st = os.stat(log_path)
+            if st.st_size > 5 * (1024 ** 2):
+                QtWidgets.QMessageBox.critical(None, 'Knossos',
+                    "Your log is larger than 5 MB! I unfortunately can't upload logs that big.")
+                return ''
+
+            client = nebula.NebulaClient()
+            with open(log_path, 'r') as stream:
+                log_link = client.upload_log(stream.read())
+
+        except nebula.InvalidLoginException:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'You have to login to upload logs!')
+        except Exception:
+            logging.exception('Log upload failed!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                'The log upload failed for an unknown reason! Please make sure your internet connection is fine.')
+        else:
+            if log_link:
+                return log_link
+            else:
+                QtWidgets.QMessageBox.critical(None, 'Knossos', 'The log upload failed for an unknown reason!')
+
+        return ''
+
     @QtCore.Slot(str, result=str)
     def getGlobalFlags(self, build):
         return json.dumps(center.settings['fso_flags'].get(build, {}))
@@ -1746,6 +1880,21 @@ class WebBridge(QtCore.QObject):
     @QtCore.Slot()
     def rewriteModJson(self):
         tasks.run_task(tasks.RewriteModMetadata(center.installed.get_list()))
+
+    @QtCore.Slot()
+    def showTempHelpPopup(self):
+        QtWidgets.QMessageBox.information(None, 'Knossos',
+                                          'The help system isn\'t implemented yet, but you '
+                                          'can ask for help on the <a href="https://discord.gg/qfReB8t">#knossos</a> '
+                                          'channel on Discord or on the '
+                                          '<a href="https://www.hard-light.net/forums/index.php?topic=94068.0">'
+                                          'Knossos release thread</a> on the Hard Light Productions forums.')
+
+    @QtCore.Slot(str, result=str)
+    def setSortType(self, sort_type):
+        center.sort_type = sort_type
+        center.main_win.update_mod_list()
+        return sort_type
 
 
 if QtWebChannel:

@@ -19,6 +19,7 @@ import logging
 import functools
 import json
 import threading
+import datetime
 
 from . import uhf
 uhf(__name__)
@@ -66,10 +67,18 @@ class QMainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, e):
         if center.pmaster.is_busy():
-            QtWidgets.QMessageBox.critical(None, 'Knossos',
-                'Some tasks are still running in the background. Please wait for them to finish or abort them.')
-
             e.ignore()
+
+            box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, 'Knossos',
+                'Some tasks are still running in the background. Please wait for them to finish or abort them.\n' +
+                'If you force Knossos to quit, it might result in a corrupt mod installation or broken mod upload ' +
+                '(depending on what Knossos is doing right now).',
+                QtWidgets.QMessageBox.Ok)
+
+            box.addButton('Force Quit', QtWidgets.QMessageBox.RejectRole)
+
+            if box.exec_() == QtWidgets.QDialog.Rejected:
+                center.app.quit()
         else:
             e.accept()
             center.app.quit()
@@ -259,6 +268,8 @@ class HellWindow(Window):
     _updating_mods = None
     _init_done = False
     _prg_visible = False
+    _explore_mod_list_cache = None
+    _installed_mod_list_cache = None
     browser_ctrl = None
     progress_win = None
 
@@ -266,6 +277,8 @@ class HellWindow(Window):
         super(HellWindow, self).__init__(window)
         self._tasks = {}
         self._updating_mods = {}
+        self._explore_mod_list_cache = {}
+        self._installed_mod_list_cache = {}
 
         self._create_win(Ui_Hell, QMainWindow)
         self.browser_ctrl = web.BrowserCtrl(self.win.webView)
@@ -341,6 +354,7 @@ class HellWindow(Window):
             return
 
         self._init_done = True
+        self._init_explore_mod_list_cache()
         run_task(LoadLocalModsTask())
 
         center.auto_fetcher.start()
@@ -361,12 +375,52 @@ class HellWindow(Window):
             msg = self.tr('There\'s an update available!\nYou should update to Knossos %s.') % str(version)
             QtWidgets.QMessageBox.information(center.app.activeWindow(), 'Knossos', msg)
 
-    def search_mods(self):
-        mods = None
+    def _get_sort_parameters(self):
+        # Maybe I should add "Just " to the list?
+        prefixes = ('the ', 'a ')
 
-        if self._mod_filter in ('home', 'develop'):
+        def _build_sort_title(mod):
+            title = mod['title']
+            for p in prefixes:
+                pl = len(p)
+                if title[:pl].lower() == p:
+                    title = title[pl:]
+            return title
+
+        min_date_str = datetime.date.min.strftime('%Y-%m-%d')
+
+        def _build_sort_date(mod_date):
+            return mod_date if mod_date else min_date_str
+
+        def _build_sort_last_played(mod):
+            return _build_sort_date(mod['last_played'])
+
+        def _build_sort_last_released(mod):
+            return _build_sort_date(mod['first_release'])
+
+        def _build_sort_last_updated(mod):
+            return _build_sort_date(mod['last_update'])
+
+        sort_key_dict = {
+            'alphabetical': _build_sort_title,
+            'last_played': _build_sort_last_played,
+            'last_released': _build_sort_last_released,
+            'last_updated': _build_sort_last_updated
+        }
+
+        sort_key = sort_key_dict[center.sort_type]
+        sort_reverse = center.sort_type != 'alphabetical'
+
+        return sort_key, sort_reverse
+
+    def search_mods(self, search_filter=None, ignore_retail_dependency=False):
+        mods = None
+        if search_filter is None:
+            search_filter = self._mod_filter
+
+        if search_filter in ('home', 'develop'):
             mods = center.installed.mods
-        elif self._mod_filter == 'explore':
+        elif search_filter == 'explore':
             mods = center.mods.mods
         else:
             mods = {}
@@ -377,7 +431,11 @@ class HellWindow(Window):
         for mid, mvs in mods.items():
             if query in mvs[0].title.lower():
                 mod = mvs[0]
-                if mod.mtype == 'engine' and self._mod_filter != 'develop':
+
+                if mod.mtype == 'engine' and search_filter != 'develop':
+                    if not center.settings['show_fso_builds']:
+                        continue
+
                     mvs = [mv for mv in mvs if mv.satisfies_stability(center.settings['engine_stability'])]
                     if len(mvs) == 0:
                         mvs = mods[mid]
@@ -392,6 +450,18 @@ class HellWindow(Window):
                     item = installed_versions[str(mod.version)].get()
                 else:
                     item = mod.get()
+
+                last_playeds = [mod.get_user()['last_played'] for mod in installed_versions.values()]
+                last_playeds = sorted(list(filter(lambda lp: lp is not None, last_playeds)), reverse=True)
+                item['last_played'] = last_playeds[0] if len(last_playeds) > 0 else None
+
+                if mod.parent == 'FS2' and not center.installed.has('FS2') and not ignore_retail_dependency:
+                    if center.settings['show_fs2_mods_without_retail']:
+                        item['retail_dependency_missing'] = True
+                    else:
+                        continue
+                else:
+                    item['retail_dependency_missing'] = False
 
                 item['progress'] = 0
                 item['progress_info'] = {}
@@ -420,7 +490,7 @@ class HellWindow(Window):
                 else:
                     item['status'] = 'ready'
 
-                    if self._mod_filter == 'home':
+                    if search_filter == 'home':
                         for pkg in mod.packages:
                             if pkg.files_checked > 0 and pkg.files_ok < pkg.files_checked:
                                 item['status'] = 'error'
@@ -442,30 +512,50 @@ class HellWindow(Window):
                 if item['installed'] and not item['versions'][0]['installed']:
                     item['status'] = 'update'
 
+                if self._mod_filter != 'develop':
+                    del item['packages']
+
                 result.append(item)
 
-        # Maybe I should add "Just " to the list?
-        prefixes = ('the ', 'a ')
+        sort_key, sort_reverse = self._get_sort_parameters()
+        result.sort(key=sort_key, reverse=sort_reverse)
+        return result, search_filter
 
-        def build_sort_title(m):
-            title = m['title']
+    def _compute_mod_list_diff(self, new_mod_list):
+        mod_list_cache = None
+        if self._mod_filter in ('home', 'develop'):
+            mod_list_cache = self._installed_mod_list_cache
+        elif self._mod_filter == 'explore':
+            mod_list_cache = self._explore_mod_list_cache
+        else:
+            raise Exception('_compute_mod_list_diff: unknown mod filter type %s' % self._mod_filter)
 
-            for p in prefixes:
-                pl = len(p)
-                if title[:pl].lower() == p:
-                    title = title[pl:]
+        updated_mods = {}
+        for item in new_mod_list:
+            old_item = mod_list_cache.get(item['id'], None)
+            if item != old_item:
+                updated_mods[item['id']] = item
+                mod_list_cache[item['id']] = item
 
-            return title
+        return updated_mods
 
-        result.sort(key=build_sort_title)
-        return result, self._mod_filter
+    def _init_explore_mod_list_cache(self):
+        if center.settings['base_path'] is not None:
+            explore_result, explore_filter = self.search_mods('explore', True)
+            for item in explore_result:
+                self._explore_mod_list_cache[item['id']] = item
+
+    def get_explore_mod_list_cache_json(self):
+        return json.dumps(self._explore_mod_list_cache)
 
     def update_mod_list(self):
         if center.settings['base_path'] is not None:
             result, filter_ = self.search_mods()
 
             if filter_ in ('home', 'explore', 'develop'):
-                self.browser_ctrl.bridge.updateModlist.emit(json.dumps(result), filter_)
+                updated_mods = self._compute_mod_list_diff(result)
+                mod_order = [item['id'] for item in result]
+                self.browser_ctrl.bridge.updateModlist.emit(json.dumps(updated_mods), filter_, mod_order)
 
     def show_indicator(self):
         pass
@@ -508,7 +598,7 @@ class HellWindow(Window):
             self._updating_mods[m.mid] = pi[0] * 100
 
         if len(self._tasks) == 1 and pi[0] > 0:
-                integration.current.set_progress(pi[0])
+            integration.current.set_progress(pi[0])
 
         if len(task.mods) == 0 and self._prg_visible:
             self.win.progressBar.setValue(pi[0] * 100)

@@ -126,7 +126,10 @@ class Worker(threading.Thread):
             except Exception:
                 logging.exception('Exception in Thread!')
 
-            task[0]._deinit()
+            try:
+                task[0]._deinit()
+            except Exception:
+                logging.exception('Exception in Thread!')
 
             if center.raven:
                 center.raven.context.clear()

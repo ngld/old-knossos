@@ -112,7 +112,7 @@ export default {
 
     methods: {
         showRetailPrompt() {
-            vm.showRetailPrompt();
+            vm.showRetailPrompt(false);
         },
 
         openModFolder() {
@@ -148,6 +148,11 @@ export default {
             vm.popup_mod_version = this.selected_mod.version;
             vm.popup_mod_new_version = this.selected_mod.version;
             vm.popup_visible = true;
+            vm.popup_finished = (result) => {
+                if(result) {
+                    this.selectVersion(vm.popup_mod_new_version);
+                }
+            };
         },
 
         selectMod(mod) {
@@ -160,6 +165,10 @@ export default {
             this.fso_build = null;
             this.caps = null;
             this.video_urls = mod.videos.join("\n");
+
+            if(this.selected_mod.packages.length === 0) {
+                this.mod_box_tab = 'modify';
+            }
 
             this.tools = [];
             call(fs2mod.getModTools, this.selected_mod.id, this.selected_mod.version, (tools) => {
@@ -463,6 +472,9 @@ export default {
                 vm.popup_mode = 'mod_progress';
                 // We need the original mod here because the copy doesn't contain the progress info.
                 vm.popup_mod_id = this.selected_mod.id;
+                vm.popup_progress_cancel = () => {
+                    fs2mod.cancelUpload();
+                };
 
                 fs2mod.startUpload(this.selected_mod.id, this.selected_mod.version, vm.popup_content);
             };
@@ -474,6 +486,9 @@ export default {
             vm.popup_title = 'Upload mod';
             vm.popup_progress_message = null;
             vm.popup_mod_id = this.selected_mod.id;
+            vm.popup_progress_cancel = () => {
+                fs2mod.cancelUpload();
+            };
             vm.popup_visible = true;
         },
 
@@ -553,7 +568,7 @@ export default {
     <div>
         <div class="scroll-style mlist">
             <button class="mod-btn btn-link-blue" @click.prevent="openCreatePopup"><span class="btn-text">CREATE</span></button>
-            <!-- <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL RETAIL</button> -->
+            <!-- <button class="btn btn-default btn-small dev-btn" @click.prevent="showRetailPrompt">INSTALL FS2</button> -->
 
             <a href="#" v-for="mod in mods" v-if="mod.dev_mode" :key="mod.id" :class="{ active: selected_mod && selected_mod.id === mod.id }" @click="selectMod(mod)">{{ mod.title }}</a>
         </div>
@@ -603,7 +618,28 @@ export default {
                 <a :href="'https://fsnebula.org/mod/' + encodeURIComponent(selected_mod.id)" class="open-ext">Download Link</a>
             </div>
             <div class="dev-instructions" v-else>
-                This is the Development tab. Here you can create new mods or edit currently installed mods. This is also where you can apply experimental mod settings, work with the Freespace Mission Editor, and alter the mod flags and commandline options. <br><br>Consider this an advanced section of Knossos but also a great place to get started if you wish to learn the ins and outs of modding with Freespace 2 Open.
+                <p>
+                    This tab has advanced features that can help you get started
+                    with modding for FreeSpace Open (FSO).
+                </p>
+                <p>
+                    Here you can
+                </p>
+                <ul>
+                    <li>create new mods</li>
+                    <li>edit installed mods</li>
+                    <li>apply experimental mod settings</li>
+                    <li>customize a mod's command line options (flags)</li>
+                    <li>make missions with the mission editors FRED (Windows only, full-featured) and qtFRED (all platforms, <a href="https://www.hard-light.net/forums/index.php?topic=94565.0" class="open-ext">under development</a>)</li>
+                </ul>
+                <p>
+                    Check out these resources to help you get started:
+                </p>
+                <ul>
+                    <li><a href="https://docs.google.com/document/d/1oHq1YRc1eXbCgW-NqqKo1-6N_myfZzoBdwZuP16XImA/edit?pli=1#heading=h.fk85esz24kjw" class="open-ext">Knossos Mod Creation Guide</a></li>
+                    <li><a href="http://fredzone.hard-light.net/freddocs/" class="open-ext">FREDdocs</a> classic FRED tutorial</li>
+                    <!-- TODO more -->
+                </ul>
             </div>
             <div class="form-box" v-if="selected_mod">
                 <div class="tabcorner"></div>
@@ -636,19 +672,44 @@ export default {
                         <div v-if="selected_mod.packages.length === 0">
                             <h4>Dev Help</h4>
 
-                            <p class="help-block">
-                                You can't edit this mod since it doesn't have any packages, yet.
+                            <p>
+                                Your mod must have at least one package before you can start editing.
                             </p>
 
-                            <p class="help-block">
-                                To create a package click the "+ Package" button on the left.<br>
-                                A package is simply a folder for mod resources.  Most mods will only ever need a single
-                                package that contains everything.  Multiple packages are handy for larger mods with
-                                different installation options.  For example, a larger mod could have a main package
-                                called 'main' and an optional voice package called 'voice'.<br>
-                                If you want to, Knossos can then pack everything in that folder automatically
-                                into a VP when you upload. Click on the package name in the top tab list to edit it.
+                            <p>
+                                A <em>package</em> is a folder for mod data (missions, models, etc).
+                                Smaller mods might need only one package that contains all of the mod's data.
+                                Larger mods should split their data into multiple packages, such as
                             </p>
+                            <ul>
+                                <li>Core for textual data such as missions and tables</li>
+                                <li>Models for new models and Maps for their textures</li>
+                                <li>Packages for media such as Movies, Music, Sound Effects, and Voice Acting</li>
+                                <li>Optional packages such as high-detail models/textures</li>
+                            </ul>
+                            <p>
+                                When you release your mod, you should pack each package into an FSO-specific type of uncompressed file called a <em>VP file</em>.
+                                VP file names end with ".vp". Knossos can automatically pack your packages into
+                                VP files and compress them for you when you upload your mod to the <a href="https://fsnebula.org/" class="open-ext">Nebula</a> mod
+                                repository.
+                            </p>
+                            <p>
+                                To create a package, click the "+ Package" button on the left.<br>
+                                To edit a package, click on the package name in the top tab list.
+                            </p>
+                            <p>
+                                Some things to consider when deciding how to package your mod:
+                            </p>
+                            <ul>
+                                <li>A VP file can be at most 2 GB.</li>
+                                <li>Knossos's automatic VP packing packs each VP file into its own compressed archive file.<br>
+                                Thus a player with an unreliable Internet connection who has to restart a download
+                                will benefit from your mod having packages that aren't huge.</li>
+                                <li>When you upload a new version of your mod, only modified packages are uploaded.<br>
+                                Thus if a new version has just mission fixes and your missions are in
+                                a separate package from models/textures, the new version will have a new missions
+                                package only, meaning a smaller upload for you and smaller downloads for players.</li>
+                            </ul>
                         </div>
                         <div v-else-if="!selected_pkg && page === 'details'">
                             <h4>Mod Details</h4>
@@ -700,34 +761,38 @@ export default {
                                         <option value="mod">Mod</option>
                                         <option value="tc">Total Conversion</option>
                                         <option value="engine">FSO build</option>
+                                        <!-- TODO uncomment once extension and tool types are supported
                                         <option value="tool">Tool</option>
                                         <option value="ext">Extension</option>
+                                        -->
                                     </select>
 
                                     <span class="help-block" v-if="selected_mod.type === 'mod'">
-                                        This type is the default and covers most cases. Normally you'll want to use this type.
+                                        A campaign based on FreeSpace 2 (retail) or on a total conversion (TC).<br>
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'tc'">
-                                        Use this type if your mod doesn't depend on other mods or retail files.<br>
-                                        (Mods for TCs should still use the "Mod" type.)
+                                        A standalone game that doesn't depend on other mods and doesn't use FS2 files.<br>
+                                        Mods for TCs should use the "Mod" type.
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'engine'">
-                                        This should only be used for builds FSO builds (fs2_open*.exe, fs2_open*.AppImage, etc.).
+                                        A build of the FreeSpace Open (FSO) engine (fs2_open*.exe, fs2_open*.AppImage, fs2_open*.app, etc.)
                                     </span>
-
+                                    <!-- TODO uncomment once tools and extensions are supported
                                     <span class="help-block" v-if="selected_mod.type === 'tool'">
-                                        This is used for all executables which aren't FSO like FRED or PCS2.
+                                        Software other than the FreeSpace Open (FSO) engine.<br>
+                                        Examples include FRED (mission editor) and PCS2 (model converter).
                                     </span>
 
                                     <span class="help-block" v-if="selected_mod.type === 'ext'">
-                                        This mod type is meant for overrides like custom HUD tables.
+                                        A change that overrides, such as custom HUD tables
                                     </span>
+                                    -->
                                 </div>
                             </div>
 
-                            <div class="form-group" v-if="selected_mod.type === 'mod' || selected_mod.type === 'ext'">
+                            <div class="form-group" :style="{visibility: (selected_mod.type === 'mod' || selected_mod.type === 'ext') ? 'visible' : 'hidden'}">
                                 <label class="col-xs-3 control-label">Parent mod</label>
                                 <div class="col-xs-9">
                                     <p class="form-control-static">{{ selected_mod.parent }}</p>
@@ -742,8 +807,8 @@ export default {
                                     <button class="btn btn-small btn-default" @click.prevent="openDescEditor">Open Editor</button>
 
                                     <p class="help-block">
-                                        Please use BBCode here. To preview your description, save, go to your home tab
-                                        and go to this mod's detail page.
+                                        Use <a href="https://en.wikipedia.org/wiki/BBCode" class="open-ext">BBCode</a> here. To preview your description, save, go to the Home tab,
+                                        and go to this mod's Details page.
                                     </p>
                                 </div>
                             </div>
@@ -768,8 +833,9 @@ export default {
                                     <img :src="'file://' + selected_mod.logo" v-if="selected_mod.logo"><br>
 
                                     <p class="help-block">
-                                        This image should be about 255&times;112 pixels large. Please only use this for legacy logos and mod images from mods predating the Knossos installer.
-                                        If you create a new mod logo or image, please use the above setting.
+                                        This image should be about 255&times;112 pixels large.<br />
+                                        Use only for legacy logos and mod images from mods predating Knossos.
+                                        If you create a new mod logo or image, use the above setting.
                                     </p>
 
                                     <button class="btn btn-small btn-default" @click.prevent="changeImage('logo')">Select Image</button>
@@ -844,6 +910,9 @@ export default {
 
                         <div v-else-if="!selected_pkg && page === 'fso'">
                             <h4>FSO Settings</h4>
+                            <p>
+                                These settings apply when you run FSO from the Develop tab and will apply to players.
+                            </p>
 
                             <kn-fso-settings :mods="mods" :fso_build.sync="fso_build" :cmdline.sync="(selected_mod || {}).cmdline"></kn-fso-settings>
 
@@ -852,11 +921,11 @@ export default {
                             </div>
                         </div>
 
-                        <div v-if="!selected_pkg && page === 'mod_flag'">
+                        <div v-else-if="!selected_pkg && page === 'mod_flag'">
                             <h4>-mod Flag</h4>
 
                             <p v-if="selected_mod.mod_flag.length < 1">
-                                No dependencies available. Please add your dependencies to the relevant packages and then
+                                No dependencies available. Add your dependencies to the relevant packages and then
                                 return here.
                             </p>
 
@@ -870,7 +939,7 @@ export default {
                             <kn-save-btn :save-handler="saveModFlag" />
                         </div>
 
-                        <div v-if="!selected_pkg && page === 'team'">
+                        <div v-else-if="!selected_pkg && page === 'team'">
                             <h4>Staff List</h4>
 
                             <p>

@@ -244,7 +244,7 @@ def call(*args, **kwargs):
 
         kwargs['startupinfo'] = si
 
-    logging.debug('Running %s', args[0])
+    logging.info('Running %s', args[0])
     return subprocess.call(*args, **kwargs)
 
 
@@ -261,7 +261,7 @@ def Popen(*args, **kwargs):
 
         kwargs['startupinfo'] = si
 
-    logging.debug('Running %s', args[0])
+    logging.info('Running %s', args[0])
     return subprocess.Popen(*args, **kwargs)
 
 
@@ -271,16 +271,19 @@ def check_output(*args, **kwargs):
         kwargs.setdefault('stdin', subprocess.DEVNULL)
         kwargs.setdefault('stderr', subprocess.DEVNULL)
 
-        si = subprocess.STARTUPINFO()
-        si.dwFlags = subprocess.STARTF_USESHOWWINDOW
-        si.wShowWindow = subprocess.SW_HIDE
+        if not kwargs.get('no_hide'):
+            si = subprocess.STARTUPINFO()
+            si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = subprocess.SW_HIDE
+            kwargs['startupinfo'] = si
 
-        kwargs['startupinfo'] = si
+    # Remove the no_hide parameter that is irrelevant to subprocess.check_output
+    kwargs.pop('no_hide', None)
 
     kwargs.setdefault('errors', 'surrogateescape')
     kwargs.setdefault('universal_newlines', True)
 
-    logging.debug('Running %s', args[0])
+    logging.info('Running %s', args[0])
     return subprocess.check_output(*args, **kwargs)
 
 
@@ -383,20 +386,24 @@ def _get_download_chunk_size():
         return min(int(center.settings['download_bandwidth'] / 2), DEFAULT_CHUNK_SIZE)
 
 
-def download(link, dest, headers=None, random_ua=False, timeout=60):
+def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=False):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
-    if random_ua:
-        if headers is None:
-            headers = {}
+    if headers is None:
+        headers = {}
 
+    if random_ua:
         headers['User-Agent'] = get_user_agent(True)
+
+    if continue_:
+        headers['Range'] = 'bytes=%d-' % dest.tell()
 
     with DL_POOL:
         if _DL_CANCEL.is_set():
             return False
 
         logging.info('Downloading "%s"...', link)
+        start = time.time()
 
         try:
             result = HTTP_SESSION.get(link, headers=headers, stream=True, timeout=timeout)
@@ -407,8 +414,9 @@ def download(link, dest, headers=None, random_ua=False, timeout=60):
         if result.status_code == 304:
             return 304
         elif result.status_code == 206:
-            # sectorgame.com/fsfiles/ always returns code 206 which makes this necessary.
-            logging.warning('"%s" returned "206 Partial Content", the downloaded file might be incomplete.', link)
+            if not continue_:
+                # sectorgame.com/fsfiles/ always returns code 206 which makes this necessary.
+                logging.warning('"%s" returned "206 Partial Content", the downloaded file might be incomplete.', link)
         elif result.status_code != 200:
             logging.error('Failed to load "%s"! (%d %s)', link, result.status_code, result.reason)
             return False
@@ -419,15 +427,17 @@ def download(link, dest, headers=None, random_ua=False, timeout=60):
             logging.exception('Failed to parse Content-Length header!')
             size = 1024 ** 4  # = 1 TB
 
+        if result.status_code != 206 or not continue_:
+            dest.seek(0)
+
         try:
-            start = dest.tell()
             sc = SpeedCalc()
             for chunk in _get_download_iterator(result, _get_download_chunk_size()):
                 dest.write(chunk)
 
                 if sc.push(dest.tell()) != -1:
                     if size > 0:
-                        by_done = dest.tell() - start
+                        by_done = dest.tell()
                         speed = sc.get_speed()
                         p = by_done / size
                         text = format_bytes(speed) + '/s, '
@@ -442,6 +452,17 @@ def download(link, dest, headers=None, random_ua=False, timeout=60):
         except Exception:
             logging.exception('Download of "%s" was interrupted!', link)
             return False
+        else:
+            duration = time.time() - start
+
+            try:
+                post(center.API + 'track', data={
+                    'event': 'download',
+                    'link': link,
+                    'time': str(duration)
+                })
+            except Exception:
+                pass
 
     return True
 
@@ -711,10 +732,16 @@ def human_list(items):
 
 
 def is_fs2_retail_directory(path):
-    if os.path.isdir(path):
+    if not os.path.isdir(path):
+        path = os.path.dirname(path)
+
+    try:
         for item in os.listdir(path):
             if item.lower() == 'root_fs2.vp':
                 return True
+
+    except FileNotFoundError:
+        pass
 
     return False
 
@@ -889,7 +916,13 @@ class Spec(semantic_version.Spec):
 
     @staticmethod
     def from_version(version, op='=='):
-        return Spec('==' + str(version))
+        version = str(version)
+
+        if version != '*' and not semantic_version.SpecItem.re_spec.match(version) and not version.startswith('~'):
+            # Make a spec out of this version
+            version = '==' + version
+
+        return Spec(version)
 
 
 DL_POOL = ResizableSemaphore(10)

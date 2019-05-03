@@ -1,4 +1,6 @@
 <script>
+import Popper from 'vue-popperjs';
+import 'vue-popperjs/dist/css/vue-popper.css';
 import KnTroubleshooting from './kn-troubleshooting.vue';
 
 let next_tab = null;
@@ -6,7 +8,8 @@ let first_load = true;
 
 export default {
     components: {
-        'kn-troubleshooting': KnTroubleshooting
+        'kn-troubleshooting': KnTroubleshooting,
+        popper: Popper
     },
 
     data: () => ({
@@ -15,7 +18,7 @@ export default {
         tabs: {
             home: 'Home',
             explore: 'Explore',
-            develop: 'Development',
+            develop: 'Develop',
             trouble: 'Troubleshooting'
         },
 
@@ -37,6 +40,7 @@ export default {
 
         popup_progress_message: null,
         popup_progress: {},
+        popup_progress_cancel: null,
 
         popup_mod_name: '',
         popup_mod_id: '',
@@ -53,6 +57,7 @@ export default {
         popup_mod_exes: [],
         popup_mod_flag: [],
         popup_mod_sel_exe: null,
+        popup_mod_is_tool: false,
         popup_mod_flag_map: {},
 
         popup_pkg_name: '',
@@ -63,10 +68,21 @@ export default {
         popup_sure_question: '',
         sureCallback: null,
 
+        popup_finished: null,
+
         // retail prompt
         retail_searching: true,
         retail_found: false,
-        retail_data_path: ''
+        detected_retail_path: '',
+        retail_folder_path: '',
+        gog_installer_path: '',
+        retail_data_path: '', // TODO remove once no longer needed
+        mod_install_attempted: false,
+        retail_install_option: 'auto-detect-installation',
+
+        retail_data_path: '',
+        sort_types: ['alphabetical', 'last_played', 'last_released', 'last_updated'],
+        sort_type: 'alphabetical'
     }),
 
     watch: {
@@ -85,7 +101,7 @@ export default {
         },
 
         showHelp() {
-            alert('Not yet implemented! Sorry.');
+            fs2mod.showTempHelpPopup();
         },
 
         updateList() {
@@ -144,7 +160,6 @@ export default {
                 return;
             }
 
-
             if(this.popup_mod_name === '') {
                 alert('You need to enter a mod name!');
                 return;
@@ -189,6 +204,10 @@ export default {
                 if(result) {
                     this.popup_visible = false;
                 }
+
+                if(this.popup_finished) {
+                    this.popup_finished(result);
+                }
             });
         },
 
@@ -212,15 +231,21 @@ export default {
             this.popup_mod_id = this.mod.id;
             this.popup_title = 'Installation Details';
             this.popup_mode = 'mod_progress';
+            this.popup_progress_cancel = null;
             this.popup_visible = true;
         },
 
-        showRetailPrompt() {
+        showRetailPrompt(mod_install_attempted) {
             this.popup_mode = 'retail_prompt';
-            this.popup_title = 'Retail data missing';
+            this.popup_title = mod_install_attempted ? 'FreeSpace 2 data missing' : "Install FreeSpace 2";
             this.popup_visible = true;
 
             this.retail_data_path = '';
+            this.detected_retail_path = '';
+            this.retail_folder_path = '';
+            this.gog_installer_path = '';
+            this.retail_install_option = 'auto-detect-installation';
+            this.mod_install_attempted = mod_install_attempted;
             this.retailAutoDetect();
         },
 
@@ -233,26 +258,42 @@ export default {
 
                 if(path !== '') {
                     this.retail_found = true;
-                    this.retail_data_path = path;
+                    this.detected_retail_path = path;
                 }
             });
         },
 
         selectRetailFolder() {
-            call(fs2mod.browseFolder, 'Please select your FS2 folder', this.retail_data_path, (path) => {
-                if(path) this.retail_data_path = path;
-            });
-        },
-
-        selectRetailFile() {
-            call(fs2mod.browseFiles, 'Please select your setup_freespace2_...exe', this.retail_data_path, '*.exe', (files) => {
-                if(files.length > 0) {
-                    this.retail_data_path = files[0];
+            call(fs2mod.browseFiles, 'Select your FreeSpace 2 folder\'s Root_fs2.vp', '', '*.vp', (vp_files) => {
+                if(vp_files.length > 0) {
+                    let root_vp_path = vp_files[0];
+                    call(fs2mod.verifyRootVPFolder, root_vp_path, (result) => {
+                        if(result) {
+                            this.retail_folder_path = result;
+                        }
+                    });
                 }
             });
         },
 
+        selectRetailFile() {
+            call(fs2mod.browseFiles, 'Select your setup_freespace2_...exe', this.gog_installer_path, '*.exe', (files) => {
+                if (files.length > 0) {
+                    this.gog_installer_path = files[0];
+                }
+            });
+        },
+
+        selectRetailLocation() {
+            if(this.retail_install_option === 'select-installation-folder') {
+                this.selectRetailFolder();
+            } else {
+                this.selectRetailFile();
+            }
+        },
+
         selectModIni() {
+            // FIXME shouldn't retail_data_path be popup_ini_path?
             call(fs2mod.browseFiles, 'Please select the desired mod.ini', this.retail_data_path, 'mod.ini', (files) => {
                 if(files.length > 0) {
                     this.popup_ini_path = files[0];
@@ -267,8 +308,25 @@ export default {
         },
 
         finishRetailPrompt() {
-            call(fs2mod.copyRetailData, this.retail_data_path, (result) => {
-                if(result) this.popup_visible = false;
+            let path = '';
+            if(this.retail_install_option === 'select-installation-folder') {
+                path = this.retail_folder_path;
+            } else if(this.retail_install_option === 'select-installer-file') {
+                path = this.gog_installer_path;
+            } else {
+                path = this.detected_retail_path;
+            }
+            call(fs2mod.copyRetailData, path, (result) => {
+                if (result) {
+                    this.popup_mod_id = 'FS2';
+                    this.popup_title = 'FreeSpace 2';
+                    this.popup_mode = 'mod_progress';
+                    this.popup_progress_cancel = null;
+
+                    connectOnce(fs2mod.retailInstalled, () => {
+                        this.popup_visible = false;
+                    });
+                }
             });
         },
 
@@ -278,7 +336,7 @@ export default {
                 if(this.popup_mod_flag_map[part[0]]) mod_flag.push(part[0]);
             }
 
-            fs2mod.runModAdvanced(this.popup_mod_id, this.popup_mod_version, this.popup_mod_sel_exe, mod_flag);
+            fs2mod.runModAdvanced(this.popup_mod_id, this.popup_mod_version, this.popup_mod_sel_exe, this.popup_mod_is_tool, mod_flag);
             this.popup_visible = false;
         },
 
@@ -286,6 +344,31 @@ export default {
             if(this.popup_pkg_folder === '') {
                 this.popup_pkg_folder = this.popup_pkg_name.toLowerCase().replace(/ /g, '_');
             }
+        },
+
+        closePopup() {
+            // There's no way to reopen the popup during the welcome assistant so just don't close it at that point.
+            if(this.page !== 'welcome') {
+                this.popup_visible = false;
+            }
+        },
+
+        sortButtonClass(sort_button_type) {
+            return [
+                'filter-content-btn',
+                this.sort_type === sort_button_type ? 'selected' : ''
+            ];
+        },
+
+        setSortType(sort_type) {
+            call(fs2mod.setSortType, sort_type, (type) => {
+                if (type) this.sort_type = type;
+            });
+        },
+
+        getSortTypeDisplayName(sort_type) {
+            // adapted from https://flaviocopes.com/how-to-uppercase-first-letter-javascript/
+            return sort_type.split('_').map(type => type.charAt(0).toUpperCase() + type.slice(1)).join(' ');
         }
     }
 };
@@ -322,23 +405,22 @@ export default {
             <a href="#" @click.prevent="openScreenshotFolder" class="tab-misc-btn"><span class="screenshots-image"></span></a>
         </div>
     <!-------------------------------------------------------------------------------- Start the Filter Button ---------->
-        <div class="filter-container" v-if="page === 'modlist'">
-            <button class="filterbtn" @click="show_filter = true"></button>
-            <div class="filter-content" v-show="show_filter" @click="show_filter = false">
-                <div class="filter-lines">
-                    <button class="filter-content-btn last-played-btn">Last Played</button>
-                </div>
-                <div class="filter-lines">
-                    <button class="filter-content-btn alphabetical-btn">Alphabetical</button>
-                </div>
-                <div class="filter-lines">
-                    <button class="filter-content-btn last-updated-log-btn">Last Updated</button>
-                </div>
-                <div class="filter-lines">
-                    <button class="filter-content-btn last-released-btn">Last Released</button>
-                </div>
+        <popper v-if="page === 'modlist'"
+                trigger="click"
+                @show="show_filter = true"
+                @hide="show_filter = false"
+                class="filter-container"
+                :options="{ placement: 'bottom-end', modifiers: { keepTogether: { enabeld: false }, arrow: { enabled: false }, offset: { offset: '0px, 7px' }}}">
+            <div class="filter-content">
+                <template v-for="sort_type in sort_types">
+                    <div class="filter-lines">
+                        <button :class="sortButtonClass(sort_type)" @click="setSortType(sort_type)">{{ getSortTypeDisplayName(sort_type) }}</button>
+                    </div>
+                </template>
             </div>
-        </div>
+
+            <button :class="['filterbtn', show_filter ? 'filter-active' : '']" slot="reference"></button>
+        </popper>
 
         <div class="welcome-overlay" v-if="page === 'welcome'"></div>
 
@@ -393,13 +475,13 @@ export default {
             </div>
         </kn-scroll-container>
 
-        <div class="popup-bg" v-if="popup_visible" @click="popup_visible = false"></div>
+        <div class="popup-bg" v-if="popup_visible" @click="closePopup"></div>
 
         <div class="popup" v-if="popup_visible">
             <div class="title clearfix">
                 {{ popup_title }}
 
-                <a href="" class="pull-right" @click.prevent="popup_visible = false">
+                <a href="" class="pull-right" @click.prevent="closePopup">
                     <i class="fa fa-times"></i>
                 </a>
             </div>
@@ -423,6 +505,10 @@ export default {
                         Preparing...
                     </p>
 
+                    <button v-if="popup_progress_cancel" class="mod-btn btn-link-red" @click="popup_progress_cancel">
+                        Cancel
+                    </button>
+
                     <div v-for="row in (popup_progress[popup_mod_id] || [])" :key="row[0]" class="row">
                         <div class="col-xs-4 mod-prog-label">{{ row[0] }}</div>
                         <div class="col-xs-5">
@@ -436,30 +522,59 @@ export default {
 
                 <div v-if="popup_mode === 'retail_prompt'">
                     <p>
-                        You're trying to install an FS2 mod which requires retail files which you don't have.<br>
-                        Please select the folder of your FS2 installation or the FS2 installer from GOG (setup_freespace2_....exe).
+                        <span v-if="mod_install_attempted">You need the FreeSpace 2 data files to play this mod.<br></span>
+                        Choose how you want to install FreeSpace 2. You can buy it from
+                        <a href="https://www.gog.com/game/freespace_2" class="open-ext">GOG</a>
+                        or <a href="https://store.steampowered.com/app/273620/Freespace_2/" class="open-ext">Steam</a>.
                     </p>
-                    <p>
-                        <strong v-if="retail_searching">Searching files...</strong>
-                        <strong v-else-if="retail_found">Folder found!</strong>
-                        <strong v-else>
-                            Nothing found, please select the appropriate folder or install FS2 and
-                            <a href="#" @click.prevent="retailAutoDetect">try again</a>.
-                        </strong>
-                    </p>
-                    <form class="form-horizontal">
+                    <form class="form-horizontal col-xs-12">
                         <div class="form-group">
-                            <div class="col-xs-8">
-                                <input type="text" class="form-control" v-model="retail_data_path" :disabled="retail_searching">
-                            </div>
-                            <div class="col-xs-4">
-                                <button class="btn btn-default" @click.prevent="selectRetailFolder">Browse...</button>
-                                <button class="btn btn-default" @click.prevent="selectRetailFile">Select .exe</button>
-                            </div>
+                            <label class="checkbox">
+                                <input type="radio" value="auto-detect-installation" v-model="retail_install_option" @change="retailAutoDetect">
+                                Auto-detect installation
+                            </label>
+                            <label class="checkbox">
+                                <input type="radio" value="select-installation-folder" v-model="retail_install_option">
+                                Select installation folder
+                            </label>
+                            <label class="checkbox">
+                                <input type="radio" value="select-installer-file" v-model="retail_install_option">
+                                Select GOG installer file
+                            </label>
                         </div>
                     </form>
-                    
-                    <p><button class="btn btn-primary" @click="finishRetailPrompt">Continue</button></p>
+
+                    <p v-if="retail_install_option === 'select-installation-folder'">
+                        Browse to the folder that has the FreeSpace 2 data files and find the file <strong>Root_fs2.vp</strong> or <strong>root_fs2.vp</strong>.<br>
+                        Knossos will copy the files into the Knossos library.
+                    </p>
+                    <p v-else-if="retail_install_option === 'select-installer-file'">
+                        Select the GOG FreeSpace 2 installer (example: setup_freespace2_2.0.0.8.exe).<br>
+                        Knossos will extract the data files from the installer into the Knossos library.
+                    </p>
+                    <p v-else>
+                        <span v-if="retail_searching"><strong>Searching files...</strong></span>
+                        <span v-else-if="retail_found"><strong>FreeSpace 2 folder found</strong> at<br>
+                        {{  detected_retail_path  }}</span>
+                        <span v-else>
+                            <strong>FreeSpace 2 folder auto-detection failed.</strong><br>
+                            Choose another install option or install FreeSpace 2 and
+                            <a href="#" @click.prevent="retailAutoDetect">try again</a>.
+                        </span>
+                    </p>
+                    <p>
+                        <div class="input-group" :style="{ visibility: (retail_install_option !== 'auto-detect-installation') ? 'visible' : 'hidden' }">
+                            <input v-if="retail_install_option === 'select-installation-folder'" type="text" class="form-control" v-model="retail_folder_path">
+                            <input v-else type="text" class="form-control" v-model="gog_installer_path">
+                            <span class="input-group-btn">
+                                <button class="btn btn-default" @click.prevent="selectRetailLocation">Browse...</button>
+                            </span>
+                        </div>
+                    </p>
+                    <p>
+                        <button class="btn btn-primary" @click="finishRetailPrompt">Continue</button>
+                        <button class="btn btn-default pull-right" @click.prevent="popup_visible = false">Cancel</button>
+                    </p>
                 </div>
 
                 <div v-if="popup_mode === 'create_mod'">
@@ -512,30 +627,34 @@ export default {
                                     <option value="mod">Mod</option>
                                     <option value="tc" v-if="popup_mode === 'create_mod'">Total Conversion</option>
                                     <option value="engine" v-if="popup_mode === 'create_mod'">FSO build</option>
+                                    <!-- TODO uncomment once Tool and Extension are supported
                                     <option value="tool" v-if="popup_mode === 'create_mod'">Tool</option>
                                     <option value="ext">Extension</option>
+                                    -->
                                 </select>
 
                                 <span class="help-block" v-if="popup_mod_type === 'mod'">
-                                    This type is the default and covers most cases. Normally you'll want to use this type.
+                                    A campaign based on FreeSpace 2 (retail) or on a total conversion (TC).<br>
                                 </span>
 
                                 <span class="help-block" v-if="popup_mod_type === 'tc'">
-                                    Use this type if your mod doesn't depend on other mods or retail files.<br>
-                                    (Mods for TCs should still use the "Mod" type.)
+                                    A standalone game that doesn't depend on other mods and doesn't use FS2 files.<br>
+                                    Mods for TCs should use the "Mod" type.
                                 </span>
 
                                 <span class="help-block" v-if="popup_mod_type === 'engine'">
-                                    This should only be used for builds FSO builds (fs2_open*.exe, fs2_open*.AppImage, etc.).
+                                    A build of the FreeSpace Open (FSO) engine (fs2_open*.exe, fs2_open*.AppImage, fs2_open*.app, etc.)
                                 </span>
-
+                                <!-- TODO uncomment once tools and extensions are supported
                                 <span class="help-block" v-if="popup_mod_type === 'tool'">
-                                    This is used for all executables which aren't FSO like FRED or PCS2.
+                                    Software other than the FreeSpace Open (FSO) engine.<br>
+                                    Examples include FRED (mission editor) and PCS2 (model converter).
                                 </span>
 
                                 <span class="help-block" v-if="popup_mod_type === 'ext'">
-                                    This mod type is meant for overrides like custom HUD tables.
+                                    A change that overrides, such as custom HUD tables
                                 </span>
+                                -->
                             </div>
                         </div>
 
@@ -547,7 +666,7 @@ export default {
                                 </select>
 
                                 <span class="help-block">
-                                    Please select your parent TC here. If this mod doesn't extend a TC, select "Retail FS2".
+                                    The game your mod is based on, either FreeSpace 2 ("Retail FS2") or a total conversion (TC).
                                 </span>
                             </div>
                         </div>
@@ -616,7 +735,7 @@ export default {
 
                                 <label class="checkbox">
                                     <input type="radio" name="v_popup_mod_method" value="empty" v-model="popup_mod_method">
-                                    Create a new, empty folder
+                                    Create a new folder
                                 </label>
                             </div>
                         </div>
@@ -692,7 +811,7 @@ export default {
 
                 <div v-if="popup_mode == 'upload_mod'">
                     <p>
-                        Are you sure that you want to upload {{popup_mod_name}} {{popup_mod_version}}?
+                        Upload {{popup_mod_name}} {{popup_mod_version}} to Nebula?
                     </p>
 
                     <p>

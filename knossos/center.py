@@ -24,11 +24,19 @@ from .qt import QtCore # noqa
 
 # The version should follow the http://semver.org guidelines.
 # Only remove the -dev tag if you're making a release!
-VERSION = '0.13.3'
+VERSION = '0.14.0'
 UPDATE_LINK = 'https://fsnebula.org/knossos'
 INNOEXTRACT_LINK = 'https://fsnebula.org/storage/knossos/innoextract.json'
 DEBUG = os.getenv('KN_DEBUG', '0').strip() == '1'
 SENTRY_DSN = 'https://77179552b41946488346a9a2d2669d74:f7b896367bd94f0ea960b8f0ee8b7a88@sentry.gruenprint.de/9?timeout=5'
+
+API = 'https://api.fsnebula.org/api/1/'
+WEB = 'https://fsnebula.org/'
+REPOS = [
+    'https://cf.fsnebula.org/storage/repo.json',
+    'https://fsnebula.org/storage/repo.json',
+    'https://porphyrion.feralhosting.com/datacorder/nebula/repo.json'
+]
 
 LANGUAGES = {
     'en': 'English'
@@ -45,6 +53,7 @@ fso_flags = None
 has_retail = None
 raven = None
 raven_handler = None
+sort_type = 'alphabetical'
 
 settings = {
     'fs2_bin': None,
@@ -55,9 +64,9 @@ settings = {
     'hash_cache': None,
     'max_downloads': 3,
     'download_bandwidth': -1.0,  # negative numbers are used to specify no limit
-    'repos': [('https://fsnebula.org/storage/repo.json', 'FSNebula')],
-    'nebula_link': 'https://fsnebula.org/api/1/',
-    'nebula_web': 'https://fsnebula.org/',
+    'repos_override': [],
+    'api_override': None,
+    'web_override': None,
     'update_notify': True,
     'use_raven': True,
     'sdl2_path': None,
@@ -70,7 +79,10 @@ settings = {
     'joystick': {
         'guid': None,
         'id': 99999
-    }
+    },
+    'show_fs2_mods_without_retail': False,
+    'debug_log': False,
+    'show_fso_builds': False
 }
 
 if sys.platform.startswith('win'):
@@ -108,6 +120,8 @@ class _SignalContainer(QtCore.QObject):
 
 signals = _SignalContainer()
 
+def get_library_json_name():
+    return 'kn_library.json'
 
 def save_settings():
     settings['hash_cache'] = dict()

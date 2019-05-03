@@ -1,0 +1,39 @@
+kind: pipeline
+name: ubuntu
+
+steps:
+  - name: build
+    image: ngld/knossos-builders:ubuntu
+    secrets: [ubuntu_gpg_key, ubuntu_key]
+    environment:
+      TRAVIS: n
+      RELEASE: n
+      UBUNTU_GPG_KEY:
+        from_secret: ubuntu_gpg_key
+      UBUNTU_KEY:
+        from_secret: ubuntu_key
+    commands:
+      - export VERSION="$(python3 setup.py get_version)"
+      - if [ "$DRONE_BUILD_EVENT" = "tag" ]; then export RELEASE=y; fi
+      - bash releng/ubuntu/auto-build.sh
+
+---
+
+kind: pipeline
+name: arch
+
+steps:
+  - name: build
+    image: ngld/knossos-builders:arch
+    secrets: [aur_key]
+    environment:
+      TRAVIS: n
+      RELEASE: n
+      AUR_USER: ngld
+      AUR_EMAIL: ngld@tproxy.de
+      AUR_KEY:
+        from_secret: aur_key
+    commands:
+      - export VERSION="$(python3 setup.py get_version)"
+      - if [ "$DRONE_BUILD_EVENT" = "tag" ]; then export RELEASE=y; fi
+      - bash releng/arch/auto-build.sh

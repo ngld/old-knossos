@@ -145,7 +145,7 @@ export default {
             <div class="col-xs-9">
                 <div class="input-group">
                     <select class="form-control" :value="fso_build" @input="$emit('update:fso_build', $event.target.value)">
-                        <option v-if="!isValidBuild()" :key="'invalid'" value="invalid">Please select a valid build</option>
+                        <option v-if="!isValidBuild()" :key="'invalid'" value="invalid">Select a valid build</option>
                         <option :value="null">{{ custom_build || 'Mod default' }}</option>
                         <option v-for="mod in engine_builds" :key="mod.id + '-' + mod.version" :value="mod.id + '#' + mod.version">
                             {{ mod.title }} {{ mod.version }}
@@ -163,7 +163,7 @@ export default {
             Not yet implemented
 
         <div class="form-group">
-            <label class="col-sm-4 control-label">Easy Setup:</label>
+            <label class="col-sm-4 control-label">Easy setup</label>
             <div class="col-sm-8">
                 <select class="form-control" v-model="selected_easy_flags">
                     <option value="">Select a group</option>
@@ -174,21 +174,21 @@ export default {
         -->
 
         <div class="form-group">
-            <label class="col-sm-4 control-label">Custom Flags:</label>
+            <label class="col-sm-4 control-label">Custom flags</label>
             <div class="col-sm-8">
                 <input type="text" class="form-control" v-model="custom_flags">
             </div>
         </div>
 
         <div class="form-group">
-            <label class="col-sm-4 control-label">Full Commandline:</label>
+            <label class="col-sm-4 control-label">Full command line</label>
             <div class="col-sm-8">
                 <textarea readonly class="form-control" rows="3">{{ loading_flags ? 'Loading...' : cmdline }}</textarea>
             </div>
         </div>
 
         <div class="form-group">
-            <label class="col-sm-4 control-label">List Type:</label>
+           <label class="col-sm-4 control-label">Flag list type</label>
             <div class="col-sm-8">
                 <select class="form-control" v-model="list_type">
                     <option v-for="(flags, name) in flags">{{ name }}</option>

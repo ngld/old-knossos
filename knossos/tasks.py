@@ -39,27 +39,30 @@ from .qt import QtCore, QtWidgets, read_file
 translate = QtCore.QCoreApplication.translate
 
 
-class FetchTask(progress.Task):
+class FetchTask(progress.MultistepTask):
     background = True
+    _public = None
+    _private = None
+    _steps = 2
 
     def __init__(self):
         super(FetchTask, self).__init__()
         self.title = 'Fetching mod list...'
         self.done.connect(self.finish)
 
-        repos = center.settings['repos'] + [('#private', 'Private Mods')]
-        self.add_work([('repo', i * 100, link[0]) for i, link in enumerate(repos)])
+        self.add_work(['#public', '#private'])
 
-    def work(self, params):
-        _, prio, link = params
+    def init1(self):
+        pass
 
-        progress.update(0.1, 'Fetching "%s"...' % link)
+    def work1(self, part):
+        progress.update(0.1, 'Fetching "%s"...' % part)
 
         try:
             data = Repo()
             data.is_link = True
 
-            if link == '#private':
+            if part == '#private':
                 if not center.settings['neb_user']:
                     return
 
@@ -68,38 +71,50 @@ class FetchTask(progress.Task):
 
                 data.base = '#private'
                 data.set(mods)
-            else:
-                raw_data = util.get(link, raw=True)
+                self._private = data
+            elif part == '#public':
+                raw_data = None
+
+                for link in center.REPOS:
+                    raw_data = util.get(link, raw=True)
+                    if raw_data:
+                        break
+
                 if not raw_data:
                     return
 
-                data.base = os.path.dirname(raw_data.url)
+                data.base = raw_data.url
                 data.parse(raw_data.text)
+                self._public = data
 
         except Exception:
-            logging.exception('Failed to decode "%s"!', link)
+            logging.exception('Failed to decode "%s"!', part)
             return
 
-        self.post((prio, data))
+    def init2(self):
+        self.add_work((None,))
+
+    def work2(self, _):
+        if not self._public:
+            return
+
+        data = Repo()
+        data.merge(self._public)
+
+        if self._private:
+            data.merge(self._private)
+
+        data.save_json(os.path.join(center.settings_path, 'mods.json'))
+        center.mods = data
 
     def finish(self):
         if not self.aborted:
-            modlist = center.mods = Repo()
-            res = self.get_results()
-            res.sort(key=lambda x: x[0])
-
-            for part in res:
-                modlist.merge(part[1])
-
-            modlist.save_json(os.path.join(center.settings_path, 'mods.json'))
-            center.save_settings()
             center.main_win.update_mod_list()
 
 
 class LoadLocalModsTask(progress.Task):
     background = True
     can_abort = False
-    _steps = 2
 
     def __init__(self):
         super(LoadLocalModsTask, self).__init__(threads=3)
@@ -381,8 +396,8 @@ class InstallTask(progress.MultistepTask):
                         'Uninstall the partially installed mod %s or verify the file integrity.' % title))
         elif self._error:
             msg = self.tr(
-                'An error occured during the installation of %s. It might be partially installed.\n' +
-                'Please run a file integrity check or reinstall (uninstall + install) it.' % title
+                'An error occured during the installation of %s. It might be partially installed.\n' % title +
+                'Please run a file integrity check or reinstall (uninstall + install) it.'
             )
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
 
@@ -564,11 +579,11 @@ class InstallTask(progress.MultistepTask):
             arpath = os.path.join(tpath, archive['filename'])
             modpath = archive['mod'].folder
 
-            # TODO: Maybe this should be an option?
-            retries = 3
+            retries = 10
             done = False
             urls = list(archive['urls'])
             random.shuffle(urls)
+            stream = open(arpath, 'wb')
 
             while retries > 0:
                 retries -= 1
@@ -577,16 +592,18 @@ class InstallTask(progress.MultistepTask):
                     progress.start_task(0, 0.97, '%s')
                     progress.update(0, 'Ready')
 
-                    with open(arpath, 'wb') as stream:
-                        if not util.download(url, stream):
-                            if self.aborted:
-                                return
+                    if not util.download(url, stream, continue_=True):
+                        if self.aborted:
+                            return
 
-                            logging.error('Download of "%s" failed!', url)
-                            continue
+                        logging.error('Download of "%s" failed!', url)
+                        time.sleep(0.3)
+                        continue
 
                     progress.finish_task()
                     progress.update(0.97, 'Checking "%s"...' % archive['filename'])
+
+                    stream.close()
 
                     if util.check_hash(archive['checksum'], arpath):
                         done = True
@@ -594,6 +611,9 @@ class InstallTask(progress.MultistepTask):
                         break
                     else:
                         logging.error('File "%s" is corrupted!', url)
+                        stream = open(arpath, 'wb')
+
+                time.sleep(2)
 
             if not done:
                 logging.error('Missing file "%s"!', archive['filename'])
@@ -759,6 +779,8 @@ class InstallTask(progress.MultistepTask):
         self.add_work((None,))
 
     def work4(self, _):
+        first = True
+
         # Generate mod.json files.
         for mod in self._mods:
             try:
@@ -766,8 +788,17 @@ class InstallTask(progress.MultistepTask):
             except Exception:
                 logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
-        # The nebula currently doesn't support tracking installations
-        # util.get(center.settings['nebula_link'] + 'track/install/' + self.mods[0].mid)
+            try:
+                util.post(center.API + 'track', data={
+                    'counter': 'install_mod',
+                    'mid': mod.mid,
+                    'version': str(mod.version),
+                    'dependency': 'false' if first else 'true'
+                })
+            except Exception:
+                pass
+
+            first = False
 
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
@@ -848,6 +879,15 @@ class UninstallTask(progress.MultistepTask):
                     shutil.rmtree(libs)
 
                 center.installed.del_mod(mod)
+
+                try:
+                    util.post(center.API + 'track', data={
+                        'counter': 'uninstall_mod',
+                        'mid': mod.mid,
+                        'version': str(mod.version),
+                    })
+                except Exception:
+                    pass
             elif not os.path.isdir(modpath):
                 logging.error('Mod %s still has packages but mod folder "%s" is gone!' % (mod, modpath))
             else:
@@ -1114,9 +1154,15 @@ class UploadTask(progress.MultistepTask):
         self._question.connect(self.show_question)
         self._question_cond = threading.Condition()
 
-    def abort(self):
+    def abort(self, user=False):
         self._local.slot = 'total'
         progress.update(1, 'Aborted')
+
+        if self._client:
+            self._client.abort_uploads()
+
+        if user:
+            self._reason = 'aborted'
 
         super(UploadTask, self).abort()
 
@@ -1330,129 +1376,175 @@ class UploadTask(progress.MultistepTask):
             progress.update(0, 'Comparing...')
 
             hasher = hashlib.new('sha512')
+
+            if pkg.is_vp:
+                hasher.update(b'ISVP')
+            else:
+                hasher.update(b'NOVP')
+
             for item in sorted(pkg.filelist, key=lambda a: a['filename']):
                 line = '%s#%s\n' % (item['filename'], item['checksum'])
                 hasher.update(line.encode('utf8'))
 
             content_ck = hasher.hexdigest()
-            is_uploaded, meta = self._client.is_uploaded(content_checksum=content_ck)
-            if is_uploaded:
-                # The file is already uploaded
-                pkg.files[ar_name] = {
-                    'filename': ar_name,
-                    'dest': '',
-                    'checksum': ('sha256', meta['checksum']),
-                    'filesize': meta['filesize']
-                }
+            store_name = os.path.join(self._mod.folder, 'kn_upload-%s' % pkg.name)
 
-                is_done = True
+            if self.aborted:
+                return
+
+            create_ar = True
+
+            if os.path.isfile(store_name + '.7z') and os.path.isfile(store_name + '.json'):
+                try:
+                    with open(store_name + '.json', 'r') as stream:
+                        data = json.load(stream)
+
+                    if data and data.get('hash') == content_ck:
+                        create_ar = False
+
+                    del data
+
+                except Exception:
+                    logging.exception('Failed to parse metadata for cached archive %s!' % store_name)
+
+            if create_ar:
+                is_uploaded, meta = self._client.is_uploaded(content_checksum=content_ck)
+                if is_uploaded:
+                    # The file is already uploaded
+                    pkg.files[ar_name] = {
+                        'filename': ar_name,
+                        'dest': '',
+                        'checksum': ('sha256', meta['checksum']),
+                        'filesize': meta['filesize']
+                    }
+
+                    is_done = True
+                    if pkg.is_vp:
+                        if meta['vp_checksum']:
+                            vp_name = pkg.name + '.vp'
+
+                            pkg.filelist = [{
+                                'filename': vp_name,
+                                'archive': ar_name,
+                                'orig_name': vp_name,
+                                'checksum': ('sha256', meta['vp_checksum'])
+                            }]
+                        else:
+                            # The existing upload is identical but not a VP.
+                            is_done = False
+                            is_uploaded = False
+
+                    if is_done:
+                        progress.update(1, 'Done!')
+                        return
+
+                progress.update(0, 'Packing...')
                 if pkg.is_vp:
-                    if meta['vp_checksum']:
-                        vp_name = pkg.name + '.vp'
+                    vp_name = os.path.basename(pkg.folder) + '.vp'
+                    vp_path = os.path.join(self._dir.name, vp_name)
+                    vp = vplib.VpWriter(vp_path)
+                    pkg_path = os.path.join(self._mod.folder, pkg.folder)
 
-                        pkg.filelist = [{
-                            'filename': vp_name,
-                            'archive': ar_name,
-                            'orig_name': vp_name,
-                            'checksum': ('sha256', meta['vp_checksum'])
-                        }]
-                    else:
-                        # The existing upload is identical but not a VP.
-                        is_done = False
-                        is_uploaded = False
+                    for item in pkg.filelist:
+                        vp.add_file(item['filename'], os.path.join(pkg_path, item['filename']))
 
-                if is_done:
-                    progress.update(1, 'Done!')
+                    progress.start_task(0.0, 0.1, '%s')
+                    try:
+                        vp.write()
+                    except vplib.EmptyFileException as exc:
+                        self._reason = 'empty file in vp'
+                        self._msg = exc.file
+                        self.abort()
+                        return
+
+                    progress.update(1, 'Calculating checksum...')
+                    progress.finish_task()
+
+                    vp_checksum = util.gen_hash(vp_path)
+                    pkg.filelist = [{
+                        'filename': vp_name,
+                        'archive': ar_name,
+                        'orig_name': vp_name,
+                        'checksum': vp_checksum
+                    }]
+
+                    if is_uploaded:
+                        progress.update(1, 'Done!')
+                        return
+
+                    progress.start_task(0.1, 0.3, '%s')
+                else:
+                    progress.start_task(0.0, 0.4, '%s')
+
+                if self.aborted:
                     return
 
-            progress.update(0, 'Packing...')
-            if pkg.is_vp:
-                vp_name = os.path.basename(pkg.folder) + '.vp'
-                vp_path = os.path.join(self._dir.name, vp_name)
-                vp = vplib.VpWriter(vp_path)
-                pkg_path = os.path.join(self._mod.folder, pkg.folder)
+                _7z_msg = ''
+                if pkg.is_vp:
+                    p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, vp_name],
+                        cwd=self._dir.name, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                else:
+                    p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, '.'],
+                        cwd=os.path.join(self._mod.folder, pkg.folder), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-                for item in pkg.filelist:
-                    vp.add_file(item['filename'], os.path.join(pkg_path, item['filename']))
+                line_re = re.compile(r'^\s*([0-9]+)%')
+                buf = ''
+                while p.poll() is None:
+                    if self.aborted:
+                        p.terminate()
+                        return
 
-                progress.start_task(0.0, 0.1, '%s')
-                try:
-                    vp.write()
-                except vplib.EmptyFileException as exc:
-                    self._reason = 'empty file in vp'
-                    self._msg = exc.file
+                    while '\r' not in buf:
+                        line = p.stdout.read(10)
+                        if not line:
+                            break
+                        buf += line.decode('utf8', 'replace')
+
+                    buf = buf.split('\r')
+                    line = buf.pop(0)
+                    buf = '\r'.join(buf)
+
+                    m = line_re.match(line)
+                    if m:
+                        progress.update(int(m.group(1)) / 100., 'Compressing...')
+                    else:
+                        _7z_msg += line
+
+                if p.returncode != 0:
+                    logging.error('Failed to build %s! (%s)' % (ar_name, _7z_msg))
+                    self._reason = 'bad archive'
+                    self._msg = pkg.name
                     self.abort()
                     return
 
-                progress.update(1, 'Calculating checksum...')
-                progress.finish_task()
-
-                vp_checksum = util.gen_hash(vp_path)
-                pkg.filelist = [{
-                    'filename': vp_name,
-                    'archive': ar_name,
-                    'orig_name': vp_name,
-                    'checksum': vp_checksum
-                }]
-
-                if is_uploaded:
-                    progress.update(1, 'Done!')
+                if self.aborted:
                     return
 
-                progress.start_task(0.1, 0.3, '%s')
-            else:
-                progress.start_task(0.0, 0.4, '%s')
+                shutil.move(ar_path, store_name + '.7z')
+                with open(store_name + '.json', 'w') as stream:
+                    json.dump({'hash': content_ck}, stream)
 
-            _7z_msg = ''
-            if pkg.is_vp:
-                p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, vp_name],
-                    cwd=self._dir.name, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            else:
-                p = util.Popen([util.SEVEN_PATH, 'a', '-bsp1', ar_path, '.'],
-                    cwd=os.path.join(self._mod.folder, pkg.folder), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                progress.finish_task()
 
-            line_re = re.compile(r'^\s*([0-9]+)%')
-            buf = ''
-            while p.poll() is None:
-                while '\b' not in buf:
-                    line = p.stdout.read(10)
-                    if not line:
-                        break
-                    buf += line.decode('utf8', 'replace')
-
-                buf = buf.split('\b')
-                line = buf.pop(0)
-                buf = '\b'.join(buf)
-
-                m = line_re.match(line)
-                if m:
-                    progress.update(int(m.group(1)) / 100., 'Compressing...')
-                else:
-                    _7z_msg += line
-
-            if p.returncode != 0:
-                logging.error('Failed to build %s! (%s)' % (ar_name, _7z_msg))
-                self._reason = 'bad archive'
-                self._msg = pkg.name
-                self.abort()
-                return
-
-            progress.finish_task()
             progress.start_task(0.4, 0.6, '%s')
             progress.update(0, 'Preparing upload...')
 
             pkg.files[ar_name] = {
                 'filename': ar_name,
                 'dest': '',
-                'checksum': util.gen_hash(ar_path),
-                'filesize': os.stat(ar_path).st_size
+                'checksum': util.gen_hash(store_name + '.7z'),
+                'filesize': os.stat(store_name + '.7z').st_size
             }
 
             retries = 3
             while retries > 0:
                 retries -= 1
+
+                if self.aborted:
+                    return
+
                 try:
-                    self._client.upload_file(ar_name, ar_path, content_checksum=content_ck, vp_checksum=vp_checksum)
+                    self._client.multiupload_file(ar_name, store_name + '.7z', content_checksum=content_ck, vp_checksum=vp_checksum)
                     break
                 except nebula.RequestFailedException:
                     logging.exception('Failed upload, retrying...')
@@ -1499,7 +1591,15 @@ class UploadTask(progress.MultistepTask):
 
     def finish(self):
         try:
+            if self._success:
+                for item in os.listdir(self._mod.folder):
+                    if item.startswith('kn_upload-'):
+                        logging.debug('Removing %s...' % item)
+
+                        util.safe_unlink(os.path.join(self._mod.folder, item))
+
             if self._dir:
+                logging.debug('Removing temporary directory...')
                 util.retry_helper(self._dir.cleanup)
         except OSError:
             # This is not a critical error so we only log it for now
@@ -1566,13 +1666,6 @@ class GOGExtractTask(progress.Task):
         self._slot_prog = {
             'total': ('Status', 0, 'Waiting...')
         }
-
-        if not center.installed.has('FSO'):
-            try:
-                fso = center.mods.query('FSO')
-                run_task(InstallTask(fso.resolve_deps()))
-            except repo.ModNotFound:
-                logging.warning('Installing retail files but FSO is missing!')
 
     def work(self, paths):
         gog_path, dest_path = paths
@@ -1747,10 +1840,17 @@ class GOGExtractTask(progress.Task):
             QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), msg)
         elif results[0] == -1:
             QtWidgets.QMessageBox.critical(None, translate('tasks', 'Error'), self.tr(
-                'The selected file wasn\'t a proper Inno Setup installer. Are you shure you selected the right file?'))
+                'The selected file wasn\'t a proper Inno Setup installer. Are you sure you selected the right file?'))
         else:
             center.main_win.update_mod_list()
             center.main_win.browser_ctrl.bridge.retailInstalled.emit()
+
+            if not center.installed.has('FSO'):
+                try:
+                    fso = center.mods.query('FSO')
+                    run_task(InstallTask(fso.resolve_deps()))
+                except repo.ModNotFound:
+                    logging.warning('Installing retail files but FSO is missing!')
             return
 
         path = os.path.join(self._dest_path, 'mod.json')
@@ -1780,13 +1880,6 @@ class GOGCopyTask(progress.Task):
         self._slot_prog = {
             'total': ('Status', 0, 'Waiting...')
         }
-
-        if not center.installed.has('FSO'):
-            try:
-                fso = center.mods.query('FSO')
-                run_task(InstallTask(fso.resolve_deps()))
-            except repo.ModNotFound:
-                logging.warning('Installing retail files but FSO is missing!')
 
     def work(self, paths):
         gog_path, dest_path = paths
@@ -1828,6 +1921,13 @@ class GOGCopyTask(progress.Task):
         if self._reason == 'done':
             center.main_win.update_mod_list()
             center.main_win.browser_ctrl.bridge.retailInstalled.emit()
+
+            if not center.installed.has('FSO'):
+                try:
+                    fso = center.mods.query('FSO')
+                    run_task(InstallTask(fso.resolve_deps()))
+                except repo.ModNotFound:
+                    logging.warning('Installing retail files but FSO is missing!')
             return
         elif self._reason == 'vps':
             msg = 'The selected directory does not contain the required retail VPs.'
@@ -2373,8 +2473,11 @@ def verify_retail_vps(path):
         'tango1_fs2.vp', 'tango2_fs2.vp', 'tango3_fs2.vp', 'warble_fs2.vp'
     ]
 
-    # Make sure we ignore casing
-    filenames = [item.lower() for item in os.listdir(path)]
+    try:
+        # Make sure we ignore casing
+        filenames = [item.lower() for item in os.listdir(path)]
+    except FileNotFoundError:
+        return False
 
     for name in retail_vps:
         if name not in filenames:

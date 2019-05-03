@@ -87,8 +87,29 @@ def my_excepthook(type, value, tb):
     if center.raven:
         msg += '\n' + translate('launcher', 'The error has been reported and will hopefully be fixed soon.')
 
+    msg += '\n' + translate('launcher', 'If you want to help, report this bug on our Discord channel, ' +
+        'in the HLP thread or on GitHub. Just click a button below to open the relevant page.')
+
     try:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
+        box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Critical, 'Knossos', msg, QtWidgets.QMessageBox.Ok)
+
+        discord = box.addButton('Open Discord', QtWidgets.QMessageBox.ActionRole)
+        hlp = box.addButton('Open HLP Thread', QtWidgets.QMessageBox.ActionRole)
+        github = box.addButton('Open GitHub Issues', QtWidgets.QMessageBox.ActionRole)
+
+        box.exec_()
+        choice = box.clickedButton()
+
+        url = None
+        if choice == discord:
+            url = 'https://discord.gg/qfReB8t'
+        elif choice == hlp:
+            url = 'https://www.hard-light.net/forums/index.php?topic=94068.0'
+        elif choice == github:
+            url = 'https://github.com/ngld/knossos/issues'
+
+        if url:
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl(url))
     except Exception:
         pass
 
@@ -114,8 +135,6 @@ def load_settings():
     spath = os.path.join(center.settings_path, 'settings.json')
     settings = center.settings
     if os.path.exists(spath):
-        defaults = settings.copy()
-
         try:
             with open(spath, 'r') as stream:
                 settings.update(json.load(stream))
@@ -126,29 +145,33 @@ def load_settings():
         if 's_version' not in settings:
             settings['s_version'] = 0
 
-        if settings['s_version'] < 3:
-            if 'mods' in settings:
-                del settings['mods']
-            if 'installed_mods' in settings:
-                del settings['installed_mods']
+        if settings['s_version'] < 6:
+            for name in ('mods', 'installed_mods', 'repos', 'nebula_link', 'nebula_web'):
+                if name in settings:
+                    del settings[name]
 
-            settings['s_version'] = 3
-
-        if settings['s_version'] < 5:
-            settings['repos'] = defaults['repos']
-            settings['nebula_link'] = defaults['nebula_link']
-            settings['s_version'] = 5
-
-        del defaults
+            settings['s_version'] = 6
     else:
         # Most recent settings version
-        settings['s_version'] = 5
+        settings['s_version'] = 6
 
     if settings['hash_cache'] is not None:
         util.HASH_CACHE = settings['hash_cache']
 
     if settings['use_raven']:
         util.enable_raven()
+
+    if settings['repos_override']:
+        center.REPOS = settings['repos_override']
+
+    if settings['api_override']:
+        center.API = settings['api_override']
+
+    if settings['web_override']:
+        center.WEB = settings['web_override']
+
+    if settings['debug_log']:
+        logging.getLogger().setLevel(logging.DEBUG)
 
     util.ensure_tempdir()
     return settings

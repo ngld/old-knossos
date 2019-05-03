@@ -48,11 +48,8 @@ iframe {
 }
 
 .dev-instructions {
-    margin:0 auto;
-    margin-top: 10%;
-    width: 80%;
-    text-align: center;
-    color: grey;
+    margin-top: 3%;
+    margin-left: 3%;
 }
 
 /* -------------------------- Settings for top bar elements ----------------------------------*/
@@ -195,13 +192,21 @@ iframe {
 }
 
 .welcome-login {
-    height: 220px;
-    padding-top: 50px;
+    height: 165px;
+    padding-top: 10px;
 }
 
 .login-form {
     float: right;
     width: 65%;
+}
+.login-instructions {
+    float: left;
+    width: 35%;
+}
+
+.login-instructions p {
+    margin-bottom: 3px;
 }
 
 .welcome-login input.neb-input {
@@ -210,6 +215,22 @@ iframe {
 
 .welcome-label {
     width: 100px;
+}
+
+#welcome-page h1 {
+    font-size: 1.5em;
+}
+
+#welcome-page h2 {
+    font-size: 1.2em;
+}
+
+#welcome-page hr {
+    margin-bottom: 5px;
+}
+
+#welcome-footer {
+    font-size: 0.75em;
 }
 
 /* ----------------------------- This is the filter rollout button section. ------------------------------- */
@@ -244,8 +265,8 @@ iframe {
     background-image: url(../images/icon-filter.png);
 }
 
-.filterbtn:hover {
-    background-image: url(../images/icon-filter-h.png);
+.filterbtn.filter-active {
+    background-image: url(../images/icon-filter-a.png);
     outline: none;
 }
 
@@ -255,21 +276,28 @@ iframe {
 }
 
 .filterbtn:focus {
+    background-image: url(../images/icon-filter.png);
+    outline: none;
+}
+
+.filterbtn.filter-active:focus {
     background-image: url(../images/icon-filter-a.png);
     outline: none;
 }
 
+.filterbtn:hover {
+    background-image: url(../images/icon-filter-h.png);
+    outline: none;
+}
+
 .filter-content {
-    display: none;
     padding: 5px;
     position: absolute;
     background-color: #131313;
-    min-width: 150px;
+    min-width: 125px;
     box-shadow: 6px 6px 8px 0px rgba(0,0,0,1);
     z-index: 997;
     border: 1px solid black;
-    top: 0px;
-    right: 26px;
 }
 
 .filterbtn:focus ~ .filter-content {
@@ -281,9 +309,10 @@ iframe {
     color: #828282;
     padding: 3px;
     font-size: 16px;
+    font-weight: normal;
     border: none;
     cursor: pointer;
-    width: 150px;
+    width: 125px;
     height: 19px;
     outline: none;
     text-align: left;
@@ -294,8 +323,13 @@ iframe {
     color: white;
 }
 
+.filter-content-btn.selected {
+    color: white;
+    font-weight: bold;
+}
+
 .filter-lines {
-    width: 150px;
+    width: 125px;
     z-index: 998;
 }
 
@@ -441,6 +475,10 @@ iframe {
 .explore-image {
     background-image: url(../images/iconbtn-explore.png);
     margin-left: 25px;
+}
+
+.retail-dependency-missing {
+    filter: grayscale(60%);
 }
 
 .main-btn:hover .explore-image {
@@ -740,7 +778,7 @@ iframe {
     right: 0px;
 }
 
-.mod-node .mod-installed { /* Places the overlay for installed mods on the Explore tab */
+.mod-node .mod-status { /* Places the overlay for mod status on the Explore tab */
     width: 150px;
     height: 268px;
     position: absolute;

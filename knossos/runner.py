@@ -85,7 +85,7 @@ class Fs2Watcher(threading.Thread):
 
                 env['LD_LIBRARY_PATH'] = ld_path
 
-            logging.debug('Launching FS2: %s in %s', repr([fs2_bin] + self._params[1:]), self._cwd)
+            logging.info('Launching FS2: %s in %s', repr([fs2_bin] + self._params[1:]), self._cwd)
 
             if not self.prepare_fso_config(fs2_bin):
                 return
@@ -376,7 +376,7 @@ def run_fs2_silent(params):
 
     try:
         try:
-            output = util.check_output(params, env=env, cwd=base_path, stderr=subprocess.DEVNULL)
+            output = util.check_output(params, env=env, cwd=base_path, stderr=subprocess.DEVNULL, no_hide=True)
             rc = 0
         except CalledProcessError as e:
             # check_output raises this error if the return code was anything other than 0
@@ -408,9 +408,12 @@ def run_mod(mod, tool=None, exe_label=None):
             translate('runner', 'The mod "%s" could not be found!') % mod)
         return
 
+    exes = []
+
     if tool:
         try:
             exes = tool.get_executables()
+            # TODO check whether repo.NoExecutablesFound exception applies here
         except Exception:
             logging.exception('Failed to retrieve binaries for "%s"!' % tool.mid)
             QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
@@ -419,6 +422,14 @@ def run_mod(mod, tool=None, exe_label=None):
     else:
         try:
             exes = mod.get_executables(user=True)
+        except repo.NoExecutablesFound:
+            logging.error('"%s" provided no executable.' % mod.mid)
+            msg = 'No executable was found for this mod!'
+            if mod.dev_mode:
+                msg += ' Make sure you have an FSO build selected on the FSO tab.'
+            QtWidgets.QMessageBox.critical(
+                None, 'Knossos', translate('runner', msg))
+            return
         except Exception:
             logging.exception('Failed to retrieve binaries for "%s"!' % mod.mid)
             QtWidgets.QMessageBox.critical(None, translate('runner', 'Error'),
@@ -482,14 +493,18 @@ def run_mod(mod, tool=None, exe_label=None):
             'version': str(mod.version),
             'title': mod.title,
             'exes': options,
+            'is_tool': bool(tool),
             'mod_flag': mod_flag,
             'selected_exe': sel_exe['file']
         }))
     else:
-        run_mod_ex(mod, sel_exe['file'], [path for path, label in mod_flag])
+        run_mod_ex(mod, sel_exe['file'], [path for path, label in mod_flag], bool(tool))
 
 
-def run_mod_ex(mod, binpath, mod_flag):
+def run_mod_ex(mod, binpath, mod_flag, is_tool):
+    if not is_tool:
+        mod.update_last_played()
+
     # Put the cmdline together
     if mod.user_cmdline:
         cmdline = shlex.split(mod.user_cmdline)

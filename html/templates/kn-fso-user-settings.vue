@@ -33,7 +33,8 @@ export default {
         },
 
         save() {
-            if(this.mod.user_cmdline === this.mod_cmdline) this.mod.user_cmdline = null;
+            // Sadly we can't use null here since the cmdline parameter for saveUserFsoDetails is a QString.
+            if(this.mod.user_cmdline === this.mod_cmdline) this.mod.user_cmdline = '#DEFAULT#';
 
             let build = this.user_build;
             if(build === null) build = '';
@@ -52,6 +53,9 @@ export default {
 </script>
 <template>
     <div>
+        <p v-if="mod.dev_mode">
+            These settings apply only to your Home tab. To make changes that will apply to players, use the Develop tab.
+        </p>
         <kn-fso-settings :mods="mods" :fso_build.sync="user_build" :cmdline.sync="mod.user_cmdline"></kn-fso-settings>
 
         <div class="form-group">

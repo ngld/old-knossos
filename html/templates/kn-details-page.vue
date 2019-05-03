@@ -7,6 +7,7 @@ import Popper from 'vue-popperjs';
 import 'vue-popperjs/dist/css/vue-popper.css';
 
 import bbparser from '../js/bbparser';
+import moment from 'moment';
 
 export default {
     props: ['modbundle', 'updater'],
@@ -35,7 +36,8 @@ export default {
         mod() {
             for(let mod of this.modbundle.versions) {
                 if(mod.version === this.version) {
-                    return Object.assign(mod, {
+                    return Object.assign({}, mod, {
+                        last_played: this.modbundle.last_played,
                         status: this.modbundle.status,
                         progress: this.modbundle.progress,
                         progress_info: this.modbundle.progress_info
@@ -131,6 +133,10 @@ export default {
 
         verifyIntegrity() {
             fs2mod.verifyModIntegrity(this.mod.id, this.mod.version);
+        },
+
+        formatTime(time_str) {
+            return moment(time_str).fromNow();
         }
     }
 };
@@ -202,6 +208,7 @@ export default {
                 <div class="date-frame pull-right">
                     <div v-if="mod.first_release">Release: {{ mod.first_release }}</div>
                     <div v-if="mod.last_update"><em>Last Updated: {{ mod.last_update }}</em></div>
+                    <div v-if="mod.last_played"><em>Last Played: {{  formatTime(mod.last_played) }}</em></div>
                 </div>
 
                 <button class="link-btn btn-link-blue pull-right" v-if="mod.screenshots.length > 0" @click="showScreens(mod.screenshots)"><span class="btn-text">IMAGES</span></button>

@@ -10,9 +10,9 @@ license=('Apache')
 groups=()
 depends=(
   'python' 'python-six' 'python-requests' 'python-requests-toolbelt' 'python-ply' 'python-token-bucket' 'python-pyqt5' 'qt5-webengine'
-  'qt5-webchannel' 'python-semantic-version' 'python-raven' 'p7zip' 'openal' 'sdl2'
+  'qt5-webchannel' 'qt5-tools' 'python-semantic-version' 'python-raven' 'p7zip' 'openal' 'sdl2'
 )
-makedepends=('python-setuptools' 'ninja' 'npm')
+makedepends=('python-setuptools' 'ninja' 'yarn')
 options=(!emptydirs)
 source=(
     "https://github.com/ngld/knossos/archive/v${pkgver}.tar.gz"
@@ -25,7 +25,7 @@ md5sums=('d238a3a4f6190f0ed0710652a46c4941'
 package() {
     cd "$srcdir/${_name}-$pkgver"
 
-    npm install
+    yarn install
     python configure.py
     ninja resources
     python setup.py install --root="$pkgdir/" --optimize=1
