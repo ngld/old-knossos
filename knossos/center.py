@@ -82,6 +82,7 @@ settings = {
     },
     'show_fs2_mods_without_retail': False,
     'debug_log': False,
+    'show_fso_builds': False
 }
 
 if sys.platform.startswith('win'):

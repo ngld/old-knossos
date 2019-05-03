@@ -79,7 +79,7 @@ export default {
 
             for(let set of [
                 'max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth', 'update_notify',
-                'custom_bar', 'show_fs2_mods_without_retail', 'debug_log'
+                'custom_bar', 'show_fs2_mods_without_retail', 'debug_log',  'show_fso_builds'
             ]) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
@@ -203,6 +203,13 @@ export default {
 
                         <button class="mod-btn btn-link-grey" @click="openKnossosLog">Open</button>
                         <button class="mod-btn btn-link-grey" @click="uploadKnossosLog">Upload</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Show Engine Builds In Mod List:</label>
+                    <div class="col-sm-8">
+                        <input type="checkbox" v-model="knossos.show_fso_builds">
                     </div>
                 </div>
             </kn-drawer>
