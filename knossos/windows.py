@@ -66,10 +66,18 @@ class QMainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, e):
         if center.pmaster.is_busy():
-            QtWidgets.QMessageBox.critical(None, 'Knossos',
-                'Some tasks are still running in the background. Please wait for them to finish or abort them.')
-
             e.ignore()
+
+            box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, 'Knossos',
+                'Some tasks are still running in the background. Please wait for them to finish or abort them.\n' +
+                'If you force Knossos to quit, it might result in a corrupt mod installation or broken mod upload ' +
+                '(depending on what Knossos is doing right now).',
+                QtWidgets.QMessageBox.Ok)
+
+            box.addButton('Force Quit', QtWidgets.QMessageBox.RejectRole)
+
+            if box.exec_() == QtWidgets.QDialog.Rejected:
+                center.app.quit()
         else:
             e.accept()
             center.app.quit()

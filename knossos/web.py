@@ -589,7 +589,7 @@ class WebBridge(QtCore.QObject):
     def checkIfRetailInstalled(self):
         fs2_json_path = os.path.join(center.settings['base_path'], 'FS2', 'mod.json')
         return os.path.exists(fs2_json_path)
-    
+
     @QtCore.Slot(int)
     def getSettings(self, cb_id):
         def cb():
