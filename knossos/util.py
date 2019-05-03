@@ -403,6 +403,7 @@ def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=Fa
             return False
 
         logging.info('Downloading "%s"...', link)
+        start = time.time()
 
         try:
             result = HTTP_SESSION.get(link, headers=headers, stream=True, timeout=timeout)
@@ -451,6 +452,17 @@ def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=Fa
         except Exception:
             logging.exception('Download of "%s" was interrupted!', link)
             return False
+        else:
+            duration = time.time() - start
+
+            try:
+                post(center.API + 'track', data={
+                    'event': 'download',
+                    'link': link,
+                    'time': str(duration)
+                })
+            except Exception:
+                pass
 
     return True
 

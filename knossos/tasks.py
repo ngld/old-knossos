@@ -779,6 +779,8 @@ class InstallTask(progress.MultistepTask):
         self.add_work((None,))
 
     def work4(self, _):
+        first = True
+
         # Generate mod.json files.
         for mod in self._mods:
             try:
@@ -786,8 +788,17 @@ class InstallTask(progress.MultistepTask):
             except Exception:
                 logging.exception('Failed to generate mod.json file for %s!' % mod.mid)
 
-        # The nebula currently doesn't support tracking installations
-        # util.get(center.settings['nebula_link'] + 'track/install/' + self.mods[0].mid)
+            try:
+                util.post(center.API + 'track', data={
+                    'counter': 'install_mod',
+                    'mid': mod.mid,
+                    'version': str(mod.version),
+                    'dependency': 'false' if first else 'true'
+                })
+            except Exception:
+                pass
+
+            first = False
 
 
 # TODO: make sure all paths are relative (no mod should be able to install to C:\evil)
@@ -868,6 +879,15 @@ class UninstallTask(progress.MultistepTask):
                     shutil.rmtree(libs)
 
                 center.installed.del_mod(mod)
+
+                try:
+                    util.post(center.API + 'track', data={
+                        'counter': 'uninstall_mod',
+                        'mid': mod.mid,
+                        'version': str(mod.version),
+                    })
+                except Exception:
+                    pass
             elif not os.path.isdir(modpath):
                 logging.error('Mod %s still has packages but mod folder "%s" is gone!' % (mod, modpath))
             else:
