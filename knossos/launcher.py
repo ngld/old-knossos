@@ -87,8 +87,29 @@ def my_excepthook(type, value, tb):
     if center.raven:
         msg += '\n' + translate('launcher', 'The error has been reported and will hopefully be fixed soon.')
 
+    msg += '\n' + translate('launcher', 'If you want to help, report this bug on our Discord channel, ' +
+        'in the HLP thread or on GitHub. Just click a button below to open the relevant page.')
+
     try:
-        QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
+        box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Critical, 'Knossos', msg, QtWidgets.QMessageBox.Ok)
+
+        discord = box.addButton('Open Discord', QtWidgets.QMessageBox.ActionRole)
+        hlp = box.addButton('Open HLP Thread', QtWidgets.QMessageBox.ActionRole)
+        github = box.addButton('Open GitHub Issues', QtWidgets.QMessageBox.ActionRole)
+
+        box.exec_()
+        choice = box.clickedButton()
+
+        url = None
+        if choice == discord:
+            url = 'https://discord.gg/qfReB8t'
+        elif choice == hlp:
+            url = 'https://www.hard-light.net/forums/index.php?topic=94068.0'
+        elif choice == github:
+            url = 'https://github.com/ngld/knossos/issues'
+
+        if url:
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl(url))
     except Exception:
         pass
 

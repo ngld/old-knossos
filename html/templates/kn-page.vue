@@ -78,7 +78,7 @@ export default {
         gog_installer_path: '',
         retail_data_path: '', // TODO remove once no longer needed
         mod_install_attempted: false,
-        retail_install_option: 'auto-detect-installation'
+        retail_install_option: 'auto-detect-installation',
 
         retail_data_path: '',
         sort_types: ['alphabetical', 'last_played', 'last_released', 'last_updated'],

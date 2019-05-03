@@ -378,6 +378,7 @@ class HellWindow(Window):
     def _get_sort_parameters(self):
         # Maybe I should add "Just " to the list?
         prefixes = ('the ', 'a ')
+
         def _build_sort_title(mod):
             title = mod['title']
             for p in prefixes:
@@ -385,13 +386,18 @@ class HellWindow(Window):
                 if title[:pl].lower() == p:
                     title = title[pl:]
             return title
+
         min_date_str = datetime.date.min.strftime('%Y-%m-%d')
+
         def _build_sort_date(mod_date):
             return mod_date if mod_date else min_date_str
+
         def _build_sort_last_played(mod):
             return _build_sort_date(mod['last_played'])
+
         def _build_sort_last_released(mod):
             return _build_sort_date(mod['first_release'])
+
         def _build_sort_last_updated(mod):
             return _build_sort_date(mod['last_update'])
 
@@ -400,9 +406,11 @@ class HellWindow(Window):
             'last_played': _build_sort_last_played,
             'last_released': _build_sort_last_released,
             'last_updated': _build_sort_last_updated
-            }
+        }
+
         sort_key = sort_key_dict[center.sort_type]
         sort_reverse = center.sort_type != 'alphabetical'
+
         return sort_key, sort_reverse
 
     def search_mods(self, search_filter=None, ignore_retail_dependency=False):
