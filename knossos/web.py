@@ -1694,6 +1694,53 @@ class WebBridge(QtCore.QObject):
 
         return ''
 
+    @QtCore.Slot()
+    def openKnossosLog(self):
+        from .launcher import log_path
+
+        if not os.path.isfile(log_path):
+            QtWidgets.QMessageBox.warning(None, 'Knossos',
+                'Sorry, but I can\'t find the Knossos log. Something went *really* wrong.')
+            return
+
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(log_path))
+
+    @QtCore.Slot(result=str)
+    def uploadKnossosLog(self):
+        log_link = None
+
+        try:
+            from .launcher import log_path
+
+            if not os.path.isfile(log_path):
+                QtWidgets.QMessageBox.warning(None, 'Knossos',
+                    'Sorry, but I can\'t find the Knossos log. Something went *really* wrong.')
+                return ''
+
+            st = os.stat(log_path)
+            if st.st_size > 5 * (1024 ** 2):
+                QtWidgets.QMessageBox.critical(None, 'Knossos',
+                    "Your log is larger than 5 MB! I unfortunately can't upload logs that big.")
+                return ''
+
+            client = nebula.NebulaClient()
+            with open(log_path, 'r') as stream:
+                log_link = client.upload_log(stream.read())
+
+        except nebula.InvalidLoginException:
+            QtWidgets.QMessageBox.critical(None, 'Knossos', 'You have to login to upload logs!')
+        except Exception:
+            logging.exception('Log upload failed!')
+            QtWidgets.QMessageBox.critical(None, 'Knossos',
+                'The log upload failed for an unknown reason! Please make sure your internet connection is fine.')
+        else:
+            if log_link:
+                return log_link
+            else:
+                QtWidgets.QMessageBox.critical(None, 'Knossos', 'The log upload failed for an unknown reason!')
+
+        return ''
+
     @QtCore.Slot(str, result=str)
     def getGlobalFlags(self, build):
         return json.dumps(center.settings['fso_flags'].get(build, {}))

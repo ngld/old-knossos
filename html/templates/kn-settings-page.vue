@@ -77,7 +77,10 @@ export default {
                 fs2mod.setBasePath(this.knossos.base_path);
             }
 
-            for(let set of ['max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth', 'update_notify', 'custom_bar', 'show_fs2_mods_without_retail']) {
+            for(let set of [
+                'max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth', 'update_notify',
+                'custom_bar', 'show_fs2_mods_without_retail', 'debug_log'
+            ]) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
                 }
@@ -114,7 +117,22 @@ export default {
 
         showRetailPrompt() {
             vm.showRetailPrompt(false);
-        }
+        },
+
+        openKnossosLog() {
+            fs2mod.openKnossosLog();
+        },
+
+        uploadKnossosLog() {
+            call(fs2mod.uploadKnossosLog, (result) => {
+                if(result !== '') {
+                    vm.popup_visible = true;
+                    vm.popup_title = 'Uploaded Knossos Log';
+                    vm.popup_mode = 'debug_log';
+                    vm.popup_content = result;
+                }
+            });
+        },
     }
 };
 </script>
@@ -175,6 +193,16 @@ export default {
                     <label class="col-sm-4 control-label">Show FreeSpace 2 Mods:</label>
                     <div class="col-sm-8">
                         <input type="checkbox" v-model="knossos.show_fs2_mods_without_retail">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Extended Knossos Log:</label>
+                    <div class="col-sm-8">
+                        <input type="checkbox" v-model="knossos.debug_log">
+
+                        <button class="mod-btn btn-link-grey" @click="openKnossosLog">Open</button>
+                        <button class="mod-btn btn-link-grey" @click="uploadKnossosLog">Upload</button>
                     </div>
                 </div>
             </kn-drawer>

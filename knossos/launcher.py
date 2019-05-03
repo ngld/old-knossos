@@ -170,6 +170,9 @@ def load_settings():
     if settings['web_override']:
         center.WEB = settings['web_override']
 
+    if settings['debug_log']:
+        logging.getLogger().setLevel(logging.DEBUG)
+
     util.ensure_tempdir()
     return settings
 
