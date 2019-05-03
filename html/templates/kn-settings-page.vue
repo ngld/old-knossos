@@ -313,40 +313,42 @@ export default {
                     </div>
                 </div>
             </kn-drawer>
-        </div>
-        <div class="col-sm-6">
-            <kn-drawer label="Nebula">
-                <div class="settings-exp drawer-exp">Login and manage your Nebula credentials</div>
+
+            <kn-drawer label="Network">
+                <div class="settings-exp drawer-exp">Manage your network settings for multiplayer</div>
                 <div class="form-group">
-                    <label class="col-sm-4 control-label">Username:</label>
-                    <div class="col-sm-8">
-                        <input type="text" class="neb-input" v-model="neb_user">
+                    <label class="col-sm-4 control-label">Connection Type:</label>
+                    <div class="col-sm-4">
+                        <select v-model="fso.net_type">
+                            <option value="0">None</option>
+                            <option value="1">Dialup</option>
+                            <option value="2">Broadband/LAN</option>
+                        </select>
+                    </div>
+                    <label class="col-sm-2 control-label">Force Local Port:</label>
+                    <div class="col-sm-2">
+                        <input type="number" min="0" max="65535" maxlength="5" v-model="fso.net_port">
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label class="col-sm-4 control-label">Password:</label>
-                    <div class="col-sm-8">
-                        <input type="password" class="neb-input" v-model="neb_password">
+                    <label class="col-sm-4 control-label">Connection Speed:</label>
+                    <div class="col-sm-4">
+                        <select v-model="fso.net_speed">
+                            <option value="0">None</option>
+                            <option value="1">28k modem</option>
+                            <option value="2">56k modem</option>
+                            <option value="3">ISDN</option>
+                            <option value="4">DSL</option>
+                            <option value="5">Cable/Fiber/LAN</option>
+                        </select>
+                    </div>
+                    <label class="col-sm-2 control-label">Force IP Address:</label>
+                    <div class="col-sm-2">
+                        <input type="text" v-model="fso.net_ip">
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">E-Mail:</label>
-                    <div class="col-sm-8">
-                        <input type="email" class="neb-input" v-model="neb_email" placeholder="only required for registration">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <div class="col-sm-offset-4 col-sm-4 neb-btns">
-                        <button class="mod-btn btn-link-blue" @click="login">Login</button>
-                        <button class="mod-btn btn-link-blue" @click="register">Register</button>
-                        <button class="mod-btn btn-link-red" @click="resetPassword">Reset Pass</button>
-                    </div>
-                </div>
-            </kn-drawer> 
-
+            </kn-drawer>
             <kn-drawer label="Speech" v-if="fso.has_voice">
                 <div class="settings-exp drawer-exp">Manage settings related to Text-To-Speech</div>
                 <div class="form-group">
@@ -388,7 +390,8 @@ export default {
                     </div>
                 </div>
             </kn-drawer>
-
+        </div>
+        <div class="col-sm-6">
             <kn-drawer label="Joystick">
                 <div class="settings-exp drawer-exp">Setup and calibrate your joystick</div>
                 <div class="form-group">
@@ -403,13 +406,13 @@ export default {
                 </div>
 
                 <!--
-                <div class="form-group">
-                    <div class="col-sm-8 col-sm-offset-5">
-                        <button disabled>Detect</button>
-                        <button disabled>Calibrate</button>
-                    </div>
-                </div>
-                -->
+        <div class="form-group">
+            <div class="col-sm-8 col-sm-offset-5">
+                <button disabled>Detect</button>
+                <button disabled>Calibrate</button>
+            </div>
+        </div>
+        -->
 
                 <div class="form-group">
                     <div class="col-sm-4 col-sm-offset-4">
@@ -420,6 +423,37 @@ export default {
                     <div class="col-sm-4">
                         Directional Hit:
                         <input type="checkbox" v-model="fso.joystick_enable_hit">
+                    </div>
+                </div>
+            </kn-drawer>
+            <kn-drawer label="Nebula">
+                <div class="settings-exp drawer-exp">Login and manage your Nebula credentials</div>
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Username:</label>
+                    <div class="col-sm-8">
+                        <input type="text" class="neb-input" v-model="neb_user">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Password:</label>
+                    <div class="col-sm-8">
+                        <input type="password" class="neb-input" v-model="neb_password">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">E-Mail:</label>
+                    <div class="col-sm-8">
+                        <input type="email" class="neb-input" v-model="neb_email" placeholder="only required for registration">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-4 col-sm-4 neb-btns">
+                        <button class="mod-btn btn-link-blue" @click="login">Login</button>
+                        <button class="mod-btn btn-link-blue" @click="register">Register</button>
+                        <button class="mod-btn btn-link-red" @click="resetPassword">Reset Pass</button>
                     </div>
                 </div>
             </kn-drawer>
@@ -439,44 +473,6 @@ export default {
                     <kn-global-flags :mods="mods"></kn-global-flags>
                 </div>
             </kn-drawer>
-
-            <!-- TODO: Implement this
-            <kn-drawer label="Network">
-                <div class="settings-exp drawer-exp">Manage your network settings for multiplayer</div>
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">Connection Type:</label>
-                    <div class="col-sm-3">
-                        <select>
-                            <option>None</option>
-                            <option>Dialup</option>
-                            <option>Broadband/LAN</option>
-                        </select>
-                    </div>
-                    <label class="col-sm-2 control-label">Force Local Port:</label>
-                    <div class="col-sm-2">
-                        <input type="number" disabled>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">Connection Speed:</label>
-                    <div class="col-sm-3">
-                        <select disabled>
-                            <option>None</option>
-                            <option>28k modem</option>
-                            <option>56k modem</option>
-                            <option>ISDN</option>
-                            <option>DSL</option>
-                            <option>Cable/LAN</option>
-                        </select>
-                    </div>
-                    <label class="col-sm-3 control-label">Force IP Address:</label>
-                    <div class="col-sm-2">
-                        <input type="text" disabled>
-                    </div>
-                </div>
-            </kn-drawer>
-            -->
         </div>
     </div>
 </template>
