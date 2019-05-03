@@ -396,8 +396,8 @@ class InstallTask(progress.MultistepTask):
                         'Uninstall the partially installed mod %s or verify the file integrity.' % title))
         elif self._error:
             msg = self.tr(
-                'An error occured during the installation of %s. It might be partially installed.\n' +
-                'Please run a file integrity check or reinstall (uninstall + install) it.' % title
+                'An error occured during the installation of %s. It might be partially installed.\n' % title +
+                'Please run a file integrity check or reinstall (uninstall + install) it.'
             )
             QtWidgets.QMessageBox.critical(None, 'Knossos', msg)
 
@@ -2450,8 +2450,11 @@ def verify_retail_vps(path):
         'tango1_fs2.vp', 'tango2_fs2.vp', 'tango3_fs2.vp', 'warble_fs2.vp'
     ]
 
-    # Make sure we ignore casing
-    filenames = [item.lower() for item in os.listdir(path)]
+    try:
+        # Make sure we ignore casing
+        filenames = [item.lower() for item in os.listdir(path)]
+    except FileNotFoundError:
+        return False
 
     for name in retail_vps:
         if name not in filenames:

@@ -730,12 +730,7 @@ class Package(object):
     def resolve_deps(self):
         result = []
         for dep in self.dependencies:
-            version = dep.get('version', '*') or '*'
-            if version != '*' and not SpecItem.re_spec.match(version):
-                # Make a spec out of this version
-                version = '==' + version
-
-            version = util.Spec(version)
+            version = util.Spec.from_version(dep.get('version', '*') or '*')
             mod = self._mod._repo.query(dep['id'], version)
             pkgs = dep.get('packages', [])
             found_pkgs = []

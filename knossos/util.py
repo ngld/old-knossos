@@ -898,7 +898,13 @@ class Spec(semantic_version.Spec):
 
     @staticmethod
     def from_version(version, op='=='):
-        return Spec('==' + str(version))
+        version = str(version)
+
+        if version != '*' and not semantic_version.SpecItem.re_spec.match(version) and not version.startswith('~'):
+            # Make a spec out of this version
+            version = '==' + version
+
+        return Spec(version)
 
 
 DL_POOL = ResizableSemaphore(10)
