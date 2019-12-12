@@ -385,7 +385,7 @@ class HellWindow(Window):
                 pl = len(p)
                 if title[:pl].lower() == p:
                     title = title[pl:]
-            return title
+            return title.lower()
 
         min_date_str = datetime.date.min.strftime('%Y-%m-%d')
 
