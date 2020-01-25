@@ -33,6 +33,8 @@ If you're on Windows, the `windows_run.bat` file will take care of this in addit
 Install the following packages:
 ```sudo apt install nodejs npm python3-wheel python3-setuptools pyqt5-dev pyqt5-dev-tools qttools5-dev-tools qt5-default```
 
+Then install `pipenv` and `yarn` using the install instructions at their webpages. Also note that you'll need to uninstall the package `cmdtest` as that also has an executable called `yarn`.
+
 ## Usage
 
 After your first checkout you will have to run the two commands above and `pipenv run python configure.py` once. If it aborts before displaying `Writing build.ninja...`, you have to fix the error before you can continue.
@@ -42,7 +44,7 @@ Now you can use `ninja run` to launch Knossos in release mode and `ninja debug` 
 
 If you add or remove files in `knossos`, `html/templates` or `html/images`, you need to run `tools/common/update_file_list.py` (or `update_file_list.bat` on Windows) to update `file_list.json`.
 
-If you have changed Node.js versions you may need to remove the `node_modules` directory and rerun `npm install`.
+If you have changed Node.js versions you may need to remove the `node_modules` directory and rerun `yarn install`.
 
 ## License
 
