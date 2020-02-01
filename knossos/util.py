@@ -364,7 +364,10 @@ def _limited_request_iter(result, chunk_size):
         if not SPEED_LIMIT_BUCKET.wait_for_consume(chunk_size, _DL_CANCEL):
             return
 
-        yield next(iterator)
+        try:
+            yield next(iterator)
+        except StopIteration:
+            return
 
 
 def _get_download_iterator(result, chunk_size):
