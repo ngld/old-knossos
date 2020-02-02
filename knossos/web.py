@@ -241,7 +241,7 @@ class WebBridge(QtCore.QObject):
                 spec = None
             else:
                 if re.search(r'^\d+', spec):
-                    spec = '==' + spec
+                    spec = '==' + str(semantic_version.Version.coerce(spec))
 
                 try:
                     spec = util.Spec(spec)
