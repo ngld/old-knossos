@@ -483,7 +483,7 @@ class Mod(object):
         self.mid = values['id']
         self.title = values['title']
         self.mtype = values.get('type', 'mod')  # Backwards compatibility
-        self.version = semantic_version.Version(values['version'], partial=True)
+        self.version = semantic_version.Version.coerce(values['version'])
         self.stability = values.get('stability', 'stable')
         self.parent = values.get('parent', 'FS2')
         self.cmdline = values.get('cmdline', '')

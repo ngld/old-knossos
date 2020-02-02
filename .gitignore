@@ -11,6 +11,7 @@ __pycache__
 build
 dist
 version-rthook.py
+/knossos/parser.out
 /knossos/ui/*
 /knossos/data/resources.rcc
 /knossos/data/resources.qrc
