@@ -165,7 +165,8 @@ class MultipartUploader:
         _, checksum = util.gen_hash(self._path)
 
         size = os.stat(self._path).st_size
-        self._parts_left = list(range(math.ceil(size / self.part_size)))
+        with self._parts_lock:
+            self._parts_left = list(range(math.ceil(size / self.part_size)))
         self.upload_id = checksum
 
         progress.update(0.1, 'Registering...')
@@ -178,17 +179,19 @@ class MultipartUploader:
             data = result.json()
             if data.get('done'):
                 progress.update(1, 'Already uploaded')
-                self._parts_done = set(self._parts_left)
-                self._parts_left = []
+                with self._parts_lock:
+                    self._parts_done = set(self._parts_left)
+                    self._parts_left = []
                 return True
 
             if not data.get('result'):
                 raise Exception('Multiupload failed for unkown reasons')
 
             if data.get('finished_parts'):
-                self._parts_done = set(data['finished_parts'])
-                for p in self._parts_done:
-                    self._parts_left.remove(p)
+                with self._parts_lock:
+                    self._parts_done = set(data['finished_parts'])
+                    for p in self._parts_done:
+                        self._parts_left.remove(p)
         except Exception:
             logging.exception('Multiupload %s failed to start.' % self.name)
             return False
@@ -197,7 +200,8 @@ class MultipartUploader:
         for i in range(worker_count):
             self._workers.append(UploadWorker(self))
 
-        self._update_status()
+        with self._parts_lock:
+            self._update_status()
 
         # Wait for them to finish
         while self._workers:
@@ -263,6 +267,11 @@ class MultipartUploader:
     def _update_status(self):
         done = len(self._parts_done)
         left = len(self._parts_left)
+
+        if done + left == 0:
+            logging.warning('No parts for updating status!')
+            return
+
         total = float(done + left)
 
         self._progress = (
