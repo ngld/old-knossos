@@ -200,7 +200,8 @@ class MultipartUploader:
         for i in range(worker_count):
             self._workers.append(UploadWorker(self))
 
-        self._update_status()
+        with self._parts_lock:
+            self._update_status()
 
         # Wait for them to finish
         while self._workers:
@@ -264,20 +265,19 @@ class MultipartUploader:
             self._update_status()
 
     def _update_status(self):
-        with self._parts_lock:
-            done = len(self._parts_done)
-            left = len(self._parts_left)
+        done = len(self._parts_done)
+        left = len(self._parts_left)
 
-            if done + left == 0:
-                logging.warning('No parts for updating status!')
-                return
-    
-            total = float(done + left)
+        if done + left == 0:
+            logging.warning('No parts for updating status!')
+            return
 
-            self._progress = (
-                (done / total * 0.85) + 0.1,
-                'Uploading... %3d / %3d, %d retried' % (done, total, self._retries)
-            )
+        total = float(done + left)
+
+        self._progress = (
+            (done / total * 0.85) + 0.1,
+            'Uploading... %3d / %3d, %d retried' % (done, total, self._retries)
+        )
 
     def abort(self):
         self._aborted = True
