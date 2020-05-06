@@ -7,4 +7,6 @@ rm -rf dist/*
 
 vagrant rsync
 vagrant ssh -- 'bash /opt/knossos/releng/macos/auto-build.sh'
-rsync -e 'ssh -F ssh_config' -ar knossos-builder:/opt/knossos/releng/macos/dist .
+vagrant ssh-config > /tmp/ssh_config
+rsync -e 'ssh -F /tmp/ssh_config' -ar knossos-builder:/opt/knossos/releng/macos/dist .
+rm /tmp/ssh_config
