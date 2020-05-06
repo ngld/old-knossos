@@ -2,6 +2,8 @@
 
 set -e
 
+source /Users/vagrant/.profile
+
 export PATH="/usr/local/bin:$PATH:/Library/Frameworks/Python.framework/Versions/3.6/bin:/usr/local/opt/qt5/bin"
 export LANG="en_US.UTF-8"
 
