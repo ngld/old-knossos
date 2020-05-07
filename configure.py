@@ -204,7 +204,7 @@ with open('build.ninja', 'w') as stream:
         n.comment('macOS')
 
         if check_module('PyInstaller', required=False):
-            pyinstaller = 'cd releng/macos && ' + cmd2str([sys.executable, '-O', '-mPyInstaller', '-d', '--distpath=./dist', '--workpath=./build', 'Knossos.spec', '-y'])
+            pyinstaller = 'cd releng/macos && ' + cmd2str([sys.executable, '-O', '-mPyInstaller', '-D', '--distpath=./dist', '--workpath=./build', 'Knossos.spec', '-y'])
             n.rule('pyinstaller', pyinstaller, 'PACKAGE', pool='console')
             n.build('pyi', 'pyinstaller', ['resources'] + SRC_FILES)
 
