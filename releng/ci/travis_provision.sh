@@ -4,7 +4,8 @@ set -exo pipefail
 base="$(pwd)"
 
 if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-    brew uninstall --force qt
+    # This may break some things in the Travis VM, but I doubt we need them.
+    brew uninstall --force --ignore-dependencies qt
 
     DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
     cd "${DIR}"/../macos
