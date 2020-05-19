@@ -4,11 +4,14 @@ set -exo pipefail
 base="$(pwd)"
 
 if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-    # Don't waste time on updating Homebrew.
-    export HOMEBREW_NO_AUTO_UPDATE=1
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+    cd "${DIR}"/../macos
 
-    echo "==> Installing build tools"
-    brew install --force-bottle p7zip ninja qt5 yarn
+    source ./functions.sh
+
+    install_yarn
+
+    install_brews
 
     # If we don't delete qmake, PyInstaller detects this Qt installation and uses its libraries instead of PyQt5's
     # which then leads to a crash because PyQt5 isn't compatible with the version we install.
@@ -17,33 +20,20 @@ if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     mkdir /tmp/prov
     cd /tmp/prov
 
-    # We need Python 3.6 since that's the latest version PyInstaller supports.
-    echo "==> Installing Python 3.6.7"
-    curl -so python.pkg "https://www.python.org/ftp/python/3.6.7/python-3.6.7-macosx10.6.pkg"
-    sudo installer -store -pkg python.pkg -target /
+    install_SDL2
 
-    export PATH="/Library/Frameworks/Python.framework/Versions/3.6/bin:$PATH"
+    # install_qt5
 
-    echo "==> Installing Python dependencies"
-    pip3 install -U pip pipenv
+    install_python
 
-    cd "$base"
-    pipenv install --system --deploy
-    cd /tmp/prov
+    echo "==> Cleanup"
+    cd "${base}"
+    rm -r /tmp/prov
+
+    install_pideps
 
     # Make sure our macOS dependencies are installed correctly.
     # I should update the Pipfile to do this properly. However, I need a Mac for that
     # and I don't have access to one right now.
     pip3 install -U PyInstaller dmgbuild
-
-    echo "==> Installing SDL2"
-    curl -so SDL2.dmg "https://libsdl.org/release/SDL2-2.0.8.dmg"
-
-    dev="$(hdiutil attach SDL2.dmg | tail -n1 | awk '{ print $3 }')"
-    sudo cp -a "$dev/SDL2.framework" /Library/Frameworks
-    hdiutil detach "$dev"
-
-    echo "==> Cleanup"
-    cd ..
-    rm -r prov
 fi
