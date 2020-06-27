@@ -1692,6 +1692,15 @@ class GOGExtractTask(progress.Task):
     def work(self, paths):
         gog_path, dest_path = paths
         self._local.slot = 'total'
+        extract_path = os.path.join(dest_path, 'gog_setup')
+
+        if os.path.basename(gog_path).lower().startswith('gog_galaxy'):
+            self._reason = 'gog_setup'
+            return
+
+        if not os.path.exists(gog_path[:-4] + '-1.bin'):
+            self._reason = 'bin_file_missing'
+            return
 
         try:
             progress.update(0.03, 'Looking for InnoExtract...')
@@ -1714,20 +1723,20 @@ class GOGExtractTask(progress.Task):
                 logging.error('Couldn\'t find an innoextract download for "%s"!', sys.platform)
                 return
 
-            if not os.path.exists(dest_path):
+            if not os.path.exists(extract_path):
                 try:
-                    os.makedirs(dest_path)
+                    os.makedirs(extract_path)
                 except Exception:
                     logging.exception('Failed to create data path!')
                     self._reason = 'dest_path'
                     return
-
-            inno = os.path.join(dest_path, os.path.basename(path))
+            
+            inno = os.path.join(extract_path, os.path.basename(path))
             with tempfile.TemporaryDirectory() as tempdir:
                 archive = os.path.join(tempdir, os.path.basename(link))
 
                 progress.start_task(0.03, 0.10, 'Downloading InnoExtract...')
-                if not util.safe_download(link, os.path.join(dest_path, archive)):
+                if not util.safe_download(link, archive):
                     self._reason = 'download'
                     return
 
@@ -1760,7 +1769,7 @@ class GOGExtractTask(progress.Task):
                     opts['startupinfo'] = si
                     opts['stdin'] = subprocess.PIPE
 
-                p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=dest_path, **opts)
+                p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=extract_path, **opts)
 
                 if sys.platform.startswith('win'):
                     p.stdin.close()
@@ -1801,12 +1810,12 @@ class GOGExtractTask(progress.Task):
 
             progress.finish_task()
 
-            if not verify_retail_vps(os.path.join(dest_path, 'app')):
+            if not verify_retail_vps(extract_path):
                 self._reason = 'vps'
 
                 progress.update(0.95, 'Failed! Cleanup...')
                 try:
-                    shutil.rmtree(dest_path, ignore_errors=True)
+                    shutil.rmtree(extract_path, ignore_errors=True)
                 except Exception:
                     logging.exception('Cleanup failed after missing VPs!')
 
@@ -1816,16 +1825,16 @@ class GOGExtractTask(progress.Task):
             self._makedirs(os.path.join(dest_path, 'data/players'))
             self._makedirs(os.path.join(dest_path, 'data/movies'))
 
-            for item in glob.glob(os.path.join(dest_path, 'app', '*.vp')):
+            for item in glob.glob(os.path.join(extract_path, '*.vp')):
                 shutil.move(item, os.path.join(dest_path, os.path.basename(item)))
 
-            for item in glob.glob(os.path.join(dest_path, 'app/data/players', '*.hcf')):
+            for item in glob.glob(os.path.join(extract_path, 'data/players', '*.hcf')):
                 shutil.move(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
 
-            for item in glob.glob(os.path.join(dest_path, 'app/data2', '*.mve')):
+            for item in glob.glob(os.path.join(extract_path, 'data2', '*.mve')):
                 shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
-            for item in glob.glob(os.path.join(dest_path, 'app/data3', '*.mve')):
+            for item in glob.glob(os.path.join(extract_path, 'data3', '*.mve')):
                 shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
             progress.update(0.99, 'Cleanup...')
@@ -1855,6 +1864,11 @@ class GOGExtractTask(progress.Task):
                     + 'and your AV isn\'t interfering!'
             elif self._reason == 'vps':
                 msg = 'The installer does not contain the retail files! Please make sure you selected the correct installer!'
+            elif self._reason == 'gog_setup':
+                msg = "The GOG Galaxy installer doesn't contain the retail files.\nPlease download an offline installer " \
+                    + 'from GOG and use that.'
+            elif self._reason == 'bin_file_missing':
+                msg = "You're missing the second part of the offline installer. Please download both files from GOG's website!"
             else:
                 msg = 'Unpacking the GOG installer failed for unkown reasons! Make sure Knossos can write to the ' + \
                       'selected data path or contact ngld for more information.'
