@@ -74,17 +74,36 @@ class FetchTask(progress.MultistepTask):
                 self._private = data
             elif part == '#public':
                 raw_data = None
+                dest_path = os.path.join(center.settings_path, 'mods.json')
+                headers = {}
 
-                for link in center.REPOS:
-                    raw_data = util.get(link, raw=True)
-                    if raw_data:
-                        break
+                if os.path.isfile(dest_path + '.etag'):
+                    with open(dest_path + '.etag', 'r') as hdl:
+                        headers['If-None-Match'] = hdl.read()
 
-                if not raw_data:
-                    return
+                with open(dest_path + '.tmp', 'wb') as dest:
+                    for link in center.REPOS:
+                        result = util.download(link, dest, headers, get_etag=True)
+                        if result == 304 or result:
+                            data.base = link
 
-                data.base = raw_data.url
-                data.parse(raw_data.text)
+                            if result not in (304, True):
+                                # We got an ETag
+                                with open(dest_path + '.etag', 'w') as hdl:
+                                    hdl.write(result)
+
+                            break
+
+                info = os.stat(dest_path + '.tmp')
+                if info.st_size > 0:
+                    os.unlink(dest_path)
+                    os.rename(dest_path + '.tmp', dest_path)
+                else:
+                    os.unlink(dest_path + '.tmp')
+
+                with open(dest_path, 'r') as dest:
+                    data.parse(dest.read())
+
                 self._public = data
 
         except Exception:
@@ -98,13 +117,14 @@ class FetchTask(progress.MultistepTask):
         if not self._public:
             return
 
-        data = Repo()
-        data.merge(self._public)
+        if self._public:
+            data = self._public
+        else:
+            data = Repo()
 
         if self._private:
             data.merge(self._private)
 
-        data.save_json(os.path.join(center.settings_path, 'mods.json'))
         center.mods = data
 
     def finish(self):

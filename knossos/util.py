@@ -389,7 +389,7 @@ def _get_download_chunk_size():
         return min(int(center.settings['download_bandwidth'] / 2), DEFAULT_CHUNK_SIZE)
 
 
-def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=False):
+def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=False, get_etag=False):
     global HTTP_SESSION, DL_POOL, _DL_CANCEL
 
     if headers is None:
@@ -466,6 +466,9 @@ def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=Fa
                 })
             except Exception:
                 pass
+
+    if get_etag:
+        return result.headers.get('etag', True)
 
     return True
 

@@ -507,6 +507,9 @@ class HellWindow(Window):
                         mv['installed'] = False
                         mv['dev_mode'] = False
 
+                    if self._mod_filter != 'develop':
+                        del mv['packages']
+
                     item['versions'].append(mv)
 
                 if item['installed'] and not item['versions'][0]['installed']:
@@ -555,6 +558,7 @@ class HellWindow(Window):
             if filter_ in ('home', 'explore', 'develop'):
                 updated_mods = self._compute_mod_list_diff(result)
                 mod_order = [item['id'] for item in result]
+
                 self.browser_ctrl.bridge.updateModlist.emit(json.dumps(updated_mods), filter_, mod_order)
 
     def show_indicator(self):
