@@ -77,7 +77,7 @@ class FetchTask(progress.MultistepTask):
                 dest_path = os.path.join(center.settings_path, 'mods.json')
                 headers = {}
 
-                if os.path.isfile(dest_path + '.etag'):
+                if os.path.isfile(dest_path + '.etag') and os.path.isfile(dest_path):
                     with open(dest_path + '.etag', 'r') as hdl:
                         headers['If-None-Match'] = hdl.read()
 
@@ -96,7 +96,9 @@ class FetchTask(progress.MultistepTask):
 
                 info = os.stat(dest_path + '.tmp')
                 if info.st_size > 0:
-                    os.unlink(dest_path)
+                    if os.path.isfile(dest_path):
+                        os.unlink(dest_path)
+
                     os.rename(dest_path + '.tmp', dest_path)
                 else:
                     os.unlink(dest_path + '.tmp')
