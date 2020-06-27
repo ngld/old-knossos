@@ -9,14 +9,15 @@ six = "*"
 requests = "*"
 semantic-version = ">==2.8.4"
 raven = "*"
-pyqt5 = "==5.10.1"
+pyqt5 = "*"
 requests-toolbelt = "*"
 ply = "*"
 token-bucket = "*"
-pywin32 = {version = "*", sys_platform = "== 'win32'"}
-etaprogress = {version = "*", sys_platform = "== 'win32'"}
-dmgbuild = {version = "*", sys_platform = "== 'darwin'"}
-pyinstaller = {version = "*", sys_platform = "!= 'win32'"}
+pywin32 = {version = "*",sys_platform = "== 'win32'"}
+etaprogress = {version = "*",sys_platform = "== 'win32'"}
+dmgbuild = {version = "*",sys_platform = "== 'darwin'"}
+pyinstaller = {version = "*",sys_platform = "!= 'win32'"}
+pyqtwebengine = "*"
 
 [requires]
-python_version = "3.6"
+python_version = "3.8"
