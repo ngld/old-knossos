@@ -1838,9 +1838,8 @@ class GOGExtractTask(progress.Task):
                 shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
             # for issue #211, move retail fonts, if there ar any
+            # retail fonts end in .VF and not .vf
             fonts = glob.glob(os.path.join(extract_path, 'data/fonts', '*.VF'))
-            # retail fonts end in .VF, adding *.vf to future-proof
-            fonts.extend(glob.glob(os.path.join(extract_path, 'data/fonts', '*.vf')))
             if len(fonts) > 0:
                 self._makedirs(os.path.join(dest_path, 'data/fonts'))
                 for item in fonts:
@@ -1936,9 +1935,8 @@ class GOGCopyTask(progress.Task):
                 return
 
             # for issue #211, copy retail fonts, if there ar any
+            # retail fonts end in .VF and not .vf
             fonts = glob.glob(os.path.join(gog_path, 'data/fonts', '*.VF'))
-            # retail fonts end in .VF, adding *.vf to future-proof
-            fonts.extend(glob.glob(os.path.join(gog_path, 'data/fonts', '*.vf')))
             has_fonts = len(fonts) > 0
 
             progress.update(0, 'Creating directories...')
