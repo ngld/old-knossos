@@ -53,7 +53,7 @@ Var StartMenuFolder
 
 LangString DESC_desk_icon ${LANG_ENGLISH} "Creates a shortcut icon on your desktop."
 LangString DESC_fso_support ${LANG_ENGLISH} "Allows you to open fso:// links with Knossos."
-LangString DESC_un_settings ${LANG_ENGLISH} "Removes all settings and cached files which were created by Knossos."
+LangString DESC_un_settings ${LANG_ENGLISH} "Removes all settings and cached files that Knossos creates."
 
 Section
     SetOutPath "$INSTDIR"
@@ -98,9 +98,9 @@ Section "fso:// Support" fso_support
     WriteRegStr HKCR "fso\shell\open\command" "Default" "$\"$INSTDIR\Knossos.exe$\" $\"%1$\""
 SectionEnd
 
-Section "Uninstall"
+Section "-Uninstall"
     !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
-    SetShellVarContext all  # Install for all users
+    SetShellVarContext all  # Uninstall for all users
 
     Delete "$SMPROGRAMS\$StartMenuFolder\Knossos.lnk"
     Delete "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"
@@ -121,7 +121,10 @@ Section "Uninstall"
 SectionEnd
 
 Section "un.Remove Settings" un_settings
+    SetShellVarContext current
     RMDir /r "$APPDATA\knossos"
+    RMDir /r "$LOCALAPPDATA\Knossos"
+    SetShellVarContext all
 SectionEnd
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
