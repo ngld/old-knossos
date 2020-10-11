@@ -1837,6 +1837,15 @@ class GOGExtractTask(progress.Task):
             for item in glob.glob(os.path.join(extract_path, 'data3', '*.mve')):
                 shutil.move(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
 
+            # for issue #211, move retail fonts, if there ar any
+            fonts = glob.glob(os.path.join(extract_path, 'data/fonts', '*.VF'))
+            # retail fonts end in .VF, adding *.vf to future-proof
+            fonts.extend(glob.glob(os.path.join(extract_path, 'data/fonts', '*.vf')))
+            if len(fonts) > 0:
+                self._makedirs(os.path.join(dest_path, 'data/fonts'))
+                for item in fonts:
+                    shutil.move(item, os.path.join(dest_path, 'data/fonts', os.path.basename(item)))
+
             progress.update(0.99, 'Cleanup...')
             os.unlink(inno)
             shutil.rmtree(os.path.join(dest_path, 'app'), ignore_errors=True)
@@ -1926,9 +1935,17 @@ class GOGCopyTask(progress.Task):
                 self._reason = 'vps'
                 return
 
+            # for issue #211, copy retail fonts, if there ar any
+            fonts = glob.glob(os.path.join(gog_path, 'data/fonts', '*.VF'))
+            # retail fonts end in .VF, adding *.vf to future-proof
+            fonts.extend(glob.glob(os.path.join(gog_path, 'data/fonts', '*.vf')))
+            has_fonts = len(fonts) > 0
+
             progress.update(0, 'Creating directories...')
             self._makedirs(os.path.join(dest_path, 'data/players'))
             self._makedirs(os.path.join(dest_path, 'data/movies'))
+            if has_fonts:
+                self._makedirs(os.path.join(dest_path, 'data/fonts'))
 
             progress.update(1 / 4., 'Copying VPs...')
             for item in glob.glob(os.path.join(gog_path, '*.vp')):
@@ -1938,11 +1955,17 @@ class GOGCopyTask(progress.Task):
             for item in glob.glob(os.path.join(gog_path, 'data/players', '*.hcf')):
                 shutil.copyfile(item, os.path.join(dest_path, 'data/players', os.path.basename(item)))
 
-            progress.update(3 / 4., 'Copying cutscenes...')
+            fonts_msg = ' and fonts' if has_fonts else ''
+            progress.update(3 / 4., 'Copying cutscenes{0}...'.format(fonts_msg))
             for ext in ('mve', 'ogg'):
                 for sub in ('data', 'data2', 'data3'):
                     for item in glob.glob(os.path.join(gog_path, sub, '*.' + ext)):
                         shutil.copyfile(item, os.path.join(dest_path, 'data/movies', os.path.basename(item)))
+
+            # the if-check isn't required but included for readability
+            if has_fonts:
+                for item in fonts:
+                    shutil.copyfile(item, os.path.join(dest_path, 'data/fonts', os.path.basename(item)))
 
             progress.update(1, 'Done')
             self._reason = 'done'
