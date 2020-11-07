@@ -126,7 +126,7 @@ def init_sdl():
             # Load SDL
             if sys.platform == 'darwin' and hasattr(sys, 'frozen'):
                 try:
-                    sdl = load_lib('../Frameworks/SDL2.framework/SDL2')
+                    sdl = load_lib('../Frameworks/SDL2.framework/Versions/A/SDL2')
                 except Exception:
                     logging.exception('Failed to load bundled SDL2!')
 

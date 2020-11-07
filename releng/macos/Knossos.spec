@@ -134,4 +134,4 @@ app = BUNDLE(exe,
               'CFBundleShortVersionString': version
             })
 
-copytree(os.path.dirname(sdl2_path), os.path.join(DISTPATH, 'Knossos.app/Contents/Frameworks/SDL2.framework'))
+copytree(os.path.dirname(sdl2_path), os.path.join(DISTPATH, 'Knossos.app/Contents/Frameworks/SDL2.framework'), symlinks=True)
