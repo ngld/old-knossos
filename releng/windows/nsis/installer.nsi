@@ -53,7 +53,8 @@ Var StartMenuFolder
 
 LangString DESC_desk_icon ${LANG_ENGLISH} "Creates a shortcut icon on your desktop."
 LangString DESC_fso_support ${LANG_ENGLISH} "Allows you to open fso:// links with Knossos."
-LangString DESC_un_settings ${LANG_ENGLISH} "Removes all settings and cached files which were created by Knossos."
+LangString DESC_un_kn_settings ${LANG_ENGLISH} "Removes your Knossos settings, but not the Knossos library."
+LangString DESC_un_fso_settings ${LANG_ENGLISH} "Removes your pilots, game saves, and game configuration, but not the Knossos library."
 
 Section
     SetOutPath "$INSTDIR"
@@ -98,9 +99,9 @@ Section "fso:// Support" fso_support
     WriteRegStr HKCR "fso\shell\open\command" "Default" "$\"$INSTDIR\Knossos.exe$\" $\"%1$\""
 SectionEnd
 
-Section "Uninstall"
+Section "-Uninstall"
     !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
-    SetShellVarContext all  # Install for all users
+    SetShellVarContext all  # Uninstall for all users
 
     Delete "$SMPROGRAMS\$StartMenuFolder\Knossos.lnk"
     Delete "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"
@@ -120,8 +121,17 @@ Section "Uninstall"
     ${EndIf}
 SectionEnd
 
-Section "un.Remove Settings" un_settings
+Section "un.Remove Knossos Settings" un_kn_settings
+    SetShellVarContext current
     RMDir /r "$APPDATA\knossos"
+    RMDir /r "$LOCALAPPDATA\Knossos"
+    SetShellVarContext all
+SectionEnd
+
+Section /o "un.Remove Game Settings and Saves" un_fso_settings
+    SetShellVarContext current
+    RMDir /r "$APPDATA\HardLightProductions"
+    SetShellVarContext all
 SectionEnd
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
@@ -130,5 +140,9 @@ SectionEnd
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 !insertmacro MUI_UNFUNCTION_DESCRIPTION_BEGIN
-    !insertmacro MUI_DESCRIPTION_TEXT ${un_settings} $(DESC_un_settings)
+    !insertmacro MUI_DESCRIPTION_TEXT ${un_kn_settings} $(DESC_un_kn_settings)
+!insertmacro MUI_UNFUNCTION_DESCRIPTION_END
+
+!insertmacro MUI_UNFUNCTION_DESCRIPTION_BEGIN
+    !insertmacro MUI_DESCRIPTION_TEXT ${un_fso_settings} $(DESC_un_fso_settings)
 !insertmacro MUI_UNFUNCTION_DESCRIPTION_END
