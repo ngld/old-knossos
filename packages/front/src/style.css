@@ -1,0 +1,5 @@
+/* This file is used as a workaround for https://github.com/evanw/esbuild/issues/465 */
+
+@import url(../gen/tw-index.css);
+@import url(@blueprintjs/core/lib/css/blueprint.css);
+@import url(@blueprintjs/popover2/lib/css/blueprint-popover2.css);

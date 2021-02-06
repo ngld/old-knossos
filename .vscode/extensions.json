@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "arcanis.vscode-zipfs",
+    "zxh404.vscode-proto3",
+    "golang.go",
+    "editorconfig.editorconfig",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode"
+  ]
+}

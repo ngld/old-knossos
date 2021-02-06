@@ -1,0 +1,121 @@
+syntax = "proto3";
+option go_package = "github.com/ngld/knossos/packages/api/api";
+package ngld.knossos;
+
+import "google/protobuf/timestamp.proto";
+
+// Utilities
+message Checksum {
+  string algo = 1;
+  bytes digest = 2;
+}
+
+message FileRef {
+  string fileid = 1;
+  repeated string urls = 2;
+}
+
+message CpuSpec {
+  repeated string required_features = 1;
+}
+
+// Core types
+enum ModType {
+  MOD = 0;
+  TOTAL_CONVERSION = 1;
+  ENGINE = 2;
+  TOOL = 3;
+  EXTENSION = 4;
+}
+
+message Mod {
+  string modid = 1;
+  string title = 2;
+  ModType type = 3;
+  repeated string versions = 7;
+}
+
+enum ReleaseStability {
+  STABLE = 0;
+  RC = 1;
+  NIGHTLY = 2;
+}
+
+
+message Release {
+  // core meta
+  string modid = 1;
+  string version = 2;
+  ReleaseStability stability = 3;
+
+  // mod page
+  string description = 10;
+  FileRef teaser = 11;
+  FileRef banner = 12;
+  string release_thread = 13;
+  repeated FileRef screenshot = 14;
+  repeated string video = 15;
+  google.protobuf.Timestamp released = 16;
+  google.protobuf.Timestamp updated = 17;
+
+  // install
+  string notes = 20;
+
+  // launch
+  string cmdline = 21;
+
+  // content
+  repeated Package package = 4;
+}
+
+enum PackageType {
+  REQUIRED = 0;
+  RECOMMENDED = 1;
+  OPTIONAL = 2;
+}
+
+message Dependency {
+  string modid = 1;
+  string version = 2;
+  repeated string packages = 3;
+}
+
+message EngineExecutable {
+  string path = 1;
+  string label = 2;
+  uint32 priority = 3;
+  bool debug = 4;
+}
+
+message PackageArchive {
+  string id = 1;
+  string label = 2;
+  string destination = 3;
+  Checksum checksum = 4;
+  uint64 filesize = 5;
+  FileRef download = 6;
+}
+
+message PackageFile {
+  string path = 1;
+  // archive id
+  string archive = 2;
+  string archive_path = 3;
+  Checksum checksum = 4;
+}
+
+message Package {
+  string name = 1;
+  string folder = 2;
+  string notes = 3;
+  PackageType type = 4;
+  CpuSpec cpu_spec = 5;
+  bool knossos_vp = 6;
+
+  repeated Dependency dependencies = 10;
+  repeated PackageArchive archives = 11;
+  repeated PackageFile files = 12;
+
+  EngineExecutable executables = 20;
+}
+

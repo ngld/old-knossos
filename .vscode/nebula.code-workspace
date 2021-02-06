@@ -1,0 +1,28 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../packages/api"
+		},
+		{
+			"path": "../packages/server"
+        },
+        {
+            "path": "../packages/front"
+        }
+	],
+	"settings": {
+		"protoc": {
+			"options": [
+				"-I${workspaceRoot}/packages/api/definitions"
+			]
+        },
+        "typescript.tsdk": ".yarn/sdks/typescript/lib",
+		"typescript.enablePromptUseWorkspaceTsdk": true,
+        "gopls": {
+            "build.expandWorkspaceToModule": false
+        }
+	}
+}

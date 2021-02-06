@@ -1,0 +1,16 @@
+{
+  "extends": "@tsconfig/recommended/tsconfig.json",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "noEmit": true,
+    "target": "ES2020",
+    "jsx": "react-jsx",
+    "experimentalDecorators": true,
+    "baseUrl": ".",
+    "paths": {
+      "@api/*": ["../api/api/*"],
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

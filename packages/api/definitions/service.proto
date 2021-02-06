@@ -1,0 +1,82 @@
+syntax = "proto3";
+option go_package = "github.com/ngld/knossos/packages/api/api";
+package ngld.knossos;
+
+import "mod.proto";
+
+// General types
+
+message BoolResponse {
+  bool success = 1;
+}
+
+message TokenRequest {
+  // required
+  string token = 1;
+}
+
+message TokenResponse {
+  bool success = 1;
+  string token = 2;
+}
+
+message NullRequest {}
+
+// Specific messages
+
+message LoginRequest {
+  // required
+  string username = 1;
+  // required
+  string password = 2;
+}
+
+message LoginResponse {
+  string token = 1;
+  bool success = 2;
+}
+
+message SessionResponse {
+  bool valid = 1;
+  string username = 2;
+}
+
+message RegisterRequest {
+  // required
+  string username = 1;
+  // required
+  string email = 2;
+  // required
+  string password = 3;
+}
+
+message StartPasswordResetRequest {
+  // required
+  string email = 1;
+}
+
+message ResetPasswordRequest {
+  // required
+  string token = 1;
+  // required
+  string password = 2;
+}
+
+message ModDetailsRequest {
+  string modid = 1;
+}
+
+message ModDetailsResponse {
+  Mod reponse = 1;
+}
+
+service Nebula {
+  rpc Login (LoginRequest) returns (LoginResponse) {};
+  rpc CheckToken (NullRequest) returns (SessionResponse) {};
+  rpc Register (RegisterRequest) returns (BoolResponse) {};
+  rpc VerifyAccount (TokenRequest) returns (BoolResponse) {};
+  rpc StartPasswordReset (StartPasswordResetRequest) returns (BoolResponse) {};
+  rpc PreparePasswordReset (TokenRequest) returns (TokenResponse) {};
+  rpc ResetPassword (ResetPasswordRequest) returns (BoolResponse) {};
+  rpc GetModDetails (ModDetailsRequest) returns (ModDetailsResponse) {};
+}

@@ -1,0 +1,23 @@
+database = "postgresql://localhost/nebula"
+
+[log]
+level = "debug"
+
+[http]
+address = "127.0.0.1:8200"
+base_url = "http://127.0.0.1:8200"
+
+[mail]
+from = "noreply@fsnebula.org"
+server = "localhost"
+port = 1025
+username = "noreply@fsnebula.org"
+password = "notreally"
+
+[mail.register]
+text = "templates/register_text.tpl"
+html = "templates/register_html.tpl"
+
+[mail.reset]
+text = "templates/reset_text.tpl"
+html = "templates/reset_html.tpl"
