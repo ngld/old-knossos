@@ -3,3 +3,14 @@
 @import url(../gen/tw-index.css);
 @import url(@blueprintjs/core/lib/css/blueprint.css);
 @import url(@blueprintjs/popover2/lib/css/blueprint-popover2.css);
+
+.mod-tile {
+    width: 150px;
+    box-shadow: 0 0 8px #000;
+    font-size: 12px;
+}
+
+.mod-tile a {
+    color: #fff !important;
+    text-decoration: none;
+}

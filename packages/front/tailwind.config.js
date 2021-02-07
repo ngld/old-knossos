@@ -2,7 +2,13 @@ module.exports = {
   purge: [],
   darkMode: false,
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        bg: {
+          tile: '#422626',
+        },
+      },
+    },
   },
   variants: {},
   plugins: [],

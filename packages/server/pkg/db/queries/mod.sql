@@ -60,3 +60,15 @@ INSERT INTO mod_package_files (package_id, path, archive, archive_path, checksum
     VALUES (pggen.arg('package_id'), pggen.arg('path'), pggen.arg('archive'), pggen.arg('archive_path'),
         pggen.arg('checksum_algo'), pggen.arg('checksum_digest'))
     RETURNING (id);
+
+-- name: GetPublicMods :many
+SELECT m.aid, m.modid, m.title, m.type, COUNT(r.*) AS release_count, max(f.storage_key) AS storage_key, max(f.external) AS external FROM mods AS m
+    LEFT JOIN (SELECT mod_aid, MAX(id) AS id FROM mod_releases GROUP BY mod_aid) AS rm ON rm.mod_aid = m.aid
+    LEFT JOIN mod_releases AS r ON r.id = rm.id
+    LEFT OUTER JOIN files AS f ON f.id = r.teaser
+    WHERE m.private = false
+    GROUP BY m.aid
+    LIMIT pggen.arg('limit') OFFSET pggen.arg('offset');
+
+-- name: GetPublicModCount :one
+SELECT COUNT(*) FROM mods WHERE private = false;

@@ -21,6 +21,7 @@ import Login from '../pages/login';
 import ResetPassword from '../pages/reset-password';
 import ResetPasswordContinued from '../pages/reset-password-continue';
 import Logout from '../pages/logout';
+import ModList from '../pages/mods/list';
 
 interface Props {
   children?: React.ReactNode | React.ReactNode[];
@@ -38,7 +39,7 @@ export default function Page(_props: Props): React.ReactElement {
             <NavbarHeading>Neo Nebula</NavbarHeading>
             <NavbarDivider />
             <Button minimal icon="home" text="Home" onClick={() => history.push('/')} />
-            <Button minimal icon="widget" text="Mods" />
+            <Button minimal icon="widget" text="Mods" onClick={() => history.push('/mods')} />
             <Popover2
               placement="bottom"
               minimal
@@ -90,6 +91,7 @@ export default function Page(_props: Props): React.ReactElement {
           <Route exact path="/login/reset-password" component={ResetPassword} />
           <Route exact path="/mail/reset/:token" component={ResetPasswordContinued} />
           <Route exact path="/logout" component={Logout} />
+          <Route exact path="/mods" component={ModList} />
           <Route path="*">
             <H1>Not Found</H1>
             <p>I'm sorry but I could not find what you're looking for.</p>

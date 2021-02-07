@@ -62,7 +62,27 @@ message ResetPasswordRequest {
   string password = 2;
 }
 
+message ModListRequest {
+  // required
+  int32 offset = 1;
+  int32 limit = 2;
+  string query = 3;
+}
+
+message ModListItem {
+  string modid = 1;
+  string teaser = 2;
+  string title = 3;
+  uint32 release_count = 4;
+}
+
+message ModListResponse {
+  int32 count = 1;
+  repeated ModListItem mods = 2;
+}
+
 message ModDetailsRequest {
+  // required
   string modid = 1;
 }
 
@@ -78,5 +98,7 @@ service Nebula {
   rpc StartPasswordReset (StartPasswordResetRequest) returns (BoolResponse) {};
   rpc PreparePasswordReset (TokenRequest) returns (TokenResponse) {};
   rpc ResetPassword (ResetPasswordRequest) returns (BoolResponse) {};
+
+  rpc GetModList (ModListRequest) returns (ModListResponse) {};
   rpc GetModDetails (ModDetailsRequest) returns (ModDetailsResponse) {};
 }
