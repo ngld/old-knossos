@@ -40,6 +40,7 @@ type KnPackage struct {
 	Status       string
 	Dependencies []KnDep
 	Environment  string
+	Folder       string
 	IsVp         bool
 	Executables  []KnExe
 	Files        []KnArchive

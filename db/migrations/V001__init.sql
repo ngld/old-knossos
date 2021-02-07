@@ -24,11 +24,12 @@ CREATE TABLE files (
 	storage_key text NOT NULL UNIQUE,
 	filesize integer NOT NULL,
 	public boolean NOT NULL,
+    external text[] NULL,
 	owner integer NOT NULL REFERENCES users (id)
 );
 
 CREATE TABLE mod_team_members (
-	mod_aid integer NOT NULL REFERENCES mods (aid),
+	mod_aid integer NOT NULL REFERENCES mods (aid) DEFERRABLE,
 	"user" integer NOT NULL REFERENCES users (id),
 	role smallint NOT NULL,
 	UNIQUE (mod_aid, "user")
@@ -39,7 +40,7 @@ CREATE INDEX mod_team_members_user_idx ON mod_team_members ("user");
 
 CREATE TABLE mod_releases (
 	id integer NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-	mod_aid integer NOT NULL REFERENCES mods (aid),
+	mod_aid integer NOT NULL REFERENCES mods (aid) DEFERRABLE,
 	version text NOT NULL,
 	stability smallint NOT NULL,
 	description text NOT NULL,
@@ -60,7 +61,7 @@ CREATE INDEX mod_releases_version ON mod_releases (version);
 
 CREATE TABLE mod_packages (
 	id integer NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-	release_id integer NOT NULL REFERENCES mod_releases (id),
+	release_id integer NOT NULL REFERENCES mod_releases (id) DEFERRABLE,
 	name text NOT NULL,
 	folder text NOT NULL,
 	notes text NOT NULL,
@@ -74,8 +75,8 @@ CREATE INDEX mod_packages_release_id_idx ON mod_packages (release_id);
 
 CREATE TABLE mod_package_dependencies (
 	id integer NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-	package_id integer NOT NULL REFERENCES mod_packages (id),
-	modid text NOT NULL REFERENCES mods (modid),
+	package_id integer NOT NULL REFERENCES mod_packages (id) DEFERRABLE,
+	modid text NOT NULL REFERENCES mods (modid) DEFERRABLE,
 	version text NOT NULL,
 	packages text[] NOT NULL
 );
@@ -84,7 +85,7 @@ CREATE INDEX mod_package_dependencies_package_id_idx ON mod_package_dependencies
 
 CREATE TABLE mod_package_archives (
 	id integer NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-	package_id integer NOT NULL REFERENCES mod_packages (id),
+	package_id integer NOT NULL REFERENCES mod_packages (id) DEFERRABLE,
 	label text NOT NULL,
 	destination text NOT NULL,
 	checksum_algo text NOT NULL,
@@ -96,7 +97,7 @@ CREATE INDEX mod_package_archives_package_id_idx ON mod_package_archives (packag
 
 CREATE TABLE mod_package_files (
 	id integer NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-	package_id integer NOT NULL REFERENCES mod_packages (id),
+	package_id integer NOT NULL REFERENCES mod_packages (id) DEFERRABLE,
 	path text NOT NULL,
 	archive text NOT NULL,
 	archive_path text NOT NULL,
@@ -108,7 +109,7 @@ CREATE INDEX mod_package_files_package_id_idx ON mod_package_files (package_id);
 
 CREATE TABLE mod_package_executables (
 	id integer NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-	package_id integer NOT NULL REFERENCES mod_packages (id),
+	package_id integer NOT NULL REFERENCES mod_packages (id) DEFERRABLE,
 	path text NOT NULL,
 	label text NOT NULL,
 	priority smallint NOT NULL,

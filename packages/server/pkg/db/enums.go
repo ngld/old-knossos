@@ -38,3 +38,11 @@ const (
 	EngineRC
 	EngineNightly
 )
+
+type PackageType int16
+
+const (
+	PackageRequired PackageType = iota + 1
+	PackageRecommended
+	PackageOptional
+)
