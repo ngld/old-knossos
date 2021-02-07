@@ -244,7 +244,7 @@ func main() {
 		}
 
 		// TODO files (logo -> ?, tile -> teaser, banner -> banner, screenshots)
-		relDate, err := time.Parse("2006-01-02T15:04:05Z", mod.FirstRelease)
+		relDate, err := time.Parse("2006-01-02", mod.FirstRelease)
 		if err != nil {
 			if mod.FirstRelease == "" {
 				relDate = time.Unix(1, 0)
@@ -253,7 +253,7 @@ func main() {
 			}
 		}
 
-		updateDate, err := time.Parse("2006-01-02T15:04:05Z", mod.LastUpdate)
+		updateDate, err := time.Parse("2006-01-02", mod.LastUpdate)
 		if err != nil {
 			if mod.LastUpdate == "" {
 				updateDate = time.Unix(1, 0)
