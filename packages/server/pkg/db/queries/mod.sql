@@ -63,12 +63,42 @@ INSERT INTO mod_package_files (package_id, path, archive, archive_path, checksum
 
 -- name: GetPublicMods :many
 SELECT m.aid, m.modid, m.title, m.type, COUNT(r.*) AS release_count, max(f.storage_key) AS storage_key, max(f.external) AS external FROM mods AS m
-    LEFT JOIN (SELECT mod_aid, MAX(id) AS id FROM mod_releases GROUP BY mod_aid) AS rm ON rm.mod_aid = m.aid
+    LEFT JOIN (SELECT mod_aid, MAX(id) AS id FROM mod_releases WHERE private = false GROUP BY mod_aid) AS rm ON rm.mod_aid = m.aid
     LEFT JOIN mod_releases AS r ON r.id = rm.id
     LEFT OUTER JOIN files AS f ON f.id = r.teaser
     WHERE m.private = false
     GROUP BY m.aid
     LIMIT pggen.arg('limit') OFFSET pggen.arg('offset');
 
+-- name: SearchPublicMods :many
+SELECT m.aid, m.modid, m.title, m.type, COUNT(r.*) AS release_count, max(f.storage_key) AS storage_key, max(f.external) AS external FROM mods AS m
+    LEFT JOIN (SELECT mod_aid, MAX(id) AS id FROM mod_releases WHERE private = false GROUP BY mod_aid) AS rm ON rm.mod_aid = m.aid
+    LEFT JOIN mod_releases AS r ON r.id = rm.id
+    LEFT OUTER JOIN files AS f ON f.id = r.teaser
+    WHERE m.private = false AND m.normalized_title LIKE '%' || normalize_string(pggen.arg('query')) || '%'
+    GROUP BY m.aid
+    LIMIT pggen.arg('limit') OFFSET pggen.arg('offset');
+
 -- name: GetPublicModCount :one
 SELECT COUNT(*) FROM mods WHERE private = false;
+
+-- name: GetPublicReleaseByModVersion :one
+SELECT m.aid, m.title, m.type, r.version, r.stability, r.description, r.banner, r.release_thread, r.screenshots, r.videos,
+    r.released, r.updated, r.id
+    FROM mods AS m LEFT JOIN mod_releases AS r ON r.mod_aid = m.aid
+    WHERE m.private = false AND r.private = false AND m.modid = pggen.arg('modid') AND r.version = pggen.arg('version')
+    LIMIT 1;
+
+-- name: GetPublicModVersions :many
+SELECT version FROM mod_releases WHERE private = false AND mod_aid = pggen.arg('mod_aid');
+
+-- name: GetLatestPublicModVersion :one
+SELECT r.version, r.id FROM mod_releases AS r LEFT JOIN mods AS m ON m.aid = r.mod_aid WHERE m.modid = pggen.arg('modid')
+    ORDER BY r.id DESC LIMIT 1;
+
+-- name: GetPublicDownloadsByRID :many
+SELECT a.label, a.checksum_digest, p.name AS package, p.notes AS package_notes, f.storage_key, f.filesize, f.external
+    FROM mod_packages AS p
+    LEFT JOIN mod_package_archives AS a ON a.package_id = p.id
+    LEFT JOIN files AS f ON f.id = a.file_id
+    WHERE f.public = true AND p.release_id = pggen.arg('release_id');

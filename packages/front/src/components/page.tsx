@@ -22,6 +22,7 @@ import ResetPassword from '../pages/reset-password';
 import ResetPasswordContinued from '../pages/reset-password-continue';
 import Logout from '../pages/logout';
 import ModList from '../pages/mods/list';
+import ModDetails from '../pages/mods/details';
 
 interface Props {
   children?: React.ReactNode | React.ReactNode[];
@@ -40,18 +41,24 @@ export default function Page(_props: Props): React.ReactElement {
             <NavbarDivider />
             <Button minimal icon="home" text="Home" onClick={() => history.push('/')} />
             <Button minimal icon="widget" text="Mods" onClick={() => history.push('/mods')} />
-            <Popover2
-              placement="bottom"
-              minimal
-              content={
-                <Menu>
-                  <MenuItem icon="plus" text="Create Mod" />
-                  <MenuItem icon="people" text="My Mods" />
-                </Menu>
+            <Observer>
+              {() =>
+                gs.user?.loggedIn ? (
+                  <Popover2
+                    placement="bottom"
+                    minimal
+                    content={
+                      <Menu>
+                        <MenuItem icon="plus" text="Create Mod" />
+                        <MenuItem icon="people" text="My Mods" />
+                      </Menu>
+                    }
+                  >
+                    <Button minimal icon="chevron-down" />
+                  </Popover2>
+                ) : null
               }
-            >
-              <Button minimal icon="chevron-down" />
-            </Popover2>
+            </Observer>
           </NavbarGroup>
           <NavbarGroup align="right">
             <Observer>
@@ -92,6 +99,8 @@ export default function Page(_props: Props): React.ReactElement {
           <Route exact path="/mail/reset/:token" component={ResetPasswordContinued} />
           <Route exact path="/logout" component={Logout} />
           <Route exact path="/mods" component={ModList} />
+          <Route path="/mod/:modid/:version" component={ModDetails} />
+          <Route path="/mod/:modid" component={ModDetails} />
           <Route path="*">
             <H1>Not Found</H1>
             <p>I'm sorry but I could not find what you're looking for.</p>

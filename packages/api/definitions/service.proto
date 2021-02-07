@@ -2,6 +2,7 @@ syntax = "proto3";
 option go_package = "github.com/ngld/knossos/packages/api/api";
 package ngld.knossos;
 
+import "google/protobuf/timestamp.proto";
 import "mod.proto";
 
 // General types
@@ -84,10 +85,39 @@ message ModListResponse {
 message ModDetailsRequest {
   // required
   string modid = 1;
+  bool latest = 2;
+  string version = 3;
+  bool request_downloads = 4;
+}
+
+message ModDownloadArchive {
+  string label = 1;
+  string checksum = 2;
+  uint32 size = 3;
+  repeated string links = 4;
+}
+
+message ModDownloadPackage {
+  string name = 1;
+  string notes = 2;
+  repeated ModDownloadArchive archives = 3;
 }
 
 message ModDetailsResponse {
-  Mod reponse = 1;
+  string title = 1;
+  string version = 2;
+  uint32 type = 3;
+  uint32 stability = 4;
+  string description = 5;
+  string banner = 6;
+  string release_thread = 7;
+  repeated string screenshots = 8;
+  repeated string videos = 9;
+  google.protobuf.Timestamp released = 10;
+  google.protobuf.Timestamp updated = 11;
+
+  repeated string versions = 12;
+  repeated ModDownloadPackage downloads = 13;
 }
 
 service Nebula {

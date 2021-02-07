@@ -7955,6 +7955,7 @@ fsevents@~2.3.1:
     webpack-cli: ^4.5.0
     webpack-dev-server: ^3.11.2
     webpack-merge: ^5.7.3
+    xbbcode: ^2.0.4
   dependenciesMeta:
     "@protobuf-ts/protoc@1.0.12":
       unplugged: true
@@ -11356,6 +11357,13 @@ typescript@^4.1.3:
   dependencies:
     async-limiter: ~1.0.0
   checksum: 35d32b09e28f799f04708c3a7bd9eff469ae63e60543d7e18335f28689228a42ee21210f48de680aad6e5317df76b5b1183d1a1ea4b4d14cb6e0943528f40e76
+  languageName: node
+  linkType: hard
+
+"xbbcode@npm:^2.0.4":
+  version: 2.0.4
+  resolution: "xbbcode@npm:2.0.4"
+  checksum: 20dc11d4ba97db34cf98c68aca9d135829496e0f6b6d88175ace181d7f9231332fc8290146468ccd9656687c9c10372075f37bf976096f1fd6b5546bfdd4615a
   languageName: node
   linkType: hard
 
