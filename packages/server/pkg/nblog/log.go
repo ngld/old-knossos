@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/aidarkhanov/nanoid"
 	"github.com/jackc/pgx/v4"
-	"github.com/muyo/sno"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -14,8 +14,11 @@ type logPtr struct{}
 
 func MakeLogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		reqID := sno.New(0)
-		logger := log.With().Str("req", reqID.String()).Logger()
+		reqID, err := nanoid.Generate("1234567890abcdef", 11)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to generate request ID")
+		}
+		logger := log.With().Str("req", reqID).Logger()
 
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, logPtr{}, &logger)

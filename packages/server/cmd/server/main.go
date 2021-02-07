@@ -29,12 +29,12 @@ func getConsoleWriter(out io.Writer) zerolog.ConsoleWriter {
 	// writer.PartsExclude = []string{"req"}
 	writer.FormatFieldValue = func(value interface{}) string {
 		if value == nil {
-			return "                "
+			return "           "
 		}
 
 		str, ok := value.(string)
 		if ok {
-			if len(str) == 16 {
+			if len(str) == 11 {
 				// color request IDs in cyan  we have to guess based on the field content because we can't get
 				// the current field name
 				return fmt.Sprintf("\x1b[%dm%s\x1b[0m", 36, value)

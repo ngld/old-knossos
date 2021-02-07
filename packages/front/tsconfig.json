@@ -10,7 +10,8 @@
     "baseUrl": ".",
     "paths": {
       "@api/*": ["../api/api/*"],
-    }
+    },
+    "typeRoots": ["node_modules/@types", "./types"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
 }

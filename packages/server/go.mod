@@ -18,9 +18,8 @@ require (
 	github.com/jackc/pgtype v1.6.2
 	github.com/jackc/pgx/v4 v4.10.1
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
-	github.com/jschaf/pggen v0.0.0-20210205200556-7f6f84eb1636
+	github.com/jschaf/pggen v0.0.0-20210207090817-e6c5627c66c1
 	github.com/lib/pq v1.9.0 // indirect
-	github.com/muyo/sno v1.1.0
 	github.com/ngld/knossos/packages/api v0.0.0-00010101000000-000000000000
 	github.com/rotisserie/eris v0.5.0
 	github.com/rs/zerolog v1.15.0
@@ -40,7 +39,7 @@ require (
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.5 // indirect
-	google.golang.org/genproto v0.0.0-20210204154452-deb828366460 // indirect
+	google.golang.org/genproto v0.0.0-20210207032614-bba0dbe2a9ea // indirect
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
