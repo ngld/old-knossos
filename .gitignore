@@ -15,3 +15,10 @@ gen/
 .yarn/unplugged/
 .yarn/*-state.*
 .pnp.js
+
+# macOS
+.DS_Store
+
+# CEF
+build
+artifacts

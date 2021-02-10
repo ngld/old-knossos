@@ -11,6 +11,12 @@
         },
         {
             "path": "../packages/front"
+        },
+        {
+            "path": "../packages/client"
+        },
+        {
+            "path": "../packages/brain"
         }
 	],
 	"settings": {
@@ -23,6 +29,9 @@
 		"typescript.enablePromptUseWorkspaceTsdk": true,
         "gopls": {
             "build.expandWorkspaceToModule": false
-        }
+		},
+		"C/C++ Include Guard.Prefix": "KNOSSOS_",
+		"C/C++ Include Guard.Macro Type": "Filepath",
+		"cmake.configureOnOpen": false
 	}
 }
