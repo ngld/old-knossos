@@ -1,6 +1,6 @@
 
 #include "browser/knossos_resource_handler.h"
-#include "libbrain.h"
+#include "dynbrain.h"
 
 KnossosResourceHandler::KnossosResourceHandler(): res_handle(0) {}
 

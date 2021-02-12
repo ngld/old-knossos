@@ -159,6 +159,7 @@ void KnossosHandler::OnBeforeContextMenu(CefRefPtr<CefBrowser> browser,
                                          CefRefPtr<CefFrame> frame,
                                          CefRefPtr<CefContextMenuParams> params,
                                          CefRefPtr<CefMenuModel> model) {
+  model->AddSeparator();
   model->AddItem(kDevToolsMenuItem, "Show DevTools");
 }
 
@@ -221,6 +222,9 @@ void KnossosHandler::ShowDevTools(CefRefPtr<CefBrowser> browser) {
   CefPoint point;
   CefRefPtr<CefClient> client = browser->GetHost()->GetClient();
 
+#ifdef OS_WIN
+  window_info.SetAsPopup(browser->GetHost()->GetWindowHandle(), "dev_tools");
+#else
   CefRect screen_size = GetScreenSize();
   window_info.width = screen_size.width - 200;
   window_info.height = 400;
@@ -229,6 +233,7 @@ void KnossosHandler::ShowDevTools(CefRefPtr<CefBrowser> browser) {
   window_info.y = screen_size.height / 2 + 500;
 
   CefString(&window_info.window_name).FromASCII("dev_tools");
+#endif
 
   browser->GetHost()->ShowDevTools(window_info, client, settings, point);
 }

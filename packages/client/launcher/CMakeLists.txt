@@ -2,20 +2,20 @@
 # reserved. Use of this source code is governed by a BSD-style license that
 # can be found in the LICENSE file.
 
-include_directories(.)
+include_directories(. ../../brain/build)
 
 ## BRAIN START
 
-if(OS_MAC)
-	set(ext dylib)
+if(OS_LINUX)
+  set(brainext so)
+elseif(OS_MAC)
+	set(brainext dylib)
+elseif(OS_WINDOWS)
+  set(brainext dll)
 endif()
 
-add_library(libbrain SHARED IMPORTED GLOBAL)
-set_target_properties(libbrain PROPERTIES
-	IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/../brain/build/libbrain.${ext}"
-)
-
-include_directories("${CMAKE_SOURCE_DIR}/../brain/build")
+find_path(brainlib "libbrain.${brainext}" PATHS "../../brain/build/" REQUIRED)
+set(brainlib "${brainlib}/libbrain.${brainext}")
 ## BRAIN END
 
 #
@@ -34,11 +34,13 @@ set(KNOSSOS_SRCS
 set(KNOSSOS_SRCS_LINUX
   knossos_linux.cc
   browser/knossos_handler_linux.cc
+  ../../brain/build/dynbrain.cc
 )
 
 set(KNOSSOS_SRCS_MAC
   knossos_mac.mm
   browser/knossos_handler_mac.mm
+  ../../brain/build/dynbrain.cc
 )
 
 set(KNOSSOS_SRCS_WINDOWS
@@ -46,6 +48,7 @@ set(KNOSSOS_SRCS_WINDOWS
   knossos_win.cc
   resource.h
   browser/knossos_handler_win.cc
+  ../../brain/build/dynbrain.cc
 )
 
 APPEND_PLATFORM_SOURCES(KNOSSOS_SRCS)
@@ -53,7 +56,7 @@ source_group(knossos FILES ${KNOSSOS_SRCS})
 
 # knossos helper sources.
 set(KNOSSOS_HELPER_SRCS
-  renderer/knossos_helper_app.cc
+  renderer/knossos_js_interface.cc
 )
 
 set(KNOSSOS_HELPER_SRCS_MAC
@@ -110,7 +113,7 @@ SET_CEF_TARGET_OUT_DIR()
 
 if(OS_LINUX)
   # Executable target.
-  add_executable(${CEF_TARGET} ${KNOSSOS_SRCS})
+  add_executable(${CEF_TARGET} ${KNOSSOS_SRCS} ${KNOSSOS_HELPER_SRCS})
   SET_EXECUTABLE_TARGET_PROPERTIES(${CEF_TARGET})
   add_dependencies(${CEF_TARGET} libcef_dll_wrapper libbrain)
   target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper ${CEF_STANDARD_LIBS} libbrain)
@@ -126,6 +129,7 @@ if(OS_LINUX)
   if (EXISTS "${CEF_BINARY_DIR}/libminigbm.so")
     COPY_FILES("${CEF_TARGET}" "libminigbm.so" "${CEF_BINARY_DIR}" "${CEF_TARGET_OUT_DIR}")
   endif()
+  COPY_FILES("${CEF_TARGET}" "${brainlib}" "${CEF_BINARY_DIR}" "${CEF_TARGET_OUT_DIR}")
 
   # Set SUID permissions on the chrome-sandbox target.
   SET_LINUX_SUID_PERMISSIONS("${CEF_TARGET}" "${CEF_TARGET_OUT_DIR}/chrome-sandbox")
@@ -162,8 +166,8 @@ if(OS_MAC)
   # Main app bundle target.
   add_executable(${CEF_TARGET} MACOSX_BUNDLE ${KNOSSOS_RESOURCES_SRCS} ${KNOSSOS_SRCS})
   SET_EXECUTABLE_TARGET_PROPERTIES(${CEF_TARGET})
-  add_dependencies(${CEF_TARGET} libcef_dll_wrapper libbrain)
-  target_link_libraries(${CEF_TARGET} libcef_dll_wrapper ${CEF_STANDARD_LIBS} libbrain)
+  add_dependencies(${CEF_TARGET} libcef_dll_wrapper)
+  target_link_libraries(${CEF_TARGET} libcef_dll_wrapper ${CEF_STANDARD_LIBS})
   set_target_properties(${CEF_TARGET} PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/mac/Info.plist
     )
@@ -235,6 +239,12 @@ if(OS_MAC)
   # Remove these prefixes from input file paths.
   set(PREFIXES "mac/")
   COPY_MAC_RESOURCES("${KNOSSOS_RESOURCES_SRCS}" "${PREFIXES}" "${CEF_TARGET}" "${CMAKE_CURRENT_SOURCE_DIR}" "${CEF_APP}")
+
+  add_custom_command(
+    TARGET ${CEF_TARGET}
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${brainlib}" "${CEF_APP}/Contents/MacOS" VERBATIM
+  )
 endif()
 
 
@@ -244,10 +254,10 @@ endif()
 
 if(OS_WINDOWS)
   # Executable target.
-  add_executable(${CEF_TARGET} WIN32 ${KNOSSOS_SRCS})
-  add_dependencies(${CEF_TARGET} libcef_dll_wrapper libbrain)
+  add_executable(${CEF_TARGET} WIN32 ${KNOSSOS_SRCS} ${KNOSSOS_HELPER_SRCS})
+  add_dependencies(${CEF_TARGET} libcef_dll_wrapper)
   SET_EXECUTABLE_TARGET_PROPERTIES(${CEF_TARGET})
-  target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper ${CEF_STANDARD_LIBS} libbrain)
+  target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper ${CEF_STANDARD_LIBS})
 
   if(USE_SANDBOX)
     # Logical target used to link the cef_sandbox library.
@@ -261,4 +271,10 @@ if(OS_WINDOWS)
   # Copy binary and resource files to the target output directory.
   COPY_FILES("${CEF_TARGET}" "${CEF_BINARY_FILES}" "${CEF_BINARY_DIR}" "${CEF_TARGET_OUT_DIR}")
   COPY_FILES("${CEF_TARGET}" "${CEF_RESOURCE_FILES}" "${CEF_RESOURCE_DIR}" "${CEF_TARGET_OUT_DIR}")
+
+  add_custom_command(
+    TARGET ${CEF_TARGET}
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${brainlib}" "${CEF_TARGET_OUT_DIR}" VERBATIM
+  )
 endif()

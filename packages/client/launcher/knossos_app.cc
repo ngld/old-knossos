@@ -14,7 +14,8 @@
 #include "include/wrapper/cef_helpers.h"
 #include "include/wrapper/cef_closure_task.h"
 #include "browser/knossos_handler.h"
-#include "libbrain.h"
+#include "renderer/knossos_js_interface.h"
+#include "dynbrain.h"
 
 namespace {
 
@@ -78,34 +79,52 @@ class KnossosBrowserViewDelegate : public CefBrowserViewDelegate {
   DISALLOW_COPY_AND_ASSIGN(KnossosBrowserViewDelegate);
 };
 
-void KnossosLogger(uint8_t level, char* message, int length) {
+static void KnossosLogger(uint8_t level, char* message, int length) {
   std::string msg((const char*)message, length);
   switch (level) {
-    case KNOSSOS_LOG_INFO:
-      LOG(INFO) << msg;
-      break;
-case KNOSSOS_LOG_WARNING:
-  LOG(WARNING) << msg;
-  break;
-case KNOSSOS_LOG_ERROR:
-  LOG(ERROR) << msg;
-  break;
-case KNOSSOS_LOG_FATAL:
-  LOG(FATAL) << msg;
-  break;
-default:
-  LOG(FATAL) << "Invalid log level passed to KnossosLogger: " << level;
+  case KNOSSOS_LOG_INFO:
+    LOG(INFO) << msg;
+    break;
+  case KNOSSOS_LOG_WARNING:
+    LOG(WARNING) << msg;
+    break;
+  case KNOSSOS_LOG_ERROR:
+    LOG(ERROR) << msg;
+    break;
+  case KNOSSOS_LOG_FATAL:
+    LOG(FATAL) << msg;
+    break;
+  default:
+    LOG(FATAL) << "Invalid log level passed to KnossosLogger: " << level;
   }
 }
 
 static void PrepareBrain() {
+#if defined(OS_WIN)
+  std::string brain_path("libbrain.dll");
+#elif defined(OS_LINUX)
+  std::string brain_path("libbrain.so");
+#elif defined(OS_MAC)
+  std::string brain_path("./libbrain.dylib");
+  CefString exe_dir;
+  if (CefGetPath(PK_DIR_EXE, exe_dir)) {
+    brain_path = exe_dir;
+    brain_path += "/libbrain.dylib";
+  }
+#endif
+
   CefString resource_path;
   if (!CefGetPath(PK_DIR_RESOURCES, resource_path)) {
     LOG(FATAL) << "Resource directory not found";
   }
 
+  char* error;
+  if (!LoadBrain(brain_path.c_str(), &error)) {
+    LOG(FATAL) << "Failed to load libbrain: " << error;
+  }
+
   std::string path_conv = resource_path;
-  if (!KnossosInit((char*)path_conv.c_str(), path_conv.size(), &KnossosLogger)) {
+  if (!KnossosInit((char*)path_conv.c_str(), (int)path_conv.size(), &KnossosLogger)) {
     LOG(FATAL) << "Failed to initialize brain";
   }
 }
@@ -132,8 +151,7 @@ void KnossosApp::OnContextInitialized() {
   CefRefPtr<CefCommandLine> command_line =
       CefCommandLine::GetGlobalCommandLine();
 
-  const bool enable_chrome_runtime = false;
-      //command_line->HasSwitch("enable-chrome-runtime");
+  const bool enable_chrome_runtime = command_line->HasSwitch("enable-chrome-runtime");
 
 #if defined(OS_WIN) || defined(OS_LINUX)
   // Create the browser using the Views framework if "--use-views" is specified
@@ -169,19 +187,20 @@ void KnossosApp::OnContextInitialized() {
     CefWindow::CreateTopLevelWindow(new KnossosWindowDelegate(browser_view));
   } else {
     // Information used when creating the native window.
-    CefRect screen_size = handler->GetScreenSize();
-
     CefWindowInfo window_info;
-    window_info.width = 1200;
-    window_info.height = 800;
-
-    window_info.x = (screen_size.width - window_info.width) / 2;
-    window_info.y = (screen_size.height - window_info.height) / 2 - 200;
 
 #if defined(OS_WIN)
     // On Windows we need to specify certain flags that will be passed to
     // CreateWindowEx().
     window_info.SetAsPopup(NULL, "knossos");
+#else
+    CefRect screen_size = handler->GetScreenSize();
+
+    window_info.width = 1200;
+    window_info.height = 800;
+
+    window_info.x = (screen_size.width - window_info.width) / 2;
+    window_info.y = (screen_size.height - window_info.height) / 2 - 200;
 #endif
 
     // Create the first browser window.
@@ -192,3 +211,7 @@ void KnossosApp::OnContextInitialized() {
   CefPostTask(TID_IO, base::Bind(PrepareBrain));
 }
 
+void KnossosApp::OnWebKitInitialized()
+{
+  KnossosJsInterface::Init();
+}

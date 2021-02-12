@@ -8,7 +8,7 @@
 #include "include/cef_app.h"
 
 // Implement application-level callbacks for the browser process.
-class KnossosApp : public CefApp, public CefBrowserProcessHandler {
+class KnossosApp : public CefApp, public CefBrowserProcessHandler, public CefRenderProcessHandler {
  public:
   KnossosApp();
 
@@ -17,11 +17,16 @@ class KnossosApp : public CefApp, public CefBrowserProcessHandler {
       OVERRIDE {
     return this;
   }
+  virtual CefRefPtr<CefRenderProcessHandler> GetRenderProcessHandler() OVERRIDE {
+    return this;
+  };
 
   // CefBrowserProcessHandler methods:
   virtual void OnContextInitialized() OVERRIDE;
-
   virtual void OnBeforeCommandLineProcessing(const CefString& process_type, CefRefPtr<CefCommandLine> command_line) OVERRIDE;
+
+  // CefRenderProcessHandler methods:
+  virtual void OnWebKitInitialized() OVERRIDE;
 
  private:
   // Include the default reference counting implementation.
