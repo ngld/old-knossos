@@ -25,10 +25,17 @@ class KnossosApp : public CefApp, public CefBrowserProcessHandler, public CefRen
   virtual void OnContextInitialized() OVERRIDE;
   virtual void OnBeforeCommandLineProcessing(const CefString& process_type, CefRefPtr<CefCommandLine> command_line) OVERRIDE;
 
+#ifndef OS_MAC
   // CefRenderProcessHandler methods:
   virtual void OnWebKitInitialized() OVERRIDE;
+#endif
+
+  void InitializeSettings(CefSettings &settings, std::string appDataPath);
+  std::string GetSettingsPath() { return _settings_path; };
 
  private:
+  std::string _settings_path;
+
   // Include the default reference counting implementation.
   IMPLEMENT_REFCOUNTING(KnossosApp);
 };

@@ -60,6 +60,13 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
   // Specify CEF global settings here.
   CefSettings settings;
 
+  std::string appData = "";
+  wchar_t winPath[MAX_PATH];
+  if (SUCEEDED(SHGetFolderPathW(NULL, FOLDERID_RoamingAppData, NULL, 0, winPath))) {
+    appData = winPath;
+  }
+  app->InitializeSettings(settings, appData);
+
   if (command_line->HasSwitch("enable-chrome-runtime")) {
     // Enable experimental Chrome runtime. See issue #2969 for details.
     settings.chrome_runtime = true;

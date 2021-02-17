@@ -19,3 +19,13 @@ CefRect KnossosHandler::GetScreenSize() {
   CGSize rect = [NSScreen mainScreen].frame.size;
   return CefRect(0, 0, rect.width, rect.height);
 }
+
+void KnossosHandler::ShowError(std::string message) {
+  NSString* text = [[NSString alloc] initWithUTF8String:message.c_str()];
+
+  NSAlert* alert = [[NSAlert alloc] init];
+  [alert addButtonWithTitle:@"OK"];
+  [alert setMessageText:text];
+  [alert setAlertStyle:NSAlertStyleCritical];
+  [alert runModal];
+}

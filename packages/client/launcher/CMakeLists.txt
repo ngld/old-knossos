@@ -2,21 +2,28 @@
 # reserved. Use of this source code is governed by a BSD-style license that
 # can be found in the LICENSE file.
 
-include_directories(. ../../brain/build)
+include_directories(.
+                    ../../../build/libknossos
+                    ../../../third_party/libarchive
+                    )
 
 ## BRAIN START
-
 if(OS_LINUX)
-  set(brainext so)
+  set(libext so)
 elseif(OS_MAC)
-	set(brainext dylib)
+	set(libext dylib)
 elseif(OS_WINDOWS)
-  set(brainext dll)
+  set(libext dll)
 endif()
 
-find_path(brainlib "libbrain.${brainext}" PATHS "../../brain/build/" REQUIRED)
-set(brainlib "${brainlib}/libbrain.${brainext}")
+find_path(libknossos "libknossos.${libext}" PATHS "../../../build/libknossos/" REQUIRED)
+set(libknossos "${libknossos}/libknossos.${libext}")
 ## BRAIN END
+
+## LIBARCHIVE START
+find_path(libarchive "libarchive.${libext}" PATHS "../../../build/libarchive/libarchive/" REQUIRED)
+set(libarchive "${libarchive}/libarchive.${libext}")
+## LIBARCHIVE END
 
 #
 # Source files.
@@ -25,22 +32,21 @@ set(brainlib "${brainlib}/libbrain.${brainext}")
 # knossos sources.
 set(KNOSSOS_SRCS
   knossos_app.cc
-  knossos_app.h
+  browser/knossos_archive_handler.cc
+  browser/knossos_archive.cc
   browser/knossos_handler.cc
-  browser/knossos_handler.h
   browser/knossos_resource_handler.cc
+  ../../../build/libknossos/dynknossos.cc
 )
 
 set(KNOSSOS_SRCS_LINUX
   knossos_linux.cc
   browser/knossos_handler_linux.cc
-  ../../brain/build/dynbrain.cc
 )
 
 set(KNOSSOS_SRCS_MAC
   knossos_mac.mm
   browser/knossos_handler_mac.mm
-  ../../brain/build/dynbrain.cc
 )
 
 set(KNOSSOS_SRCS_WINDOWS
@@ -48,7 +54,6 @@ set(KNOSSOS_SRCS_WINDOWS
   knossos_win.cc
   resource.h
   browser/knossos_handler_win.cc
-  ../../brain/build/dynbrain.cc
 )
 
 APPEND_PLATFORM_SOURCES(KNOSSOS_SRCS)
@@ -60,6 +65,7 @@ set(KNOSSOS_HELPER_SRCS
 )
 
 set(KNOSSOS_HELPER_SRCS_MAC
+  knossos_helper_app.cc
   process_helper_mac.cc
 )
 
@@ -115,8 +121,8 @@ if(OS_LINUX)
   # Executable target.
   add_executable(${CEF_TARGET} ${KNOSSOS_SRCS} ${KNOSSOS_HELPER_SRCS})
   SET_EXECUTABLE_TARGET_PROPERTIES(${CEF_TARGET})
-  add_dependencies(${CEF_TARGET} libcef_dll_wrapper libbrain)
-  target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper ${CEF_STANDARD_LIBS} libbrain)
+  add_dependencies(${CEF_TARGET} libcef_dll_wrapper)
+  target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper ${CEF_STANDARD_LIBS})
 
   # Set rpath so that libraries can be placed next to the executable.
   set_target_properties(${CEF_TARGET} PROPERTIES INSTALL_RPATH "$ORIGIN")
@@ -129,7 +135,7 @@ if(OS_LINUX)
   if (EXISTS "${CEF_BINARY_DIR}/libminigbm.so")
     COPY_FILES("${CEF_TARGET}" "libminigbm.so" "${CEF_BINARY_DIR}" "${CEF_TARGET_OUT_DIR}")
   endif()
-  COPY_FILES("${CEF_TARGET}" "${brainlib}" "${CEF_BINARY_DIR}" "${CEF_TARGET_OUT_DIR}")
+  COPY_FILES("${CEF_TARGET}" "${libknossos}" "${CEF_BINARY_DIR}" "${CEF_TARGET_OUT_DIR}")
 
   # Set SUID permissions on the chrome-sandbox target.
   SET_LINUX_SUID_PERMISSIONS("${CEF_TARGET}" "${CEF_TARGET_OUT_DIR}/chrome-sandbox")
@@ -166,8 +172,8 @@ if(OS_MAC)
   # Main app bundle target.
   add_executable(${CEF_TARGET} MACOSX_BUNDLE ${KNOSSOS_RESOURCES_SRCS} ${KNOSSOS_SRCS})
   SET_EXECUTABLE_TARGET_PROPERTIES(${CEF_TARGET})
-  add_dependencies(${CEF_TARGET} libcef_dll_wrapper)
-  target_link_libraries(${CEF_TARGET} libcef_dll_wrapper ${CEF_STANDARD_LIBS})
+  add_dependencies(${CEF_TARGET} libcef_dll_wrapper brotlidec-static)
+  target_link_libraries(${CEF_TARGET} libcef_dll_wrapper brotlidec-static ${CEF_STANDARD_LIBS})
   set_target_properties(${CEF_TARGET} PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/mac/Info.plist
     )
@@ -243,7 +249,7 @@ if(OS_MAC)
   add_custom_command(
     TARGET ${CEF_TARGET}
     POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${brainlib}" "${CEF_APP}/Contents/MacOS" VERBATIM
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_APP}/Contents/MacOS" VERBATIM
   )
 endif()
 
@@ -275,6 +281,6 @@ if(OS_WINDOWS)
   add_custom_command(
     TARGET ${CEF_TARGET}
     POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${brainlib}" "${CEF_TARGET_OUT_DIR}" VERBATIM
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_TARGET_OUT_DIR}" VERBATIM
   )
 endif()

@@ -154,9 +154,15 @@ int main(int argc, char* argv[]) {
         CefCommandLine::CreateCommandLine();
     command_line->InitFromArgv(argc, argv);
 
+    std::string appSupport = "";
+    NSArray<NSString*>* dirs = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true);
+    if ([dirs count] > 0) {
+      appSupport = dirs[0].UTF8String;
+    }
+
     // Specify CEF global settings here.
     CefSettings settings;
-    // settings.background_color = Cef
+    app->InitializeSettings(settings, appSupport);
 
     const bool with_chrome_runtime =
         command_line->HasSwitch("enable-chrome-runtime");

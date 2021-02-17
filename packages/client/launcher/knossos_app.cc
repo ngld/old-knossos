@@ -4,18 +4,22 @@
 
 #include "knossos_app.h"
 
+#include <cstdio>
 #include <string>
+#include <sys/stat.h>
 
 #include "include/cef_browser.h"
 #include "include/cef_command_line.h"
+#include "include/cef_file_util.h"
 #include "include/cef_path_util.h"
+#include "include/internal/cef_types.h"
 #include "include/views/cef_browser_view.h"
 #include "include/views/cef_window.h"
 #include "include/wrapper/cef_helpers.h"
 #include "include/wrapper/cef_closure_task.h"
 #include "browser/knossos_handler.h"
 #include "renderer/knossos_js_interface.h"
-#include "dynbrain.h"
+#include "dynknossos.h"
 
 namespace {
 
@@ -99,17 +103,17 @@ static void KnossosLogger(uint8_t level, char* message, int length) {
   }
 }
 
-static void PrepareBrain() {
+static void PrepareKnossos() {
 #if defined(OS_WIN)
-  std::string brain_path("libbrain.dll");
+  std::string libknossos_path("libknossos.dll");
 #elif defined(OS_LINUX)
-  std::string brain_path("libbrain.so");
+  std::string libknossos_path("libknossos.so");
 #elif defined(OS_MAC)
-  std::string brain_path("./libbrain.dylib");
+  std::string libknossos_path("./libknossos.dylib");
   CefString exe_dir;
   if (CefGetPath(PK_DIR_EXE, exe_dir)) {
-    brain_path = exe_dir;
-    brain_path += "/libbrain.dylib";
+    libknossos_path = exe_dir;
+    libknossos_path += "/libknossos.dylib";
   }
 #endif
 
@@ -119,13 +123,13 @@ static void PrepareBrain() {
   }
 
   char* error;
-  if (!LoadBrain(brain_path.c_str(), &error)) {
-    LOG(FATAL) << "Failed to load libbrain: " << error;
+  if (!LoadKnossos(libknossos_path.c_str(), &error)) {
+    LOG(FATAL) << "Failed to load libknossos: " << error;
   }
 
   std::string path_conv = resource_path;
   if (!KnossosInit((char*)path_conv.c_str(), (int)path_conv.size(), &KnossosLogger)) {
-    LOG(FATAL) << "Failed to initialize brain";
+    LOG(FATAL) << "Failed to initialize libknossos";
   }
 }
 
@@ -164,7 +168,7 @@ void KnossosApp::OnContextInitialized() {
 #endif
 
   // KnossosHandler implements browser-level callbacks.
-  CefRefPtr<KnossosHandler> handler(new KnossosHandler(use_views));
+  CefRefPtr<KnossosHandler> handler(new KnossosHandler(use_views, _settings_path));
 
   // Specify CEF browser settings here.
   CefBrowserSettings browser_settings;
@@ -175,7 +179,7 @@ void KnossosApp::OnContextInitialized() {
   // that instead of the default URL.
   url = command_line->GetSwitchValue("url");
   if (url.empty())
-    url = "https://nu.fsnebula.org";
+    url = "https://files.client.fsnebula.org/index.html";
 
   if (use_views && !enable_chrome_runtime) {
     // Create the BrowserView.
@@ -208,10 +212,55 @@ void KnossosApp::OnContextInitialized() {
                                   nullptr, nullptr);
   }
 
-  CefPostTask(TID_IO, base::Bind(PrepareBrain));
+  CefPostTask(TID_IO, base::Bind(PrepareKnossos));
 }
 
+void KnossosApp::InitializeSettings(CefSettings &settings, std::string appDataPath) {
+  CefString path;
+  if (!CefGetPath(PK_DIR_EXE, path)) {
+    LOG(ERROR) << "Could not find application directory!";
+  }
+
+  std::string tmp = path;
+#if defined(OS_LINUX) || defined(OS_APPLE)
+  std::string sep("/");
+#else
+  std::string sep("\\");
+#endif
+  tmp += sep + "portable_settings";
+
+  std::string config_path;
+  LOG(INFO) << "Portable path: " << tmp;
+
+  if (CefDirectoryExists(CefString(tmp))) {
+    config_path = tmp;
+  } else {
+    if (!appDataPath.empty()) {
+      config_path = appDataPath + "/Knossos";
+    } else {
+      LOG(ERROR) << "Could not find appdata directory!";
+    }
+  }
+
+  if (config_path.empty()) {
+    KnossosHandler::ShowError("Could not find a viable configuration folder.\n"
+                              "Please check the log for details.");
+    LOG(FATAL) << "Could not determine a valid config folder.";
+  }
+
+  LOG(INFO) << "Config path: " << config_path;
+
+  CefString cache_path(&settings.cache_path);
+  cache_path = config_path + sep + "cache";
+  _settings_path = config_path;
+}
+
+#ifndef OS_APPLE
+
+// Keep in sync with knossos_helper_app.cc
 void KnossosApp::OnWebKitInitialized()
 {
   KnossosJsInterface::Init();
 }
+
+#endif

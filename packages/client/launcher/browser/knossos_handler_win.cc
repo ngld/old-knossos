@@ -18,3 +18,7 @@ CefRect KnossosHandler::GetScreenSize() {
   CefRect screen_size(0, 0, width, height);
   return screen_size;
 }
+
+void KnossosHandler::ShowError(std::string message) {
+  MessageBoxA(NULL, message.c_str(), "Knossos", MB_OK | MB_ICONERROR | MB_TASKMODAL);
+}

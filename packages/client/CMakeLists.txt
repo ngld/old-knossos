@@ -153,7 +153,7 @@ set_property(GLOBAL PROPERTY OS_FOLDERS ON)
 set(PROJECT_ARCH "x86_64" CACHE STRING "Processor architecture to build for")
 set_property(CACHE PROJECT_ARCH PROPERTY STRINGS x86 x86_64 arm64)
 
-set(CEF_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/artifacts/cef" CACHE PATH "Path to the CEF binary distribution, $CEF_ROOT/cmake/FindCEF.cmake must exist")
+set(CEF_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/cef" CACHE PATH "Path to the CEF binary distribution, $CEF_ROOT/cmake/FindCEF.cmake must exist")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CEF_ROOT}/cmake")
 
 #
@@ -172,6 +172,9 @@ find_package(CEF REQUIRED)
 # Comes from the libcef_dll/CMakeLists.txt file in the binary distribution
 # directory.
 add_subdirectory(${CEF_LIBCEF_DLL_WRAPPER_PATH} libcef_dll_wrapper)
+
+set(BROTLI_BUNDLED_MODE ON)
+add_subdirectory(../../third_party/brotli brotli)
 
 # Include application targets.
 add_subdirectory(launcher)

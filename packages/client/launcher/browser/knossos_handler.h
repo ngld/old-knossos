@@ -1,9 +1,10 @@
 #ifndef KNOSSOS_LAUNCHER_KNOSSOS_HANDLER
 #define KNOSSOS_LAUNCHER_KNOSSOS_HANDLER
 
-#include "include/cef_client.h"
-
 #include <list>
+
+#include "include/cef_client.h"
+#include "browser/knossos_archive.h"
 
 class KnossosHandler : public CefClient,
                       public CefDisplayHandler,
@@ -12,7 +13,7 @@ class KnossosHandler : public CefClient,
                       public CefContextMenuHandler,
                       public CefRequestHandler {
  public:
-  explicit KnossosHandler(bool use_views);
+  explicit KnossosHandler(bool use_views, std::string settings_path);
   ~KnossosHandler();
 
   // Provide access to the single global instance of this object.
@@ -87,11 +88,15 @@ class KnossosHandler : public CefClient,
   bool IsClosing() const { return is_closing_; }
 
   CefRect GetScreenSize();
+  std::string GetSettingsPath() { return _settings_path; };
 
  private:
+  friend class KnossosApp;
+
   // Platform-specific implementation.
   void PlatformTitleChange(CefRefPtr<CefBrowser> browser,
                            const CefString& title);
+  static void ShowError(std::string message);
 
   void ShowDevTools(CefRefPtr<CefBrowser> browser);
 
@@ -103,6 +108,9 @@ class KnossosHandler : public CefClient,
   BrowserList browser_list_;
 
   bool is_closing_;
+  CefRefPtr<KnossosArchive> _resources;
+
+  std::string _settings_path;
 
   // Include the default reference counting implementation.
   IMPLEMENT_REFCOUNTING(KnossosHandler);

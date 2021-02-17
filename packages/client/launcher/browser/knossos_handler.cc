@@ -1,11 +1,14 @@
 #include "browser/knossos_handler.h"
 
+#include <cstddef>
 #include <sstream>
 #include <string>
 
+#include "browser/knossos_archive.h"
 #include "include/base/cef_bind.h"
 #include "include/cef_app.h"
 #include "include/cef_parser.h"
+#include "include/cef_path_util.h"
 #include "include/views/cef_browser_view.h"
 #include "include/views/cef_window.h"
 #include "include/cef_menu_model.h"
@@ -13,6 +16,7 @@
 #include "include/wrapper/cef_helpers.h"
 
 #include "browser/knossos_resource_handler.h"
+#include "browser/knossos_archive_handler.h"
 
 namespace {
 
@@ -29,10 +33,30 @@ std::string GetDataURI(const std::string& data, const std::string& mime_type) {
 
 }  // namespace
 
-KnossosHandler::KnossosHandler(bool use_views)
-    : use_views_(use_views), is_closing_(false) {
+KnossosHandler::KnossosHandler(bool use_views, std::string settings_path)
+    : use_views_(use_views), is_closing_(false), _settings_path(settings_path) {
   DCHECK(!g_instance);
+
   g_instance = this;
+
+  CefString path;
+  if (!CefGetPath(PK_DIR_RESOURCES, path)) {
+    LOG(ERROR) << "Could not determine resource directory!";
+  } else {
+    std::string archive_path(path);
+    archive_path += "/ui.kar";
+
+    _resources = new KnossosArchive();
+    int err = _resources->Open(archive_path);
+    if (err != 0) {
+      std::ostringstream msg;
+      msg << "Failed to open resource archive " << archive_path << " (" << err << ").";
+      LOG(ERROR) << msg.str();
+      ShowError(msg.str());
+
+      _resources = nullptr;
+    }
+  }
 }
 
 KnossosHandler::~KnossosHandler() {
@@ -204,7 +228,7 @@ CefRefPtr<CefResourceRequestHandler> KnossosHandler::GetResourceRequestHandler(
     if (!request_initiator.empty()) {
       std::string url = request->GetURL();
       if (url.substr(0, 34) == "https://files.client.fsnebula.org/") {
-        return new KnossosResourceHandler();
+        return new KnossosArchiveHandler(_resources, 34);
       }
 
       if (url.substr(0, 32) == "https://api.client.fsnebula.org/") {
