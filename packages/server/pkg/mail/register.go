@@ -2,6 +2,7 @@ package mail
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	ht "html/template"
 	"io/ioutil"
@@ -25,8 +26,10 @@ type RegMailParams struct {
 	BaseURL string
 }
 
-var regText *tt.Template
-var regHTML *ht.Template
+var (
+	regText *tt.Template
+	regHTML *ht.Template
+)
 
 func initReg(cfg *config.Config) error {
 	data, err := ioutil.ReadFile(cfg.Mail.Register.Text)
@@ -83,9 +86,13 @@ func SendRegistrationMail(ctx context.Context, cfg *config.Config, params RegMai
 	addr := fmt.Sprintf("%s:%d", cfg.Mail.Server, cfg.Mail.Port)
 
 	if cfg.Mail.Encryption == "STARTTLS" {
-		err = mail.SendWithStartTLS(addr, auth, nil)
+		err = mail.SendWithStartTLS(addr, auth, &tls.Config{
+			ServerName: cfg.Mail.Server,
+		})
 	} else if cfg.Mail.Encryption == "SSL" {
-		err = mail.SendWithTLS(addr, auth, nil)
+		err = mail.SendWithTLS(addr, auth, &tls.Config{
+			ServerName: cfg.Mail.Server,
+		})
 	} else {
 		err = mail.Send(addr, auth)
 	}
