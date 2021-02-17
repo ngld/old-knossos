@@ -1,6 +1,8 @@
 # binaries
 .tools/
 dist/
+.cache
+.task
 
 # generated sources
 *.pb.go
@@ -9,6 +11,8 @@ dist/
 packages/api/api/*.ts
 packages/api/api/**/*.ts
 gen/
+third_party/
+DEPS.stamps
 
 # yarn
 .yarn/cache/

@@ -1,0 +1,7 @@
+version: '3'
+
+tasks:
+  libarchive-build:
+    dir: third_party/msys2
+    cmds:
+      - usr/bin/bash --login ../../packages/libarchive/msys2-build.sh

@@ -16,3 +16,6 @@ indent_size = 2
 
 [*.go]
 indent_style = tab
+
+[*.rc]
+end_of_line = crlf

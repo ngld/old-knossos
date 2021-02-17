@@ -1,0 +1,187 @@
+version: '3'
+
+vars:
+  LIBEXT: '{{if eq OS "windows"}}dll{{else if eq OS "darwin"}}dylib{{else}}so{{end}}'
+  build: '{{default "Release" .build}}'
+
+includes:
+  os: ./Taskfile_{{if eq OS "windows"}}win{{else}}unix{{end}}.yml
+
+tasks:
+  default:
+    cmds:
+      - task -l
+
+  build-tool:
+    desc: Build our build tool
+    sources:
+      - packages/build-tools/**/*.go
+      - packages/libknossos/pkg/archives/*.go
+    generates:
+      - .tools/tool{{exeExt}}
+    dir: packages/build-tools
+    cmds:
+      - go build -o ../../.tools/tool
+
+  install-tools:
+    desc: Installs necessary go tools in the workspace (task, pggen, protoc plugins, ...)
+    sources:
+      - packages/build-tools/tools.go
+    generates:
+      - .tools/modd{{exeExt}}
+      - .tools/pggen{{exeExt}}
+      - .tools/protoc-gen-go{{exeExt}}
+      - .tools/protoc-gen-twirp{{exeExt}}
+      - .tools/task{{exeExt}}
+    cmds:
+      - task: build-tool
+      - tool install-tools
+
+  fetch-deps:
+    desc: Automatically downloads dependencies not covered by install-tools
+    sources:
+      - packages/build-tools/DEPS.yml
+    generates:
+      - packages/build-tools/DEPS.stamps
+    cmds:
+      - task: build-tool
+      - tool fetch-deps
+
+  bootstrap-mingw64:
+    desc: Runs first-time setup for MSYS2 (Windows-only)
+    dir: third_party/msys2
+    cmds:
+      - task: fetch-deps
+      - usr/bin/bash --login -c "pacman -Syuu --noconfirm"
+      - usr/bin/bash --login -c "pacman -Syuu --noconfirm"
+      - usr/bin/bash --login -c "pacman -Su --noconfirm mingw-w64-x86_64-gcc"
+
+  proto-build:
+    desc: Generates TS and Go bindings from the .proto API definitions
+    sources:
+      - packages/api/definitions/*.proto
+    generates:
+      - packages/api/api/**/*.ts
+      - packages/api/api/**/*.go
+    cmds:
+      - task: fetch-deps
+      - task: install-tools
+      - yarn protoc google/protobuf/timestamp.proto --ts_out=packages/api/api
+      - yarn protoc -Ipackages/api/definitions mod.proto --ts_out=packages/api/api
+      - yarn protoc -Ipackages/api/definitions service.proto --ts_out=packages/api/api
+
+  server-build:
+    desc: Compiles the Nebula server code
+    sources:
+      - packages/server/cmd/**/*.go
+      - packages/server/pkg/**/*.go
+    generates:
+      - build/nebula
+    dir: packages/server
+    cmds:
+      - task: proto-build
+      - go generate -x ./pkg/db/queries.go
+      - go build -o ../../build/nebula ./cmd/server/main.go
+
+  front-watch:
+    desc: Automatically recompiles Nebula frontend code on change
+    cmds:
+      - task: front-css
+      - yarn front:watch
+
+  front-css:
+    desc: Compiles Tailwind CSS for Nebula (only rarely necessary)
+    sources:
+      - packages/front/src/tw-index.css
+      - packages/front/tailwind.config.js
+    generates:
+      - packages/front/gen/tw-index.css
+    dir: packages/front
+    cmds:
+      - yarn postcss src/tw-index.css -o gen/tw-index.css
+
+  front-build:
+    desc: Builds the assets for Nebula's frontend
+    sources:
+      - packages/front/src/**/*.ts
+      - packages/front/src/**/*.tsx
+      - packages/front/src/**/*.js
+      - packages/front/src/**/*.css
+    generates:
+      - packages/front/dist/**/*
+    dir: packages/front
+    cmds:
+      - NODE_ENV=production yarn postcss src/tw-index.css -o gen/tw-index.css
+      - yarn webpack --env production --color --progress
+
+  client-ui-watch:
+    desc: Automatically recompiles Knossos UI code on change
+    cmds:
+      - task: client-ui-css
+      - yarn client-ui:watch
+
+  client-ui-css:
+    desc: Compiles Tailwind CSS for Knossos (only rarely necessary)
+    sources:
+      - packages/client-ui/src/tw-index.css
+      - packages/client-ui/tailwind.config.js
+    generates:
+      - packages/client-ui/gen/tw-index.css
+    dir: packages/client-ui
+    cmds:
+      - yarn postcss src/tw-index.css -o gen/tw-index.css
+
+  client-ui-build:
+    desc: Builds the assets for Nebula's client-uiend
+    sources:
+      - packages/client-ui/src/**/*.ts
+      - packages/client-ui/src/**/*.tsx
+      - packages/client-ui/src/**/*.js
+      - packages/client-ui/src/**/*.css
+    generates:
+      - packages/client-ui/dist/**/*
+    dir: packages/client-ui
+    cmds:
+      - NODE_ENV=production yarn postcss src/tw-index.css -o gen/tw-index.css
+      - yarn webpack --env production --color --progress
+
+  libarchive-build:
+    desc: Builds libarchive with CMake (uses MSYS2 on Windows)
+    cmds:
+      - task: '{{if eq OS "windows"}}bootstrap-mingw64{{else}}fetch-deps{{end}}'
+      - task: os:libarchive-build
+
+  libknossos-build:
+    desc: Builds libknossos (client-side, non-UI logic)
+    sources:
+      - packages/libknossos/api/**/*.go
+      - packages/libknossos/pkg/**/*.go
+    vars:
+      OUTPATH: ../../build/libknossos/libknossos.{{.LIBEXT}}
+    dir: packages/libknossos
+    cmds:
+      - task: libarchive-build
+      - task: proto-build
+      - go build -o {{.OUTPATH}} -buildmode c-shared ./api
+      - tool gen-dyn-loader ../../build/libknossos/libknossos.h ../../build/libknossos/dynknossos.h
+
+  client-build:
+    desc: Builds the Knossos client
+    vars:
+      generator: '{{default "Unix Makefiles" .generator}}'
+    cmds:
+      - task: libarchive-build
+      - task: libknossos-build
+      - if [ ! -d build/client ]; then mkdir -p build/client; fi
+      - cd build/client && cmake -G"{{.generator}}" -DCMAKE_BUILD_TYPE={{.build}} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ../../packages/client
+      - cd build/client && {{if eq .generator "Ninja"}}ninja{{else}}make -j4{{end}} knossos
+
+  client-run:
+    desc: Launches Knossos
+    vars:
+      KN_BIN: ./launcher/{{.build}}/knossos
+      KN_BIN_OSX: ./launcher/{{.build}}/knossos.app/Contents/MacOS/knossos
+    dir: build/client
+    cmds:
+      - task: client-build
+      - '{{if eq OS "darwin"}}{{.KN_BIN_OSX}}{{else}}{{.KN_BIN}}{{end}}'

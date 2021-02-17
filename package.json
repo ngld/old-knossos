@@ -7,9 +7,11 @@
   },
   "scripts": {
     "build:proto": "protoc google/protobuf/timestamp.proto --ts_out=packages/api/api && protoc -Ipackages/api/definitions mod.proto --ts_out=packages/api/api && protoc -Ipackages/api/definitions service.proto --ts_out=packages/api/api",
-    "build:css": "cd packages/front && postcss src/tw-index.css -o gen/tw-index.css",
-    "build:prod": "cd packages/front && webpack --env production --color --progress",
-    "watch": "cd packages/front && webpack serve"
+    "front:css": "cd packages/front && postcss src/tw-index.css -o gen/tw-index.css",
+    "front:prod": "cd packages/front && NODE_ENV=production postcss src/tw-index.css -o gen/tw-index.css && webpack --env production --color --progress",
+    "front:watch": "cd packages/front && webpack serve",
+    "client:css": "cd packages/client && postcss src/tw-index.css -o gen/tw-index.css",
+    "client:prod": "cd packages/client && NODE_ENV=production postcss src/tw-index.css -o gen/tw-index.css && webpack --env production --color --progress"
   },
   "devDependencies": {
     "@commitlint/cli": "^11.0.0",
