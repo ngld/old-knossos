@@ -81,6 +81,21 @@ func init() {
 	fetchDepsCmd.Flags().BoolP("update", "u", false, "Update checksums")
 }
 
+func getProgressBar(length int64, desc string) *progressbar.ProgressBar {
+	if os.Getenv("CI") == "true" {
+		return progressbar.NewOptions64(length, progressbar.OptionSetDescription(desc),
+			progressbar.OptionSetWriter(os.Stderr), progressbar.OptionShowBytes(true),
+			progressbar.OptionShowCount(), progressbar.OptionOnCompletion(func() {
+				fmt.Fprint(os.Stderr, "\n")
+			}),
+			// Only show the result once at the end
+			progressbar.OptionThrottle(1*time.Hour),
+		)
+	}
+
+	return progressbar.DefaultBytes(length, desc)
+}
+
 func getConfig(projectRoot string) (depConfig, string, map[string]string, error) {
 	var cfg depConfig
 	cfgPath := filepath.Join(projectRoot, "packages", "build-tools", "DEPS.yml")
@@ -177,6 +192,9 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 	vars["full-cef"] = fullStr
 	vars[runtime.GOARCH] = "true"
 	vars[runtime.GOOS] = "true"
+	if os.Getenv("CI") == "true" {
+		vars["ci"] = "true"
+	}
 
 	changes := map[string]string{}
 	cfgLines := strings.Split(cfgData, "\n")
@@ -225,7 +243,7 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 		defer resp.Body.Close()
 
 		hash := sha256.New()
-		bar := progressbar.DefaultBytes(resp.ContentLength, "     download")
+		bar := getProgressBar(resp.ContentLength, "     download")
 		for {
 			n, err := resp.Body.Read(buf)
 			if err != nil && n < 1 {
@@ -247,6 +265,7 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 
 			bar.Write(buf[:n])
 		}
+		bar.Finish()
 		resp.Body.Close()
 
 		digest := hex.EncodeToString(hash.Sum(nil))
@@ -281,7 +300,7 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 		}
 
 		arHandle.Seek(0, io.SeekStart)
-		bar = progressbar.DefaultBytes(resp.ContentLength, "      extract")
+		bar = getProgressBar(resp.ContentLength, "      extract")
 		err = extractor(arHandle, bar, projectRoot, name, meta)
 		if err != nil {
 			return err

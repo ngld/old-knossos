@@ -33,7 +33,7 @@ func fixTypes(input string) string {
 	}
 
 	if winFix != input {
-		return "#ifdef OS_WIN\n" + winFix + "\n#else\n" + input + "\n#endif\n"
+		return "#ifdef WIN32\n" + winFix + "\n#else\n" + input + "\n#endif\n"
 	}
 	return input
 }
@@ -103,7 +103,7 @@ func genLoader(headerFile, dynHeader string) error {
 	header.WriteString("#endif\n")
 
 	loader := strings.Builder{}
-	loader.WriteString("#ifdef OS_WIN\n")
+	loader.WriteString("#ifdef WIN32\n")
 	loader.WriteString("#include <windows.h>\n")
 	loader.WriteString("\n")
 	loader.WriteString("#define LOAD_SYM GetProcAddress\n")
@@ -117,7 +117,7 @@ func genLoader(headerFile, dynHeader string) error {
 	loader.WriteString(loaderDecl.String())
 
 	loader.WriteString("\n\nbool LoadKnossos(const char* knossos_path, char** error) {\n")
-	loader.WriteString("#ifdef OS_WIN\n")
+	loader.WriteString("#ifdef WIN32\n")
 	loader.WriteString("  HMODULE lib = LoadLibraryA(knossos_path);\n")
 	loader.WriteString("  if (!lib) {\n")
 	loader.WriteString("    auto code = GetLastError();\n")
@@ -137,7 +137,7 @@ func genLoader(headerFile, dynHeader string) error {
 
 	loader.WriteString(loaderFunc.String())
 
-	loader.WriteString("#ifndef OS_WIN\n")
+	loader.WriteString("#ifndef WIN32\n")
 	loader.WriteString("\n  dlclose(lib);\n")
 	loader.WriteString("#endif\n")
 

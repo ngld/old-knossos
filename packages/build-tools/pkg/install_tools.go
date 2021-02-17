@@ -29,7 +29,7 @@ func InstallTools() error {
 		dep := strings.Trim(path.Path.Value, `"`)
 		// fmt.Println("# go install", dep)
 
-		cmd := exec.Command("go", "install", "-v", dep)
+		cmd := exec.Command("go", "install", dep)
 		cmd.Dir = filepath.Dir(toolsFile)
 		cmd.Env = append(os.Environ(), fmt.Sprintf("GOBIN=%s", binPath))
 		cmd.Stderr = os.Stderr

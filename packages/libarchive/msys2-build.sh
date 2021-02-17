@@ -2,15 +2,17 @@
 
 set -eo pipefail
 
-cd ../../build
-if [ ! -d libarchive ]; then
-	mkdir libarchive
+cd "$(dirname "$0")"
+
+cd ../..
+if [ ! -d build/libarchive ]; then
+	mkdir -p build/libarchive
 fi
-cd libarchive
+cd build/libarchive
 
 export PATH="/mingw64/bin:$PATH"
 
-pacman -S --noconfirm --noreinstall mingw-w64-x86_64-{gcc,xz,cmake} make
+pacman -S --noconfirm --needed mingw-w64-x86_64-{gcc,xz,cmake} make
 
 cmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -Wno-dev \
 	-DENABLE_ACL=OFF \
@@ -18,7 +20,7 @@ cmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -Wno-dev \
 	-DENABLE_CNG=OFF \
 	-DENABLE_CPIO=OFF \
 	-DENABLE_EXPAT=OFF \
-	-DEANBLE_LIBXML2=OFF \
+	-DENABLE_LIBXML2=OFF \
 	-DENABLE_LZ4=OFF \
 	-DENABLE_OPENSSL=OFF \
 	-DENABLE_PCREPOSIX=OFF \

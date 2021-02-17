@@ -21,7 +21,7 @@ set(libknossos "${libknossos}/libknossos.${libext}")
 ## BRAIN END
 
 ## LIBARCHIVE START
-find_path(libarchive "libarchive.${libext}" PATHS "../../../build/libarchive/libarchive/" REQUIRED)
+find_path(libarchive "libarchive.${libext}" PATHS "../../../build/libarchive/libarchive/" "../../../build/libarchive/bin/" REQUIRED)
 set(libarchive "${libarchive}/libarchive.${libext}")
 ## LIBARCHIVE END
 
@@ -148,6 +148,12 @@ if(OS_LINUX)
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_TARGET_OUT_DIR}"
     VERBATIM
     )
+  add_custom_command(
+    TARGET ${CEF_TARGET}
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libarchive}" "${CEF_TARGET_OUT_DIR}"
+    VERBATIM
+    )
 
   # Set SUID permissions on the chrome-sandbox target.
   SET_LINUX_SUID_PERMISSIONS("${CEF_TARGET}" "${CEF_TARGET_OUT_DIR}/chrome-sandbox")
@@ -263,6 +269,11 @@ if(OS_MAC)
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_APP}/Contents/MacOS" VERBATIM
   )
+  add_custom_command(
+    TARGET ${CEF_TARGET}
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libarchive}" "${CEF_APP}/Contents/MacOS" VERBATIM
+  )
 endif()
 
 
@@ -275,7 +286,7 @@ if(OS_WINDOWS)
   add_executable(${CEF_TARGET} WIN32 ${KNOSSOS_SRCS} ${KNOSSOS_HELPER_SRCS})
   add_dependencies(${CEF_TARGET} libcef_dll_wrapper)
   SET_EXECUTABLE_TARGET_PROPERTIES(${CEF_TARGET})
-  target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper ${CEF_STANDARD_LIBS})
+  target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper brotlidec-static ${CEF_STANDARD_LIBS})
 
   if(USE_SANDBOX)
     # Logical target used to link the cef_sandbox library.
@@ -294,5 +305,10 @@ if(OS_WINDOWS)
     TARGET ${CEF_TARGET}
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_TARGET_OUT_DIR}" VERBATIM
+  )
+  add_custom_command(
+    TARGET ${CEF_TARGET}
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libarchive}" "${CEF_TARGET_OUT_DIR}" VERBATIM
   )
 endif()

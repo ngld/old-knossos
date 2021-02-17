@@ -1,4 +1,6 @@
 #include <windows.h>
+#include <Shlobj.h>
+#include <Shlobj_core.h>
 
 #include "include/cef_command_line.h"
 #include "include/cef_sandbox_win.h"
@@ -61,8 +63,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
   CefSettings settings;
 
   std::string appData = "";
-  wchar_t winPath[MAX_PATH];
-  if (SUCEEDED(SHGetFolderPathW(NULL, FOLDERID_RoamingAppData, NULL, 0, winPath))) {
+  char winPath[MAX_PATH];
+  if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, winPath))) {
     appData = winPath;
   }
   app->InitializeSettings(settings, appData);

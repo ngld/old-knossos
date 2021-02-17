@@ -4,6 +4,7 @@ vars:
   LIBEXT: '{{if eq OS "windows"}}dll{{else if eq OS "darwin"}}dylib{{else}}so{{end}}'
   build: '{{default "Release" .build}}'
   msys2_path: '{{default "third_party/msys2" .msys2_path}}'
+  root: '{{default "." .root}}'
 
 includes:
   os: ./Taskfile_{{if eq OS "windows"}}win{{else}}unix{{end}}.yml
@@ -18,22 +19,14 @@ tasks:
     sources:
       - packages/build-tools/**/*.go
       - packages/libknossos/pkg/archives/*.go
-    generates:
-      - .tools/tool{{exeExt}}
     dir: packages/build-tools
     cmds:
-      - go build -o ../../.tools/tool
+      - go build -o ../../.tools/tool{{exeExt}}
 
   install-tools:
     desc: Installs necessary go tools in the workspace (task, pggen, protoc plugins, ...)
     sources:
       - packages/build-tools/tools.go
-    generates:
-      - .tools/modd{{exeExt}}
-      - .tools/pggen{{exeExt}}
-      - .tools/protoc-gen-go{{exeExt}}
-      - .tools/protoc-gen-twirp{{exeExt}}
-      - .tools/task{{exeExt}}
     cmds:
       - task: build-tool
       - tool install-tools
@@ -51,19 +44,18 @@ tasks:
   bootstrap-mingw64:
     desc: Runs first-time setup for MSYS2 (Windows-only)
     dir: '{{.msys2_path}}'
+    status:
+      - test -f mingw64/bin/gcc.exe
     cmds:
       - task: fetch-deps
       - usr/bin/bash --login -c "pacman -Syuu --noconfirm"
       - usr/bin/bash --login -c "pacman -Syuu --noconfirm"
-      - usr/bin/bash --login -c "pacman -Su --noconfirm mingw-w64-x86_64-gcc"
+      - usr/bin/bash --login -c "pacman -Su --noconfirm --needed mingw-w64-x86_64-gcc"
 
   proto-build:
     desc: Generates TS and Go bindings from the .proto API definitions
     sources:
       - packages/api/definitions/*.proto
-    generates:
-      - packages/api/api/**/*.ts
-      - packages/api/api/**/*.go
     cmds:
       - task: fetch-deps
       - task: install-tools
@@ -82,7 +74,7 @@ tasks:
     cmds:
       - task: proto-build
       - go generate -x ./pkg/db/queries.go
-      - go build -o ../../build/nebula ./cmd/server/main.go
+      - go build -o ../../build/nebula{{exeExt}} ./cmd/server/main.go
 
   front-watch:
     desc: Automatically recompiles Nebula frontend code on change
@@ -141,21 +133,29 @@ tasks:
       - packages/client-ui/src/**/*.css
     generates:
       - packages/client-ui/dist/**/*
+    vars:
+      res_dir: '{{if eq OS "darwin"}}knossos.app/Contents/Frameworks/Chromium Embedded Framework.framework/Resources/{{end}}'
     dir: packages/client-ui
     cmds:
       - NODE_ENV=production yarn postcss src/tw-index.css -o gen/tw-index.css
       - yarn webpack --env production --color --progress
+      - tool pack-kar "../../build/client/launcher/{{.build}}/{{.res_dir}}ui.kar" dist/prod
 
   libarchive-build:
     desc: Builds libarchive with CMake (uses MSYS2 on Windows)
+    sources:
+      - third_party/libarchive/src/**/*.{c,h}
     cmds:
       - task: '{{if eq OS "windows"}}bootstrap-mingw64{{else}}fetch-deps{{end}}'
       - task: os:libarchive-build
-        vars: {msys2_path: '{{.msys2_path}}'}
+        vars:
+          msys2_path: '{{.msys2_path}}'
+          root: '{{.root}}'
 
   libknossos-build:
     desc: Builds libknossos (client-side, non-UI logic)
     sources:
+      - .tools/tool{{exeExt}}
       - packages/libknossos/api/**/*.go
       - packages/libknossos/pkg/**/*.go
     vars:
@@ -177,6 +177,14 @@ tasks:
       - if [ ! -d build/client ]; then mkdir -p build/client; fi
       - cd build/client && cmake -G"{{.generator}}" -DCMAKE_BUILD_TYPE={{.build}} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ../../packages/client
       - cd build/client && {{if eq .generator "Ninja"}}ninja{{else}}make -j4{{end}} knossos
+
+  client-build-vs:
+    cmds:
+      - task: libarchive-build
+      - task: libknossos-build
+      - if [ ! -d build/client ]; then mkdir -p build/client; fi
+      - cd build/client && cmake -G"Visual Studio 16 2019" -DCMAKE_BUILD_TYPE={{.build}} ../../packages/client
+      - cd build/client && cmake --build . --target knossos --config {{.build}}
 
   client-run:
     desc: Launches Knossos

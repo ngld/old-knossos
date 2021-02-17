@@ -86,6 +86,7 @@ deps:
   msys2:
     sha256: b69e0272b45cfcf7b5dc162b031808e642912629a1614f950326416ec10da3bd
     if: windows, amd64
+    ifNot: ci
     url: http://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-20210215.tar.xz
     strip: 1
     dest: third_party/msys2

@@ -150,7 +150,7 @@ void KnossosArchive::ReadEntry(std::string name, int32_t &size, void **data) {
       // Move dec_data to data and free the compressed data
       std::free(*data);
       *data = dec_data;
-      size = dec_size;
+      size = (int32_t)dec_size;
     }
   } else {
     size = item->second.size;
