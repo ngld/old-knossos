@@ -16,7 +16,19 @@
             "path": "../packages/client"
         },
         {
-            "path": "../packages/brain"
+            "path": "../packages/libknossos"
+        },
+        {
+            "path": "../packages/client-ui"
+        },
+        {
+            "path": "../packages/build-tools"
+        },
+        {
+            "path": "../packages/libarchive"
+        },
+        {
+            "path": "../third_party"
         }
 	],
 	"settings": {

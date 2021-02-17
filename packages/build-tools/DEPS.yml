@@ -1,0 +1,91 @@
+vars:
+  PROTOC: 3.14.0
+  LIBARCHIVE: 3.5.1
+  CEF: 88.2.6+gd717f0e+chromium-88.0.4324.150
+  MSYS_BUILD: 20210215
+
+deps:
+  protoc-linux:
+    sha256: a2900100ef9cda17d9c0bbf6a3c3592e809f9842f2d9f0d50e3fba7f3fc864f0
+    if: linux, amd64
+    url: https://github.com/protocolbuffers/protobuf/releases/download/v{PROTOC}/protoc-{PROTOC}-linux-x86_64.zip
+    strip: 1
+    dest: third_party/protoc-dist
+
+  protoc-darwin:
+    sha256: 699ceee7ef0988ecf72bf1c146dee5d9d89351a19d4093d30ebea3c04008bb8c
+    if: darwin, amd64
+    url: https://github.com/protocolbuffers/protobuf/releases/download/v{PROTOC}/protoc-{PROTOC}-osx-x86_64.zip
+    strip: 1
+    dest: third_party/protoc-dist
+
+  protoc-win64:
+    sha256: 642554ed4dd2dba94e1afddcccdd7d832999cea309299cc5952f13db389894f8
+    if: windows, amd64
+    url: https://github.com/protocolbuffers/protobuf/releases/download/v{PROTOC}/protoc-{PROTOC}-win64.zip
+    strip: 1
+    dest: third_party/protoc-dist
+
+  cef-linux-full:
+    sha256: 5af8f06b2c28b8a646e491f942beecf585cf655834c55c86b224149b3fc3f508
+    if: linux, amd64, full-cef
+    url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_linux64.tar.bz2
+    strip: 1
+    dest: third_party/cef
+
+  cef-linux:
+    sha256: ee37be1200161ff286edfde40810ada9c3558a1bc39eaae49b6a15c2452d29c2
+    if: linux, amd64
+    ifNot: full-cef
+    url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_linux64_minimal.tar.bz2
+    strip: 1
+    dest: third_party/cef
+
+  cef-darwin-full:
+    sha256: 278807e4dc1e2b1b0072f934a39d5269ce53bb12e095647cdeb74751cd6d56dd
+    if: darwin, amd64, full-cef
+    url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_macosx64.tar.bz2
+    strip: 1
+    dest: third_party/cef
+
+  cef-darwin:
+    sha256: c8d7c5deb56c3cfbc813461447b0b34d47d446f4b5756b1a3251e0c9394ef176
+    if: darwin, amd64
+    ifNot: full-cef
+    url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_macosx64_minimal.tar.bz2
+    strip: 1
+    dest: third_party/cef
+
+  cef-win64-full:
+    sha256: 346bfd5be2b6a33ec6cdfef4d90c81ac44d9899b827440b433d07653409c0ea5
+    if: windows, amd64, full-cef
+    url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_windows64.tar.bz2
+    strip: 1
+    dest: third_party/cef
+
+  cef-win64:
+    sha256: bb1ae64d851d81394aaf5934517d1b7a2a43fda5b9b5729d3fa6967ea9c46463
+    if: windows, amd64
+    ifNot: full-cef
+    url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_windows64_minimal.tar.bz2
+    strip: 1
+    dest: third_party/cef
+
+  libarchive:
+    sha256: 9015d109ec00bb9ae1a384b172bf2fc1dff41e2c66e5a9eeddf933af9db37f5a
+    url: https://github.com/libarchive/libarchive/releases/download/{LIBARCHIVE}/libarchive-{LIBARCHIVE}.tar.gz
+    strip: 1
+    dest: third_party/libarchive
+
+  brotli:
+    sha256: f9e8d81d0405ba66d181529af42a3354f838c939095ff99930da6aa9cdf6fe46
+    url: https://github.com/google/brotli/archive/v1.0.9.tar.gz
+    strip: 1
+    dest: third_party/brotli
+
+  msys2:
+    sha256: b69e0272b45cfcf7b5dc162b031808e642912629a1614f950326416ec10da3bd
+    if: windows, amd64
+    url: http://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-20210215.tar.xz
+    strip: 1
+    dest: third_party/msys2
