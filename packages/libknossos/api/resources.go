@@ -18,6 +18,7 @@ import "C"
 
 import (
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 )
@@ -30,9 +31,10 @@ const (
 )
 
 type resource struct {
-	URL  string
-	Path string
-	Type resourceType
+	Handle io.Reader
+	URL    string
+	Path   string
+	Type   resourceType
 }
 
 type logLevel C.uint8_t
@@ -93,6 +95,23 @@ func KnossosShouldHandleResource(urlPtr *C.char, urlLen C.size_t) C.uint16_t {
 	handleCounter++
 	memPool[handle] = info
 	return C.uint16_t(handle)
+}
+
+//KnossosGetResourceSize returns the expected resource size or -1 if it's unknown.
+//export KnossosGetResourceSize
+func KnossosGetResourceSize(handle C.uint16_t) C.int {
+	if !ready {
+		log(logFatal, "KnossosGetResourceSize called before KnossosInit!")
+		return 0
+	}
+
+	_, found := memPool[handle]
+	if !found {
+		log(logFatal, "KnossosGetResourceSize called with invalid handle")
+		return 0
+	}
+
+	return 1
 }
 
 //KnossosFree should be called once a resource pointer isn't needed anymore

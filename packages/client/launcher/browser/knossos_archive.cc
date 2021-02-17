@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <fstream>
+#include <deque>
 #include "include/base/cef_lock.h"
 #include "include/base/cef_logging.h"
 #include "brotli/decode.h"
