@@ -13,7 +13,7 @@
             "cStandard": "c11",
             "cppStandard": "c++98",
             "intelliSenseMode": "macos-clang-x64",
-            "compileCommands": "${workspaceFolder}/build/client/compile_commands.json",
+            "compileCommands": "${workspaceFolder}/compile_commands.json",
             "configurationProvider": "ms-vscode.cmake-tools"
         }
     ],

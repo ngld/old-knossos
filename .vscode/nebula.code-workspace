@@ -44,6 +44,8 @@
 		},
 		"C/C++ Include Guard.Prefix": "KNOSSOS_",
 		"C/C++ Include Guard.Macro Type": "Filepath",
-		"cmake.configureOnOpen": false
+        "cmake.configureOnOpen": false,
+        "C_Cpp.autocomplete": "Disabled",
+        "C_Cpp.intelliSenseEngine": "Disabled"
 	}
 }

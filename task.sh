@@ -15,7 +15,7 @@ if [ ! -f .tools/tool ]; then
     cd packages/build-tools
     echo "Building build-tools"
     go build -o ../../.tools/tool
-    cd ..
+    cd ../..
 fi
 
 if [ ! -f .tools/task ]; then

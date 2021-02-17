@@ -3,6 +3,7 @@ version: '3'
 vars:
   LIBEXT: '{{if eq OS "windows"}}dll{{else if eq OS "darwin"}}dylib{{else}}so{{end}}'
   build: '{{default "Release" .build}}'
+  msys2_path: '{{default "third_party/msys2" .msys2_path}}'
 
 includes:
   os: ./Taskfile_{{if eq OS "windows"}}win{{else}}unix{{end}}.yml
@@ -49,7 +50,7 @@ tasks:
 
   bootstrap-mingw64:
     desc: Runs first-time setup for MSYS2 (Windows-only)
-    dir: third_party/msys2
+    dir: '{{.msys2_path}}'
     cmds:
       - task: fetch-deps
       - usr/bin/bash --login -c "pacman -Syuu --noconfirm"
@@ -150,6 +151,7 @@ tasks:
     cmds:
       - task: '{{if eq OS "windows"}}bootstrap-mingw64{{else}}fetch-deps{{end}}'
       - task: os:libarchive-build
+        vars: {msys2_path: '{{.msys2_path}}'}
 
   libknossos-build:
     desc: Builds libknossos (client-side, non-UI logic)

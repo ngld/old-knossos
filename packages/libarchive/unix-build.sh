@@ -2,11 +2,11 @@
 
 set -eo pipefail
 
-cd ../../build
-if [ ! -d libarchive ]; then
-	mkdir libarchive
+cd ../..
+if [ ! -d build/libarchive ]; then
+	mkdir -p build/libarchive
 fi
-cd libarchive
+cd build/libarchive
 
 cmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -Wno-dev \
 	-DENABLE_ACL=OFF \
