@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
-	"time"
 
 	"github.com/andybalholm/brotli"
 	"github.com/rotisserie/eris"
@@ -12,10 +11,9 @@ import (
 
 // KarFile contains the metadata for a file entry
 type KarFile struct {
-	timestamp time.Time
-	offset    int32
-	size      int32
-	decSize   int32
+	offset  int32
+	size    int32
+	decSize int32
 }
 
 // KarFolder contains an index of the available sub-folders and files
@@ -117,7 +115,6 @@ func (w *KarWriter) WriteFile(filename string, reader *os.File) error {
 
 	item.size = int32(newPos - offset)
 	item.decSize = int32(decSize)
-	item.timestamp = time.Now()
 	w.current.files[filename] = item
 
 	return nil
@@ -149,10 +146,10 @@ func (w *KarWriter) Close() error {
 		return err
 	}
 
-	buffer[0] = 'V'
-	buffer[1] = 'P'
-	buffer[2] = 'V'
-	buffer[3] = 'P'
+	buffer[0] = 'K'
+	buffer[1] = 'N'
+	buffer[2] = 'A'
+	buffer[3] = 'R'
 	binary.LittleEndian.PutUint32(buffer[4:8], 2)
 	binary.LittleEndian.PutUint32(buffer[8:12], uint32(tocOffset))
 	binary.LittleEndian.PutUint32(buffer[12:16], uint32(items))
@@ -180,21 +177,17 @@ func writeDirectoryEntries(folder *KarFolder, hdl *os.File, items *int32, buffer
 		binary.LittleEndian.PutUint32(buffer[8:12], 0)
 		// name
 		nameLen := len(name)
-		for idx := 0; idx < 32; idx++ {
-			if idx >= nameLen {
-				buffer[12+idx] = byte(0)
-			} else {
-				buffer[12+idx] = byte(name[idx])
-			}
-		}
-
-		// timestamp
-		binary.LittleEndian.PutUint32(buffer[44:48], 0)
-
-		_, err := hdl.Write(buffer)
+		binary.LittleEndian.PutUint16(buffer[12:14], uint16(nameLen))
+		_, err := hdl.Write(buffer[:14])
 		if err != nil {
 			return err
 		}
+
+		_, err = hdl.WriteString(name)
+		if err != nil {
+			return err
+		}
+
 		err = writeDirectoryEntries(folder, hdl, items, buffer)
 		if err != nil {
 			return err
@@ -207,15 +200,13 @@ func writeDirectoryEntries(folder *KarFolder, hdl *os.File, items *int32, buffer
 		// decSize
 		binary.LittleEndian.PutUint32(buffer[8:12], 0)
 		// name
-		buffer[12] = '.'
-		buffer[13] = '.'
-		for idx := 14; idx < 44; idx++ {
-			buffer[idx] = 0
+		binary.LittleEndian.PutUint16(buffer[12:14], 2)
+		_, err = hdl.Write(buffer[:14])
+		if err != nil {
+			return err
 		}
 
-		// timestamp
-		binary.LittleEndian.PutUint32(buffer[44:48], 0)
-		_, err = hdl.Write(buffer)
+		_, err = hdl.WriteString("..")
 		if err != nil {
 			return err
 		}
@@ -230,17 +221,13 @@ func writeDirectoryEntries(folder *KarFolder, hdl *os.File, items *int32, buffer
 		binary.LittleEndian.PutUint32(buffer[8:12], uint32(file.decSize))
 		// name
 		nameLen := len(name)
-		for idx := 0; idx < 32; idx++ {
-			if idx >= nameLen {
-				buffer[12+idx] = 0
-			} else {
-				buffer[12+idx] = name[idx]
-			}
+		binary.LittleEndian.PutUint16(buffer[12:14], uint16(nameLen))
+		_, err := hdl.Write(buffer[:14])
+		if err != nil {
+			return err
 		}
 
-		// timestamp
-		binary.LittleEndian.PutUint32(buffer[44:48], uint32(file.timestamp.Unix()))
-		_, err := hdl.Write(buffer)
+		_, err = hdl.WriteString(name)
 		if err != nil {
 			return err
 		}

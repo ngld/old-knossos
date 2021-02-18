@@ -21,8 +21,8 @@ int KnossosArchive::Open(std::string filename) {
     return 2;
   }
 
-  if (tmp != "VPVP") {
-    LOG(ERROR) << "Header " << tmp << " does not match magic string 'VPVP'.";
+  if (tmp != "KNAR") {
+    LOG(ERROR) << "Header " << tmp << " does not match magic string 'KNAR'.";
     _hdl.close();
     return 3;
   }
@@ -45,8 +45,9 @@ int KnossosArchive::Open(std::string filename) {
   std::deque<std::string> path_stack;
 
   for (int i = 0; i < index_count; i++) {
-    int32_t offset, size, dec_size, timestamp;
-    char raw_name[32];
+    int32_t offset, size, dec_size;
+    int16_t name_len;
+    char raw_name[2048];
 
     if (!_hdl.read(reinterpret_cast<char*>(&offset), sizeof offset)) {
       _hdl.close();
@@ -60,26 +61,22 @@ int KnossosArchive::Open(std::string filename) {
       _hdl.close();
       return 4;
     }
-    if (!_hdl.read(raw_name, 32)) {
+    if (!_hdl.read(reinterpret_cast<char*>(&name_len), sizeof name_len)) {
       _hdl.close();
       return 4;
     }
-    if (!_hdl.read(reinterpret_cast<char*>(&timestamp), sizeof timestamp)) {
+    if (name_len > 2048) {
+      return 5;
+    }
+    if (!_hdl.read(raw_name, name_len)) {
       _hdl.close();
       return 4;
     }
 
-    int name_len = 0;
-    for (int a = 0; a < 32; a++) {
-      if (raw_name[a] == 0) {
-        name_len = a;
-        break;
-      }
-    }
     std::string name(raw_name, name_len);
 
-    if (timestamp == 0) {
-      if (size != 0) {
+    if (size == 0) {
+      if (dec_size != 0) {
         LOG(ERROR) << "Invalid directory entry \"" << name << "\"!";
         continue;
       }
