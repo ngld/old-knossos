@@ -2,6 +2,7 @@
 #define KNOSSOS_LAUNCHER_BROWSER_KNOSSOS_RESOURCE_HANDLER
 
 #include "include/cef_resource_request_handler.h"
+#include "dynknossos.h"
 
 class KnossosResourceHandler : public CefResourceRequestHandler,
                                public CefResourceHandler {
@@ -23,7 +24,10 @@ class KnossosResourceHandler : public CefResourceRequestHandler,
   virtual bool Read(void* data_out, int bytes_to_read, int& bytes_read, CefRefPtr<CefResourceReadCallback> callback) OVERRIDE;
 
 private:
-  uint8_t res_handle;
+  size_t pos;
+  KnossosResponse* kn_response;
+
+  void SetStringResponse(int status, std::string message);
 
 IMPLEMENT_REFCOUNTING(KnossosResourceHandler);
 };

@@ -57,8 +57,15 @@ func genLoader(headerFile, dynHeader string) error {
 	header.WriteString("#define KNOSSOS_BRAIN_LOADER\n\n")
 
 	headerLines := strings.Split(string(headerContent), "\n")
+	inPreamble := false
 	for _, line := range headerLines {
-		if strings.HasPrefix(line, "#define ") ||
+		if inPreamble && !strings.HasPrefix(line, "extern ") {
+			if line == "/* End of preamble from import \"C\" comments.  */" {
+				inPreamble = false
+			} else {
+				header.WriteString(line + "\n")
+			}
+		} else if strings.HasPrefix(line, "#define ") ||
 			strings.HasPrefix(line, "typedef ") ||
 			strings.HasPrefix(line, "#include ") ||
 			strings.HasPrefix(line, "//") {
@@ -96,6 +103,8 @@ func genLoader(headerFile, dynHeader string) error {
 			loaderFunc.WriteString(") LOAD_SYM(lib, \"")
 			loaderFunc.WriteString(funcName)
 			loaderFunc.WriteString("\");\n")
+		} else if line == "/* Start of preamble from import \"C\" comments.  */" {
+			inPreamble = true
 		}
 	}
 

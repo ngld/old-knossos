@@ -223,10 +223,11 @@ CefRefPtr<CefResourceRequestHandler> KnossosHandler::GetResourceRequestHandler(
     disable_default_handling = true;
     LOG(WARNING) << "Aborted download " << request->GetURL() << " from " << request_initiator;
   } else {
-    LOG(INFO) << "Request " << request->GetURL() << " from " << request_initiator << " (" << request->GetReferrerURL() << ")";
+    std::string url = request->GetURL();
+    if (url.substr(0, 11) != "devtools://")
+      LOG(INFO) << "Request " << request->GetURL() << " from " << request_initiator << " (" << request->GetReferrerURL() << ")";
 
     if (!request_initiator.empty()) {
-      std::string url = request->GetURL();
       if (url.substr(0, 34) == "https://files.client.fsnebula.org/") {
         return new KnossosArchiveHandler(_resources, 34);
       }

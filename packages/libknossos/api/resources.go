@@ -1,6 +1,23 @@
 package main
 
+//#include <stdlib.h>
 //#include <stdint.h>
+//#include <string.h>
+//
+//typedef struct {
+//	char* header_name;
+//  size_t header_len;
+//  char* value;
+//  size_t value_len;
+//} KnossosHeader;
+//
+//typedef struct {
+//  int status_code;
+//	void* response_data;
+//  size_t response_length;
+//  KnossosHeader* headers;
+//  uint8_t header_count;
+//} KnossosResponse;
 //
 //typedef void (*KnossosLogCallback)(uint8_t level, char* message, int length);
 //
@@ -8,6 +25,42 @@ package main
 //static void call_log_cb(KnossosLogCallback cb, uint8_t level, char* message, int length) {
 //	cb(level, message, length);
 //}
+//
+//static KnossosResponse* make_response() {
+//  return (KnossosResponse*) malloc(sizeof(KnossosResponse));
+//}
+//
+//static KnossosHeader* make_header_array(uint8_t length) {
+//  return (KnossosHeader*) malloc(sizeof(KnossosHeader) * length);
+//}
+//
+//static void set_header(KnossosHeader* harray, uint8_t idx, _GoString_ name, _GoString_ value) {
+//  KnossosHeader* hdr = &harray[idx];
+//  hdr->header_len = _GoStringLen(name);
+//  hdr->header_name = (char*)malloc(hdr->header_len);
+//  memcpy(hdr->header_name, _GoStringPtr(name), hdr->header_len);
+//
+//  hdr->value_len = _GoStringLen(value);
+//  hdr->value = (char*)malloc(hdr->value_len);
+//  memcpy(hdr->value, _GoStringPtr(value), hdr->value_len);
+//}
+//
+//static void set_body(KnossosResponse* response, _GoString_ body) {
+//  response->response_data = (void*)_GoStringPtr(body);
+//  response->response_length = _GoStringLen(body);
+//}
+//
+//void KnossosFreeKnossosResponse(KnossosResponse* response) {
+//  for (int i = 0; i < response->header_count; i++) {
+//    KnossosHeader hdr = response->headers[i];
+//    free(hdr.header_name);
+//    free(hdr.value);
+//  }
+//  free(response->headers);
+//  free(response);
+//}
+//#else
+//extern void KnossosFreeKnossosResponse(KnossosResponse* response);
 //#endif
 //
 //#define KNOSSOS_LOG_INFO 1
@@ -19,22 +72,13 @@ import "C"
 import (
 	"fmt"
 	"io"
-	"path/filepath"
-	"strings"
-)
-
-type resourceType int8
-
-const (
-	fileType resourceType = iota + 1
-	apiType
+	"unsafe"
 )
 
 type resource struct {
 	Handle io.Reader
 	URL    string
 	Path   string
-	Type   resourceType
 }
 
 type logLevel C.uint8_t
@@ -47,11 +91,9 @@ const (
 )
 
 var (
-	ready         = false
-	staticRoot    string
-	logCb         C.KnossosLogCallback
-	handleCounter = C.uint16_t(1)
-	memPool       = map[C.uint16_t]*resource{}
+	ready      = false
+	staticRoot string
+	logCb      C.KnossosLogCallback
 )
 
 func log(level logLevel, msg string, args ...interface{}) {
@@ -69,56 +111,18 @@ func KnossosInit(staticRootChars *C.char, staticRootLen C.int, logFunc C.Knossos
 	return true
 }
 
-//KnossosShouldHandleResource returns true if the passed URL is handled by this module
-//export KnossosShouldHandleResource
-func KnossosShouldHandleResource(urlPtr *C.char, urlLen C.size_t) C.uint16_t {
-	if !ready {
-		log(logFatal, "KnossosShouldHandleResource called before KnossosInit!")
-		return 0
-	}
+//KnossosHandleRequest handles an incoming request from CEF
+//export KnossosHandleRequest
+func KnossosHandleRequest(urlPtr *C.char, urlLen C.size_t, bodyPtr unsafe.Pointer, bodyLen C.size_t) *C.KnossosResponse {
+	resp := C.make_response()
+	resp.status_code = 200
+	resp.header_count = 1
+	resp.headers = C.make_header_array(1)
 
-	url := C.GoStringN(urlPtr, C.int(urlLen))
-	info := new(resource)
-	info.URL = url
+	C.set_header(resp.headers, 0, "Content-Type", "text/plain")
+	C.set_body(resp, "Hello World")
 
-	if strings.HasPrefix(url, "https://files.client.fsnebula.org/") {
-		info.Type = fileType
-		info.Path = filepath.Join(staticRoot, url[34:])
-	}
-
-	if strings.HasPrefix(url, "https://api.client.fsnebula.org/") {
-		info.Type = apiType
-		info.Path = url[32:]
-	}
-
-	handle := handleCounter
-	handleCounter++
-	memPool[handle] = info
-	return C.uint16_t(handle)
-}
-
-//KnossosGetResourceSize returns the expected resource size or -1 if it's unknown.
-//export KnossosGetResourceSize
-func KnossosGetResourceSize(handle C.uint16_t) C.int {
-	if !ready {
-		log(logFatal, "KnossosGetResourceSize called before KnossosInit!")
-		return 0
-	}
-
-	_, found := memPool[handle]
-	if !found {
-		log(logFatal, "KnossosGetResourceSize called with invalid handle")
-		return 0
-	}
-
-	return 1
-}
-
-//KnossosFree should be called once a resource pointer isn't needed anymore
-//export KnossosFree
-func KnossosFree(handle C.uint16_t) {
-	log(logLevel(logInfo), "Freeing request for %s", memPool[handle].URL)
-	delete(memPool, handle)
+	return resp
 }
 
 func main() {}
