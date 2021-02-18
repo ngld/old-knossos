@@ -16,10 +16,10 @@ tasks:
 
   build-tool:
     desc: Build our build tool
-    sources:
-      - packages/build-tools/**/*.go
-      - packages/libknossos/pkg/archives/*.go
     dir: packages/build-tools
+    sources:
+      - '**/*.go'
+      - ../libknossos/pkg/archives/*.go
     cmds:
       - go build -o ../../.tools/tool{{exeExt}}
 
@@ -59,18 +59,24 @@ tasks:
     cmds:
       - task: fetch-deps
       - task: install-tools
+      - protoc -Ipackages/api/definitions client.proto --go_out=packages/api/client --go_opt=paths=source_relative --twirp_out=packages/api/twirp
+      - protoc -Ipackages/api/definitions service.proto --go_out=packages/api/api --go_opt=paths=source_relative --twirp_out=packages/api/twirp
+      # twirp doesn't support go.mod paths so we have to move the generated files to the correct location
+      - mv packages/api/twirp/github.com/ngld/knossos/packages/api/api/*.go packages/api/api
+      - mv packages/api/twirp/github.com/ngld/knossos/packages/api/client/*.go packages/api/client
+      - rm -r packages/api/twirp
       - yarn protoc google/protobuf/timestamp.proto --ts_out=packages/api/api
-      - yarn protoc -Ipackages/api/definitions mod.proto --ts_out=packages/api/api
+      - yarn protoc -Ipackages/api/definitions client.proto --ts_out=packages/api/api
       - yarn protoc -Ipackages/api/definitions service.proto --ts_out=packages/api/api
 
   server-build:
     desc: Compiles the Nebula server code
-    sources:
-      - packages/server/cmd/**/*.go
-      - packages/server/pkg/**/*.go
-    generates:
-      - build/nebula
     dir: packages/server
+    sources:
+      - cmd/**/*.go
+      - pkg/**/*.go
+    generates:
+      - ../../build/nebula
     cmds:
       - task: proto-build
       - go generate -x ./pkg/db/queries.go
@@ -84,25 +90,25 @@ tasks:
 
   front-css:
     desc: Compiles Tailwind CSS for Nebula (only rarely necessary)
-    sources:
-      - packages/front/src/tw-index.css
-      - packages/front/tailwind.config.js
-    generates:
-      - packages/front/gen/tw-index.css
     dir: packages/front
+    sources:
+      - src/tw-index.css
+      - tailwind.config.js
+    generates:
+      - gen/tw-index.css
     cmds:
       - yarn postcss src/tw-index.css -o gen/tw-index.css
 
   front-build:
     desc: Builds the assets for Nebula's frontend
-    sources:
-      - packages/front/src/**/*.ts
-      - packages/front/src/**/*.tsx
-      - packages/front/src/**/*.js
-      - packages/front/src/**/*.css
-    generates:
-      - packages/front/dist/**/*
     dir: packages/front
+    sources:
+      - src/**/*.ts
+      - src/**/*.tsx
+      - src/**/*.js
+      - src/**/*.css
+    generates:
+      - dist/**/*
     cmds:
       - NODE_ENV=production yarn postcss src/tw-index.css -o gen/tw-index.css
       - yarn webpack --env production --color --progress
@@ -111,32 +117,31 @@ tasks:
     desc: Automatically recompiles Knossos UI code on change
     cmds:
       - task: client-ui-css
-      - yarn client-ui:watch
+      - yarn client:watch
 
   client-ui-css:
     desc: Compiles Tailwind CSS for Knossos (only rarely necessary)
-    sources:
-      - packages/client-ui/src/tw-index.css
-      - packages/client-ui/tailwind.config.js
-    generates:
-      - packages/client-ui/gen/tw-index.css
     dir: packages/client-ui
+    sources:
+      - src/tw-index.css
+      - tailwind.config.js
     cmds:
       - yarn postcss src/tw-index.css -o gen/tw-index.css
 
   client-ui-build:
     desc: Builds the assets for Nebula's client-uiend
+    dir: packages/client-ui
     sources:
-      - packages/client-ui/src/**/*.ts
-      - packages/client-ui/src/**/*.tsx
-      - packages/client-ui/src/**/*.js
-      - packages/client-ui/src/**/*.css
+      - src/**/*.ts
+      - src/**/*.tsx
+      - src/**/*.js
+      - src/**/*.css
     generates:
-      - packages/client-ui/dist/**/*
+      - dist/**/*
     vars:
       res_dir: '{{if eq OS "darwin"}}knossos.app/Contents/Frameworks/Chromium Embedded Framework.framework/Resources/{{end}}'
-    dir: packages/client-ui
     cmds:
+      - task: build-tool
       - NODE_ENV=production yarn postcss src/tw-index.css -o gen/tw-index.css
       - yarn webpack --env production --color --progress
       - tool pack-kar "../../build/client/launcher/{{.build}}/{{.res_dir}}ui.kar" dist/prod
@@ -154,14 +159,14 @@ tasks:
 
   libknossos-build:
     desc: Builds libknossos (client-side, non-UI logic)
+    dir: packages/libknossos
     sources:
-      - .tools/tool{{exeExt}}
-      - packages/libknossos/api/**/*.go
-      - packages/libknossos/pkg/**/*.go
+      - ../../.tools/tool{{exeExt}}
+      - '**/*.go'
     vars:
       OUTPATH: ../../build/libknossos/libknossos.{{.LIBEXT}}
-    dir: packages/libknossos
     cmds:
+      - task: build-tool
       - task: libarchive-build
       - task: proto-build
       - go build -o {{.OUTPATH}} -buildmode c-shared ./api
@@ -191,7 +196,15 @@ tasks:
     vars:
       KN_BIN: ./launcher/{{.build}}/knossos
       KN_BIN_OSX: ./launcher/{{.build}}/knossos.app/Contents/MacOS/knossos
+      args: '{{default "" .args}}'
     dir: build/client
     cmds:
       - task: client-build
-      - '{{if eq OS "darwin"}}{{.KN_BIN_OSX}}{{else}}{{.KN_BIN}}{{end}}'
+      - '{{if eq OS "darwin"}}{{.KN_BIN_OSX}}{{else}}{{.KN_BIN}}{{end}} {{.args}}'
+
+  client-watch:
+    deps:
+      - client-ui-watch
+      - task: client-run
+        vars:
+          args: '--url="http://localhost:9000/"'
