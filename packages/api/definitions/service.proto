@@ -3,7 +3,6 @@ option go_package = "github.com/ngld/knossos/packages/api/api";
 package ngld.knossos;
 
 import "google/protobuf/timestamp.proto";
-import "mod.proto";
 
 // General types
 

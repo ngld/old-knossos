@@ -1,0 +1,22 @@
+syntax = "proto3";
+option go_package = "github.com/ngld/knossos/packages/api/client";
+package ngld.knossos;
+
+import "google/protobuf/timestamp.proto";
+
+// Common types
+
+message NullMessage {}
+
+
+// RPC types
+
+message WakeupResponse {
+  bool success = 1;
+  string version = 2;
+  string os = 3;
+}
+
+service Knossos {
+  rpc Wakeup (NullMessage) returns (WakeupResponse) {};
+}

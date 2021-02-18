@@ -71,18 +71,22 @@ bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
     CefPostData::ElementVector body;
     post_data->GetElements(body);
 
-    if (body.size() != 1) {
-      LOG(ERROR) << "Expected one body part on request " << url << " but found " << body.size() << "!";
-      SetStringResponse(400, "Not exactly one body part");
+    if (body.size() > 1) {
+      LOG(ERROR) << "Expected at most one body part on request " << url << " but found " << body.size() << "!";
+      SetStringResponse(400, "More than one body part");
       return true;
     }
 
-    size_t body_size = body[0]->GetBytesCount();
-    void* body_contents = std::malloc(body_size);
-    auto bytes_read = body[0]->GetBytes(body_size, body_contents);
+    size_t body_size = 0;
+    void* body_contents = 0;
+    if (body.size() > 0) {
+      body_size = body[0]->GetBytesCount();
+      body_contents = std::malloc(body_size);
+      auto bytes_read = body[0]->GetBytes(body_size, body_contents);
 
-    if (bytes_read != body_size) {
-      LOG(WARNING) << "Incomplete body read for request " << url << ": Read " << bytes_read << " out of " << body_size << ".";
+      if (bytes_read != body_size) {
+        LOG(WARNING) << "Incomplete body read for request " << url << ": Read " << bytes_read << " out of " << body_size << ".";
+      }
     }
 
     kn_response = KnossosHandleRequest((char*)url.c_str(), url.size(), body_contents, body_size);

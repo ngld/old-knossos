@@ -71,15 +71,13 @@ import "C"
 
 import (
 	"fmt"
-	"io"
+	"net/http"
+	"net/url"
+	"strings"
 	"unsafe"
-)
 
-type resource struct {
-	Handle io.Reader
-	URL    string
-	Path   string
-}
+	"github.com/ngld/knossos/packages/libknossos/pkg/twirp"
+)
 
 type logLevel C.uint8_t
 
@@ -94,6 +92,7 @@ var (
 	ready      = false
 	staticRoot string
 	logCb      C.KnossosLogCallback
+	server     http.Handler
 )
 
 func log(level logLevel, msg string, args ...interface{}) {
@@ -107,20 +106,59 @@ func KnossosInit(staticRootChars *C.char, staticRootLen C.int, logFunc C.Knossos
 	staticRoot = C.GoStringN(staticRootChars, staticRootLen)
 	logCb = logFunc
 	ready = true
+	var err error
+	server, err = twirp.NewServer()
+	if err != nil {
+		log(logError, "Failed to init twirp: %+v", err)
+		return false
+	}
 
 	return true
 }
 
 //KnossosHandleRequest handles an incoming request from CEF
 //export KnossosHandleRequest
-func KnossosHandleRequest(urlPtr *C.char, urlLen C.size_t, bodyPtr unsafe.Pointer, bodyLen C.size_t) *C.KnossosResponse {
+func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, bodyLen C.int) *C.KnossosResponse {
+	body := C.GoBytes(bodyPtr, bodyLen)
+	reqURL, err := url.Parse(C.GoStringN(urlPtr, urlLen))
+	if err == nil {
+		req := http.Request{
+			Method: "POST",
+			URL:    reqURL,
+			Header: http.Header{
+				"Content-Type": []string{"application/protobuf"},
+			},
+			Body: newByteBufferCloser(body),
+		}
+
+		twirpResp := newMemoryResponse()
+		server.ServeHTTP(twirpResp, &req)
+
+		resp := C.make_response()
+		resp.status_code = C.int(twirpResp.statusCode)
+		resp.header_count = C.uint8_t(len(twirpResp.headers))
+		resp.headers = C.make_header_array(resp.header_count)
+
+		idx := C.uint8_t(0)
+		for k, v := range twirpResp.headers {
+			C.set_header(resp.headers, idx, k, strings.Join(v, ", "))
+			idx++
+		}
+
+		body := twirpResp.resp.Bytes()
+		resp.response_data = C.CBytes(body)
+		resp.response_length = C.size_t(len(body))
+
+		return resp
+	}
+
 	resp := C.make_response()
-	resp.status_code = 200
+	resp.status_code = 503
 	resp.header_count = 1
 	resp.headers = C.make_header_array(1)
 
 	C.set_header(resp.headers, 0, "Content-Type", "text/plain")
-	C.set_body(resp, "Hello World")
+	C.set_body(resp, fmt.Sprintf("Error: %+v", err))
 
 	return resp
 }
