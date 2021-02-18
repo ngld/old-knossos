@@ -119,13 +119,13 @@ jobs:
         run: ./task.sh client-ui-build build=Release
 
       - name: Compress final build
-        run: cd build/client/launcher/Release && tar -cf - . | zstd > Knossos.tar.zstd
+        run: cd build/client/launcher/Release && tar -cf - . | zstd > ../Knossos.tar.zstd
 
       - name: Upload build
         uses: actions/upload-artifact@v2
         with:
           name: ubuntu-x64
-          path: build/client/launcher/Release/Knossos.tar.zstd
+          path: build/client/launcher/Knossos.tar.zstd
 
   darwin-x64:
     name: macOS 10.15 x64

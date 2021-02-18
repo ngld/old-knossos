@@ -64,7 +64,7 @@ tasks:
       # twirp doesn't support go.mod paths so we have to move the generated files to the correct location
       - mv packages/api/twirp/github.com/ngld/knossos/packages/api/api/*.go packages/api/api
       - mv packages/api/twirp/github.com/ngld/knossos/packages/api/client/*.go packages/api/client
-      - rm -r packages/api/twirp
+      - rm -r packages/api/twirp/github.com
       - yarn protoc google/protobuf/timestamp.proto --ts_out=packages/api/api
       - yarn protoc -Ipackages/api/definitions client.proto --ts_out=packages/api/api
       - yarn protoc -Ipackages/api/definitions service.proto --ts_out=packages/api/api
