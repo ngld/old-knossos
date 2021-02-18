@@ -19,3 +19,5 @@ require (
 )
 
 replace github.com/ngld/knossos/packages/libknossos => ../libknossos
+
+replace github.com/ngld/knossos/packages/api => ../api
