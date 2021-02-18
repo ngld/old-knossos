@@ -57,15 +57,15 @@ type KnStruct struct {
 		Logo          string
 		Tile          string
 		Banner        string
-		ReleaseThread string
+		ReleaseThread string `json:"release_thread"`
 		Screenshots   []string
 		Videos        []string
 		Notes         string
 		Folder        string
-		FirstRelease  string
-		LastUpdate    string
+		FirstRelease  string `json:"first_release"`
+		LastUpdate    string `json:"last_update"`
 		Cmdline       string
-		ModFlag       []string
+		ModFlag       []string `json:"mod_flag"`
 		Type          string
 		Packages      []KnPackage
 	}
