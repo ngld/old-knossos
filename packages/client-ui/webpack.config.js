@@ -16,7 +16,7 @@ module.exports = function (env, args) {
 
   const baseConfig = {
     mode: production ? 'production' : 'development',
-    devtool: production ? 'source-map' : 'eval',
+    devtool: production ? false : 'eval',
     entry: './src/index.tsx',
     output: {
       filename: production

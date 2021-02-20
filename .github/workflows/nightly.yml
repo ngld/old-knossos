@@ -39,7 +39,9 @@ jobs:
             packages/build-tools/DEPS.stamps
 
       - name: Install dependencies
-        run: task install-tools fetch-deps
+        run: |
+          task install-tools fetch-deps
+          chmod a+x third_party/protoc-dist/protoc
 
       - name: Install Node.js packages
         run: yarn install
