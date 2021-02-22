@@ -6,6 +6,7 @@
 #define CEF_TESTS_CEFSIMPLE_SIMPLE_APP_H_
 
 #include "include/cef_app.h"
+#include "renderer/knossos_js_interface.h"
 
 // Implement application-level callbacks for the browser process.
 class KnossosApp : public CefApp, public CefBrowserProcessHandler, public CefRenderProcessHandler {
@@ -28,6 +29,7 @@ class KnossosApp : public CefApp, public CefBrowserProcessHandler, public CefRen
 #ifndef OS_MAC
   // CefRenderProcessHandler methods:
   virtual void OnWebKitInitialized() OVERRIDE;
+  virtual bool OnProcessMessageReceived(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefProcessId source_process, CefRefPtr<CefProcessMessage> message) OVERRIDE;
 #endif
 
   void InitializeSettings(CefSettings &settings, std::string appDataPath);

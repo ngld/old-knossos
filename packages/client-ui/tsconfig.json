@@ -11,7 +11,8 @@
     "paths": {
       "@api/*": ["../api/api/*"],
     },
-    "typeRoots": ["node_modules/@types", "../front/types"]
+    "typeRoots": ["node_modules/@types", "../front/types"],
+    "types": ["node"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
 }

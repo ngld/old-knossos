@@ -34,6 +34,7 @@ set(KNOSSOS_SRCS
   knossos_app.cc
   browser/knossos_archive_handler.cc
   browser/knossos_archive.cc
+  browser/knossos_bridge.cc
   browser/knossos_handler.cc
   browser/knossos_resource_handler.cc
   ../../../build/libknossos/dynknossos.cc

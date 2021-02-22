@@ -6,24 +6,29 @@ package main
 //
 //typedef struct {
 //	char* header_name;
-//  size_t header_len;
 //  char* value;
+//  size_t header_len;
 //  size_t value_len;
 //} KnossosHeader;
 //
 //typedef struct {
-//  int status_code;
-//	void* response_data;
-//  size_t response_length;
 //  KnossosHeader* headers;
+//	void* response_data;
+//  int status_code;
 //  uint8_t header_count;
+//  size_t response_length;
 //} KnossosResponse;
 //
 //typedef void (*KnossosLogCallback)(uint8_t level, char* message, int length);
+//typedef void (*KnossosMessageCallback)(void* message, int length);
 //
 //#ifndef GO_CGO_EXPORT_PROLOGUE_H
 //static void call_log_cb(KnossosLogCallback cb, uint8_t level, char* message, int length) {
 //	cb(level, message, length);
+//}
+//
+//static void call_message_cb(KnossosMessageCallback cb, void* message, int length) {
+//  cb(message, length);
 //}
 //
 //static KnossosResponse* make_response() {
@@ -46,17 +51,19 @@ package main
 //}
 //
 //static void set_body(KnossosResponse* response, _GoString_ body) {
-//  response->response_data = (void*)_GoStringPtr(body);
 //  response->response_length = _GoStringLen(body);
+//  response->response_data = (void*)malloc(response->response_length);
+//  memcpy(response->response_data, _GoStringPtr(body), response->response_length);
 //}
 //
 //void KnossosFreeKnossosResponse(KnossosResponse* response) {
 //  for (int i = 0; i < response->header_count; i++) {
-//    KnossosHeader hdr = response->headers[i];
-//    free(hdr.header_name);
-//    free(hdr.value);
+//    KnossosHeader *hdr = &response->headers[i];
+//    free(hdr->header_name);
+//    free(hdr->value);
 //  }
 //  free(response->headers);
+//  free(response->response_data);
 //  free(response);
 //}
 //#else
@@ -70,69 +77,78 @@ package main
 import "C"
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"unsafe"
 
+	"github.com/ngld/knossos/packages/api/client"
+	"github.com/ngld/knossos/packages/libknossos/pkg/api"
 	"github.com/ngld/knossos/packages/libknossos/pkg/twirp"
-)
-
-type logLevel C.uint8_t
-
-const (
-	logInfo  = logLevel(C.KNOSSOS_LOG_INFO)
-	logWarn  = logLevel(C.KNOSSOS_LOG_WARNING)
-	logError = logLevel(C.KNOSSOS_LOG_ERROR)
-	logFatal = logLevel(C.KNOSSOS_LOG_FATAL)
+	"github.com/rotisserie/eris"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
-	ready      = false
+	ready       = false
+	logLevelMap = map[api.LogLevel]C.uint8_t{
+		api.LogInfo:  C.KNOSSOS_LOG_INFO,
+		api.LogWarn:  C.KNOSSOS_LOG_WARNING,
+		api.LogError: C.KNOSSOS_LOG_ERROR,
+		api.LogFatal: C.KNOSSOS_LOG_FATAL,
+	}
+
 	staticRoot string
 	logCb      C.KnossosLogCallback
+	messageCb  C.KnossosMessageCallback
 	server     http.Handler
 )
 
-func log(level logLevel, msg string, args ...interface{}) {
+func Log(level api.LogLevel, msg string, args ...interface{}) {
 	finalMsg := fmt.Sprintf(msg, args...)
-	C.call_log_cb(logCb, C.uint8_t(level), C.CString(finalMsg), C.int(len(finalMsg)))
+	cMsg := C.CString(finalMsg)
+
+	C.call_log_cb(logCb, logLevelMap[level], cMsg, C.int(len(finalMsg)))
+	C.free(unsafe.Pointer(cMsg))
 }
 
-//KnossosInit has to be called exactly once before calling any other exported function.
+// KnossosInit has to be called exactly once before calling any other exported function.
 //export KnossosInit
-func KnossosInit(staticRootChars *C.char, staticRootLen C.int, logFunc C.KnossosLogCallback) bool {
+func KnossosInit(staticRootChars *C.char, staticRootLen C.int, logFunc C.KnossosLogCallback, messageFunc C.KnossosMessageCallback) bool {
 	staticRoot = C.GoStringN(staticRootChars, staticRootLen)
 	logCb = logFunc
+	messageCb = messageFunc
 	ready = true
+
 	var err error
 	server, err = twirp.NewServer()
 	if err != nil {
-		log(logError, "Failed to init twirp: %+v", err)
+		Log(api.LogError, "Failed to init twirp: %+v", err)
 		return false
 	}
 
 	return true
 }
 
-//KnossosHandleRequest handles an incoming request from CEF
+// KnossosHandleRequest handles an incoming request from CEF
 //export KnossosHandleRequest
 func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, bodyLen C.int) *C.KnossosResponse {
 	body := C.GoBytes(bodyPtr, bodyLen)
-	reqURL, err := url.Parse(C.GoStringN(urlPtr, urlLen))
-	if err == nil {
-		req := http.Request{
-			Method: "POST",
-			URL:    reqURL,
-			Header: http.Header{
-				"Content-Type": []string{"application/protobuf"},
-			},
-			Body: newByteBufferCloser(body),
-		}
+	reqURL := C.GoStringN(urlPtr, urlLen)
 
+	ctx, cancel := context.WithCancel(context.Background())
+
+	ctx = api.WithKnossosContext(ctx, Log, DispatchMessage)
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewReader(body))
+	req.Header["Content-Type"] = []string{"application/protobuf"}
+
+	if err == nil {
 		twirpResp := newMemoryResponse()
-		server.ServeHTTP(twirpResp, &req)
+		server.ServeHTTP(twirpResp, req)
+		// Cancel any background operation still attached to the request context
+		cancel()
 
 		resp := C.make_response()
 		resp.status_code = C.int(twirpResp.statusCode)
@@ -152,6 +168,9 @@ func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, 
 		return resp
 	}
 
+	// Cleanup the unused context
+	cancel()
+
 	resp := C.make_response()
 	resp.status_code = 503
 	resp.header_count = 1
@@ -161,6 +180,19 @@ func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, 
 	C.set_body(resp, fmt.Sprintf("Error: %+v", err))
 
 	return resp
+}
+
+// DispatchMessage forwards the passed message to the hosting application
+func DispatchMessage(event *client.ClientSentEvent) error {
+	data, err := proto.Marshal(event)
+	if err != nil {
+		return eris.Wrap(err, "Failed to marshal event")
+	}
+
+	dataPtr := C.CBytes(data)
+	C.call_message_cb(messageCb, dataPtr, C.int(len(data)))
+	C.free(dataPtr)
+	return nil
 }
 
 func main() {}

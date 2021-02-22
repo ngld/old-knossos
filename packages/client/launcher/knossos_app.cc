@@ -6,20 +6,21 @@
 
 #include <cstdio>
 #include <string>
-#include <sys/stat.h>
 
 #include "include/cef_browser.h"
 #include "include/cef_command_line.h"
 #include "include/cef_file_util.h"
 #include "include/cef_path_util.h"
-#include "include/internal/cef_types.h"
+#include "include/cef_process_message.h"
+#include "include/cef_values.h"
 #include "include/views/cef_browser_view.h"
 #include "include/views/cef_window.h"
 #include "include/wrapper/cef_helpers.h"
 #include "include/wrapper/cef_closure_task.h"
+
 #include "browser/knossos_handler.h"
+#include "browser/knossos_bridge.h"
 #include "renderer/knossos_js_interface.h"
-#include "dynknossos.h"
 
 namespace {
 
@@ -83,63 +84,13 @@ class KnossosBrowserViewDelegate : public CefBrowserViewDelegate {
   DISALLOW_COPY_AND_ASSIGN(KnossosBrowserViewDelegate);
 };
 
-static void KnossosLogger(uint8_t level, char* message, int length) {
-  std::string msg((const char*)message, length);
-  switch (level) {
-  case KNOSSOS_LOG_INFO:
-    LOG(INFO) << msg;
-    break;
-  case KNOSSOS_LOG_WARNING:
-    LOG(WARNING) << msg;
-    break;
-  case KNOSSOS_LOG_ERROR:
-    LOG(ERROR) << msg;
-    break;
-  case KNOSSOS_LOG_FATAL:
-    LOG(FATAL) << msg;
-    break;
-  default:
-    LOG(FATAL) << "Invalid log level passed to KnossosLogger: " << level;
-  }
-}
-
-static void PrepareKnossos() {
-#if defined(OS_WIN)
-  std::string libknossos_path("libknossos.dll");
-#elif defined(OS_LINUX)
-  std::string libknossos_path("libknossos.so");
-#elif defined(OS_MAC)
-  std::string libknossos_path("./libknossos.dylib");
-  CefString exe_dir;
-  if (CefGetPath(PK_DIR_EXE, exe_dir)) {
-    libknossos_path = exe_dir;
-    libknossos_path += "/libknossos.dylib";
-  }
-#endif
-
-  CefString resource_path;
-  if (!CefGetPath(PK_DIR_RESOURCES, resource_path)) {
-    LOG(FATAL) << "Resource directory not found";
-  }
-
-  char* error;
-  if (!LoadKnossos(libknossos_path.c_str(), &error)) {
-    LOG(FATAL) << "Failed to load libknossos: " << error;
-  }
-
-  std::string path_conv = resource_path;
-  if (!KnossosInit((char*)path_conv.c_str(), (int)path_conv.size(), &KnossosLogger)) {
-    LOG(FATAL) << "Failed to initialize libknossos";
-  }
-}
-
 }  // namespace
 
 KnossosApp::KnossosApp() {}
 
 void KnossosApp::OnBeforeCommandLineProcessing(const CefString& process_type, CefRefPtr<CefCommandLine> command_line) {
   if (process_type.empty()) {
-    // Don't create a "GPUCache" directory when cache-path is unspecified.
+    // Don't create a "GPUCache" directory
     command_line->AppendSwitch("disable-gpu-shader-disk-cache");
 
 #if defined(OS_MAC)
@@ -212,7 +163,7 @@ void KnossosApp::OnContextInitialized() {
                                   nullptr, nullptr);
   }
 
-  CefPostTask(TID_IO, base::Bind(PrepareKnossos));
+  CefPostTask(TID_IO, base::Bind(PrepareLibKnossos));
 }
 
 void KnossosApp::InitializeSettings(CefSettings &settings, std::string appDataPath) {
@@ -256,6 +207,15 @@ void KnossosApp::InitializeSettings(CefSettings &settings, std::string appDataPa
 }
 
 #ifndef OS_APPLE
+
+// Keep in sync with knossos_helper_app.cc
+bool KnossosApp::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
+                                                CefRefPtr<CefFrame> frame,
+                                                CefProcessId source_process,
+                                                CefRefPtr<CefProcessMessage> message
+) {
+  return KnossosJsInterface::ProcessMessage(browser, frame, source_process, message);
+}
 
 // Keep in sync with knossos_helper_app.cc
 void KnossosApp::OnWebKitInitialized()

@@ -1,20 +1,17 @@
 #ifndef KNOSSOS_KNOSSOS_JS_INTERFACE
 #define KNOSSOS_KNOSSOS_JS_INTERFACE
 
-#include "include/cef_v8.h"
+#include <vector>
 
-class KnossosJsInterface : public CefV8Handler
+#include "include/base/cef_lock.h"
+#include "include/cef_v8.h"
+#include "include/internal/cef_ptr.h"
+
+class KnossosJsInterface
 {
 public:
-  KnossosJsInterface() {};
-
-  bool Execute(const CefString& name, CefRefPtr<CefV8Value> object, const CefV8ValueList& arguments, CefRefPtr<CefV8Value>& retval, CefString& exception) OVERRIDE;
-
   static void Init();
-
-private:
-  // Include the default reference counting implementation.
-  IMPLEMENT_REFCOUNTING(KnossosJsInterface);
+  static bool ProcessMessage(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefProcessId source_process, CefRefPtr<CefProcessMessage> message);
 };
 
 #endif /* KNOSSOS_KNOSSOS_JS_INTERFACE */

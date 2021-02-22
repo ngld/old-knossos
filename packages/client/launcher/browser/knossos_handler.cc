@@ -9,6 +9,8 @@
 #include "include/cef_app.h"
 #include "include/cef_parser.h"
 #include "include/cef_path_util.h"
+#include "include/cef_process_message.h"
+#include "include/internal/cef_ptr.h"
 #include "include/views/cef_browser_view.h"
 #include "include/views/cef_window.h"
 #include "include/cef_menu_model.h"
@@ -23,6 +25,7 @@ namespace {
 KnossosHandler* g_instance = nullptr;
 
 const int kDevToolsMenuItem = MENU_ID_USER_FIRST;
+const int kReloadMenuItem = MENU_ID_USER_FIRST + 1;
 
 // Returns a data: URI with the specified contents.
 std::string GetDataURI(const std::string& data, const std::string& mime_type) {
@@ -185,6 +188,7 @@ void KnossosHandler::OnBeforeContextMenu(CefRefPtr<CefBrowser> browser,
                                          CefRefPtr<CefMenuModel> model) {
   model->AddSeparator();
   model->AddItem(kDevToolsMenuItem, "Show DevTools");
+  model->AddItem(kReloadMenuItem, "Reload");
 }
 
 bool KnossosHandler::OnContextMenuCommand(CefRefPtr<CefBrowser> browser,
@@ -192,9 +196,13 @@ bool KnossosHandler::OnContextMenuCommand(CefRefPtr<CefBrowser> browser,
                                           CefRefPtr<CefContextMenuParams> params,
                                           int command_id,
                                           CefContextMenuHandler::EventFlags event_flags) {
-  if (command_id == kDevToolsMenuItem) {
-    ShowDevTools(browser);
-    return true;
+  switch (command_id) {
+    case kDevToolsMenuItem:
+      ShowDevTools(browser);
+      return true;
+    case kReloadMenuItem:
+      browser->Reload();
+      return true;
   }
 
   return false;
@@ -261,4 +269,10 @@ void KnossosHandler::ShowDevTools(CefRefPtr<CefBrowser> browser) {
 #endif
 
   browser->GetHost()->ShowDevTools(window_info, client, settings, point);
+}
+
+void KnossosHandler::BroadcastMessage(CefRefPtr<CefProcessMessage> message) {
+  for (auto browser : browser_list_) {
+    browser->GetMainFrame()->SendProcessMessage(PID_RENDERER, message);
+  }
 }

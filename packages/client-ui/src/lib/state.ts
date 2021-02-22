@@ -38,7 +38,7 @@ export class GlobalState extends Model({
     throwRpcErrors?: boolean,
   ): Promise<O | undefined> {
     try {
-      return (await handler.bind(this.client)(input, options)).response;
+      return (await handler.call(this.client, input, options)).response;
     } catch (e) {
       if (e instanceof RpcError && !throwRpcErrors) {
         console.log(e);

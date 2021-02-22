@@ -84,6 +84,7 @@ class KnossosHandler : public CefClient,
 
   // Request that all existing browser windows close.
   void CloseAllBrowsers(bool force_close);
+  void BroadcastMessage(CefRefPtr<CefProcessMessage> message);
 
   bool IsClosing() const { return is_closing_; }
 

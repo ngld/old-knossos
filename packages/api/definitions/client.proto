@@ -2,12 +2,17 @@ syntax = "proto3";
 option go_package = "github.com/ngld/knossos/packages/api/client";
 package ngld.knossos;
 
+// List of builtin types: https://developers.google.com/protocol-buffers/docs/proto3#scalar
+
+
 import "google/protobuf/timestamp.proto";
 
 // Common types
 
 message NullMessage {}
-
+message NullResponse {
+  bool dummy = 1;
+}
 
 // RPC types
 
@@ -17,6 +22,39 @@ message WakeupResponse {
   string os = 3;
 }
 
+// event messages
+
+message ClientSentEvent {
+  uint32 ref = 1;
+  oneof payload {
+    LogMessage message = 2;
+    ProgressMessage progress = 3;
+  }
+}
+
+message LogMessage {
+  enum LogLevel {
+    UNKNOWN = 0;
+    TRACE = 1;
+    DEBUG = 2;
+    INFO = 3;
+    WARNING = 4;
+    ERROR = 5;
+    FATAL = 6;
+  }
+  LogLevel level = 1;
+  string message = 2;
+  string sender = 3;
+}
+
+message ProgressMessage {
+  uint32 progress = 1;
+  string description = 2;
+  bool error = 3;
+  bool indeterminate = 4;
+}
+
 service Knossos {
   rpc Wakeup (NullMessage) returns (WakeupResponse) {};
+  rpc DispatchTest (NullMessage) returns (NullResponse) {};
 }
