@@ -1,9 +1,11 @@
 package libarchive
 
 // #cgo CFLAGS: -I${SRCDIR}/../../third_party/libarchive
-// #cgo LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
+// #cgo linux LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
+// #cgo linux LDLFLAGS: -lzstd -liconv -lz
+// #cgo darwin LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
 // #cgo darwin LDFLAGS: /usr/local/opt/xz/lib/liblzma.a -lzstd -liconv -lz
-// #cgo linux LDFLAGS:  -lzstd -liconv -lz
+// #cgo windows LDFLAGS: ${SRCDIR}../../build/libarchive/libarchive/libarchive_static.a
 //
 // #include <stdlib.h>
 // #include <libarchive/archive.h>
