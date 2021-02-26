@@ -24,8 +24,8 @@ func main() {
 		fmt.Println(archive.Entry.Pathname)
 	}
 
-	if archive.Error != nil {
-		panic(archive.Error)
+	if archive.Error() != nil {
+		panic(archive.Error())
 	}
 
 	fmt.Println("Done")

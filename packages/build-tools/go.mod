@@ -9,7 +9,6 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/jschaf/pggen v0.0.0-20210208172654-e5703e272221
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db
-	github.com/ngld/knossos/packages/libknossos v0.0.0-00010101000000-000000000000
 	github.com/rotisserie/eris v0.5.0
 	github.com/schollz/progressbar/v3 v3.7.4
 	github.com/spf13/cobra v1.1.3
@@ -19,5 +18,7 @@ require (
 )
 
 replace github.com/ngld/knossos/packages/libknossos => ../libknossos
+
+replace github.com/ngld/knossos/packages/libarchive => ../libarchive
 
 replace github.com/ngld/knossos/packages/api => ../api

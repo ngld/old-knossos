@@ -35,4 +35,4 @@ cmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -Wno-dev \
     -DZSTD_LIBRARY=/mingw64/lib/libzstd.a \
 	../../third_party/libarchive
 
-make -j4 archive
+make -j4 archive_static

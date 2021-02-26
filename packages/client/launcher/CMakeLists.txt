@@ -21,8 +21,8 @@ set(libknossos "${libknossos}/libknossos.${libext}")
 ## BRAIN END
 
 ## LIBARCHIVE START
-find_path(libarchive "libarchive.${libext}" PATHS "../../../build/libarchive/libarchive/" "../../../build/libarchive/bin/" REQUIRED)
-set(libarchive "${libarchive}/libarchive.${libext}")
+find_path(libarchive "libarchive.18.${libext}" PATHS "../../../build/libarchive/libarchive/" "../../../build/libarchive/bin/" REQUIRED)
+set(libarchive "${libarchive}/libarchive.18.${libext}")
 ## LIBARCHIVE END
 
 #

@@ -35,7 +35,7 @@ static void KnossosMessageDispatcher(void* message, int length) {
   KnossosHandler::GetInstance()->BroadcastMessage(process_message);
 }
 
-void PrepareLibKnossos() {
+void PrepareLibKnossos(std::string settings_path) {
 #if defined(OS_WIN)
   std::string libknossos_path("libknossos.dll");
 #elif defined(OS_LINUX)
@@ -60,7 +60,16 @@ void PrepareLibKnossos() {
   }
 
   std::string path_conv = resource_path;
-  if (!KnossosInit((char*)path_conv.c_str(), (int)path_conv.size(), &KnossosLogger, &KnossosMessageDispatcher)) {
+  KnossosInitParams params;
+  params.resource_path = path_conv.c_str();
+  params.resource_len = path_conv.size();
+  params.settings_path = settings_path.c_str();
+  params.settings_len = settings_path.size();
+
+  params.log_cb = &KnossosLogger;
+  params.message_cb = &KnossosMessageDispatcher;
+
+  if (!KnossosInit(&params)) {
     LOG(FATAL) << "Failed to initialize libknossos";
   }
 }

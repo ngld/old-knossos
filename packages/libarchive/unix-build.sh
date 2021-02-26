@@ -25,4 +25,4 @@ cmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -Wno-dev \
 	-DENABLE_CAT=OFF \
 	../../third_party/libarchive
 
-make -j4 archive
+make -j4 archive_static

@@ -16,10 +16,26 @@ message NullResponse {
 
 // RPC types
 
+message TaskRequest {
+  uint32 ref = 1;
+}
+
 message WakeupResponse {
   bool success = 1;
   string version = 2;
   string os = 3;
+}
+
+message SpeedTestResult {
+  map<string,uint32> speeds = 1;
+}
+
+message ArchiveResult {
+  message Archive {
+    repeated string files = 1;
+  }
+
+  map<string,Archive> result = 1;
 }
 
 // event messages
@@ -48,13 +64,17 @@ message LogMessage {
 }
 
 message ProgressMessage {
-  uint32 progress = 1;
+  float progress = 1;
   string description = 2;
   bool error = 3;
   bool indeterminate = 4;
 }
 
+// RPC methods
+
 service Knossos {
   rpc Wakeup (NullMessage) returns (WakeupResponse) {};
   rpc DispatchTest (NullMessage) returns (NullResponse) {};
+  rpc SpeedTest (TaskRequest) returns (SpeedTestResult) {};
+  rpc ArchiveTest (TaskRequest) returns (NullResponse) {};
 }

@@ -163,7 +163,7 @@ void KnossosApp::OnContextInitialized() {
                                   nullptr, nullptr);
   }
 
-  CefPostTask(TID_IO, base::Bind(PrepareLibKnossos));
+  CefPostTask(TID_IO, base::Bind(PrepareLibKnossos, _settings_path));
 }
 
 void KnossosApp::InitializeSettings(CefSettings &settings, std::string appDataPath) {

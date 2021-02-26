@@ -47,7 +47,11 @@ void KnossosResourceHandler::GetResponseHeaders(CefRefPtr<CefResponse> response,
     response->SetHeaderByName(header, value, true);
   }
 
-  response_length = kn_response->response_length;
+  if (kn_response->response_length > 0) {
+    response_length = kn_response->response_length;
+  } else {
+    response_length = -1;
+  }
 }
 
 bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
@@ -90,7 +94,9 @@ bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
     }
 
     kn_response = KnossosHandleRequest((char*)url.c_str(), url.size(), body_contents, body_size);
-    std::free(body_contents);
+    if (body_contents != 0) {
+      std::free(body_contents);
+    }
 
     if (kn_response != 0) {
       return true;
@@ -112,21 +118,13 @@ bool KnossosResourceHandler::Read(void* data_out,
                                   CefRefPtr<CefResourceReadCallback> callback)
 {
   if (kn_response != 0) {
-    if (pos == 0 && (size_t)bytes_to_read >= kn_response->response_length) {
-      // simple fast path
-      std::memcpy(data_out, kn_response->response_data, kn_response->response_length);
-      bytes_read = kn_response->response_length;
-      pos = kn_response->response_length;
-      return true;
-    } else {
-      int to_read = std::min(bytes_to_read, (int)(kn_response->response_length - pos));
-      std::memcpy(data_out, (char*)kn_response->response_data + pos, to_read);
+    int to_read = std::min(bytes_to_read, (int)(kn_response->response_length - pos));
+    std::memcpy(data_out, (char*)kn_response->response_data + pos, to_read);
 
-      pos += to_read;
-      bytes_read = to_read;
-      LOG(INFO) << "[" << bytes_to_read << ";" << to_read << "  # " << pos << "/" << kn_response->response_length << "]";
-      return to_read > 0;
-    }
+    pos += to_read;
+    bytes_read = to_read;
+    LOG(INFO) << "[" << bytes_to_read << ";" << to_read << "  # " << pos << "/" << kn_response->response_length << "]";
+    return to_read > 0;
   }
   return false;
 }

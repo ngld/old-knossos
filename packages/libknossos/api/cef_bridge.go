@@ -4,6 +4,18 @@ package main
 //#include <stdint.h>
 //#include <string.h>
 //
+//typedef void (*KnossosLogCallback)(uint8_t level, char* message, int length);
+//typedef void (*KnossosMessageCallback)(void* message, int length);
+//
+//typedef struct {
+//  const char* settings_path;
+//  const char* resource_path;
+//  int settings_len;
+//  int resource_len;
+//  KnossosLogCallback log_cb;
+//  KnossosMessageCallback message_cb;
+//} KnossosInitParams;
+//
 //typedef struct {
 //	char* header_name;
 //  char* value;
@@ -18,9 +30,6 @@ package main
 //  uint8_t header_count;
 //  size_t response_length;
 //} KnossosResponse;
-//
-//typedef void (*KnossosLogCallback)(uint8_t level, char* message, int length);
-//typedef void (*KnossosMessageCallback)(void* message, int length);
 //
 //#ifndef GO_CGO_EXPORT_PROLOGUE_H
 //static void call_log_cb(KnossosLogCallback cb, uint8_t level, char* message, int length) {
@@ -100,10 +109,11 @@ var (
 		api.LogFatal: C.KNOSSOS_LOG_FATAL,
 	}
 
-	staticRoot string
-	logCb      C.KnossosLogCallback
-	messageCb  C.KnossosMessageCallback
-	server     http.Handler
+	staticRoot   string
+	settingsPath string
+	logCb        C.KnossosLogCallback
+	messageCb    C.KnossosMessageCallback
+	server       http.Handler
 )
 
 func Log(level api.LogLevel, msg string, args ...interface{}) {
@@ -116,10 +126,11 @@ func Log(level api.LogLevel, msg string, args ...interface{}) {
 
 // KnossosInit has to be called exactly once before calling any other exported function.
 //export KnossosInit
-func KnossosInit(staticRootChars *C.char, staticRootLen C.int, logFunc C.KnossosLogCallback, messageFunc C.KnossosMessageCallback) bool {
-	staticRoot = C.GoStringN(staticRootChars, staticRootLen)
-	logCb = logFunc
-	messageCb = messageFunc
+func KnossosInit(params *C.KnossosInitParams) bool {
+	staticRoot = C.GoStringN(params.resource_path, params.resource_len)
+	settingsPath = C.GoStringN(params.settings_path, params.settings_len)
+	logCb = params.log_cb
+	messageCb = params.message_cb
 	ready = true
 
 	var err error
@@ -140,7 +151,12 @@ func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, 
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	ctx = api.WithKnossosContext(ctx, Log, DispatchMessage)
+	ctx = api.WithKnossosContext(ctx, api.KnossosCtxParams{
+		SettingsPath:    settingsPath,
+		ResourcePath:    staticRoot,
+		LogCallback:     Log,
+		MessageCallback: DispatchMessage,
+	})
 	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewReader(body))
 	req.Header["Content-Type"] = []string{"application/protobuf"}
 

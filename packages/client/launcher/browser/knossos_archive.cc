@@ -10,6 +10,8 @@
 KnossosArchive::KnossosArchive() : _hdl(), _items(), _lock() {}
 
 int KnossosArchive::Open(std::string filename) {
+  base::AutoLock mutex(_lock);
+
   _hdl.open(filename, std::ios::binary);
   if (_hdl.fail()) {
     return 1;
@@ -47,7 +49,6 @@ int KnossosArchive::Open(std::string filename) {
   for (int i = 0; i < index_count; i++) {
     int32_t offset, size, dec_size;
     int16_t name_len;
-    char raw_name[2048];
 
     if (!_hdl.read(reinterpret_cast<char*>(&offset), sizeof offset)) {
       _hdl.close();
@@ -68,12 +69,12 @@ int KnossosArchive::Open(std::string filename) {
     if (name_len > 2048) {
       return 5;
     }
-    if (!_hdl.read(raw_name, name_len)) {
+
+    std::string name(name_len, '\0');
+    if (!_hdl.read(&name[0], name_len)) {
       _hdl.close();
       return 4;
     }
-
-    std::string name(raw_name, name_len);
 
     if (size == 0) {
       if (dec_size != 0) {

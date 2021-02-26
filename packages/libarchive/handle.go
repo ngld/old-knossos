@@ -1,23 +1,40 @@
 package libarchive
 
-// #cgo CFLAGS: -I${SRCDIR}/../../build/libarchive
-// #cgo LDFLAGS: -L${SRCDIR}/../../build/libarchive/libarchive -larchive
+// #cgo CFLAGS: -I${SRCDIR}/../../third_party/libarchive
+// #cgo LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
+// #cgo darwin LDFLAGS: /usr/local/opt/xz/lib/liblzma.a -lzstd -liconv -lz
+// #cgo linux LDFLAGS:  -lzstd -liconv -lz
 //
 // #include <stdlib.h>
 // #include <libarchive/archive.h>
 // #include <libarchive/archive_entry.h>
 import "C"
-import "unsafe"
+
+import (
+	"fmt"
+	"unsafe"
+
+	"github.com/rotisserie/eris"
+)
 
 type Archive struct {
-	Error    error
-	handle   *C.struct_archive
-	Filename string
-	Entry    Header
+	handle     *C.struct_archive
+	buffer     unsafe.Pointer
+	bufferSize int
+	Filename   string
+	Entry      Header
 }
 
 type Header struct {
 	Pathname string
+}
+
+func CompiledVersion() int {
+	return int(C.ARCHIVE_VERSION_NUMBER)
+}
+
+func Version() int {
+	return int(C.archive_version_number())
 }
 
 func OpenArchive(filename string) (*Archive, error) {
@@ -49,16 +66,27 @@ func OpenArchive(filename string) (*Archive, error) {
 	if code != C.ARCHIVE_OK {
 		a.Close()
 		return nil, ErrAlloc
+	} else {
+		fmt.Println("opened archive")
 	}
 
 	return a, nil
+}
+
+func (a *Archive) Error() error {
+	code := C.archive_errno(a.handle)
+	if code == C.ARCHIVE_OK {
+		return nil
+	}
+
+	msg := C.GoString(C.archive_error_string(a.handle))
+	return eris.Errorf("%d: %s", code, msg)
 }
 
 func (a *Archive) Next() bool {
 	var entry *C.struct_archive_entry
 	code := C.archive_read_next_header(a.handle, &entry)
 	if code != C.ARCHIVE_OK {
-		a.Error = ErrAlloc
 		return false
 	}
 
@@ -66,7 +94,34 @@ func (a *Archive) Next() bool {
 	return true
 }
 
+func (a *Archive) Read(buffer []byte) (int, error) {
+	bufferSize := len(buffer)
+
+	if a.bufferSize < bufferSize {
+		C.free(a.buffer)
+		a.buffer = nil
+	}
+
+	if a.buffer == nil {
+		a.buffer = C.malloc(C.size_t(bufferSize))
+		a.bufferSize = bufferSize
+	}
+
+	read := C.archive_read_data(a.handle, a.buffer, C.size_t(bufferSize))
+	if read > 0 {
+		goBuffer := C.GoBytes(a.buffer, C.int(read))
+		copy(buffer, goBuffer)
+	}
+
+	return int(read), nil
+}
+
 func (a *Archive) Close() error {
 	C.archive_read_free(a.handle)
+
+	if a.buffer != nil {
+		C.free(a.buffer)
+	}
+
 	return nil
 }

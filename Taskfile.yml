@@ -163,8 +163,11 @@ tasks:
     sources:
       - ../../.tools/tool{{exeExt}}
       - '**/*.go'
+      - ../libarchive/**/*.go
     vars:
       OUTPATH: ../../build/libknossos/libknossos.{{.LIBEXT}}
+    env:
+      CGO_LDFLAGS: -Wl,-rpath,@executable_path -Wl,-rpath,.
     cmds:
       - task: build-tool
       - task: libarchive-build
