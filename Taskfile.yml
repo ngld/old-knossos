@@ -33,10 +33,6 @@ tasks:
 
   fetch-deps:
     desc: Automatically downloads dependencies not covered by install-tools
-    sources:
-      - packages/build-tools/DEPS.yml
-    generates:
-      - packages/build-tools/DEPS.stamps
     cmds:
       - task: build-tool
       - tool fetch-deps

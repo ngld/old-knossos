@@ -35,6 +35,7 @@ type depSpec struct {
 	Dest       string
 	Sha256     string
 	Strip      int
+	MarkExec   []string `yaml:"markExec,omitempty"`
 }
 
 type depConfig struct {
@@ -306,6 +307,22 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 			return err
 		}
 
+		if runtime.GOOS != "windows" {
+			// .zip files don't carry permissions which means we have to manually fix permissions for binaries in .zip files
+			for _, binPath := range meta.MarkExec {
+				binPath = filepath.Join(projectRoot, meta.Dest, binPath)
+				fi, err := os.Stat(binPath)
+				if err != nil {
+					return eris.Wrapf(err, "Failed to read permissions for %s", binPath)
+				}
+
+				err = os.Chmod(binPath, fi.Mode()|0700)
+				if err != nil {
+					return eris.Wrapf(err, "Failed to mark %s as executable", binPath)
+				}
+			}
+		}
+
 		stamps[name] = stampToken
 	}
 
@@ -416,7 +433,7 @@ func getExtractor(url string) (archiveExtractor, error) {
 						return eris.Wrapf(err, "Failed to read archive entry %s", item.Name)
 					}
 
-					n, err = destHandle.Write(buf[:n])
+					_, err = destHandle.Write(buf[:n])
 					if err != nil {
 						return eris.Wrapf(err, "Failed to write extracted file %s", dest)
 					}
@@ -484,7 +501,8 @@ func extractTar(r io.Reader, f *os.File, bar *progressbar.ProgressBar, projectRo
 			return eris.Wrap(err, "Failed to read archive entry")
 		}
 
-		if item.FileInfo().IsDir() {
+		fi := item.FileInfo()
+		if fi.IsDir() {
 			continue
 		}
 
@@ -493,6 +511,22 @@ func extractTar(r io.Reader, f *os.File, bar *progressbar.ProgressBar, projectRo
 			return err
 		}
 		defer destHandle.Close()
+
+		if item.Typeflag&tar.TypeSymlink == tar.TypeSymlink {
+			destHandle.Close()
+			err := os.Remove(dest)
+			if err != nil {
+				return eris.Wrapf(err, "Failed to remove placeholder file %s", dest)
+			}
+
+			err = os.Symlink(item.Linkname, dest)
+			if err != nil {
+				return eris.Wrapf(err, "Failed to create symlink %s pointing to %s", dest, item.Linkname)
+			}
+			continue
+		}
+
+		os.Chmod(dest, fi.Mode())
 
 		for {
 			n, err := archive.Read(buf)
