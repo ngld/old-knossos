@@ -20,11 +20,6 @@ find_path(libknossos "libknossos.${libext}" PATHS "../../../build/libknossos/" R
 set(libknossos "${libknossos}/libknossos.${libext}")
 ## BRAIN END
 
-## LIBARCHIVE START
-find_path(libarchive "libarchive.18.${libext}" PATHS "../../../build/libarchive/libarchive/" "../../../build/libarchive/bin/" REQUIRED)
-set(libarchive "${libarchive}/libarchive.18.${libext}")
-## LIBARCHIVE END
-
 #
 # Source files.
 #
@@ -149,12 +144,6 @@ if(OS_LINUX)
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_TARGET_OUT_DIR}"
     VERBATIM
     )
-  add_custom_command(
-    TARGET ${CEF_TARGET}
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libarchive}" "${CEF_TARGET_OUT_DIR}"
-    VERBATIM
-    )
 
   # Set SUID permissions on the chrome-sandbox target.
   SET_LINUX_SUID_PERMISSIONS("${CEF_TARGET}" "${CEF_TARGET_OUT_DIR}/chrome-sandbox")
@@ -270,11 +259,6 @@ if(OS_MAC)
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_APP}/Contents/MacOS" VERBATIM
   )
-  add_custom_command(
-    TARGET ${CEF_TARGET}
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libarchive}" "${CEF_APP}/Contents/MacOS" VERBATIM
-  )
 endif()
 
 
@@ -306,10 +290,5 @@ if(OS_WINDOWS)
     TARGET ${CEF_TARGET}
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_TARGET_OUT_DIR}" VERBATIM
-  )
-  add_custom_command(
-    TARGET ${CEF_TARGET}
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libarchive}" "${CEF_TARGET_OUT_DIR}" VERBATIM
   )
 endif()
