@@ -2,6 +2,7 @@
 
 cd %~dp0
 call .env.bat
+set "root=%CD%"
 
 go version > NUL 2>&1
 if errorlevel 1 goto :fix_go

@@ -3,6 +3,7 @@ vars:
   LIBARCHIVE: 3.5.1
   CEF: 88.2.6+gd717f0e+chromium-88.0.4324.150
   MSYS_BUILD: 20210215
+  NODEJS: 14.16.0
   BROTLI: 1.0.9
 
 deps:
@@ -93,3 +94,24 @@ deps:
     url: http://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-{MSYS_BUILD}.tar.xz
     strip: 1
     dest: third_party/msys2
+
+  nodejs-linux:
+    sha256: 2e079cf638766fedd720d30ec8ffef5d6ceada4e8b441fc2a093cb9a865f4087
+    if: linux, amd64
+    url: https://nodejs.org/dist/v{NODEJS}/node-v{NODEJS}-linux-x64.tar.xz
+    strip: 1
+    dest: third_party/nodejs
+
+  nodejs-darwin:
+    sha256: 14ec767e376d1e2e668f997065926c5c0086ec46516d1d45918af8ae05bd4583
+    if: darwin, amd64
+    url: https://nodejs.org/dist/v{NODEJS}/node-v{NODEJS}-darwin-x64.tar.gz
+    strip: 1
+    dest: third_party/nodejs
+
+  nodejs-win64:
+    sha256: 716045c2f16ea10ca97bd04cf2e5ef865f9c4d6d677a9bc25e2ea522b594af4f
+    if: windows, amd64
+    url: https://nodejs.org/dist/v{NODEJS}/node-v{NODEJS}-win-x64.zip
+    strip: 1
+    dest: third_party/nodejs

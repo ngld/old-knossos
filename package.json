@@ -1,10 +1,6 @@
 {
   "name": "nu-nebula",
   "private": true,
-  "volta": {
-    "node": "14.15.1",
-    "yarn": "1.22.10"
-  },
   "scripts": {
     "build:proto": "protoc google/protobuf/timestamp.proto --ts_out=packages/api/api && protoc -Ipackages/api/definitions mod.proto --ts_out=packages/api/api && protoc -Ipackages/api/definitions service.proto --ts_out=packages/api/api",
     "front:css": "cd packages/front && postcss src/tw-index.css -o gen/tw-index.css",

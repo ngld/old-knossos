@@ -5,6 +5,7 @@ vars:
   build: '{{default "Release" .build}}'
   msys2_path: '{{default "third_party/msys2" .msys2_path}}'
   root: '{{default "." .root}}'
+  yarn: 'node .yarn/releases/yarn-2.4.0.cjs'
 
 includes:
   os: ./Taskfile_{{if eq OS "windows"}}win{{else}}unix{{end}}.yml
@@ -31,11 +32,20 @@ tasks:
       - task: build-tool
       - tool install-tools
 
+  # Only run "yarn install" if necessary
+  js-deps:
+    sources:
+      - package.json
+      - yarn.lock
+    cmds:
+      - '{{.yarn}} install'
+
   fetch-deps:
     desc: Automatically downloads dependencies not covered by install-tools
     cmds:
       - task: build-tool
       - tool fetch-deps
+      - task: js-deps
 
   bootstrap-mingw64:
     desc: Runs first-time setup for MSYS2 (Windows-only)
@@ -61,9 +71,9 @@ tasks:
       - mv packages/api/twirp/github.com/ngld/knossos/packages/api/api/*.go packages/api/api
       - mv packages/api/twirp/github.com/ngld/knossos/packages/api/client/*.go packages/api/client
       - rm -r packages/api/twirp/github.com
-      - yarn protoc google/protobuf/timestamp.proto --ts_out=packages/api/api
-      - yarn protoc -Ipackages/api/definitions client.proto --ts_out=packages/api/api
-      - yarn protoc -Ipackages/api/definitions service.proto --ts_out=packages/api/api
+      - '{{.yarn}} protoc google/protobuf/timestamp.proto --ts_out=packages/api/api'
+      - '{{.yarn}} protoc -Ipackages/api/definitions client.proto --ts_out=packages/api/api'
+      - '{{.yarn}} protoc -Ipackages/api/definitions service.proto --ts_out=packages/api/api'
 
   server-build:
     desc: Compiles the Nebula server code
@@ -82,7 +92,7 @@ tasks:
     desc: Automatically recompiles Nebula frontend code on change
     cmds:
       - task: front-css
-      - yarn front:watch
+      - '{{.yarn}} front:watch'
 
   front-css:
     desc: Compiles Tailwind CSS for Nebula (only rarely necessary)
@@ -93,7 +103,7 @@ tasks:
     generates:
       - gen/tw-index.css
     cmds:
-      - yarn postcss src/tw-index.css -o gen/tw-index.css
+      - '{{.yarn}} postcss src/tw-index.css -o gen/tw-index.css'
 
   front-build:
     desc: Builds the assets for Nebula's frontend
@@ -106,14 +116,14 @@ tasks:
     generates:
       - dist/**/*
     cmds:
-      - NODE_ENV=production yarn postcss src/tw-index.css -o gen/tw-index.css
-      - yarn webpack --env production --color --progress
+      - NODE_ENV=production {{.yarn}} postcss src/tw-index.css -o gen/tw-index.css
+      - '{{.yarn}} webpack --env production --color --progress'
 
   client-ui-watch:
     desc: Automatically recompiles Knossos UI code on change
     cmds:
       - task: client-ui-css
-      - yarn client:watch
+      - '{{.yarn}} client:watch'
 
   client-ui-css:
     desc: Compiles Tailwind CSS for Knossos (only rarely necessary)
@@ -122,7 +132,7 @@ tasks:
       - src/tw-index.css
       - tailwind.config.js
     cmds:
-      - yarn postcss src/tw-index.css -o gen/tw-index.css
+      - '{{.yarn}} postcss src/tw-index.css -o gen/tw-index.css'
 
   client-ui-build:
     desc: Builds the assets for Nebula's client-uiend
@@ -138,8 +148,8 @@ tasks:
       res_dir: '{{if eq OS "darwin"}}knossos.app/Contents/Frameworks/Chromium Embedded Framework.framework/Resources/{{end}}'
     cmds:
       - task: build-tool
-      - NODE_ENV=production yarn postcss src/tw-index.css -o gen/tw-index.css
-      - yarn webpack --env production --color --progress
+      - NODE_ENV=production {{.yarn}} postcss src/tw-index.css -o gen/tw-index.css
+      - '{{.yarn}} webpack --env production --color --progress'
       - tool pack-kar "../../build/client/launcher/{{.build}}/{{.res_dir}}ui.kar" dist/prod
 
   libarchive-build:
