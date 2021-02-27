@@ -3,9 +3,10 @@ version: '3'
 vars:
   LIBEXT: '{{if eq OS "windows"}}dll{{else if eq OS "darwin"}}dylib{{else}}so{{end}}'
   build: '{{default "Release" .build}}'
-  msys2_path: '{{default "third_party/msys2" .msys2_path}}'
   root: '{{default "." .root}}'
-  yarn: 'node .yarn/releases/yarn-2.4.0.cjs'
+  msys2_path: '{{default (print .root "/third_party/msys2") .msys2_path}}'
+  yarn_path: .yarn/releases/yarn-2.4.0.cjs
+  yarn: 'node {{.yarn_path}}'
 
 includes:
   os: ./Taskfile_{{if eq OS "windows"}}win{{else}}unix{{end}}.yml
@@ -62,15 +63,18 @@ tasks:
     desc: Generates TS and Go bindings from the .proto API definitions
     sources:
       - packages/api/definitions/*.proto
+    vars:
+      mv: '{{if eq OS "windows"}}tool mv{{else}}mv{{end}}'
+      rm: '{{if eq OS "windows"}}tool rm -r{{else}}rm -r{{end}}'
     cmds:
       - task: fetch-deps
       - task: install-tools
       - protoc -Ipackages/api/definitions client.proto --go_out=packages/api/client --go_opt=paths=source_relative --twirp_out=packages/api/twirp
       - protoc -Ipackages/api/definitions service.proto --go_out=packages/api/api --go_opt=paths=source_relative --twirp_out=packages/api/twirp
       # twirp doesn't support go.mod paths so we have to move the generated files to the correct location
-      - mv packages/api/twirp/github.com/ngld/knossos/packages/api/api/*.go packages/api/api
-      - mv packages/api/twirp/github.com/ngld/knossos/packages/api/client/*.go packages/api/client
-      - rm -r packages/api/twirp/github.com
+      - '{{.mv}} packages/api/twirp/github.com/ngld/knossos/packages/api/api/*.go packages/api/api'
+      - '{{.mv}} packages/api/twirp/github.com/ngld/knossos/packages/api/client/*.go packages/api/client'
+      - '{{.rm}} packages/api/twirp/github.com'
       - '{{.yarn}} protoc google/protobuf/timestamp.proto --ts_out=packages/api/api'
       - '{{.yarn}} protoc -Ipackages/api/definitions client.proto --ts_out=packages/api/api'
       - '{{.yarn}} protoc -Ipackages/api/definitions service.proto --ts_out=packages/api/api'
@@ -103,7 +107,7 @@ tasks:
     generates:
       - gen/tw-index.css
     cmds:
-      - '{{.yarn}} postcss src/tw-index.css -o gen/tw-index.css'
+      - 'node ../../{{.yarn_path}} postcss src/tw-index.css -o gen/tw-index.css'
 
   front-build:
     desc: Builds the assets for Nebula's frontend
@@ -116,8 +120,8 @@ tasks:
     generates:
       - dist/**/*
     cmds:
-      - NODE_ENV=production {{.yarn}} postcss src/tw-index.css -o gen/tw-index.css
-      - '{{.yarn}} webpack --env production --color --progress'
+      - NODE_ENV=production node ../../{{.yarn_path}} postcss src/tw-index.css -o gen/tw-index.css
+      - 'node ../../{{.yarn_path}} webpack --env production --color --progress'
 
   client-ui-watch:
     desc: Automatically recompiles Knossos UI code on change
@@ -132,7 +136,7 @@ tasks:
       - src/tw-index.css
       - tailwind.config.js
     cmds:
-      - '{{.yarn}} postcss src/tw-index.css -o gen/tw-index.css'
+      - 'node ../../{{.yarn_path}} postcss src/tw-index.css -o gen/tw-index.css'
 
   client-ui-build:
     desc: Builds the assets for Nebula's client-uiend
@@ -148,8 +152,8 @@ tasks:
       res_dir: '{{if eq OS "darwin"}}knossos.app/Contents/Frameworks/Chromium Embedded Framework.framework/Resources/{{end}}'
     cmds:
       - task: build-tool
-      - NODE_ENV=production {{.yarn}} postcss src/tw-index.css -o gen/tw-index.css
-      - '{{.yarn}} webpack --env production --color --progress'
+      - NODE_ENV=production node ../../{{.yarn_path}} postcss src/tw-index.css -o gen/tw-index.css
+      - 'node ../../{{.yarn_path}} webpack --env production --color --progress'
       - tool pack-kar "../../build/client/launcher/{{.build}}/{{.res_dir}}ui.kar" dist/prod
 
   libarchive-build:
@@ -172,13 +176,14 @@ tasks:
       - ../libarchive/**/*.go
     vars:
       OUTPATH: ../../build/libknossos/libknossos.{{.LIBEXT}}
+      windows_ldflags: '{{print .msys2_path "/mingw64/lib/libiconv.a" | fromSlash}} {{print .msys2_path "/mingw64/lib/libcharset.a" | fromSlash}} {{print .msys2_path "/mingw64/lib/libz.a" | fromSlash}} {{print .msys2_path "/mingw64/lib/liblzma.a" | fromSlash}} {{print .msys2_path "/mingw64/lib/libzstd.a" | fromSlash}}'
     env:
-      CGO_LDFLAGS: -Wl,-rpath,@executable_path -Wl,-rpath,.
+      CGO_LDFLAGS: '{{if eq OS "windows"}}{{.windows_ldflags}}{{end}}'
     cmds:
       - task: build-tool
       - task: libarchive-build
       - task: proto-build
-      - go build -o {{.OUTPATH}} -buildmode c-shared ./api
+      - go build -x -o {{.OUTPATH}} -buildmode c-shared ./api
       - tool gen-dyn-loader ../../build/libknossos/libknossos.h ../../build/libknossos/dynknossos.h
 
   client-build:
@@ -188,7 +193,7 @@ tasks:
     cmds:
       - task: libarchive-build
       - task: libknossos-build
-      - if [ ! -d build/client ]; then mkdir -p build/client; fi
+      - if [ ! -d build/client ]; then tool mkdir -p build/client; fi
       - cd build/client && cmake -G"{{.generator}}" -DCMAKE_BUILD_TYPE={{.build}} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ../../packages/client
       - cd build/client && {{if eq .generator "Ninja"}}ninja{{else}}make -j4{{end}} knossos
 
@@ -196,7 +201,7 @@ tasks:
     cmds:
       - task: libarchive-build
       - task: libknossos-build
-      - if [ ! -d build/client ]; then mkdir -p build/client; fi
+      - if [ ! -d build/client ]; then tool mkdir -p build/client; fi
       - cd build/client && cmake -G"Visual Studio 16 2019" -DCMAKE_BUILD_TYPE={{.build}} ../../packages/client
       - cd build/client && cmake --build . --target knossos --config {{.build}}
 

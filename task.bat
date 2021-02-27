@@ -1,5 +1,6 @@
 @echo off
 
+setlocal
 cd %~dp0
 call .env.bat
 set "root=%CD%"
