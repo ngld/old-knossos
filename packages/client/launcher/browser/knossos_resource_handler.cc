@@ -93,7 +93,7 @@ bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
       }
     }
 
-    kn_response = KnossosHandleRequest((char*)url.c_str(), url.size(), body_contents, body_size);
+    kn_response = KnossosHandleRequest((char*)url.c_str(), (int)url.size(), body_contents, (int)body_size);
     if (body_contents != 0) {
       std::free(body_contents);
     }

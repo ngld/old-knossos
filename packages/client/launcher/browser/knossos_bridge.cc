@@ -62,9 +62,9 @@ void PrepareLibKnossos(std::string settings_path) {
   std::string path_conv = resource_path;
   KnossosInitParams params;
   params.resource_path = path_conv.c_str();
-  params.resource_len = path_conv.size();
+  params.resource_len = (int) path_conv.size();
   params.settings_path = settings_path.c_str();
-  params.settings_len = settings_path.size();
+  params.settings_len = (int) settings_path.size();
 
   params.log_cb = &KnossosLogger;
   params.message_cb = &KnossosMessageDispatcher;
