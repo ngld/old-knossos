@@ -4,8 +4,6 @@ set -eo pipefail
 
 cd "$(dirname "$0")"
 
-. ./.envrc
-
 if !which go > /dev/null 2>&1; then
 	echo "Please install the Golang toolchain and run this script again."
 	exit 1
@@ -18,9 +16,4 @@ if [ ! -f .tools/tool ]; then
     cd ../..
 fi
 
-if [ ! -f .tools/task ]; then
-    echo "Installing tools"
-	tool install-tools
-fi
-
-exec task "$@"
+exec ./.tools/tool task "$@"

@@ -72,6 +72,8 @@ var fetchDepsCmd = &cobra.Command{
 			pkg.PrintError(jErr.Error())
 		}
 
+		pkg.PrintTask("Done")
+
 		return err
 	},
 }
@@ -84,14 +86,19 @@ func init() {
 
 func getProgressBar(length int64, desc string) *progressbar.ProgressBar {
 	if os.Getenv("CI") == "true" {
-		return progressbar.NewOptions64(length, progressbar.OptionSetDescription(desc),
-			progressbar.OptionSetWriter(os.Stderr), progressbar.OptionShowBytes(true),
-			progressbar.OptionShowCount(), progressbar.OptionOnCompletion(func() {
-				fmt.Fprint(os.Stderr, "\n")
-			}),
-			// Only show the result once at the end
-			progressbar.OptionThrottle(1*time.Hour),
-		)
+		return progressbar.NewOptions64(length, progressbar.OptionSetVisibility(false))
+		/*
+			Sadly this still leaves a bunch of newlines on GH's log.
+
+			return progressbar.NewOptions64(length, progressbar.OptionSetDescription(desc),
+				progressbar.OptionSetWriter(os.Stderr), progressbar.OptionShowBytes(true),
+				progressbar.OptionShowCount(), progressbar.OptionOnCompletion(func() {
+					fmt.Fprint(os.Stderr, "\n")
+				}),
+				// Only show the result once at the end
+				progressbar.OptionThrottle(1*time.Hour),
+			)
+		*/
 	}
 
 	return progressbar.DefaultBytes(length, desc)

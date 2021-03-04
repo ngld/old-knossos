@@ -1,6 +1,10 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+
+	"github.com/ngld/knossos/packages/build-tools/pkg/buildsys/cmd"
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "tool",
@@ -10,7 +14,7 @@ This includes tools to download & extract dependencies, to install Go dependenci
 }
 
 func init() {
-	// TODO
+	rootCmd.AddCommand(cmd.RootCmd)
 }
 
 func Execute() {

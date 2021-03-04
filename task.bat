@@ -2,8 +2,6 @@
 
 setlocal
 cd %~dp0
-call .env.bat
-set "root=%CD%"
 
 go version > NUL 2>&1
 if errorlevel 1 goto :fix_go
@@ -14,9 +12,9 @@ if not exist third_party\go\bin\go.exe call :fetch_go
 if not exist third_party\go\bin\go.exe goto :no_go
 
 :build
-if not exist .tools\task.exe call :install_tools
+if not exist .tools\tool.exe call :install_tools
 
-task.exe %*
+.tools\tool.exe task %*
 goto :eof
 
 :fetch_go
@@ -50,7 +48,5 @@ echo Building build-tools...
 go build -o ..\..\.tools\tool.exe
 cd ..\..
 
-echo Installing tools...
-tool.exe install-tools
 goto :eof
 
