@@ -328,7 +328,7 @@ func starExec(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 
 	runner, err := interp.New(
 		interp.Dir(base),
-		interp.Env(expand.ListEnviron(getEnvVars(ctx)...)),
+		interp.Env(expand.ListEnviron(getEnvVars(ctx.envOverrides)...)),
 		interp.ExecHandler(execHandler),
 		interp.OpenHandler(openHandler),
 		interp.StdIO(nil, &outputBuffer, errOut),
@@ -428,7 +428,7 @@ echo KN_LIB=%LIB%
 	}
 
 	cmd = exec.Command("cmd", "/C", script, arch)
-	cmd.Env = getEnvVars(ctx)
+	cmd.Env = getEnvVars(ctx.envOverrides)
 	output, err = cmd.Output()
 	if err != nil {
 		return nil, eris.Wrap(err, "failed to run helper script")

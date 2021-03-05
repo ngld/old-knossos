@@ -27,10 +27,10 @@ if(OS_WINDOWS)
 endif()
 ## LIBARCHIVE END
 
-if(MSVC AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-  # Clang-cl doesn't support the /MP option
-  list(REMOVE_ITEM CEF_COMPILER_FLAGS /MP)
-endif()
+#if(MSVC AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+#  # Clang-cl doesn't support the /MP option
+#  list(REMOVE_ITEM CEF_COMPILER_FLAGS /MP)
+#endif()
 
 #
 # Source files.

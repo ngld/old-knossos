@@ -43,9 +43,9 @@ func simplifyPath(ctx *parserCtx, path string) string {
 	return path
 }
 
-func getEnvVars(ctx *parserCtx) []string {
+func getEnvVars(overrides map[string]string) []string {
 	osEnv := os.Environ()
-	shellEnv := make([]string, 0, len(osEnv)+len(ctx.envOverrides))
+	shellEnv := make([]string, 0, len(osEnv)+len(overrides))
 	for _, item := range osEnv {
 		parts := strings.SplitN(item, "=", 2)
 		if runtime.GOOS == "windows" {
@@ -53,12 +53,12 @@ func getEnvVars(ctx *parserCtx) []string {
 		}
 
 		// skip overriden entries to avoid conflicts
-		if _, present := ctx.envOverrides[parts[0]]; !present {
+		if _, present := overrides[parts[0]]; !present {
 			shellEnv = append(shellEnv, item)
 		}
 	}
 
-	for k, v := range ctx.envOverrides {
+	for k, v := range overrides {
 		shellEnv = append(shellEnv, fmt.Sprintf("%s=%s", k, v))
 	}
 

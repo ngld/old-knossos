@@ -2,7 +2,6 @@ package buildsys
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -28,13 +27,7 @@ func getRuntimeCtx(ctx context.Context) *runtimeCtx {
 }
 
 func getTaskEnv(task *Task) expand.Environ {
-	envVars := os.Environ()
-
-	for name, value := range task.Env {
-		envVars = append(envVars, fmt.Sprintf("%s=%s", name, value))
-	}
-
-	return expand.ListEnviron(envVars...)
+	return expand.ListEnviron(getEnvVars(task.Env)...)
 }
 
 var defaultExecHandler = interp.DefaultExecHandler(2)
