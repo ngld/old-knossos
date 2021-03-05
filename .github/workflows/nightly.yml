@@ -92,7 +92,7 @@ jobs:
             packages/build-tools/DEPS.stamps
 
       - name: Delete cached build tool
-        run: rm .tools/tool
+        run: rm -f .tools/tool
 
       - name: Configure
         run: ./task.sh configure build=Release
@@ -150,7 +150,7 @@ jobs:
             packages/build-tools/DEPS.stamps
 
       - name: Delete cached build tool
-        run: rm .tools/tool
+        run: rm -f .tools/tool
 
       - name: Configure
         run: ./task.sh configure build=Release
