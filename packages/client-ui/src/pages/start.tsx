@@ -18,9 +18,11 @@ async function runTest(gs: GlobalState): Promise<void> {
   alert('Done!');
 }
 
-async function runSpeedTest(gs: GlobalState, tracker: TaskTracker): Promise<void> {
+async function runSpeedTest(gs: GlobalState, tracker: TaskTracker, setSpeedResults: React.Dispatch<React.SetStateAction<Record<string,number>>>): Promise<void> {
   const ref = tracker.startTask('Speedtest');
   const response = await gs.client.speedTest({ ref });
+
+  setSpeedResults(response.response.speeds);
   console.log(response);
 }
 
@@ -34,6 +36,7 @@ export default observer(function StartPage(): React.ReactElement {
   const gs = useGlobalState();
   const [state] = useState(() => fromPromise(fetchInfo(gs)));
   const tracker = useTaskTracker();
+  const [speedResults, setSpeedResults] = useState({} as Record<string, number>);
 
   return (
     <span>
@@ -44,8 +47,13 @@ export default observer(function StartPage(): React.ReactElement {
           <div>
             {data ? <pre>{JSON.stringify(data, null, 2)}</pre> : <span>No idea</span>}
             <Button onClick={() => runTest(gs)}>Test</Button>
-            <Button onClick={() => runSpeedTest(gs, tracker)}>Speedtest</Button>
+            <Button onClick={() => runSpeedTest(gs, tracker, setSpeedResults)}>Speedtest</Button>
             <Button onClick={() => runArchiveTest(gs, tracker)}>Archive test</Button>
+            <div>
+              {Object.entries(speedResults).map(([name, speed]) => (
+                <div key={name}>{name}: {speed}</div>
+              ))}
+            </div>
             <ul>
               {tracker.tasks.map((m, i) => (
                 <li key={i}>
