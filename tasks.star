@@ -125,7 +125,7 @@ if OS == "windows":
         base = msys2_path,
         skip_if_exists = ["mingw64/bin/gcc.exe"],
         cmds = [
-            'usr/bin/bash --login -c "mkdir /tmp; mkdir /dev"',
+            'usr/bin/bash --login -c "mkdir /tmp || true"',
             'usr/bin/bash --login -c "pacman -Syuu --noconfirm"',
             'usr/bin/bash --login -c "pacman -Syuu --noconfirm"',
             'usr/bin/bash --login -c "pacman -Su --noconfirm --needed mingw-w64-x86_64-gcc"',
@@ -146,8 +146,8 @@ task(
         "protoc -Idefinitions client.proto --go_out=client --go_opt=paths=source_relative --twirp_out=twirp",
         "protoc -Idefinitions service.proto --go_out=api --go_opt=paths=source_relative --twirp_out=twirp",
         # twirp doesn't support go.mod paths so we have to move the generated files to the correct location
-        "mv twirp/github.com/ngld/knossos/api/*.go api",
-        "mv twirp/github.com/ngld/knossos/client/*.go client",
+        "mv twirp/github.com/ngld/knossos/packages/api/api/*.go api",
+        "mv twirp/github.com/ngld/knossos/packages/api/client/*.go client",
         "rm -r twirp/github.com",
         yarn("protoc google/protobuf/timestamp.proto --ts_out=api"),
         yarn("protoc -Idefinitions client.proto --ts_out=api"),

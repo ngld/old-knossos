@@ -27,6 +27,11 @@ var RootCmd = &cobra.Command{
 			return err
 		}
 
+		force, err := cmd.Flags().GetBool("force")
+		if err != nil {
+			return err
+		}
+
 		for _, part := range args {
 			pos := strings.Index(part, "=")
 			if pos > -1 {
@@ -82,7 +87,7 @@ var RootCmd = &cobra.Command{
 				logger.Fatal().Msgf("Task %s not found", name)
 			}
 
-			err = buildsys.RunTask(ctx, task, taskList, dryRun, false)
+			err = buildsys.RunTask(ctx, task, taskList, dryRun, force, false)
 			if err != nil {
 				logger.Fatal().Err(err).Msgf("Failed task %s:", name)
 			}
@@ -115,4 +120,5 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	RootCmd.Flags().BoolP("dry", "n", false, "dry run; only print the commands, don't execute anything")
+	RootCmd.Flags().BoolP("force", "f", false, "force build; always execute the passed steps even if they don't have to run")
 }

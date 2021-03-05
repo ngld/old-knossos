@@ -32,7 +32,9 @@ func execHandler(ctx context.Context, args []string) error {
 	if len(args) > 0 {
 		switch args[0] {
 		case "mv":
+			fallthrough
 		case "rm":
+			fallthrough
 		case "mkdir":
 			// always use our cross-platform implementation for these operations to make sure
 			// they behave consistently
@@ -54,7 +56,7 @@ func openHandler(ctx context.Context, path string, flag int, perm os.FileMode) (
 }
 
 // RunTask executes the given task
-func RunTask(ctx context.Context, task *Task, tasks TaskList, dryRun, canSkip bool) error {
+func RunTask(ctx context.Context, task *Task, tasks TaskList, dryRun, force, canSkip bool) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -86,14 +88,14 @@ func RunTask(ctx context.Context, task *Task, tasks TaskList, dryRun, canSkip bo
 				return eris.Errorf("Task %s not found", dep)
 			}
 
-			err := RunTask(ctx, depTask, tasks, dryRun, true)
+			err := RunTask(ctx, depTask, tasks, dryRun, false, true)
 			if err != nil {
 				return eris.Wrapf(err, "Task %s failed due to its dependency %s", task.Short, dep)
 			}
 		}
 	}
 
-	if canSkip {
+	if canSkip && !force {
 		for _, item := range task.SkipIfExists {
 			_, err := os.Stat(item)
 			if err == nil {
@@ -112,54 +114,56 @@ func RunTask(ctx context.Context, task *Task, tasks TaskList, dryRun, canSkip bo
 		}
 	}
 
-	var newestInput time.Time
-	for _, item := range task.Inputs {
-		info, err := os.Stat(item)
-		if err != nil {
-			return eris.Wrapf(err, "Failed to check input %s", item)
-		}
-
-		if info.ModTime().Sub(newestInput) > 0 {
-			newestInput = info.ModTime()
-		}
-	}
-
-	if !newestInput.IsZero() {
-		var newestOutput time.Time
-		oldestOutput := time.Now()
-
-		for _, item := range task.Outputs {
+	if !force {
+		var newestInput time.Time
+		for _, item := range task.Inputs {
 			info, err := os.Stat(item)
-			if err != nil && !eris.Is(err, os.ErrNotExist) {
-				return eris.Wrapf(err, "Failed to check output %s", item)
+			if err != nil {
+				return eris.Wrapf(err, "Failed to check input %s", item)
 			}
 
-			if err == nil {
-				mt := info.ModTime()
-				if mt.Sub(newestOutput) > 0 {
-					newestOutput = mt
-				}
-
-				if oldestOutput.Sub(mt) > 0 {
-					oldestOutput = mt
-				}
+			if info.ModTime().Sub(newestInput) > 0 {
+				newestInput = info.ModTime()
 			}
 		}
 
-		if newestOutput.Sub(oldestOutput) > 10*time.Minute {
-			log(ctx).Warn().
-				Str("task", task.Short).
-				Msgf("Oldest output is %f minutes older than the newest output", newestOutput.Sub(oldestOutput).Minutes())
-		}
+		if !newestInput.IsZero() {
+			var newestOutput time.Time
+			oldestOutput := time.Now()
 
-		if newestOutput.Sub(newestInput) > 0 {
-			log(ctx).Info().
-				Str("task", task.Short).
-				Str("status", "uptodate").
-				Msgf("Nothing to do (output is %f seconds newer)", newestOutput.Sub(newestInput).Seconds())
+			for _, item := range task.Outputs {
+				info, err := os.Stat(item)
+				if err != nil && !eris.Is(err, os.ErrNotExist) {
+					return eris.Wrapf(err, "Failed to check output %s", item)
+				}
 
-			runTasks[task.Short] = true
-			return nil
+				if err == nil {
+					mt := info.ModTime()
+					if mt.Sub(newestOutput) > 0 {
+						newestOutput = mt
+					}
+
+					if oldestOutput.Sub(mt) > 0 {
+						oldestOutput = mt
+					}
+				}
+			}
+
+			if newestOutput.Sub(oldestOutput) > 10*time.Minute {
+				log(ctx).Warn().
+					Str("task", task.Short).
+					Msgf("Oldest output is %f minutes older than the newest output", newestOutput.Sub(oldestOutput).Minutes())
+			}
+
+			if newestOutput.Sub(newestInput) > 0 {
+				log(ctx).Info().
+					Str("task", task.Short).
+					Str("status", "uptodate").
+					Msgf("Nothing to do (output is %f seconds newer)", newestOutput.Sub(newestInput).Seconds())
+
+				runTasks[task.Short] = true
+				return nil
+			}
 		}
 	}
 
@@ -203,7 +207,7 @@ func RunTask(ctx context.Context, task *Task, tasks TaskList, dryRun, canSkip bo
 				}
 			}
 		case *Task:
-			err = RunTask(ctx, value, tasks, dryRun, true)
+			err = RunTask(ctx, value, tasks, dryRun, force, true)
 			if err != nil {
 				return err
 			}

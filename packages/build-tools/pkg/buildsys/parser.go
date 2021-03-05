@@ -74,30 +74,26 @@ func starlarkIterable2stringSlice(input starlarkIterable, field string) ([]strin
 	return result, nil
 }
 
+func shellReadDir(path string) ([]os.FileInfo, error) {
+	if path == "" {
+		path = "."
+	}
+
+	return ioutil.ReadDir(path)
+}
+
 func resolvePatternLists(thread *starlark.Thread, base string, patterns []string) ([]string, error) {
 	result := []string{}
 	cfg := expand.Config{
-		ReadDir:  ioutil.ReadDir,
+		ReadDir:  shellReadDir,
 		GlobStar: true,
 	}
 
 	parser := syntax.NewParser()
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
 
 	for _, item := range patterns {
 		item = normalizePath(thread, base, item)
-
-		// we have to use relative paths because expand.Fields doesn't understand absolute paths on Windows
-		item, err := filepath.Rel(wd, item)
-		if err != nil {
-			return nil, err
-		}
-
-		// the ./ here is used to prevent expand.Fields to call ioutil.ReadDir("") for patterns like "**/*"
-		item = "./" + filepath.ToSlash(item)
+		item = filepath.ToSlash(item)
 
 		words := make([]*syntax.Word, 0)
 		parser.Words(strings.NewReader(item), func(w *syntax.Word) bool {
@@ -177,9 +173,9 @@ func processCmdParts(parts starlark.Tuple, parser *syntax.Parser, base string) (
 			if filepath.IsAbs(lit.Value) {
 				// absolute paths cause issues on Windows
 				var err error
-				lit.Value, err = filepath.Rel(base, lit.Value)
-				if err != nil {
-					return nil, err
+				relValue, err := filepath.Rel(base, lit.Value)
+				if err == nil {
+					lit.Value = relValue
 				}
 			}
 
