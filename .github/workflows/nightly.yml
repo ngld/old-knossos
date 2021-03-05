@@ -35,26 +35,29 @@ jobs:
             third_party
             packages/build-tools/DEPS.stamps
 
+      - name: Delete cached build tool
+        run: del .tools\tool.exe
+
+      - name: Configure
+        run: task configure msys2_path=C:\msys64 build=Release
+
       - name: Install dependencies
         run: task install-tools fetch-deps
-
-      - name: Prepare MSYS2
-        run: task bootstrap-mingw64 msys2_path=C:\msys64
 
       - name: Compile API definitions
         run: task proto-build
 
       - name: Build libarchive
-        run: task libarchive-build msys2_path=C:\msys64 root=%CD%
+        run: task libarchive-build
 
       - name: Build libknossos
         run: task libknossos-build
 
       - name: Build Knossos
-        run: task client-build-vs build=Release
+        run: task client-build
 
       - name: Build client UI
-        run: task client-ui-build build=Release
+        run: task client-ui-build
 
       - name: Compress final build
         run: cd build/client/launcher/Release && 7z a Knossos.7z .
@@ -88,6 +91,12 @@ jobs:
             third_party
             packages/build-tools/DEPS.stamps
 
+      - name: Delete cached build tool
+        run: rm .tools/tool
+
+      - name: Configure
+        run: ./task.sh configure build=Release
+
       - name: Install dependencies
         run: |
           sudo apt install -y libgtk2.0-dev liblzma-dev libzstd-dev zlib1g-dev
@@ -103,10 +112,10 @@ jobs:
         run: ./task.sh libknossos-build
 
       - name: Build Knossos
-        run: ./task.sh client-build build=Release
+        run: ./task.sh client-build
 
       - name: Build client UI
-        run: ./task.sh client-ui-build build=Release
+        run: ./task.sh client-ui-build
 
       - name: Compress final build
         run: cd build/client/launcher/Release && tar -cf - . | zstd > ../Knossos.tar.zstd
@@ -140,6 +149,12 @@ jobs:
             third_party
             packages/build-tools/DEPS.stamps
 
+      - name: Delete cached build tool
+        run: rm .tools/tool
+
+      - name: Configure
+        run: ./task.sh configure build=Release
+
       - name: Install dependencies
         run: |
           brew install xz
@@ -155,10 +170,10 @@ jobs:
         run: ./task.sh libknossos-build
 
       - name: Build Knossos
-        run: ./task.sh client-build build=Release
+        run: ./task.sh client-build
 
       - name: Build client UI
-        run: ./task.sh client-ui-build build=Release
+        run: ./task.sh client-ui-build
 
       - name: Compress final build
         run: cd build/client/launcher/Release && tar -cJf Knossos.tar.xz knossos.app

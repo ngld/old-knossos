@@ -12,41 +12,25 @@ import (
 	"github.com/aidarkhanov/nanoid"
 	"github.com/rotisserie/eris"
 	"go.starlark.net/starlark"
-	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )
 
-// * Helpers
-
-func normalizePath(thread *starlark.Thread, pathList ...string) string {
-	result := filepath.Dir(thread.Local("filepath").(string))
-
-	for _, path := range pathList {
-		if strings.HasPrefix(path, "//") {
-			result = filepath.Join(thread.Local("projectRoot").(string), path[2:])
-		} else if strings.HasPrefix(path, "/") {
-			result = filepath.Join(filepath.VolumeName(result), path)
-		} else if !filepath.IsAbs(path) {
-			result = filepath.Join(result, path)
-		} else {
-			result = path
-		}
-	}
-
-	return filepath.Clean(result)
+type parserCtx struct {
+	ctx          context.Context
+	options      map[string]ScriptOption
+	optionValues map[string]string
+	envOverrides map[string]string
+	yamlCache    map[string]interface{}
+	filepath     string
+	projectRoot  string
+	tasks        []*Task
+	initPhase    bool
 }
 
-func simplifyPath(thread *starlark.Thread, path string) string {
-	projectRoot := thread.Local("projectRoot").(string)
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return path
-	}
+// * Helpers
 
-	if strings.HasPrefix(absPath, projectRoot) {
-		return "//" + absPath[len(projectRoot)+1:]
-	}
-	return path
+func getCtx(thread *starlark.Thread) *parserCtx {
+	return thread.Local("parserCtx").(*parserCtx)
 }
 
 type starlarkIterable interface {
@@ -80,40 +64,6 @@ func shellReadDir(path string) ([]os.FileInfo, error) {
 	}
 
 	return ioutil.ReadDir(path)
-}
-
-func resolvePatternLists(thread *starlark.Thread, base string, patterns []string) ([]string, error) {
-	result := []string{}
-	cfg := expand.Config{
-		ReadDir:  shellReadDir,
-		GlobStar: true,
-	}
-
-	parser := syntax.NewParser()
-
-	for _, item := range patterns {
-		item = normalizePath(thread, base, item)
-		item = filepath.ToSlash(item)
-
-		words := make([]*syntax.Word, 0)
-		parser.Words(strings.NewReader(item), func(w *syntax.Word) bool {
-			words = append(words, w)
-			return true
-		})
-
-		matches, err := expand.Fields(&cfg, words...)
-		if err != nil {
-			return nil, eris.Wrapf(err, "Failed to resolve pattern %s", item)
-		}
-
-		for _, match := range matches {
-			// If a pattern didn't match anything, it's returned as a result. Skip those results.
-			if !strings.Contains(match, "*") {
-				result = append(result, match)
-			}
-		}
-	}
-	return result, nil
 }
 
 func processCmdParts(parts starlark.Tuple, parser *syntax.Parser, base string) (*syntax.CallExpr, error) {
@@ -160,175 +110,101 @@ func processCmdParts(parts starlark.Tuple, parser *syntax.Parser, base string) (
 	argCount := len(parts) - len(envVars)
 	cmd.Args = make([]*syntax.Word, argCount)
 	for a, arg := range parts[len(envVars):] {
-		lit := new(syntax.Lit)
-		lit.ValuePos = syntax.Pos{}
-		lit.ValueEnd = syntax.Pos{}
+		var encodedValue string
 
 		switch value := arg.(type) {
 		case starlark.String:
-			lit.Value = value.GoString()
+			encodedValue = value.GoString()
 		case StarlarkPath:
-			lit.Value = string(value)
+			encodedValue = string(value)
 
-			if filepath.IsAbs(lit.Value) {
+			if filepath.IsAbs(encodedValue) {
 				// absolute paths cause issues on Windows
 				var err error
-				relValue, err := filepath.Rel(base, lit.Value)
+				relValue, err := filepath.Rel(base, encodedValue)
 				if err == nil {
-					lit.Value = relValue
+					encodedValue = relValue
 				}
 			}
 
-			lit.Value = filepath.ToSlash(lit.Value)
+			encodedValue = filepath.ToSlash(encodedValue)
 		default:
 			return nil, eris.Errorf("found argument of type %s but only strings and paths are supported: %s", arg.Type(), arg.String())
 		}
 
+		var wordPart syntax.WordPart
+
+		if strings.ContainsAny(encodedValue, " $'") {
+			node := new(syntax.SglQuoted)
+			node.Left = syntax.Pos{}
+			node.Right = syntax.Pos{}
+			node.Value = encodedValue
+
+			wordPart = syntax.WordPart(node)
+		} else {
+			node := new(syntax.Lit)
+			node.ValuePos = syntax.Pos{}
+			node.ValueEnd = syntax.Pos{}
+			node.Value = encodedValue
+
+			wordPart = syntax.WordPart(node)
+		}
+
 		cmd.Args[a] = new(syntax.Word)
-		cmd.Args[a].Parts = []syntax.WordPart{lit}
+		cmd.Args[a].Parts = []syntax.WordPart{wordPart}
 	}
 
 	return cmd, nil
 }
 
-func warn(thread *starlark.Thread, msg string, args ...interface{}) {
-	filepath := thread.Local("filepath").(string)
-	ctx := thread.Local("ctx").(context.Context)
+func info(thread *starlark.Thread, msg string, args ...interface{}) {
+	ctx := getCtx(thread)
 	pos := thread.CallFrame(1).Pos
 
-	filepath = simplifyPath(thread, filepath)
+	filepath := simplifyPath(ctx, ctx.filepath)
 
-	log(ctx).Warn().
-		Msgf("%s:%d:%d: "+msg, append([]interface{}{filepath, pos.Line, pos.Col}, args...)...)
+	log(ctx.ctx).Info().
+		Msgf("%s:%d:%d: %s", filepath, pos.Line, pos.Col, fmt.Sprintf(msg, args...))
+}
+
+func warn(thread *starlark.Thread, msg string, args ...interface{}) {
+	ctx := getCtx(thread)
+	pos := thread.CallFrame(1).Pos
+
+	filepath := simplifyPath(ctx, ctx.filepath)
+
+	log(ctx.ctx).Warn().
+		Msgf("%s:%d:%d: %s", filepath, pos.Line, pos.Col, fmt.Sprintf(msg, args...))
 }
 
 // * Builtin functions
 
-func resolvePath(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	base := ""
-
-	if len(kwargs) > 0 {
-		for _, kv := range kwargs {
-			key := kv[0].(starlark.String).GoString()
-
-			if key == "base" {
-				switch value := kv[1].(type) {
-				case starlark.String:
-					base = value.GoString()
-				case StarlarkPath:
-					base = string(value)
-				default:
-					return nil, eris.Errorf("invalid type %s for keyword base, expected string or path", kv[1].Type())
-				}
-
-				base = normalizePath(thread, base)
-			} else {
-				return nil, eris.Errorf("unexpected keyword argument %s", key)
-			}
-		}
-	}
-
-	if len(args) < 1 {
-		return nil, eris.New("expects at least one argument")
-	}
-
-	parts := make([]string, len(args))
-	for idx, path := range args {
-		switch value := path.(type) {
-		case starlark.String:
-			parts[idx] = value.GoString()
-		default:
-			return nil, eris.Errorf("only accepts string arguments but argument %d was a %s", idx, path.Type())
-		}
-	}
-
-	normPath := normalizePath(thread, parts...)
-	if base != "" {
-		var err error
-		normPath, err = filepath.Rel(base, normPath)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return StarlarkPath(normPath), nil
-}
-
 func option(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
-	var defaultValue starlark.Value
+	var defaultValue starlark.String
+	var help string
 
-	err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &name, &defaultValue)
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "name", &name, "default?", &defaultValue, "help?", &help)
 	if err != nil {
 		return nil, err
 	}
 
-	options := thread.Local("options").(map[string]string)
-	value, ok := options[name]
-	if !ok {
-		return defaultValue, nil
+	ctx := getCtx(thread)
+	if !ctx.initPhase {
+		return nil, eris.New("can only be called during the init phase (in the global scope)")
 	}
 
-	return starlark.String(value), nil
-}
-
-func getenv(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var key string
-
-	err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &key)
-	if err != nil {
-		return nil, err
+	ctx.options[name] = ScriptOption{
+		DefaultValue: defaultValue,
+		Help:         help,
 	}
 
-	envOverrides := thread.Local("envOverrides").(map[string]string)
-	value, ok := envOverrides[key]
-	if !ok {
-		value = os.Getenv(key)
+	value, ok := ctx.optionValues[name]
+	if ok {
+		return starlark.String(value), nil
 	}
 
-	return starlark.String(value), nil
-}
-
-func setenv(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var key string
-	var value string
-
-	err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 2, &key, &value)
-	if err != nil {
-		return nil, err
-	}
-
-	envOverrides := thread.Local("envOverrides").(map[string]string)
-	envOverrides[key] = value
-
-	return starlark.True, nil
-}
-
-func prependPathDir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var pathDir string
-
-	if len(args) != 1 {
-		return nil, eris.New("got %d arguments, want 1")
-	}
-
-	switch value := args[0].(type) {
-	case starlark.String:
-		pathDir = value.GoString()
-	case StarlarkPath:
-		pathDir = string(value)
-	default:
-		return nil, eris.Errorf("for parameter 1: got %s, want path or string", args[0].Type())
-	}
-
-	envOverrides := thread.Local("envOverrides").(map[string]string)
-	path, ok := envOverrides["PATH"]
-	if !ok {
-		path = os.Getenv("PATH")
-	}
-
-	envOverrides["PATH"] = normalizePath(thread, pathDir) + string(os.PathListSeparator) + path
-
-	return starlark.String(envOverrides["PATH"]), nil
+	return defaultValue, nil
 }
 
 func task(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -353,44 +229,33 @@ func task(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kw
 		task.Short = "auto#" + nanoid.New()
 	}
 
+	if task.Short == "configure" {
+		return nil, eris.New(`the task name "configure" is reserved, please use a different name`)
+	}
+
 	task.Env = map[string]string{}
 
 	if task.Base == "" {
 		task.Base = "."
 	}
-	task.Base = normalizePath(thread, task.Base)
+	task.Base = normalizePath(getCtx(thread), task.Base)
 
 	task.Deps, err = starlarkIterable2stringSlice(deps, "deps")
 	if err != nil {
 		return nil, err
 	}
 
-	skipPatterns, err := starlarkIterable2stringSlice(skipIfExists, "skip_if_exists")
+	task.SkipIfExists, err = starlarkIterable2stringSlice(skipIfExists, "skip_if_exists")
 	if err != nil {
 		return nil, err
 	}
 
-	inputPatterns, err := starlarkIterable2stringSlice(inputs, "inputs")
+	task.Inputs, err = starlarkIterable2stringSlice(inputs, "inputs")
 	if err != nil {
 		return nil, err
 	}
 
-	outputPatterns, err := starlarkIterable2stringSlice(outputs, "outputs")
-	if err != nil {
-		return nil, err
-	}
-
-	task.SkipIfExists, err = resolvePatternLists(thread, task.Base, skipPatterns)
-	if err != nil {
-		return nil, err
-	}
-
-	task.Inputs, err = resolvePatternLists(thread, task.Base, inputPatterns)
-	if err != nil {
-		return nil, err
-	}
-
-	task.Outputs, err = resolvePatternLists(thread, task.Base, outputPatterns)
+	task.Outputs, err = starlarkIterable2stringSlice(outputs, "outputs")
 	if err != nil {
 		return nil, err
 	}
@@ -419,30 +284,32 @@ func task(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kw
 		}
 	}
 
+	strBuffer := strings.Builder{}
+	printer := syntax.NewPrinter(syntax.Minify(true))
 	parser := syntax.NewParser()
-	task.Cmds = make([]interface{}, 0)
+	task.Cmds = make([]TaskCmd, 0)
 	iter := cmds.Iterate()
+	defer iter.Done()
+
 	var item starlark.Value
 	idx := 0
 	for iter.Next(&item) {
 		switch value := item.(type) {
 		case starlark.String:
-			reader := strings.NewReader(value.GoString())
-			result, err := parser.Parse(reader, fmt.Sprintf("%s:%d", task.Short, idx))
-			if err != nil {
-				return nil, eris.Wrapf(err, "%s: failed to parse command %s", fn.Name(), value.GoString())
-			}
-
-			for _, stmt := range result.Stmts {
-				task.Cmds = append(task.Cmds, stmt)
-			}
+			task.Cmds = append(task.Cmds, TaskCmdScript{Content: value.GoString()})
 		case starlark.Tuple:
 			cmd, err := processCmdParts(value, parser, task.Base)
 			if err != nil {
-				return nil, err
+				return nil, eris.Wrapf(err, "failed to process command #%d", idx)
 			}
 
-			task.Cmds = append(task.Cmds, &syntax.Stmt{Cmd: cmd})
+			strBuffer.Reset()
+			err = printer.Print(&strBuffer, cmd)
+			if err != nil {
+				return nil, eris.Wrapf(err, "failed to process command #%d", idx)
+			}
+
+			task.Cmds = append(task.Cmds, TaskCmdScript{Content: strBuffer.String()})
 		case *starlark.List:
 			parts := make(starlark.Tuple, value.Len())
 			subIter := value.Iterate()
@@ -456,12 +323,18 @@ func task(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kw
 
 			cmd, err := processCmdParts(parts, parser, task.Base)
 			if err != nil {
-				return nil, err
+				return nil, eris.Wrapf(err, "failed to process command #%d", idx)
 			}
 
-			task.Cmds = append(task.Cmds, &syntax.Stmt{Cmd: cmd})
+			strBuffer.Reset()
+			err = printer.Print(&strBuffer, cmd)
+			if err != nil {
+				return nil, eris.Wrapf(err, "failed to process command #%d", idx)
+			}
+
+			task.Cmds = append(task.Cmds, TaskCmdScript{Content: strBuffer.String()})
 		case *Task:
-			task.Cmds = append(task.Cmds, value)
+			task.Cmds = append(task.Cmds, TaskCmdTaskRef{Task: value})
 		default:
 			return nil, eris.Errorf("%s: unexpected type %s. Only strings, tuples and lists are valid", fn.Name(), item.Type())
 		}
@@ -475,33 +348,42 @@ func task(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kw
 	}
 
 	if !task.Hidden {
-		knownTasks := thread.Local("tasks").([]*Task)
-		thread.SetLocal("tasks", append(knownTasks, task))
+		ctx := getCtx(thread)
+		ctx.tasks = append(ctx.tasks, task)
 	}
 	return task, nil
 }
 
-// Parse parses the given file and returns a TaskList which contains all named tasks declared on the global scope
-func Parse(ctx context.Context, filename, projectRoot string, options map[string]string) (TaskList, error) {
+// RunScript executes a starlake scripts and returns the declared options. If doConfigure is true, the script's
+// configure function is called and the declared tasks are collected and returned.
+func RunScript(ctx context.Context, filename, projectRoot string, options map[string]string, doConfigure bool) (TaskList, map[string]ScriptOption, error) {
 	projectRoot, err := filepath.Abs(projectRoot)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	filename, err = filepath.Abs(filename)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	builtins := starlark.StringDict{
 		"OS":           starlark.String(runtime.GOOS),
 		"ARCH":         starlark.String(runtime.GOARCH),
+		"info":         starlark.NewBuiltin("info", starInfo),
+		"warn":         starlark.NewBuiltin("warn", starWarn),
+		"error":        starlark.NewBuiltin("error", starError),
 		"resolve_path": starlark.NewBuiltin("resolve_path", resolvePath),
 		"option":       starlark.NewBuiltin("option", option),
 		"getenv":       starlark.NewBuiltin("getenv", getenv),
 		"setenv":       starlark.NewBuiltin("setenv", setenv),
 		"prepend_path": starlark.NewBuiltin("prepend_path", prependPathDir),
+		"read_yaml":    starlark.NewBuiltin("read_yaml", readYaml),
+		"isdir":        starlark.NewBuiltin("isdir", starIsdir),
+		"isfile":       starlark.NewBuiltin("isfile", starIsfile),
+		"execute":      starlark.NewBuiltin("execute", starExec),
 		"task":         starlark.NewBuiltin("task", task),
+		"load_vcvars":  starlark.NewBuiltin("load_vcvars", starLoadVcvars),
 	}
 
 	thread := &starlark.Thread{
@@ -510,40 +392,65 @@ func Parse(ctx context.Context, filename, projectRoot string, options map[string
 			log(ctx).Info().Str("thread", thread.Name).Msg(msg)
 		},
 	}
-	thread.SetLocal("ctx", ctx)
-	thread.SetLocal("filepath", filename)
-	thread.SetLocal("projectRoot", projectRoot)
-	thread.SetLocal("options", options)
-	thread.SetLocal("envOverrides", map[string]string{})
-	thread.SetLocal("tasks", []*Task{})
+	threadCtx := parserCtx{
+		ctx:          ctx,
+		filepath:     filename,
+		projectRoot:  projectRoot,
+		options:      make(map[string]ScriptOption),
+		optionValues: options,
+		envOverrides: make(map[string]string, 0),
+		tasks:        make([]*Task, 0),
+		yamlCache:    make(map[string]interface{}),
+		initPhase:    true,
+	}
+	thread.SetLocal("parserCtx", &threadCtx)
 
 	script, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, eris.Wrapf(err, "failed to read file")
+		return nil, nil, eris.Wrapf(err, "failed to read file")
 	}
 
 	// wrap the entire script in a function to work around the limitation that ifs are only allowed inside functions
-	wrappedScript := "def main():\n    " + strings.ReplaceAll(string(script), "\n", "\n    ") + "\n\nmain()\n"
-	_, err = starlark.ExecFile(thread, simplifyPath(thread, filename), wrappedScript, builtins)
+	globals, err := starlark.ExecFile(thread, simplifyPath(&threadCtx, filename), script, builtins)
 	if err != nil {
 		if evalError, ok := err.(*starlark.EvalError); ok {
-			return nil, eris.Errorf("failed to execute %s:\n%s", simplifyPath(thread, filename), evalError.Backtrace())
+			return nil, nil, eris.Errorf("failed to execute %s:\n%s", simplifyPath(&threadCtx, filename), evalError.Backtrace())
 		}
-		return nil, eris.Wrap(err, "failed to execute")
+		return nil, nil, eris.Wrap(err, "failed to execute")
 	}
 
-	envOverrides := thread.Local("envOverrides").(map[string]string)
 	tasks := TaskList{}
-	for _, task := range thread.Local("tasks").([]*Task) {
-		tasks[task.Short] = task
+	if doConfigure {
+		configure, ok := globals["configure"]
+		if !ok {
+			return nil, nil, eris.Errorf("%s did not declare a configure function", simplifyPath(&threadCtx, filename))
+		}
 
-		for name, value := range envOverrides {
-			_, present := task.Env[name]
-			if !present {
-				task.Env[name] = value
+		configureFunc, ok := configure.(starlark.Callable)
+		if !ok {
+			return nil, nil, eris.Errorf("%s did declare a configure value but it's not a function", simplifyPath(&threadCtx, filename))
+		}
+
+		threadCtx.initPhase = false
+		_, err = starlark.Call(thread, configureFunc, make(starlark.Tuple, 0), make([]starlark.Tuple, 0))
+		if err != nil {
+			if evalError, ok := err.(*starlark.EvalError); ok {
+				return nil, nil, eris.New(evalError.Backtrace())
+			}
+			return nil, nil, eris.Wrapf(err, "failed configure call in %s", simplifyPath(&threadCtx, filename))
+		}
+
+		for _, task := range threadCtx.tasks {
+			tasks[task.Short] = task
+
+			for name, value := range threadCtx.envOverrides {
+				_, present := task.Env[name]
+				if !present {
+					task.Env[name] = value
+				}
 			}
 		}
 	}
 
-	return tasks, nil
+	return tasks, threadCtx.options, nil
 }

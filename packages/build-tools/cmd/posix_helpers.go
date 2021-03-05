@@ -77,6 +77,11 @@ var rmCmd = &cobra.Command{
 			return err
 		}
 
+		force, err := cmd.Flags().GetBool("force")
+		if err != nil {
+			return err
+		}
+
 		if runtime.GOOS == "windows" {
 			for _, arg := range args {
 				matches, err := filepath.Glob(arg)
@@ -85,7 +90,11 @@ var rmCmd = &cobra.Command{
 				}
 
 				if matches == nil {
-					return eris.Errorf("Pattern %s produced no matches", arg)
+					if force {
+						continue
+					} else {
+						return eris.Errorf("Pattern %s produced no matches", arg)
+					}
 				}
 
 				items = append(items, matches...)
@@ -107,7 +116,7 @@ var rmCmd = &cobra.Command{
 
 		for _, item := range items {
 			err := os.RemoveAll(item)
-			if err != nil {
+			if err != nil && (!force || !eris.Is(err, os.ErrNotExist)) {
 				return eris.Wrapf(err, "Could not delete %s", item)
 			}
 		}
@@ -143,6 +152,7 @@ var mkdirCmd = &cobra.Command{
 
 func init() {
 	rmCmd.Flags().BoolP("recursive", "r", false, "recursively delete directories")
+	rmCmd.Flags().BoolP("force", "f", false, "suppresses errors caused by missing files/folders")
 	mkdirCmd.Flags().BoolP("parents", "p", false, "create parent directories as needed")
 
 	rootCmd.AddCommand(mvCmd)

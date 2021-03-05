@@ -8,6 +8,7 @@ dist/
 *.pb.go
 *.twirp.go
 *.sql.go
+*.star.cache
 packages/api/api/*.ts
 packages/api/api/**/*.ts
 gen/

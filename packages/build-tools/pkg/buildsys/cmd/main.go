@@ -16,7 +16,7 @@ import (
 )
 
 var RootCmd = &cobra.Command{
-	Use:   "task",
+	Use:   "task [-l|-o] | [-nf] task1 task2 ...",
 	Short: "Simple build system for Knossos",
 	Long:  `This command parses the first tasks.star file it finds and executes the given tasks.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -28,6 +28,16 @@ var RootCmd = &cobra.Command{
 		}
 
 		force, err := cmd.Flags().GetBool("force")
+		if err != nil {
+			return err
+		}
+
+		listTasks, err := cmd.Flags().GetBool("list")
+		if err != nil {
+			return err
+		}
+
+		listOpts, err := cmd.Flags().GetBool("options")
 		if err != nil {
 			return err
 		}
@@ -44,6 +54,11 @@ var RootCmd = &cobra.Command{
 		logger := zerolog.New(NewConsoleWriter())
 		ctx := context.Background()
 		ctx = buildsys.WithLogger(ctx, &logger)
+
+		// sanity checks
+		if len(options) > 0 && (len(taskArgs) != 1 || taskArgs[0] != "configure") {
+			logger.Fatal().Msg("Options can only be passed to the configure task")
+		}
 
 		// search the next tasks.star file
 		wd, err := os.Getwd()
@@ -71,29 +86,80 @@ var RootCmd = &cobra.Command{
 			path = parent
 		}
 
-		taskPath, err = filepath.Rel(wd, taskPath)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to simplify path")
-		}
+		isConfigure := len(taskArgs) > 0 && taskArgs[0] == "configure"
+		cacheFile := taskPath + ".cache"
+		projectRoot := filepath.Dir(taskPath)
+		var taskList buildsys.TaskList
+		rebuildCache := isConfigure
 
-		taskList, err := buildsys.Parse(ctx, taskPath, filepath.Dir(taskPath), options)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to parse tasks")
-		}
-
-		for _, name := range taskArgs {
-			task, ok := taskList[name]
-			if !ok {
-				logger.Fatal().Msgf("Task %s not found", name)
-			}
-
-			err = buildsys.RunTask(ctx, task, taskList, dryRun, force, false)
+		if !rebuildCache {
+			cacheInfo, err := os.Stat(cacheFile)
 			if err != nil {
-				logger.Fatal().Err(err).Msgf("Failed task %s:", name)
+				if !eris.Is(err, os.ErrNotExist) {
+					logger.Fatal().Err(err).Msg("Failed to check cache")
+				}
+			} else {
+				scriptInfo, err := os.Stat(taskPath)
+				if err != nil {
+					logger.Fatal().Err(err).Msg("Failed to check task file")
+				}
+
+				if cacheInfo.ModTime().Sub(scriptInfo.ModTime()) < 0 {
+					// script is newer than our cache
+					rebuildCache = true
+				}
 			}
 		}
 
-		if len(taskArgs) == 0 {
+		if !isConfigure {
+			// We read the cache even if rebuildCache is true because we need the options from the last configure run.
+			// Overwriting options here is fine because the sanity check earlier ensures that options are only passed
+			// on the CLI for the configure task.
+			options, taskList, err = buildsys.ReadCache(cacheFile)
+			if err != nil && !eris.Is(err, os.ErrNotExist) {
+				logger.Fatal().Err(err).Msg("Failed to open cache")
+			}
+		}
+
+		if rebuildCache || listOpts {
+			var scriptOptions map[string]buildsys.ScriptOption
+			taskList, scriptOptions, err = buildsys.RunScript(ctx, taskPath, filepath.Dir(taskPath), options, !listOpts)
+			if err != nil {
+				logger.Fatal().Err(err).Msg("Failed to parse tasks")
+			}
+
+			if listOpts {
+				return printOptHelp(scriptOptions)
+			}
+
+			err = buildsys.WriteCache(cacheFile, options, taskList)
+			if err != nil {
+				logger.Fatal().Err(err).Msg("Failed to cache processed tasks")
+			}
+
+			if isConfigure {
+				logger.Info().Msg("Done")
+				return nil
+			}
+		}
+
+		if taskList == nil {
+			logger.Fatal().Msg(
+				`Please run "task configure" before you run any other task. For a list of available options, check` +
+					` "task configure -o"`,
+			)
+		}
+
+		if !listTasks {
+			for _, name := range taskArgs {
+				err = buildsys.RunTask(ctx, projectRoot, name, taskList, dryRun, force)
+				if err != nil {
+					logger.Fatal().Err(err).Msgf("Failed task %s:", name)
+				}
+			}
+		}
+
+		if len(taskArgs) == 0 || listTasks {
 			fmt.Println("Available tasks:")
 			maxNameLen := 0
 			sortedNames := make([]string, 0)
@@ -118,7 +184,48 @@ var RootCmd = &cobra.Command{
 	},
 }
 
+func printOptHelp(options map[string]buildsys.ScriptOption) error {
+	table := make([][2]string, 0)
+	maxCol := 0
+	termCols := 80
+
+	for name, option := range options {
+		name = fmt.Sprintf("%s=%s", name, option.Default())
+
+		if len(name) > maxCol {
+			maxCol = len(name)
+		}
+
+		table = append(table, [2]string{name, option.Help})
+	}
+
+	lineFmt := fmt.Sprintf("%%-%ds %%s\n", maxCol+3)
+	for _, items := range table {
+		if len(items[1]) > termCols {
+			fmt.Printf(lineFmt, items[0], items[1][:termCols])
+
+			pos := termCols
+			for pos < len(items[1]) {
+				end := pos + termCols
+				if end > len(items[1]) {
+					end = len(items[1])
+				}
+
+				fmt.Printf(lineFmt, "", items[1][pos:end])
+				pos = end
+			}
+		} else {
+			fmt.Printf(lineFmt, items[0], items[1])
+		}
+	}
+
+	return nil
+}
+
 func init() {
-	RootCmd.Flags().BoolP("dry", "n", false, "dry run; only print the commands, don't execute anything")
-	RootCmd.Flags().BoolP("force", "f", false, "force build; always execute the passed steps even if they don't have to run")
+	f := RootCmd.Flags()
+	f.BoolP("dry", "n", false, "dry run; only print the commands, don't execute anything")
+	f.BoolP("force", "f", false, "force build; always execute the passed steps even if they don't have to run")
+	f.BoolP("list", "l", false, "list available tasks")
+	f.BoolP("options", "o", false, "list configure options")
 }

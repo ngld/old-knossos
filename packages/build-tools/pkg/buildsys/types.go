@@ -2,11 +2,50 @@ package buildsys
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/rotisserie/eris"
 	"go.starlark.net/starlark"
 	starsyntax "go.starlark.net/syntax"
+	"mvdan.cc/sh/v3/syntax"
 )
+
+type TaskCmdScript struct {
+	TaskName string
+	Content  string
+	Index    int
+}
+
+func (s TaskCmdScript) ToTask() (*Task, error) {
+	return nil, nil
+}
+
+func (s TaskCmdScript) ToShellStmts(parser *syntax.Parser) ([]*syntax.Stmt, error) {
+	reader := strings.NewReader(s.Content)
+	result, err := parser.Parse(reader, fmt.Sprintf("%s:%d", s.TaskName, s.Index))
+	if err != nil {
+		return nil, eris.Wrapf(err, "failed to parse command %s", s.Content)
+	}
+
+	return result.Stmts, nil
+}
+
+type TaskCmdTaskRef struct {
+	Task *Task
+}
+
+func (t TaskCmdTaskRef) ToTask() (*Task, error) {
+	return t.Task, nil
+}
+
+func (t TaskCmdTaskRef) ToShellStmts(*syntax.Parser) ([]*syntax.Stmt, error) {
+	return nil, nil
+}
+
+type TaskCmd interface {
+	ToTask() (*Task, error)
+	ToShellStmts(*syntax.Parser) ([]*syntax.Stmt, error)
+}
 
 // Task contains the processed values passed to task() by the task script
 type Task struct {
@@ -18,12 +57,21 @@ type Task struct {
 	Deps         []string
 	SkipIfExists []string
 	Outputs      []string
-	Cmds         []interface{}
+	Cmds         []TaskCmd
 	Hidden       bool
 }
 
 // TaskList maps short names to each relevant task
 type TaskList map[string]*Task
+
+type ScriptOption struct {
+	DefaultValue starlark.String
+	Help         string
+}
+
+func (o ScriptOption) Default() string {
+	return o.DefaultValue.GoString()
+}
 
 // Implement starlark.Value for *Task
 
