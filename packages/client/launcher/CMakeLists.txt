@@ -127,17 +127,17 @@ SET_CEF_TARGET_OUT_DIR()
 
 if(OS_LINUX)
   find_package(PkgConfig REQUIRED)
-  pkg_check_modules(GTK2 REQUIRED gtk+-2.0)
+  pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 
-  include_directories(${GTK2_INCLUDE_DIRS})
-  link_directories(${GTK2_LIBRARY_DIRS})
-  add_definitions(${GTK2_CFLAGS_OTHER})
+  include_directories(${GTK3_INCLUDE_DIRS})
+  link_directories(${GTK3_LIBRARY_DIRS})
+  add_definitions(${GTK3_CFLAGS_OTHER})
 
   # Executable target.
   add_executable(${CEF_TARGET} ${KNOSSOS_SRCS} ${KNOSSOS_HELPER_SRCS})
   SET_EXECUTABLE_TARGET_PROPERTIES(${CEF_TARGET})
   add_dependencies(${CEF_TARGET} libcef_dll_wrapper)
-  target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper dl brotlidec-static ${CEF_STANDARD_LIBS} ${GTK2_LIBRARIES})
+  target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper dl brotlidec-static ${CEF_STANDARD_LIBS} ${GTK3_LIBRARIES})
 
   # Set rpath so that libraries can be placed next to the executable.
   set_target_properties(${CEF_TARGET} PROPERTIES INSTALL_RPATH "$ORIGIN")
@@ -155,7 +155,8 @@ if(OS_LINUX)
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_TARGET_OUT_DIR}"
     VERBATIM
-    )
+    DEPENDS "${libknossos}"
+  )
 
   # Set SUID permissions on the chrome-sandbox target.
   SET_LINUX_SUID_PERMISSIONS("${CEF_TARGET}" "${CEF_TARGET_OUT_DIR}/chrome-sandbox")
@@ -206,7 +207,7 @@ if(OS_MAC)
             "${CEF_BINARY_DIR}/Chromium Embedded Framework.framework"
             "${CEF_APP}/Contents/Frameworks/Chromium Embedded Framework.framework"
     VERBATIM
-    )
+  )
 
   # Create the multiple Helper app bundle targets.
   foreach(_suffix_list ${CEF_HELPER_APP_SUFFIXES})
@@ -256,7 +257,7 @@ if(OS_MAC)
               "${CEF_TARGET_OUT_DIR}/${_helper_output_name}.app"
               "${CEF_APP}/Contents/Frameworks/${_helper_output_name}.app"
       VERBATIM
-      )
+    )
   endforeach()
 
   # Manually process and copy over resource files.
@@ -270,6 +271,7 @@ if(OS_MAC)
     TARGET ${CEF_TARGET}
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_APP}/Contents/MacOS" VERBATIM
+    DEPENDS "${libknossos}"
   )
 endif()
 
@@ -302,10 +304,12 @@ if(OS_WINDOWS)
     TARGET ${CEF_TARGET}
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_TARGET_OUT_DIR}" VERBATIM
+    DEPENDS "${libknossos}"
   )
   add_custom_command(
     TARGET ${CEF_TARGET}
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libarchive}" "${CEF_TARGET_OUT_DIR}" VERBATIM
+    DEPENDS "${libarchive}"
   )
 endif()

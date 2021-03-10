@@ -1,7 +1,7 @@
 vars:
   PROTOC: 3.14.0
   LIBARCHIVE: 3.5.1
-  CEF: 88.2.6+gd717f0e+chromium-88.0.4324.150
+  CEF: 89.0.6+g6f30454+chromium-89.0.4389.72
   MSYS_BUILD: 20210215
   NODEJS: 14.16.0
   BROTLI: 1.0.9
@@ -32,7 +32,7 @@ deps:
     dest: third_party/protoc-dist
 
   cef-linux-full:
-    sha256: 5af8f06b2c28b8a646e491f942beecf585cf655834c55c86b224149b3fc3f508
+    sha256: add763f495350380d5ae6a08a700ee97595a7912eb7012e830952ece6f5a51bb
     if: linux, amd64
     ifNot: ci
     url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_linux64.tar.bz2
@@ -40,14 +40,14 @@ deps:
     dest: third_party/cef
 
   cef-linux:
-    sha256: ee37be1200161ff286edfde40810ada9c3558a1bc39eaae49b6a15c2452d29c2
+    sha256: 94ff02a521bae603ee7ef9cea75b88a51a847267798a0562360ed25722b712d8
     if: linux, amd64, ci
     url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_linux64_minimal.tar.bz2
     strip: 1
     dest: third_party/cef
 
   cef-darwin-full:
-    sha256: 278807e4dc1e2b1b0072f934a39d5269ce53bb12e095647cdeb74751cd6d56dd
+    sha256: 9d83021f4da105ba9b0579cb2727f558b68f1321863cdcbc3b9b86983710f854
     if: darwin, amd64
     ifNot: ci
     url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_macosx64.tar.bz2
@@ -55,14 +55,14 @@ deps:
     dest: third_party/cef
 
   cef-darwin:
-    sha256: c8d7c5deb56c3cfbc813461447b0b34d47d446f4b5756b1a3251e0c9394ef176
+    sha256: 5546840720489a12fc5a294aa32c8203da1c289f21b924d24906a5cc7c560dc9
     if: darwin, amd64, ci
     url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_macosx64_minimal.tar.bz2
     strip: 1
     dest: third_party/cef
 
   cef-win64-full:
-    sha256: 346bfd5be2b6a33ec6cdfef4d90c81ac44d9899b827440b433d07653409c0ea5
+    sha256: 87f3546ac227ada4ae954556e525afee19f724c7d992617e4057b802b3e95e5e
     if: windows, amd64
     ifNot: ci
     url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_windows64.tar.bz2
@@ -70,7 +70,7 @@ deps:
     dest: third_party/cef
 
   cef-win64:
-    sha256: bb1ae64d851d81394aaf5934517d1b7a2a43fda5b9b5729d3fa6967ea9c46463
+    sha256: ebacaef90bc16ba88497ef978bf09b31b5876adc5aed72b2673eb8bfd0a29e6d
     if: windows, amd64, ci
     url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_windows64_minimal.tar.bz2
     strip: 1
