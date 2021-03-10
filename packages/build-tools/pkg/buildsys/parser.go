@@ -347,10 +347,8 @@ func task(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kw
 		warn(thread, "%s: found inputs but no outputs", fn.Name())
 	}
 
-	if !task.Hidden {
-		ctx := getCtx(thread)
-		ctx.tasks = append(ctx.tasks, task)
-	}
+	ctx := getCtx(thread)
+	ctx.tasks = append(ctx.tasks, task)
 	return task, nil
 }
 

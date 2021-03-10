@@ -42,7 +42,7 @@ build = option("build", "Release", help = "Whether to build a Debug or Release b
 msys2_path = option("msys2_path", "//third_party/msys2", help = "The path to your MSYS2 installation. Only used on Windows. " +
                                                                 "Defaults to the bundled MSYS2 directory")
 generator_opt = option("generator", "", help = "The CMake generator to use. Defaults to ninja if available. " +
-                                           "Please note that on Windows you'll  have to run the vcvarsall.bat if you don't choose a Visual Studio generator")
+                                               "Please note that on Windows you'll  have to run the vcvarsall.bat if you don't choose a Visual Studio generator")
 kn_args = option("args", "", help = "The parameters to pass to Knossos in the client-run target")
 
 yarn_path = resolve_path(read_yaml(".yarnrc.yml", "yarnPath"))
@@ -155,6 +155,7 @@ def configure():
             "yarn.lock",
         ],
         outputs = [
+            ".yarn/cache/*.zip",
             ".pnp.js",
         ],
         cmds = [yarn("install")],
@@ -270,6 +271,14 @@ def configure():
         ],
     )
 
+    task(
+        "client-ui-watch",
+        hidden = True,
+        deps = ["fetch-deps"],
+        base = "packages/client-ui",
+        cmds = [yarn("client:watch")],
+    )
+
     if OS == "windows":
         task(
             "libarchive-build",
@@ -344,7 +353,7 @@ def configure():
     fi
 
     cd build/client
-    if [ ! -f CMakeCache.txt ]; then
+    if [ ! -f CMakeCache.txt ] || [ ! -f ../../compile_commands.json ]; then
         cmake -G"{generator}" -DCMAKE_BUILD_TYPE={build} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ../../packages/client
         mv compile_commands.json ../..
     fi
@@ -364,6 +373,21 @@ def configure():
         deps = ["client-build", "client-ui-build"],
         base = "build/client",
         cmds = ["%s %s" % (kn_bin, kn_args)],
+    )
+
+    libkn_path = resolve_path('build/libknossos/libknossos%s' % libext)
+    task(
+        "client-run-dev",
+        hidden = True,
+        base = "build/client",
+        cmds = ['%s --url="http://localhost:8080/" --libkn=%s' % (kn_bin, libkn_path)],
+    )
+
+    task(
+        "client-watch",
+        desc = "Launch Knossos, recompile and restart after source changes",
+        deps = ["install-tools"],
+        cmds = ["modd -f modd_client.conf"],
     )
 
     task(

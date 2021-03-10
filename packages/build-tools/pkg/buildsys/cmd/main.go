@@ -164,19 +164,23 @@ var RootCmd = &cobra.Command{
 			maxNameLen := 0
 			sortedNames := make([]string, 0)
 			for _, task := range taskList {
-				nameLen := len(task.Short)
-				if nameLen > maxNameLen {
-					maxNameLen = nameLen
-				}
+				if !task.Hidden {
+					nameLen := len(task.Short)
+					if nameLen > maxNameLen {
+						maxNameLen = nameLen
+					}
 
-				sortedNames = append(sortedNames, task.Short)
+					sortedNames = append(sortedNames, task.Short)
+				}
 			}
 
 			sort.Strings(sortedNames)
 
 			lineFmt := fmt.Sprintf(" * %%-%ds %%s\n", maxNameLen+3)
 			for _, name := range sortedNames {
-				fmt.Printf(lineFmt, name+":", taskList[name].Desc)
+				if !taskList[name].Hidden {
+					fmt.Printf(lineFmt, name+":", taskList[name].Desc)
+				}
 			}
 		}
 
