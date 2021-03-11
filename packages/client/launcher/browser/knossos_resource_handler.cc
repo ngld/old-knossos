@@ -93,6 +93,8 @@ bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
       }
     }
 
+    // FIXME This call can block which shouldn't happen on the IO thread. Instead, we should post to a background thread,
+    // and call the passed callback once we're done.
     kn_response = KnossosHandleRequest((char*)url.c_str(), (int)url.size(), body_contents, (int)body_size);
     if (body_contents != 0) {
       std::free(body_contents);

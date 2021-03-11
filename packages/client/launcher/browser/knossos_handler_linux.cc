@@ -74,3 +74,24 @@ void KnossosHandler::ShowError(std::string msg) {
   gtk_dialog_run(GTK_DIALOG(dialog));
   gtk_widget_destroy(dialog);
 }
+
+void KnossosHandler::SaveFileDialog(
+    CefRefPtr<CefBrowser> browser, std::string title, std::string message,
+    std::string default_filename, std::string folder,
+    const base::Callback<void(bool, std::string)> callback) {
+  // TODO
+}
+
+void KnossosHandler::OpenFileDialog(
+    CefRefPtr<CefBrowser> browser, std::string title, std::string message,
+    std::string default_filename, std::string folder,
+    const base::Callback<void(bool, std::string)> callback) {
+  // TODO
+}
+
+void KnossosHandler::OpenFolderDialog(
+    CefRefPtr<CefBrowser> browser, std::string title, std::string message,
+    std::string folder,
+    const base::Callback<void(bool, std::string)> callback) {
+  // TODO
+}

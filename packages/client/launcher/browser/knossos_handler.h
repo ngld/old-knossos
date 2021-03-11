@@ -4,6 +4,7 @@
 #include <list>
 
 #include "include/cef_client.h"
+#include "include/base/cef_callback.h"
 #include "browser/knossos_archive.h"
 
 class KnossosHandler : public CefClient,
@@ -98,6 +99,20 @@ class KnossosHandler : public CefClient,
   void PlatformTitleChange(CefRefPtr<CefBrowser> browser,
                            const CefString& title);
   static void ShowError(std::string message);
+  void SaveFileDialog(CefRefPtr<CefBrowser> browser,
+                      std::string title, std::string message,
+                      std::string default_filename,
+                      std::string folder,
+                      const base::Callback<void(bool, std::string)> callback);
+  void OpenFileDialog(CefRefPtr<CefBrowser> browser,
+                      std::string title, std::string message,
+                      std::string default_filename,
+                      std::string folder,
+                      const base::Callback<void(bool, std::string)> callback);
+  void OpenFolderDialog(CefRefPtr<CefBrowser> browser,
+                        std::string title, std::string message,
+                        std::string folder,
+                        const base::Callback<void(bool, std::string)> callback);
 
   void ShowDevTools(CefRefPtr<CefBrowser> browser);
 

@@ -171,6 +171,13 @@ def configure():
         ],
     )
 
+    task(
+        "update-deps",
+        desc = "Update the checksums listed in DEPS.yml (only use this if you manually changed that file)",
+        deps = ["build-tool"],
+        cmds = ["tool fetch-deps -u"],
+    )
+
     if OS == "windows":
         task(
             "bootstrap-mingw64",
@@ -375,7 +382,7 @@ def configure():
         cmds = ["%s %s" % (kn_bin, kn_args)],
     )
 
-    libkn_path = resolve_path('build/libknossos/libknossos%s' % libext)
+    libkn_path = resolve_path("build/libknossos/libknossos%s" % libext)
     task(
         "client-run-dev",
         hidden = True,

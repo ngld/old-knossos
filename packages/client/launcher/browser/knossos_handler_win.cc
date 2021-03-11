@@ -22,3 +22,24 @@ CefRect KnossosHandler::GetScreenSize() {
 void KnossosHandler::ShowError(std::string message) {
   MessageBoxA(NULL, message.c_str(), "Knossos", MB_OK | MB_ICONERROR | MB_TASKMODAL);
 }
+
+void KnossosHandler::SaveFileDialog(
+    CefRefPtr<CefBrowser> browser, std::string title, std::string message,
+    std::string default_filename, std::string folder,
+    const base::Callback<void(bool, std::string)> callback) {
+  // TODO
+}
+
+void KnossosHandler::OpenFileDialog(
+    CefRefPtr<CefBrowser> browser, std::string title, std::string message,
+    std::string default_filename, std::string folder,
+    const base::Callback<void(bool, std::string)> callback) {
+  // TODO
+}
+
+void KnossosHandler::OpenFolderDialog(
+    CefRefPtr<CefBrowser> browser, std::string title, std::string message,
+    std::string folder,
+    const base::Callback<void(bool, std::string)> callback) {
+  // TODO
+}

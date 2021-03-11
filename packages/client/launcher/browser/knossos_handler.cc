@@ -11,6 +11,7 @@
 #include "include/cef_path_util.h"
 #include "include/cef_process_message.h"
 #include "include/internal/cef_ptr.h"
+#include "include/internal/cef_types.h"
 #include "include/views/cef_browser_view.h"
 #include "include/views/cef_window.h"
 #include "include/cef_menu_model.h"
@@ -169,6 +170,20 @@ void KnossosHandler::CloseAllBrowsers(bool force_close) {
     (*it)->GetHost()->CloseBrowser(force_close);
 }
 
+static void DialogResultHelper(CefRefPtr<CefFrame> frame, int promise_id, bool success, std::string path) {
+  auto msg = CefProcessMessage::Create("knResolvePromiseWithString");
+  auto args = msg->GetArgumentList();
+
+  args->SetInt(0, promise_id);
+  if (success) {
+    args->SetString(1, path);
+  } else {
+    args->SetString(1, "");
+  }
+
+  frame->SendProcessMessage(PID_RENDERER, msg);
+}
+
 bool KnossosHandler::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
                                         CefRefPtr<CefFrame> frame,
                                         CefProcessId source_process,
@@ -177,6 +192,24 @@ bool KnossosHandler::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
   if (message_name == "knDevToolsRequest") {
     ShowDevTools(browser);
     return true;
+  } else if (message_name == "knOpenFileRequest") {
+    auto args = message->GetArgumentList();
+
+    OpenFileDialog(browser, args->GetString(0), args->GetString(1),
+      args->GetString(2), args->GetString(3),
+      base::Bind(&DialogResultHelper, frame, args->GetInt(4)));
+  } else if (message_name == "knOpenFolderRequest") {
+    auto args = message->GetArgumentList();
+
+    OpenFolderDialog(browser, args->GetString(0), args->GetString(1),
+      args->GetString(2),
+      base::Bind(&DialogResultHelper, frame, args->GetInt(3)));
+  } else if (message_name == "knSaveFileRequest") {
+    auto args = message->GetArgumentList();
+
+    SaveFileDialog(browser, args->GetString(0), args->GetString(1),
+      args->GetString(2), args->GetString(3),
+      base::Bind(&DialogResultHelper, frame, args->GetInt(4)));
   }
 
   return false;
