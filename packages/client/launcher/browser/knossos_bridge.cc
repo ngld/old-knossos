@@ -1,6 +1,7 @@
 #include "browser/knossos_bridge.h"
 
 #include "include/base/cef_logging.h"
+#include "include/cef_command_line.h"
 #include "include/cef_values.h"
 #include "include/cef_process_message.h"
 #include "include/cef_path_util.h"
@@ -36,18 +37,27 @@ static void KnossosMessageDispatcher(void* message, int length) {
 }
 
 void PrepareLibKnossos(std::string settings_path) {
+  std::string libknossos_path;
+
+  CefRefPtr<CefCommandLine> command_line =
+      CefCommandLine::GetGlobalCommandLine();
+
+  if (command_line->HasSwitch("libkn")) {
+    libknossos_path = command_line->GetSwitchValue("libkn");
+  } else {
 #if defined(OS_WIN)
-  std::string libknossos_path("libknossos.dll");
+    libknossos_path = "libknossos.dll";
 #elif defined(OS_LINUX)
-  std::string libknossos_path("libknossos.so");
+    libknossos_path = "libknossos.so";
 #elif defined(OS_MAC)
-  std::string libknossos_path("./libknossos.dylib");
-  CefString exe_dir;
-  if (CefGetPath(PK_DIR_EXE, exe_dir)) {
-    libknossos_path = exe_dir;
-    libknossos_path += "/libknossos.dylib";
-  }
+    libknossos_path = "./libknossos.dylib";
+    CefString exe_dir;
+    if (CefGetPath(PK_DIR_EXE, exe_dir)) {
+      libknossos_path = exe_dir;
+      libknossos_path += "/libknossos.dylib";
+    }
 #endif
+  }
 
   CefString resource_path;
   if (!CefGetPath(PK_DIR_RESOURCES, resource_path)) {
