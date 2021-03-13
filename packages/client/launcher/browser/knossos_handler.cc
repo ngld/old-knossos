@@ -5,8 +5,10 @@
 #include <string>
 
 #include "browser/knossos_archive.h"
+#include "browser/knossos_file_result_handler.h"
 #include "include/base/cef_bind.h"
 #include "include/cef_app.h"
+#include "include/cef_menu_model.h"
 #include "include/cef_parser.h"
 #include "include/cef_path_util.h"
 #include "include/cef_process_message.h"
@@ -14,28 +16,27 @@
 #include "include/internal/cef_types.h"
 #include "include/views/cef_browser_view.h"
 #include "include/views/cef_window.h"
-#include "include/cef_menu_model.h"
 #include "include/wrapper/cef_closure_task.h"
 #include "include/wrapper/cef_helpers.h"
 
-#include "browser/knossos_resource_handler.h"
 #include "browser/knossos_archive_handler.h"
+#include "browser/knossos_resource_handler.h"
 
 namespace {
 
-KnossosHandler* g_instance = nullptr;
+KnossosHandler *g_instance = nullptr;
 
 const int kDevToolsMenuItem = MENU_ID_USER_FIRST;
 const int kReloadMenuItem = MENU_ID_USER_FIRST + 1;
 
 // Returns a data: URI with the specified contents.
-std::string GetDataURI(const std::string& data, const std::string& mime_type) {
+std::string GetDataURI(const std::string &data, const std::string &mime_type) {
   return "data:" + mime_type + ";base64," +
          CefURIEncode(CefBase64Encode(data.data(), data.size()), false)
              .ToString();
 }
 
-}  // namespace
+} // namespace
 
 KnossosHandler::KnossosHandler(bool use_views, std::string settings_path)
     : use_views_(use_views), is_closing_(false), _settings_path(settings_path) {
@@ -54,7 +55,8 @@ KnossosHandler::KnossosHandler(bool use_views, std::string settings_path)
     int err = _resources->Open(archive_path);
     if (err != 0) {
       std::ostringstream msg;
-      msg << "Failed to open resource archive " << archive_path << " (" << err << ").";
+      msg << "Failed to open resource archive " << archive_path << " (" << err
+          << ").";
       LOG(ERROR) << msg.str();
       ShowError(msg.str());
 
@@ -63,17 +65,13 @@ KnossosHandler::KnossosHandler(bool use_views, std::string settings_path)
   }
 }
 
-KnossosHandler::~KnossosHandler() {
-  g_instance = nullptr;
-}
+KnossosHandler::~KnossosHandler() { g_instance = nullptr; }
 
 // static
-KnossosHandler* KnossosHandler::GetInstance() {
-  return g_instance;
-}
+KnossosHandler *KnossosHandler::GetInstance() { return g_instance; }
 
 void KnossosHandler::OnTitleChange(CefRefPtr<CefBrowser> browser,
-                                  const CefString& title) {
+                                   const CefString &title) {
   CEF_REQUIRE_UI_THREAD();
 
   if (use_views_) {
@@ -133,10 +131,9 @@ void KnossosHandler::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
 }
 
 void KnossosHandler::OnLoadError(CefRefPtr<CefBrowser> browser,
-                                CefRefPtr<CefFrame> frame,
-                                ErrorCode errorCode,
-                                const CefString& errorText,
-                                const CefString& failedUrl) {
+                                 CefRefPtr<CefFrame> frame, ErrorCode errorCode,
+                                 const CefString &errorText,
+                                 const CefString &failedUrl) {
   CEF_REQUIRE_UI_THREAD();
 
   // Don't display an error for downloaded files.
@@ -170,46 +167,41 @@ void KnossosHandler::CloseAllBrowsers(bool force_close) {
     (*it)->GetHost()->CloseBrowser(force_close);
 }
 
-static void DialogResultHelper(CefRefPtr<CefFrame> frame, int promise_id, bool success, std::string path) {
-  auto msg = CefProcessMessage::Create("knResolvePromiseWithString");
-  auto args = msg->GetArgumentList();
-
-  args->SetInt(0, promise_id);
-  if (success) {
-    args->SetString(1, path);
-  } else {
-    args->SetString(1, "");
-  }
-
-  frame->SendProcessMessage(PID_RENDERER, msg);
-}
-
-bool KnossosHandler::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
-                                        CefRefPtr<CefFrame> frame,
-                                        CefProcessId source_process,
-                                        CefRefPtr<CefProcessMessage> message) {
-  const std::string& message_name = message->GetName();
+bool KnossosHandler::OnProcessMessageReceived(
+    CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
+    CefProcessId source_process, CefRefPtr<CefProcessMessage> message) {
+  const std::string &message_name = message->GetName();
   if (message_name == "knDevToolsRequest") {
     ShowDevTools(browser);
     return true;
   } else if (message_name == "knOpenFileRequest") {
     auto args = message->GetArgumentList();
+    auto accepted_list = args->GetList(2);
+    std::vector<CefString> accepted;
+    for (size_t i = 0; i < accepted_list->GetSize(); i++) {
+      accepted[i] = accepted_list->GetString(i);
+    }
 
-    OpenFileDialog(browser, args->GetString(0), args->GetString(1),
-      args->GetString(2), args->GetString(3),
-      base::Bind(&DialogResultHelper, frame, args->GetInt(4)));
+    browser->GetHost()->RunFileDialog(
+        FILE_DIALOG_OPEN, args->GetString(0), args->GetString(1), accepted, 0,
+        new KnossosFileResultHandler(frame, args->GetInt(3), false));
   } else if (message_name == "knOpenFolderRequest") {
     auto args = message->GetArgumentList();
-
-    OpenFolderDialog(browser, args->GetString(0), args->GetString(1),
-      args->GetString(2),
-      base::Bind(&DialogResultHelper, frame, args->GetInt(3)));
+    browser->GetHost()->RunFileDialog(
+        FILE_DIALOG_OPEN_FOLDER, args->GetString(0), args->GetString(1),
+        std::vector<CefString>(), 0,
+        new KnossosFileResultHandler(frame, args->GetInt(2), false));
   } else if (message_name == "knSaveFileRequest") {
     auto args = message->GetArgumentList();
+    auto accepted_list = args->GetList(2);
+    std::vector<CefString> accepted;
+    for (size_t i = 0; i < accepted_list->GetSize(); i++) {
+      accepted[i] = accepted_list->GetString(i);
+    }
 
-    SaveFileDialog(browser, args->GetString(0), args->GetString(1),
-      args->GetString(2), args->GetString(3),
-      base::Bind(&DialogResultHelper, frame, args->GetInt(4)));
+    browser->GetHost()->RunFileDialog(
+        FILE_DIALOG_SAVE, args->GetString(0), args->GetString(1), accepted, 0,
+        new KnossosFileResultHandler(frame, args->GetInt(3), false));
   }
 
   return false;
@@ -224,18 +216,17 @@ void KnossosHandler::OnBeforeContextMenu(CefRefPtr<CefBrowser> browser,
   model->AddItem(kReloadMenuItem, "Reload");
 }
 
-bool KnossosHandler::OnContextMenuCommand(CefRefPtr<CefBrowser> browser,
-                                          CefRefPtr<CefFrame> frame,
-                                          CefRefPtr<CefContextMenuParams> params,
-                                          int command_id,
-                                          CefContextMenuHandler::EventFlags event_flags) {
+bool KnossosHandler::OnContextMenuCommand(
+    CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
+    CefRefPtr<CefContextMenuParams> params, int command_id,
+    CefContextMenuHandler::EventFlags event_flags) {
   switch (command_id) {
-    case kDevToolsMenuItem:
-      ShowDevTools(browser);
-      return true;
-    case kReloadMenuItem:
-      browser->Reload();
-      return true;
+  case kDevToolsMenuItem:
+    ShowDevTools(browser);
+    return true;
+  case kReloadMenuItem:
+    browser->Reload();
+    return true;
   }
 
   return false;
@@ -244,29 +235,26 @@ bool KnossosHandler::OnContextMenuCommand(CefRefPtr<CefBrowser> browser,
 bool KnossosHandler::OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
                                     CefRefPtr<CefFrame> frame,
                                     CefRefPtr<CefRequest> request,
-                                    bool user_gesture,
-                                    bool is_redirect) {
+                                    bool user_gesture, bool is_redirect) {
   LOG(INFO) << "Browsing to " << request->GetURL();
 
   return false;
 }
 
 CefRefPtr<CefResourceRequestHandler> KnossosHandler::GetResourceRequestHandler(
-  CefRefPtr<CefBrowser> browser,
-  CefRefPtr<CefFrame> frame,
-  CefRefPtr<CefRequest> request,
-  bool is_navigation,
-  bool is_download,
-  const CefString& request_initiator,
-  bool& disable_default_handling
-) {
+    CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
+    CefRefPtr<CefRequest> request, bool is_navigation, bool is_download,
+    const CefString &request_initiator, bool &disable_default_handling) {
   if (is_download) {
     disable_default_handling = true;
-    LOG(WARNING) << "Aborted download " << request->GetURL() << " from " << request_initiator;
+    LOG(WARNING) << "Aborted download " << request->GetURL() << " from "
+                 << request_initiator;
   } else {
     std::string url = request->GetURL();
     if (url.substr(0, 11) != "devtools://")
-      LOG(INFO) << "Request " << request->GetURL() << " from " << request_initiator << " (" << request->GetReferrerURL() << ")";
+      LOG(INFO) << "Request " << request->GetURL() << " from "
+                << request_initiator << " (" << request->GetReferrerURL()
+                << ")";
 
     if (!request_initiator.empty()) {
       if (url.substr(0, 34) == "https://files.client.fsnebula.org/") {

@@ -8,20 +8,19 @@
 #include "include/cef_frame.h"
 #include "include/cef_process_message.h"
 #include "include/cef_v8.h"
+#include "include/cef_values.h"
 #include "include/internal/cef_ptr.h"
 #include "include/internal/cef_types.h"
 #include "include/wrapper/cef_helpers.h"
 
-class KnossosApiV8Handler: public CefV8Handler {
-  bool Execute(const CefString& name,
-                                  CefRefPtr<CefV8Value> object,
-                                  const CefV8ValueList& arguments,
-                                  CefRefPtr<CefV8Value>& retval,
-                                  CefString& exception) OVERRIDE
-  {
+class KnossosApiV8Handler : public CefV8Handler {
+  bool Execute(const CefString &name, CefRefPtr<CefV8Value> object,
+               const CefV8ValueList &arguments, CefRefPtr<CefV8Value> &retval,
+               CefString &exception) OVERRIDE {
     if (name == "knShowDevTools") {
       if (arguments.size() == 0) {
-        CefRefPtr<CefProcessMessage> msg = CefProcessMessage::Create("knDevToolsRequest");
+        CefRefPtr<CefProcessMessage> msg =
+            CefProcessMessage::Create("knDevToolsRequest");
         CefRefPtr<CefV8Context> ctx = CefV8Context::GetCurrentContext();
 
         ctx->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
@@ -30,60 +29,86 @@ class KnossosApiV8Handler: public CefV8Handler {
         return true;
       }
     } else if (name == "knOpenFile") {
-      if (arguments.size() == 6) {
-        // knOpenFile(title, message, default_filename, folder, resolve, reject);
-        auto promise = new KnJsPromise;
-        promise->resolve = arguments[4];
-        promise->reject = arguments[5];
-
-        CefRefPtr<CefProcessMessage> msg = CefProcessMessage::Create("knOpenFileRequest");
+      if (arguments.size() == 5) {
+        // knOpenFile(title, default_filename, accepted, resolve, reject);
+        CefRefPtr<CefProcessMessage> msg =
+            CefProcessMessage::Create("knOpenFileRequest");
         CefRefPtr<CefV8Context> ctx = CefV8Context::GetCurrentContext();
 
-        auto args = msg->GetArgumentList();
-        args->SetString(0, arguments[0]->GetStringValue());
-        args->SetString(1, arguments[1]->GetStringValue());
-        args->SetString(2, arguments[2]->GetStringValue());
-        args->SetString(3, arguments[3]->GetStringValue());
-        args->SetInt(4, KnossosJsInterface::RegisterPromise(promise));
+        auto accepted = CefListValue::Create();
+        if (arguments[2]->IsArray()) {
+          for (int i = 0; i < arguments[2]->GetArrayLength(); i++) {
+            auto item = arguments[2]->GetValue(i);
+            if (item == nullptr)
+              return false;
 
-        ctx->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
-      }
-    } else if (name == "knOpenFolder") {
-      if (arguments.size() == 5) {
-        // knOpenFolder(title, message, folder, resolve, reject);
+            accepted->SetString(i, item->GetStringValue());
+          }
+        }
+
         auto promise = new KnJsPromise;
         promise->resolve = arguments[3];
         promise->reject = arguments[4];
 
-        CefRefPtr<CefProcessMessage> msg = CefProcessMessage::Create("knOpenFolderRequest");
-        CefRefPtr<CefV8Context> ctx = CefV8Context::GetCurrentContext();
-
         auto args = msg->GetArgumentList();
         args->SetString(0, arguments[0]->GetStringValue());
         args->SetString(1, arguments[1]->GetStringValue());
-        args->SetString(2, arguments[2]->GetStringValue());
+        args->SetList(2, accepted);
         args->SetInt(3, KnossosJsInterface::RegisterPromise(promise));
 
         ctx->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
+        return true;
       }
-    } else if (name == "knSaveFile") {
-      if (arguments.size() == 6) {
-        // knSaveFile(title, message, default_filename, folder, resolve, reject);
+    } else if (name == "knOpenFolder") {
+      if (arguments.size() == 4) {
+        // knOpenFolder(title, default_folder, resolve, reject);
         auto promise = new KnJsPromise;
-        promise->resolve = arguments[4];
-        promise->reject = arguments[5];
+        promise->resolve = arguments[2];
+        promise->reject = arguments[3];
 
-        CefRefPtr<CefProcessMessage> msg = CefProcessMessage::Create("knSaveFileRequest");
+        CefRefPtr<CefProcessMessage> msg =
+            CefProcessMessage::Create("knOpenFolderRequest");
         CefRefPtr<CefV8Context> ctx = CefV8Context::GetCurrentContext();
 
         auto args = msg->GetArgumentList();
         args->SetString(0, arguments[0]->GetStringValue());
         args->SetString(1, arguments[1]->GetStringValue());
-        args->SetString(2, arguments[2]->GetStringValue());
-        args->SetString(3, arguments[3]->GetStringValue());
-        args->SetInt(4, KnossosJsInterface::RegisterPromise(promise));
+        args->SetInt(2, KnossosJsInterface::RegisterPromise(promise));
 
         ctx->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
+        return true;
+      }
+    } else if (name == "knSaveFile") {
+      if (arguments.size() == 5) {
+        // knSaveFile(title, default_filename, accepted, resolve, reject);
+
+        CefRefPtr<CefProcessMessage> msg =
+            CefProcessMessage::Create("knSaveFileRequest");
+        CefRefPtr<CefV8Context> ctx = CefV8Context::GetCurrentContext();
+
+        auto accepted = CefListValue::Create();
+        if (arguments[2]->IsArray()) {
+          for (int i = 0; i < arguments[2]->GetArrayLength(); i++) {
+            auto item = arguments[2]->GetValue(i);
+            if (item == nullptr)
+              return false;
+
+            accepted->SetString(i, item->GetStringValue());
+          }
+        }
+
+        auto promise = new KnJsPromise;
+        promise->resolve = arguments[3];
+        promise->reject = arguments[4];
+
+        auto args = msg->GetArgumentList();
+        args->SetString(0, arguments[0]->GetStringValue());
+        args->SetString(1, arguments[1]->GetStringValue());
+        args->SetList(2, accepted);
+        args->SetInt(3, KnossosJsInterface::RegisterPromise(promise));
+
+        ctx->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
+        return true;
       }
     }
 
@@ -95,17 +120,15 @@ private:
 };
 
 class SimpleBufferReleaser : public CefV8ArrayBufferReleaseCallback {
-  public:
-  virtual void ReleaseBuffer(void* buffer) OVERRIDE {
-    std::free(buffer);
-  }
+public:
+  virtual void ReleaseBuffer(void *buffer) OVERRIDE { std::free(buffer); }
 
-  private:
+private:
   IMPLEMENT_REFCOUNTING(SimpleBufferReleaser);
 };
 
 int KnossosJsInterface::next_promise_id_ = 0;
-std::map<int, KnJsPromise*> KnossosJsInterface::pending_promises_;
+std::map<int, KnJsPromise *> KnossosJsInterface::pending_promises_;
 
 void KnossosJsInterface::Init() {
   std::string extensionCode =
@@ -138,31 +161,31 @@ void KnossosJsInterface::Init() {
       "      }"
       "    }"
       "  };"
-      "  knOpenFile = function (title, message, default_filename, folder) {"
+      "  knOpenFile = function (title, default_filename, accepted) {"
       "    native function knOpenFile();"
       "    return new Promise((resolve, reject) => {"
       "      try {"
-      "        knOpenFile(title, message, default_filename, folder, resolve, reject);"
+      "        knOpenFile(title, default_filename, accepted, resolve, reject);"
       "      } catch(e) {"
       "        reject(e);"
       "      }"
       "    });"
       "  };"
-      "  knOpenFolder = function (title, message, folder) {"
+      "  knOpenFolder = function (title, default_folder) {"
       "    native function knOpenFolder();"
       "    return new Promise((resolve, reject) => {"
       "      try {"
-      "        knOpenFolder(title, message, folder, resolve, reject);"
+      "        knOpenFolder(title, default_folder, resolve, reject);"
       "      } catch(e) {"
       "        reject(e);"
       "      }"
       "    });"
       "  };"
-      "  knSaveFile = function (title, message, default_filename, folder) {"
+      "  knSaveFile = function (title, default_filename, accepted) {"
       "    native function knSaveFile();"
       "    return new Promise((resolve, reject) => {"
       "      try {"
-      "        knSaveFile(title, message, default_filename, folder, resolve, reject);"
+      "        knSaveFile(title, default_filename, accepted, resolve, reject);"
       "      } catch(e) {"
       "        reject(e);"
       "      }"
@@ -182,8 +205,7 @@ int KnossosJsInterface::RegisterPromise(KnJsPromise *promise) {
 bool KnossosJsInterface::ProcessMessage(CefRefPtr<CefBrowser> browser,
                                         CefRefPtr<CefFrame> frame,
                                         CefProcessId source_process,
-                                        CefRefPtr<CefProcessMessage> message
-) {
+                                        CefRefPtr<CefProcessMessage> message) {
   CEF_REQUIRE_RENDERER_THREAD();
   if (message->GetName() == "knJsMessage") {
     auto ctx = frame->GetV8Context();
@@ -192,15 +214,19 @@ bool KnossosJsInterface::ProcessMessage(CefRefPtr<CefBrowser> browser,
     CefV8ValueList args;
 
     auto data = message->GetArgumentList()->GetBinary(0);
-    void* buffer = std::malloc(data->GetSize());
+    void *buffer = std::malloc(data->GetSize());
     auto read = data->GetData(buffer, data->GetSize(), 0);
     if (read != data->GetSize()) {
-      LOG(ERROR) << "Read only " << read << " of " << data->GetSize() << " bytes in a knJsMessage";
+      LOG(ERROR) << "Read only " << read << " of " << data->GetSize()
+                 << " bytes in a knJsMessage";
     }
 
-    args.push_back(CefV8Value::CreateArrayBuffer(buffer, data->GetSize(), new SimpleBufferReleaser()));
+    args.push_back(CefV8Value::CreateArrayBuffer(buffer, data->GetSize(),
+                                                 new SimpleBufferReleaser()));
 
-    ctx->GetGlobal()->GetValue("knDeliverMessage")->ExecuteFunction(nullptr, args);
+    ctx->GetGlobal()
+        ->GetValue("knDeliverMessage")
+        ->ExecuteFunction(nullptr, args);
     ctx->Exit();
 
     return true;
@@ -226,11 +252,40 @@ bool KnossosJsInterface::ProcessMessage(CefRefPtr<CefBrowser> browser,
     pending_promises_.erase(args->GetInt(0));
 
     return true;
+  } else if (message->GetName() == "knResolvePromiseWithStringArray") {
+    auto args = message->GetArgumentList();
+    auto promise = pending_promises_.find(args->GetInt(0));
+    if (promise == pending_promises_.end()) {
+      LOG(ERROR) << "Tried to resolve missing promise " << args->GetInt(0);
+      return true;
+    }
+
+    auto ctx = frame->GetV8Context();
+    ctx->Enter();
+
+    auto results = args->GetList(1);
+    auto js_results = CefV8Value::CreateArray(results->GetSize());
+    for (size_t i = 0; i < results->GetSize(); i++) {
+      js_results->SetValue(i, CefV8Value::CreateString(results->GetString(i)));
+    }
+
+    CefV8ValueList js_args;
+    js_args.push_back(js_results);
+
+    promise->second->resolve->ExecuteFunction(nullptr, js_args);
+    ctx->Exit();
+
+    // free the promise
+    delete promise->second;
+    pending_promises_.erase(args->GetInt(0));
+
+    return true;
   } else if (message->GetName() == "knRejectPromiseWithError") {
     auto args = message->GetArgumentList();
     auto promise = pending_promises_.find(args->GetInt(0));
     if (promise == pending_promises_.end()) {
-      LOG(ERROR) << "Tried to reject missing promise " << args->GetInt(0) << " with " << args->GetString(1);
+      LOG(ERROR) << "Tried to reject missing promise " << args->GetInt(0)
+                 << " with " << args->GetString(1);
       return true;
     }
 
@@ -242,9 +297,11 @@ bool KnossosJsInterface::ProcessMessage(CefRefPtr<CefBrowser> browser,
 
     auto prop_attr = CefV8Value::PropertyAttribute::V8_PROPERTY_ATTRIBUTE_NONE;
 
-    ctx->GetGlobal()->SetValue("_error_msg", CefV8Value::CreateString(args->GetString(1)), prop_attr);
+    ctx->GetGlobal()->SetValue(
+        "_error_msg", CefV8Value::CreateString(args->GetString(1)), prop_attr);
     ctx->Eval("return new Error(_error_msg);", "", 1, error, exception);
-    ctx->GetGlobal()->SetValue("_error_msg", CefV8Value::CreateUndefined(), prop_attr);
+    ctx->GetGlobal()->SetValue("_error_msg", CefV8Value::CreateUndefined(),
+                               prop_attr);
 
     if (exception.get()) {
       LOG(ERROR) << "Failed to create error: " << exception->GetMessage();
