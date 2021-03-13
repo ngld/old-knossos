@@ -1,9 +1,0 @@
-version: '3'
-
-tasks:
-  libarchive-build:
-    dir: '{{.msys2_path}}'
-    vars:
-      root: '{{default "." .root}}'
-    cmds:
-      - usr/bin/bash --login {{clean .root | toSlash}}/packages/libarchive/msys2-build.sh

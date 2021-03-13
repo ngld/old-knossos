@@ -1,7 +1,0 @@
-version: '3'
-
-tasks:
-  libarchive-build:
-    dir: packages/libarchive
-    cmds:
-      - bash ./unix-build.sh
