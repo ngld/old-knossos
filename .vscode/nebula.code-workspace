@@ -1,13 +1,13 @@
 {
 	"folders": [
-		{
-			"path": ".."
-		},
-		{
-			"path": "../packages/api"
-		},
-		{
-			"path": "../packages/server"
+        {
+            "path": ".."
+        },
+        {
+            "path": "../packages/api"
+        },
+        {
+            "path": "../packages/server"
         },
         {
             "path": "../packages/front"
@@ -30,7 +30,7 @@
         {
             "path": "../third_party"
         }
-	],
+    ],
 	"settings": {
 		"protoc": {
 			"options": [
