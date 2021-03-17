@@ -27,11 +27,15 @@ jobs:
       - name: Restore cache
         uses: actions/cache@v2
         with:
-          key: windows-cache
+          key: windows-cache-${{ hashFiles('yarn.lock', 'packages/build-tools/DEPS.yml', 'packages/*/go.mod') }}
+          restore-keys: windows-cache-
           path: |
             ~/go/pkg/mod
             .tools
             .yarn/cache
+            .yarn/unplugged
+            .yarn/build-state.yml
+            .yarn/install-state.gz
             third_party
             packages/build-tools/DEPS.stamps
 
@@ -83,11 +87,15 @@ jobs:
       - name: Restore cache
         uses: actions/cache@v2
         with:
-          key: ubuntu-cache
+          key: ubuntu-cache-${{ hashFiles('yarn.lock', 'packages/build-tools/DEPS.yml', 'packages/*/go.mod') }}
+          restore-keys: ubuntu-cache-
           path: |
             ~/go/pkg/mod
             .tools
             .yarn/cache
+            .yarn/unplugged
+            .yarn/build-state.yml
+            .yarn/install-state.gz
             third_party
             packages/build-tools/DEPS.stamps
 
@@ -99,7 +107,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt install -y libgtk2.0-dev liblzma-dev libzstd-dev zlib1g-dev
+          sudo apt install -y libgtk-3-dev liblzma-dev libzstd-dev zlib1g-dev
           ./task.sh install-tools fetch-deps
 
       - name: Compile API definitions
@@ -141,11 +149,15 @@ jobs:
       - name: Restore cache
         uses: actions/cache@v2
         with:
-          key: darwin-cache
+          key: darwin-cache-${{ hashFiles('yarn.lock', 'packages/build-tools/DEPS.yml', 'packages/*/go.mod') }}
+          restore-keys: darwin-cache-
           path: |
             ~/go/pkg/mod
             .tools
             .yarn/cache
+            .yarn/unplugged
+            .yarn/build-state.yml
+            .yarn/install-state.gz
             third_party
             packages/build-tools/DEPS.stamps
 
