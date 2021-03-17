@@ -103,6 +103,10 @@ def configure():
                 generator = "Ninja"
             else:
                 generator = "Unix Makefiles"
+
+        if isdir('/usr/local/opt/ccache/libexec'):
+            prepend_path('/usr/local/opt/ccache/libexec')
+            info('Using ccache at /usr/local/opt/ccache/libexec')
     else:
         libext = ".so"
         binext = ""
@@ -204,15 +208,16 @@ def configure():
             "client/**/*.go",
         ],
         cmds = [
+            "protoc -Idefinitions mod.proto --go_out=api --go_opt=paths=source_relative",
             "protoc -Idefinitions client.proto --go_out=client --go_opt=paths=source_relative --twirp_out=twirp",
             "protoc -Idefinitions service.proto --go_out=api --go_opt=paths=source_relative --twirp_out=twirp",
             # twirp doesn't support go.mod paths so we have to move the generated files to the correct location
             "mv twirp/github.com/ngld/knossos/packages/api/api/*.go api",
             "mv twirp/github.com/ngld/knossos/packages/api/client/*.go client",
             "rm -r twirp/github.com",
-            yarn("protoc google/protobuf/timestamp.proto --ts_out=api"),
-            yarn("protoc -Idefinitions client.proto --ts_out=api"),
-            yarn("protoc -Idefinitions service.proto --ts_out=api"),
+            yarn("protoc google/protobuf/timestamp.proto --ts_opt long_type_number --ts_out=api"),
+            yarn("protoc -Idefinitions client.proto --ts_opt long_type_number --ts_out=api"),
+            yarn("protoc -Idefinitions service.proto --ts_opt long_type_number --ts_out=api"),
         ],
     )
 

@@ -1,0 +1,42 @@
+@font-face {
+	font-family:'Inria Sans';
+	src:	url('InriaSans-Light.woff2') format('woff2');
+	font-weight: 300;
+	font-style: normal;
+}
+
+@font-face {
+	font-family:'Inria Sans';
+	src:	url('InriaSans-LightItalic.woff2') format('woff2');
+	font-weight: 300;
+	font-style: italic;
+}
+
+@font-face {
+	font-family:'Inria Sans';
+	src:	url('InriaSans-Italic.woff2') format('woff2');
+	font-weight: 400;
+	font-style: italic;
+}
+
+@font-face {
+	font-family:'Inria Sans';
+	src:	url('InriaSans-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+}
+
+@font-face {
+	font-family:'Inria Sans';
+	src:	url('InriaSans-Bold.woff2') format('woff2');
+	font-weight: 700;
+	font-style: normal;
+}
+
+@font-face {
+	font-family:'Inria Sans';
+	src:	url('InriaSans-BoldItalic.woff2') format('woff2');
+	font-weight: 700;
+	font-style: italic;
+}
+

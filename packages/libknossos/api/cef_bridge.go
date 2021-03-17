@@ -95,6 +95,7 @@ import (
 
 	"github.com/ngld/knossos/packages/api/client"
 	"github.com/ngld/knossos/packages/libknossos/pkg/api"
+	"github.com/ngld/knossos/packages/libknossos/pkg/storage"
 	"github.com/ngld/knossos/packages/libknossos/pkg/twirp"
 	"github.com/rotisserie/eris"
 	"google.golang.org/protobuf/proto"
@@ -138,6 +139,16 @@ func KnossosInit(params *C.KnossosInitParams) bool {
 	if err != nil {
 		Log(api.LogError, "Failed to init twirp: %+v", err)
 		return false
+	}
+
+	ctx := api.WithKnossosContext(context.Background(), api.KnossosCtxParams{
+		SettingsPath: settingsPath,
+		ResourcePath: staticRoot,
+		LogCallback:  Log,
+	})
+	err = storage.Open(ctx)
+	if err != nil {
+		Log(api.LogError, "Failed to open the DB: %+v", err)
 	}
 
 	return true

@@ -1,4 +1,4 @@
-module github.com/ngld/knossos/packages/nebula
+module github.com/ngld/knossos/packages/api
 
 go 1.15
 

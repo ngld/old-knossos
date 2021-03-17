@@ -1,11 +1,38 @@
-/* This file is used as a workaround for https://github.com/evanw/esbuild/issues/465 */
+body {
+    background: #1C1C1C;
+    font-family: 'Inter';
+}
 
-@import url(../gen/tw-index.css);
-@import url(@blueprintjs/core/lib/css/blueprint.css);
-@import url(@blueprintjs/popover2/lib/css/blueprint-popover2.css);
+#container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    -webkit-app-region: drag;
+    background: url(./resources/logo.png) no-repeat -85px -107px;
+}
+
+.font-inria {
+    font-family: 'Inria Sans';
+}
+
+.icon {
+    display: inline-block;
+}
+
+.mod-container {
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3)
+}
+
+.mod-container.pattern-bg {
+    background: url(./resources/bg-pattern.png);
+}
 
 .mod-tile {
     width: 150px;
+    height: 265px;
     box-shadow: 0 0 8px #000;
     font-size: 12px;
 }

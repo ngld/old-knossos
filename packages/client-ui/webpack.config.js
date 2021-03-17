@@ -51,7 +51,24 @@ module.exports = function (env, args) {
           use: [
             (production ? MiniCssExtractPlugin.loader : 'style-loader'),
             'css-loader',
-            'postcss-loader',
+          ],
+        },
+        {
+          test: /\.scss$/,
+          use: [
+            (production ? MiniCssExtractPlugin.loader : 'style-loader'),
+            'css-loader',
+            'resolve-url-loader',
+            {
+              loader: 'sass-loader',
+              options: {
+                sourceMap: true,
+                sassOptions: {
+                  sourceMapContents: false,
+                  functions: require('./src/blueprint-functions'),
+                },
+              },
+            },
           ],
         },
         {
@@ -62,7 +79,7 @@ module.exports = function (env, args) {
           },
         },
         {
-          test: /\.(ttf|eot|otf|woff2?)$/,
+          test: /\.(ttf|eot|otf|woff2?|svg)$/,
           loader: 'file-loader',
           options: {
             name: 'fonts/[name].[ext]',
@@ -94,6 +111,7 @@ module.exports = function (env, args) {
                 ),
               },
             },
+            'astroturf/loader',
           ],
         },
       ],

@@ -4,14 +4,18 @@ package ngld.knossos;
 
 // List of builtin types: https://developers.google.com/protocol-buffers/docs/proto3#scalar
 
-
 import "google/protobuf/timestamp.proto";
+import "mod.proto";
 
 // Common types
 
 message NullMessage {}
 message NullResponse {
   bool dummy = 1;
+}
+
+message SuccessResponse {
+  bool success = 1;
 }
 
 // RPC types
@@ -38,6 +42,28 @@ message ArchiveResult {
   map<string,Archive> result = 1;
 }
 
+message Settings {
+	string libraryPath = 1;
+	bool updateCheck = 2;
+	bool errorReports = 3;
+	int32 maxDownloads = 4;
+	int32 bandwidthLimit = 5;
+}
+
+message SimpleModList {
+  message Item {
+    string id = 1;
+    string title = 2;
+    ModType type = 3;
+    string version = 4;
+    ReleaseStability stability = 5;
+    string description = 6;
+    string logo = 7;
+    string tile = 8;
+  }
+  repeated Item mods = 1;
+}
+
 // event messages
 
 message ClientSentEvent {
@@ -61,6 +87,7 @@ message LogMessage {
   LogLevel level = 1;
   string message = 2;
   string sender = 3;
+  google.protobuf.Timestamp time = 4;
 }
 
 message ProgressMessage {
@@ -77,4 +104,8 @@ service Knossos {
   rpc DispatchTest (NullMessage) returns (NullResponse) {};
   rpc SpeedTest (TaskRequest) returns (SpeedTestResult) {};
   rpc ArchiveTest (TaskRequest) returns (NullResponse) {};
+  rpc GetSettings (NullMessage) returns (Settings) {};
+  rpc SaveSettings (Settings) returns (SuccessResponse) {};
+  rpc ScanLocalMods (TaskRequest) returns (SuccessResponse) {};
+  rpc GetLocalMods (NullMessage) returns (SimpleModList) {};
 }

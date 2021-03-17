@@ -8,6 +8,7 @@ import (
 
 	"github.com/ngld/knossos/packages/api/client"
 	"github.com/ngld/knossos/packages/libknossos/pkg/api"
+	"github.com/ngld/knossos/packages/libknossos/pkg/storage"
 )
 
 type knossosServer struct {
@@ -76,4 +77,17 @@ func (kn *knossosServer) DispatchTest(ctx context.Context, _ *client.NullMessage
 	return &client.NullResponse{
 		Dummy: true,
 	}, nil
+}
+
+func (kn *knossosServer) GetSettings(ctx context.Context, _ *client.NullMessage) (*client.Settings, error) {
+	return storage.GetSettings(ctx)
+}
+
+func (kn *knossosServer) SaveSettings(ctx context.Context, settings *client.Settings) (*client.SuccessResponse, error) {
+	err := storage.SaveSettings(ctx, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	return &client.SuccessResponse{Success: true}, nil
 }

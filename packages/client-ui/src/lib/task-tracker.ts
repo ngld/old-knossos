@@ -1,14 +1,21 @@
 import {useState, useEffect} from 'react';
 import {makeAutoObservable} from 'mobx';
-import {LogMessage, ClientSentEvent} from '@api/client';
+import {LogMessage, LogMessage_LogLevel, ClientSentEvent} from '@api/client';
 
-interface TaskState {
+export interface TaskState {
+  id: number;
   label: string;
   progress: number;
   status: string;
   error: boolean;
   indeterminate: boolean;
+  started: Date;
   logMessages: LogMessage[];
+}
+
+export const logLevelMap: Record<LogMessage_LogLevel, string> = {} as Record<LogMessage_LogLevel, string>;
+for (const [name, level] of Object.entries(LogMessage_LogLevel)) {
+  logLevelMap[level as LogMessage_LogLevel] = name;
 }
 
 export class TaskTracker {
@@ -17,21 +24,47 @@ export class TaskTracker {
   taskMap: Record<string, TaskState>;
 
   constructor() {
-    this._idCounter = 0;
+    this._idCounter = 1;
     this.tasks = [];
     this.taskMap = {};
 
     makeAutoObservable(this);
   }
 
+  get active(): number {
+    let count = 0;
+    for (const task of this.tasks) {
+      if (task.progress < 1 && !task.error) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  listen(): () => void {
+    const listener = (msg: ArrayBuffer) => {
+      try {
+        const ev = ClientSentEvent.fromBinary(new Uint8Array(msg));
+        this.updateTask(ev);
+      } catch(e) {
+        console.error(e);
+      }
+    }
+
+    knAddMessageListener(listener);
+    return () => knRemoveMessageListener(listener);
+  }
+
   startTask(label: string): number {
     const id = this._idCounter++;
     const task = {
+      id,
       label,
       progress: 0,
       status: 'Initialising',
       error: false,
-      indeterminate: false,
+      indeterminate: true,
+      started: new Date(),
       logMessages: [],
     } as TaskState;
 
@@ -63,25 +96,31 @@ export class TaskTracker {
 
     this.taskMap[ev.ref] = task;
   }
+
+  removeTask(id: number) {
+    let taskIdx = -1;
+    for (let i = 0; i < this.tasks.length; i++) {
+      if (this.tasks[i].id === id) {
+        taskIdx = i;
+        break;
+      }
+    }
+
+    if (taskIdx === -1) {
+      console.error(`Task with id ${id} not found in the current task list.`);
+      return;
+    }
+
+    this.tasks.splice(taskIdx, 1);
+    delete this.taskMap[id];
+  }
 }
 
 export function useTaskTracker(): TaskTracker {
   const [tracker] = useState(() => new TaskTracker());
 
   useEffect(() => {
-    function listener(msg: ArrayBuffer) {
-      try {
-        const ev = ClientSentEvent.fromBinary(new Uint8Array(msg));
-        tracker.updateTask(ev);
-      } catch(e) {
-        console.error(e);
-      }
-    }
-
-    // @ts-expect-error TS doesn't know about Knossos' API
-    knAddMessageListener(listener);
-    // @ts-expect-error TS doesn't know about Knossos' API
-    return () => knRemoveMessageListener(listener);
+    return tracker.listen();
   }, []);
 
   return tracker;

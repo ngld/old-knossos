@@ -163,13 +163,15 @@ func TaskLog(ctx context.Context, ref uint32, level client.LogMessage_LogLevel, 
 
 	composedMsg := fmt.Sprintf(msg, args...)
 	Log(ctx, LogInfo, "Task [%d]: %s", ref, composedMsg)
-	err := UpdateTask(ctx, ref, &client.LogMessage{
-		Level:   level,
-		Message: composedMsg,
-		Sender:  sender,
-	})
-	if err != nil {
-		Log(ctx, LogError, "Error in TaskLog(%d): %+v", ref, err)
+	if ref > 0 {
+		err := UpdateTask(ctx, ref, &client.LogMessage{
+			Level:   level,
+			Message: composedMsg,
+			Sender:  sender,
+		})
+		if err != nil {
+			Log(ctx, LogError, "Error in TaskLog(%d): %+v", ref, err)
+		}
 	}
 }
 
