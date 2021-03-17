@@ -23,7 +23,7 @@ echo Downloading Go toolchain...
 if not exist third_party mkdir third_party
 cd third_party
 
-curl -Lo go.zip "https://golang.org/dl/go1.15.8.windows-amd64.zip"
+curl -Lo go.zip "https://golang.org/dl/go1.16.2.windows-amd64.zip"
 
 echo Unpacking...
 tar -xzf go.zip

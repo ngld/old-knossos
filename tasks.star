@@ -216,6 +216,7 @@ def configure():
             "mv twirp/github.com/ngld/knossos/packages/api/client/*.go client",
             "rm -r twirp/github.com",
             yarn("protoc google/protobuf/timestamp.proto --ts_opt long_type_number --ts_out=api"),
+            yarn("protoc -Idefinitions mod.proto --ts_opt long_type_number --ts_out=api"),
             yarn("protoc -Idefinitions client.proto --ts_opt long_type_number --ts_out=api"),
             yarn("protoc -Idefinitions service.proto --ts_opt long_type_number --ts_out=api"),
         ],
