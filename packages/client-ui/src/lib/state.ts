@@ -15,7 +15,6 @@ export class GlobalState {
   toaster: IToaster;
   client: KnossosClient;
   tasks: TaskTracker;
-  activeTab = 'play';
 
   constructor() {
     this.toaster = Toaster.create({});
@@ -46,10 +45,6 @@ export class GlobalState {
         throw e;
       }
     }
-  }
-
-  switchTo(tab: string) {
-    this.activeTab = tab;
   }
 }
 

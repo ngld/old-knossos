@@ -51,17 +51,25 @@ message Settings {
 }
 
 message SimpleModList {
-  message Item {
-    string id = 1;
-    string title = 2;
-    ModType type = 3;
-    string version = 4;
-    ReleaseStability stability = 5;
-    string description = 6;
-    string logo = 7;
-    string tile = 8;
-  }
-  repeated Item mods = 1;
+  repeated Release mods = 1;
+}
+
+message ModInfoRequest {
+  string id = 1;
+  string version = 2;
+}
+
+message ToolInfo {
+  string label = 1;
+  string id = 2;
+  bool debug = 3;
+  bool fred = 4;
+}
+
+message ModInfoResponse {
+  Release mod = 1;
+
+  repeated ToolInfo tools = 2;
 }
 
 // event messages
@@ -108,4 +116,5 @@ service Knossos {
   rpc SaveSettings (Settings) returns (SuccessResponse) {};
   rpc ScanLocalMods (TaskRequest) returns (SuccessResponse) {};
   rpc GetLocalMods (NullMessage) returns (SimpleModList) {};
+  rpc GetModInfo (ModInfoRequest) returns (ModInfoResponse) {};
 }

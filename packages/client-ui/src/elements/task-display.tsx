@@ -30,7 +30,7 @@ export default observer(function TaskDisplay(): React.ReactElement {
     <div className="absolute bottom-0 right-40">
       <Tooltip2 content="Show active tasks">
         <div
-          className={'cursor-pointer text-' + (gs.tasks.active > 0 ? 'white' : 'dim')}
+          className={'cursor-pointer ' + (gs.tasks.active > 0 ? 'text-white' : 'text-dim')}
           onClick={() => setOpen(!open)}
         >
           {gs.tasks.active === 0

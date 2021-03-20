@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "github.com/ngld/knossos/packages/api/api";
+option go_package = "github.com/ngld/knossos/packages/api/client";
 package ngld.knossos;
 
 import "google/protobuf/timestamp.proto";
@@ -28,33 +28,27 @@ enum ModType {
   EXTENSION = 4;
 }
 
-message Mod {
-  string modid = 1;
-  string title = 2;
-  ModType type = 3;
-  repeated string versions = 7;
-}
-
 enum ReleaseStability {
   STABLE = 0;
   RC = 1;
   NIGHTLY = 2;
 }
 
-
 message Release {
   // core meta
   string modid = 1;
   string version = 2;
+  string title = 5;
   ReleaseStability stability = 3;
+  ModType type = 6;
 
   // mod page
   string description = 10;
   FileRef teaser = 11;
   FileRef banner = 12;
   string release_thread = 13;
-  repeated FileRef screenshot = 14;
-  repeated string video = 15;
+  repeated FileRef screenshots = 14;
+  repeated string videos = 15;
   google.protobuf.Timestamp released = 16;
   google.protobuf.Timestamp updated = 17;
 
@@ -65,7 +59,7 @@ message Release {
   string cmdline = 21;
 
   // content
-  repeated Package package = 4;
+  repeated Package packages = 4;
 }
 
 enum PackageType {
@@ -116,6 +110,6 @@ message Package {
   repeated PackageArchive archives = 11;
   repeated PackageFile files = 12;
 
-  EngineExecutable executables = 20;
+  repeated EngineExecutable executables = 20;
 }
 

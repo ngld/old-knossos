@@ -3,16 +3,19 @@ module.exports = {
     strictMode: true,
   },
   presets: [
+    ['@babel/preset-react', { runtime: 'automatic' }],
+    ['@babel/preset-typescript', { allowDeclareFields: true }],
     [
       '@babel/preset-env',
       {
-        targets: '> 0.5%, not IE 11, firefox esr',
+        targets: 'chrome > 85',
+        bugfixes: true,
+        modules: false,
       },
     ],
-    ['@babel/preset-react', { runtime: 'automatic' }],
-    ['@babel/preset-typescript', { allowDeclareFields: true }],
   ],
   plugins: [
+    require.resolve('./import-fixer'),
     ['@babel/plugin-proposal-decorators', { legacy: true }],
     ['@babel/plugin-proposal-class-properties', { loose: true }],
     '@babel/plugin-transform-react-inline-elements',

@@ -2,14 +2,12 @@ package twirp
 
 import (
 	"context"
-	"encoding/base64"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"github.com/rotisserie/eris"
 
-	pbapi "github.com/ngld/knossos/packages/api/api"
 	"github.com/ngld/knossos/packages/api/client"
 	"github.com/ngld/knossos/packages/libknossos/pkg/api"
 	"github.com/ngld/knossos/packages/libknossos/pkg/mods"
@@ -63,64 +61,56 @@ func (kn *knossosServer) ScanLocalMods(ctx context.Context, task *client.TaskReq
 }
 
 func (kn *knossosServer) GetLocalMods(ctx context.Context, _ *client.NullMessage) (*client.SimpleModList, error) {
-	modMeta, err := storage.GetSimpleLocalModList(ctx, 0)
+	modMeta, err := storage.GetLocalMods(ctx, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	result := new(client.SimpleModList)
-	result.Mods = make([]*client.SimpleModList_Item, len(modMeta))
-	for idx, mod := range modMeta {
-		m := new(client.SimpleModList_Item)
-		m.Id = mod.ID
-		m.Title = mod.Title
-		m.Version = mod.Version
-		m.Description = mod.Description
-
-		if mod.Logo != "" {
-			content, err := ioutil.ReadFile(mod.Logo)
-			if err == nil {
-				m.Logo = "data:image/jpeg;base64," + base64.RawStdEncoding.EncodeToString(content)
-			} else if !eris.Is(err, os.ErrNotExist) {
-				return nil, err
-			}
-		}
-
-		if mod.Tile != "" {
-			content, err := ioutil.ReadFile(mod.Tile)
-			if err == nil {
-				m.Tile = "data:image/jpeg;base64," + base64.RawStdEncoding.EncodeToString(content)
-			} else if !eris.Is(err, os.ErrNotExist) {
-				return nil, err
-			}
-		}
-
-		switch mod.Type {
-		case "mod":
-			m.Type = pbapi.ModType_MOD
-		case "tc":
-			m.Type = pbapi.ModType_TOTAL_CONVERSION
-		case "engine":
-			m.Type = pbapi.ModType_ENGINE
-		case "tool":
-			m.Type = pbapi.ModType_TOOL
-		case "extension":
-			m.Type = pbapi.ModType_EXTENSION
-		default:
-			m.Type = pbapi.ModType_MOD
-		}
-
-		switch mod.Stability {
-		case "stable":
-			m.Stability = pbapi.ReleaseStability_STABLE
-		case "rc":
-			m.Stability = pbapi.ReleaseStability_RC
-		case "nightly":
-			m.Stability = pbapi.ReleaseStability_NIGHTLY
-		}
-
-		result.Mods[idx] = m
+	allowedFields := map[string]bool{
+		"Modid":   true,
+		"Title":   true,
+		"Version": true,
+		"Type":    true,
+		"Teaser":  true,
 	}
 
-	return result, nil
+	// Look for fields in client.Release that are not listed above
+	typeDesc := reflect.ValueOf(client.Release{}).Type()
+	toClear := make([]int, 0)
+	for idx := 0; idx < typeDesc.NumField(); idx++ {
+		field := typeDesc.Field(idx)
+		if field.PkgPath != "" {
+			// Skip unexported fields
+			continue
+		}
+
+		_, good := allowedFields[field.Name]
+		if !good {
+			toClear = append(toClear, idx)
+		}
+	}
+
+	for _, mod := range modMeta {
+		// Clear all fields listed in toClear to reduce the size of the result
+		ref := reflect.ValueOf(mod).Elem()
+		for _, fieldIdx := range toClear {
+			field := ref.Field(fieldIdx)
+			field.Set(reflect.Zero(field.Type()))
+		}
+	}
+
+	return &client.SimpleModList{
+		Mods: modMeta,
+	}, nil
+}
+
+func (kn *knossosServer) GetModInfo(ctx context.Context, req *client.ModInfoRequest) (*client.ModInfoResponse, error) {
+	mod, err := storage.GetMod(ctx, req.Id, req.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	return &client.ModInfoResponse{
+		Mod: mod,
+	}, nil
 }

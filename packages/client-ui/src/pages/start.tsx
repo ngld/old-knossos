@@ -46,7 +46,7 @@ export default observer(function StartPage(): React.ReactElement {
         fulfilled: (data) => (
           <div>
             {data ? <pre>{JSON.stringify(data, null, 2)}</pre> : <span>No idea</span>}
-            <Button onClick={() => runTest(gs)}>Test</Button>
+            { /* <Button onClick={() => runTest(gs)}>Test</Button> */ }
             <Button onClick={() => runSpeedTest(gs, tracker, setSpeedResults)}>Speedtest</Button>
             <Button onClick={() => runArchiveTest(gs, tracker)}>Archive test</Button>
             <div>

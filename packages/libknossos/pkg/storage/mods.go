@@ -9,94 +9,61 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/ngld/knossos/packages/api/client"
 	"github.com/ngld/knossos/packages/libknossos/pkg/api"
+	"google.golang.org/protobuf/proto"
 )
 
-type KnDep struct {
-	ID       string
-	Version  string
-	Packages []string
+type (
+	stringIndex  map[string][]string
+	modTypeIndex map[client.ModType][]string
+)
+
+var (
+	localModIndexKey     = []byte("local_modindex")
+	localModTypeIndexKey = []byte("local_modtypeindex")
+)
+
+func GetLocalModKey(rel *client.Release) []byte {
+	return []byte("local_mod#" + rel.Modid + "#" + rel.Version)
 }
 
-type KnExe struct {
-	File       string
-	Label      string
-	Properties struct {
-		X64  bool
-		SSE2 bool
-		AVX  bool
-		AVX2 bool
-	}
-}
-
-type KnChecksum [2]string
-
-type KnArchive struct {
-	Checksum KnChecksum
-	Filename string
-	Dest     string
-	URLs     []string
-	FileSize int
-}
-
-type KnFile struct {
-	Filename string
-	Archive  string
-	OrigName string
-	Checksum KnChecksum
-}
-
-type KnPackage struct {
-	Name         string
-	Notes        string
-	Status       string
-	Environment  string
-	Folder       string
-	Dependencies []KnDep
-	Executables  []KnExe
-	Files        []KnArchive
-	Filelist     []KnFile
-	IsVp         bool
-}
-
-type KnMod struct {
-	LocalPath     string
-	Title         string
-	Version       string
-	Stability     string
-	Description   string
-	Logo          string
-	Tile          string
-	Banner        string
-	ReleaseThread string `json:"release_thread"`
-	Type          string
-	ID            string
-	Notes         string
-	Folder        string
-	FirstRelease  string `json:"first_release"`
-	LastUpdate    string `json:"last_update"`
-	Cmdline       string
-	ModFlag       []string `json:"mod_flag"`
-	Screenshots   []string
-	Packages      []KnPackage
-	Videos        []string
-}
-
-type KnModIndex map[string][]string
-
-func ImportMods(ctx context.Context, callback func(func(*KnMod) error) error) error {
+func ImportMods(ctx context.Context, callback func(func(*client.Release) error) error) error {
 	return db.Update(func(txn *badger.Txn) error {
-		index := make(KnModIndex)
-		err := callback(func(km *KnMod) error {
-			encoded, err := json.Marshal(km)
+		// Remove existing entries
+		iter := txn.NewIterator(badger.IteratorOptions{
+			Prefix: []byte("local_mod#"),
+		})
+		defer iter.Close()
+		for iter.Rewind(); iter.Valid(); iter.Next() {
+			err := txn.Delete(iter.Item().Key())
+			if err != nil {
+				return err
+			}
+		}
+		iter.Close()
+
+		modIndex := make(stringIndex)
+		typeIndex := make(modTypeIndex)
+		// Call the actual import function
+		err := callback(func(rel *client.Release) error {
+			encoded, err := proto.Marshal(rel)
 			if err != nil {
 				return err
 			}
 
-			err = txn.Set([]byte("local_mod#"+km.ID+"#"+km.Version), encoded)
+			err = txn.Set(GetLocalModKey(rel), encoded)
 			if err != nil {
 				return err
 			}
-			index[km.ID] = append(index[km.ID], km.Version)
+
+			_, found := modIndex[rel.Modid]
+			if !found {
+				// This is the first time we process this mod
+
+				// Add this mod to our type index
+				typeIndex[rel.Type] = append(typeIndex[rel.Type], rel.Modid)
+			}
+
+			modIndex[rel.Modid] = append(modIndex[rel.Modid], rel.Version)
 
 			return nil
 		})
@@ -104,18 +71,28 @@ func ImportMods(ctx context.Context, callback func(func(*KnMod) error) error) er
 			return err
 		}
 
-		encoded, err := json.Marshal(index)
+		encoded, err := json.Marshal(modIndex)
 		if err != nil {
 			return err
 		}
 
-		return txn.Set([]byte("local_modindex"), encoded)
+		err = txn.Set(localModIndexKey, encoded)
+		if err != nil {
+			return err
+		}
+
+		encoded, err = json.Marshal(typeIndex)
+		if err != nil {
+			return err
+		}
+
+		return txn.Set(localModTypeIndexKey, encoded)
 	})
 }
 
-func GetSimpleLocalModList(ctx context.Context, taskRef uint32) ([]*KnMod, error) {
+func GetLocalMods(ctx context.Context, taskRef uint32) ([]*client.Release, error) {
 	modVersions := make(map[string]*semver.Version)
-	var result []*KnMod
+	var result []*client.Release
 
 	err := db.View(func(txn *badger.Txn) error {
 		// Retrieve IDs and the latest version for all known local mods
@@ -142,7 +119,7 @@ func GetSimpleLocalModList(ctx context.Context, taskRef uint32) ([]*KnMod, error
 			}
 		}
 
-		result = make([]*KnMod, 0, len(modVersions))
+		result = make([]*client.Release, 0, len(modVersions))
 		// Now retrieve the actual metadata
 		for modID, version := range modVersions {
 			item, err := txn.Get([]byte("local_mod#" + modID + "#" + version.String()))
@@ -150,16 +127,14 @@ func GetSimpleLocalModList(ctx context.Context, taskRef uint32) ([]*KnMod, error
 				return err
 			}
 
-			meta := new(KnMod)
+			meta := new(client.Release)
 			err = item.Value(func(val []byte) error {
-				return json.Unmarshal(val, meta)
+				return proto.Unmarshal(val, meta)
 			})
 			if err != nil {
 				return err
 			}
 
-			// Remove the package metadata avoid wasting memory
-			meta.Packages = make([]KnPackage, 0)
 			result = append(result, meta)
 		}
 
@@ -170,4 +145,22 @@ func GetSimpleLocalModList(ctx context.Context, taskRef uint32) ([]*KnMod, error
 	}
 
 	return result, nil
+}
+
+func GetMod(ctx context.Context, id string, version string) (*client.Release, error) {
+	mod := new(client.Release)
+	err := db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte("local_mod#" + id + "#" + version))
+		if err != nil {
+			return err
+		}
+
+		return item.Value(func(val []byte) error {
+			return proto.Unmarshal(val, mod)
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mod, nil
 }

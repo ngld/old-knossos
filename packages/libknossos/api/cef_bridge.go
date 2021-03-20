@@ -32,6 +32,13 @@ package main
 //} KnossosResponse;
 //
 //#ifndef GO_CGO_EXPORT_PROLOGUE_H
+//
+//#ifdef __MINGW32__
+//#define EXTERN extern __declspec(dllexport)
+//#else
+//#define EXTERN extern
+//#endif
+//
 //static void call_log_cb(KnossosLogCallback cb, uint8_t level, char* message, int length) {
 //	cb(level, message, length);
 //}
@@ -65,16 +72,17 @@ package main
 //  memcpy(response->response_data, _GoStringPtr(body), response->response_length);
 //}
 //
-//void KnossosFreeKnossosResponse(KnossosResponse* response) {
+//EXTERN void KnossosFreeKnossosResponse(KnossosResponse* response) {
 //  for (int i = 0; i < response->header_count; i++) {
 //    KnossosHeader *hdr = &response->headers[i];
 //    free(hdr->header_name);
 //    free(hdr->value);
 //  }
-//  free(response->headers);
-//  free(response->response_data);
+//  if (response->header_count > 0) free(response->headers);
+//  if (response->response_length > 0) free(response->response_data);
 //  free(response);
 //}
+//
 //#else
 //extern void KnossosFreeKnossosResponse(KnossosResponse* response);
 //#endif
@@ -89,7 +97,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"unsafe"
 
@@ -157,7 +167,10 @@ func KnossosInit(params *C.KnossosInitParams) bool {
 // KnossosHandleRequest handles an incoming request from CEF
 //export KnossosHandleRequest
 func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, bodyLen C.int) *C.KnossosResponse {
-	body := C.GoBytes(bodyPtr, bodyLen)
+	var body []byte
+	if bodyLen > 0 {
+		body = C.GoBytes(bodyPtr, bodyLen)
+	}
 	reqURL := C.GoStringN(urlPtr, urlLen)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -168,31 +181,75 @@ func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, 
 		LogCallback:     Log,
 		MessageCallback: DispatchMessage,
 	})
-	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewReader(body))
-	req.Header["Content-Type"] = []string{"application/protobuf"}
+
+	var err error
+	if strings.HasPrefix(reqURL, "https://api.client.fsnebula.org/ref/") {
+		var fileRef *client.FileRef
+		fileId := reqURL[36:]
+		fileRef, err = storage.GetFile(ctx, fileId)
+		if err == nil {
+			localPath := ""
+			for _, item := range fileRef.Urls {
+				if strings.HasPrefix(item, "file://") {
+					localPath = filepath.FromSlash(item[7:])
+					break
+				}
+			}
+
+			if localPath != "" {
+				var data []byte
+				data, err = ioutil.ReadFile(localPath)
+				if err == nil {
+					resp := C.make_response()
+					resp.status_code = C.int(200)
+					resp.header_count = C.uint8_t(0)
+
+					if len(data) > 0 {
+						resp.response_data = C.CBytes(data)
+					}
+					resp.response_length = C.size_t(len(data))
+					return resp
+				}
+			} else {
+				resp := C.make_response()
+				resp.status_code = C.int(404)
+				resp.header_count = C.uint8_t(0)
+				resp.response_length = 0
+				return resp
+			}
+		}
+	}
 
 	if err == nil {
-		twirpResp := newMemoryResponse()
-		server.ServeHTTP(twirpResp, req)
-		// Cancel any background operation still attached to the request context
-		cancel()
+		var req *http.Request
+		req, err = http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewReader(body))
+		req.Header["Content-Type"] = []string{"application/protobuf"}
 
-		resp := C.make_response()
-		resp.status_code = C.int(twirpResp.statusCode)
-		resp.header_count = C.uint8_t(len(twirpResp.headers))
-		resp.headers = C.make_header_array(resp.header_count)
+		if err == nil {
+			twirpResp := newMemoryResponse()
+			server.ServeHTTP(twirpResp, req)
+			// Cancel any background operation still attached to the request context
+			cancel()
 
-		idx := C.uint8_t(0)
-		for k, v := range twirpResp.headers {
-			C.set_header(resp.headers, idx, k, strings.Join(v, ", "))
-			idx++
+			resp := C.make_response()
+			resp.status_code = C.int(twirpResp.statusCode)
+			resp.header_count = C.uint8_t(len(twirpResp.headers))
+			resp.headers = C.make_header_array(resp.header_count)
+
+			idx := C.uint8_t(0)
+			for k, v := range twirpResp.headers {
+				C.set_header(resp.headers, idx, k, strings.Join(v, ", "))
+				idx++
+			}
+
+			body := twirpResp.resp.Bytes()
+			if len(body) > 0 {
+				resp.response_data = C.CBytes(body)
+			}
+			resp.response_length = C.size_t(len(body))
+
+			return resp
 		}
-
-		body := twirpResp.resp.Bytes()
-		resp.response_data = C.CBytes(body)
-		resp.response_length = C.size_t(len(body))
-
-		return resp
 	}
 
 	// Cleanup the unused context

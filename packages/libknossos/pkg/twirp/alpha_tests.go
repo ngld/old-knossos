@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/rotisserie/eris"
 
@@ -87,7 +88,8 @@ func (kn *knossosServer) SpeedTest(ctx context.Context, req *client.TaskRequest)
 	step.From = 0.3
 	step.To = 0.6
 	step.Description = "Testing dl.fsnebula.org"
-	dlSpeed, err := api.ProgressCopier(ctx, step, download.ContentLength, download.Body, dest)
+	dlCtx, _ := context.WithTimeout(ctx, 30*time.Second)
+	dlSpeed, err := api.ProgressCopier(dlCtx, step, download.ContentLength, download.Body, dest)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed DL download")
 	}

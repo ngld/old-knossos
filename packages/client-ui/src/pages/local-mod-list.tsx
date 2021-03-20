@@ -1,17 +1,21 @@
 import { useState } from 'react';
-import { NonIdealState, Spinner } from '@blueprintjs/core';
+import { Button, NonIdealState, Spinner } from '@blueprintjs/core';
 import { observer } from 'mobx-react-lite';
 import { fromPromise } from 'mobx-utils';
-import { SimpleModList_Item } from '@api/client';
+import { History } from 'history';
+import { Release } from '@api/mod';
 import { GlobalState, useGlobalState } from '../lib/state';
 
-async function fetchMods(gs: GlobalState): Promise<SimpleModList_Item[]> {
+async function fetchMods(gs: GlobalState): Promise<Release[]> {
   const result = await gs.client.getLocalMods({});
   console.log(result.response.mods);
   return result.response.mods;
 }
 
-export default observer(function LocalModList(): React.ReactElement {
+export interface LocalModListProps {
+  history: History;
+}
+export default observer(function LocalModList(props: LocalModListProps): React.ReactElement {
   const gs = useGlobalState();
   const [modList] = useState(() => fromPromise(fetchMods(gs)));
 
@@ -21,12 +25,18 @@ export default observer(function LocalModList(): React.ReactElement {
         pending: () => <NonIdealState icon={<Spinner />} title="Loading mods..." />,
         rejected: (e) => <NonIdealState icon="error" title="Failed to load mods" description={e?.toString ? e.toString() : e} />,
         fulfilled: (mods) => (
-          <div>
+          <div className="flex flex-row gap-4">
             {mods.map((mod) => (
-              <div key={mod.id} className="mod-tile bg-important flex flex-col">
-                <img src={mod.tile} />
+              <div key={mod.modid} className="mod-tile bg-important flex flex-col overflow-hidden">
+                <img src={"https://api.client.fsnebula.org/ref/" + mod.teaser?.fileid} />
                 <div className="flex-1 flex flex-col justify-center text-white">
-                  <div className="flex-initial text-center">{mod.title}</div>
+                  <div className="flex-initial text-center overflow-ellipsis overflow-hidden">{mod.title}</div>
+                </div>
+
+                <div className="cover flex flex-col justify-center gap-2">
+                  <Button>Play</Button>
+                  <Button onClick={() => props.history.push('/mod/' + mod.modid + '/' + mod.version)}>Details</Button>
+                  <Button>Uninstall</Button>
                 </div>
               </div>
             ))}{' '}

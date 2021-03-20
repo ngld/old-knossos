@@ -10,8 +10,15 @@ body {
     right: 0;
     bottom: 0;
 
-    -webkit-app-region: drag;
     background: url(./resources/logo.png) no-repeat -85px -107px;
+}
+
+.title-bar {
+    -webkit-app-region: drag;
+}
+
+.traffic-lights {
+    -webkit-app-region: no-drag;
 }
 
 .font-inria {
@@ -31,6 +38,7 @@ body {
 }
 
 .mod-tile {
+    position: relative;
     width: 150px;
     height: 265px;
     box-shadow: 0 0 8px #000;
@@ -40,4 +48,20 @@ body {
 .mod-tile a {
     color: #fff !important;
     text-decoration: none;
+}
+
+.mod-tile .cover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    opacity: 0;
+    transition: opacity 0.3s;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.mod-tile .cover:hover {
+    opacity: 1;
 }
