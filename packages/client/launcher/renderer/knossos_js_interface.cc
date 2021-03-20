@@ -110,6 +110,26 @@ class KnossosApiV8Handler : public CefV8Handler {
         ctx->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
         return true;
       }
+    } else if (name == "knMinimizeWindow") {
+      if (arguments.size() == 0) {
+        auto msg = CefProcessMessage::Create("knMinimizeWindow");
+        CefV8Context::GetCurrentContext()->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
+      }
+    } else if (name == "knRestoreWindow") {
+      if (arguments.size() == 0) {
+        auto msg = CefProcessMessage::Create("knRestoreWindow");
+        CefV8Context::GetCurrentContext()->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
+      }
+    } else if (name == "knMaximizeWindow") {
+      if (arguments.size() == 0) {
+        auto msg = CefProcessMessage::Create("knMaximizeWindow");
+        CefV8Context::GetCurrentContext()->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
+      }
+    } else if (name == "knCloseWindow") {
+      if (arguments.size() == 0) {
+        auto msg = CefProcessMessage::Create("knCloseWindow");
+        CefV8Context::GetCurrentContext()->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
+      }
     }
 
     return false;
@@ -139,6 +159,10 @@ void KnossosJsInterface::Init() {
       "var knOpenFile = null;"
       "var knOpenFolder = null;"
       "var knSaveFile = null;"
+      "var knMinimizeWindow = null;"
+      "var knRestoreWindow = null;"
+      "var knMaximizeWindow = null;"
+      "var knCloseWindow = null;"
       "(function() {"
       "  const _listeners = [];"
       "  knShowDevTools = function() {"
@@ -190,6 +214,22 @@ void KnossosJsInterface::Init() {
       "        reject(e);"
       "      }"
       "    });"
+      "  };"
+      "  knMinimizeWindow = function () {"
+      "    native function knMinimizeWindow();"
+      "    knMinimizeWindow();"
+      "  };"
+      "  knRestoreWindow = function () {"
+      "    native function knRestoreWindow();"
+      "    knRestoreWindow();"
+      "  };"
+      "  knMaximizeWindow = function () {"
+      "    native function knMaximizeWindow();"
+      "    knMaximizeWindow();"
+      "  };"
+      "  knCloseWindow = function () {"
+      "    native function knCloseWindow();"
+      "    knCloseWindow();"
       "  };"
       "})();";
 
@@ -264,8 +304,8 @@ bool KnossosJsInterface::ProcessMessage(CefRefPtr<CefBrowser> browser,
     ctx->Enter();
 
     auto results = args->GetList(1);
-    auto js_results = CefV8Value::CreateArray(results->GetSize());
-    for (size_t i = 0; i < results->GetSize(); i++) {
+    auto js_results = CefV8Value::CreateArray((int)results->GetSize());
+    for (int i = 0; i < (int)results->GetSize(); i++) {
       js_results->SetValue(i, CefV8Value::CreateString(results->GetString(i)));
     }
 

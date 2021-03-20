@@ -85,7 +85,7 @@ bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
     void* body_contents = 0;
     if (body.size() > 0) {
       body_size = body[0]->GetBytesCount();
-      body_contents = std::malloc(body_size);
+      body_contents = malloc(body_size);
       auto bytes_read = body[0]->GetBytes(body_size, body_contents);
 
       if (bytes_read != body_size) {
@@ -100,6 +100,15 @@ bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
       std::free(body_contents);
     }
 
+    if (kn_response != 0) {
+      return true;
+    }
+
+    LOG(WARNING) << "Invalid request " << url << ": No handler found";
+    SetStringResponse(404, "No handler found");
+    return true;
+  } else if(url.find("https://api.client.fsnebula.org/ref/") == 0) {
+    kn_response = KnossosHandleRequest((char*)url.c_str(), (int)url.size(), nullptr, 0);
     if (kn_response != 0) {
       return true;
     }

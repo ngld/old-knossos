@@ -13,6 +13,10 @@
 #include "include/cef_path_util.h"
 #include "include/cef_process_message.h"
 #include "include/cef_values.h"
+#include "include/internal/cef_types.h"
+#include "include/internal/cef_types_wrappers.h"
+#include "include/internal/cef_win.h"
+#include "include/views/cef_box_layout.h"
 #include "include/views/cef_browser_view.h"
 #include "include/views/cef_window.h"
 #include "include/wrapper/cef_helpers.h"
@@ -20,6 +24,7 @@
 
 #include "browser/knossos_handler.h"
 #include "browser/knossos_bridge.h"
+#include "browser/knossos_dev_tools.h"
 #include "renderer/knossos_js_interface.h"
 
 namespace {
@@ -28,8 +33,8 @@ namespace {
 // implementation for the CefWindow that hosts the Views-based browser.
 class KnossosWindowDelegate : public CefWindowDelegate {
  public:
-  explicit KnossosWindowDelegate(CefRefPtr<CefBrowserView> browser_view)
-      : browser_view_(browser_view) {}
+  explicit KnossosWindowDelegate(CefRefPtr<CefBrowserView> browser_view, bool main_browser)
+      : main_browser_(main_browser), browser_view_(browser_view) {}
 
   void OnWindowCreated(CefRefPtr<CefWindow> window) OVERRIDE {
     // Add the browser view and show the window.
@@ -52,11 +57,22 @@ class KnossosWindowDelegate : public CefWindowDelegate {
     return true;
   }
 
-  CefSize GetPreferredSize(CefRefPtr<CefView> view) OVERRIDE {
-    return CefSize(1000, 700);
+  bool IsFrameless(CefRefPtr<CefWindow> window) OVERRIDE {
+    return true;
+  }
+
+  CefRect GetInitialBounds(CefRefPtr<CefWindow> window) OVERRIDE {
+    CefRect screen_size = KnossosHandler::GetInstance()->GetScreenSize();
+    CefRect window_size(0, 0, 1200, 800);
+
+    window_size.x = (screen_size.width - window_size.width) / 2;
+    window_size.y = (screen_size.height - window_size.height) / 2;
+
+    return window_size;
   }
 
  private:
+  bool main_browser_;
   CefRefPtr<CefBrowserView> browser_view_;
 
   IMPLEMENT_REFCOUNTING(KnossosWindowDelegate);
@@ -70,10 +86,15 @@ class KnossosBrowserViewDelegate : public CefBrowserViewDelegate {
   bool OnPopupBrowserViewCreated(CefRefPtr<CefBrowserView> browser_view,
                                  CefRefPtr<CefBrowserView> popup_browser_view,
                                  bool is_devtools) OVERRIDE {
-    // Create a new top-level Window for the popup. It will show itself after
-    // creation.
-    CefWindow::CreateTopLevelWindow(
-        new KnossosWindowDelegate(popup_browser_view));
+    if (is_devtools) {
+      CefWindow::CreateTopLevelWindow(
+        new KnossosDevToolsWindowDelegate(popup_browser_view));
+    } else {
+      // Create a new top-level Window for the popup. It will show itself after
+      // creation.
+      CefWindow::CreateTopLevelWindow(
+          new KnossosWindowDelegate(popup_browser_view, false));
+    }
 
     // We created the Window.
     return true;
@@ -109,11 +130,8 @@ void KnossosApp::OnContextInitialized() {
   const bool enable_chrome_runtime = command_line->HasSwitch("enable-chrome-runtime");
 
 #if defined(OS_WIN) || defined(OS_LINUX)
-  // Create the browser using the Views framework if "--use-views" is specified
-  // via the command-line. Otherwise, create the browser using the native
-  // platform framework. The Views framework is currently only supported on
-  // Windows and Linux.
-  const bool use_views = command_line->HasSwitch("use-views");
+  // The Views framework is currently only supported on Windows and Linux.
+  const bool use_views = true;
 #else
   const bool use_views = false;
 #endif
@@ -139,7 +157,7 @@ void KnossosApp::OnContextInitialized() {
         new KnossosBrowserViewDelegate());
 
     // Create the Window. It will show itself after creation.
-    CefWindow::CreateTopLevelWindow(new KnossosWindowDelegate(browser_view));
+    CefWindow::CreateTopLevelWindow(new KnossosWindowDelegate(browser_view, true));
   } else {
     // Information used when creating the native window.
     CefWindowInfo window_info;
@@ -163,7 +181,8 @@ void KnossosApp::OnContextInitialized() {
                                   nullptr, nullptr);
   }
 
-  CefPostTask(TID_IO, base::Bind(PrepareLibKnossos, _settings_path));
+  // Load libknossos on the thread dedicated to Knossos tasks
+  handler->PostKnossosTask(base::Bind(PrepareLibKnossos, _settings_path));
 }
 
 void KnossosApp::InitializeSettings(CefSettings &settings, std::string appDataPath) {
@@ -204,6 +223,8 @@ void KnossosApp::InitializeSettings(CefSettings &settings, std::string appDataPa
   CefString cache_path(&settings.cache_path);
   cache_path = config_path + sep + "cache";
   _settings_path = config_path;
+
+  settings.background_color = CefColorSetARGB(0xff, 0x1c, 0x1c, 0x1c);
 }
 
 #ifndef OS_APPLE

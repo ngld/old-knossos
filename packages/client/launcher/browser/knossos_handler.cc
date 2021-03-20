@@ -12,6 +12,7 @@
 #include "include/cef_parser.h"
 #include "include/cef_path_util.h"
 #include "include/cef_process_message.h"
+#include "include/cef_thread.h"
 #include "include/internal/cef_ptr.h"
 #include "include/internal/cef_types.h"
 #include "include/views/cef_browser_view.h"
@@ -20,6 +21,7 @@
 #include "include/wrapper/cef_helpers.h"
 
 #include "browser/knossos_archive_handler.h"
+#include "browser/knossos_dev_tools.h"
 #include "browser/knossos_resource_handler.h"
 
 namespace {
@@ -62,6 +64,8 @@ KnossosHandler::KnossosHandler(bool use_views, std::string settings_path)
 
       _resources = nullptr;
     }
+
+    knossos_thread_ = CefThread::CreateThread("libknossos");
   }
 }
 
@@ -172,7 +176,7 @@ bool KnossosHandler::OnProcessMessageReceived(
     CefProcessId source_process, CefRefPtr<CefProcessMessage> message) {
   const std::string &message_name = message->GetName();
   if (message_name == "knDevToolsRequest") {
-    ShowDevTools(browser);
+    KnossosShowDevTools(browser);
     return true;
   } else if (message_name == "knOpenFileRequest") {
     auto args = message->GetArgumentList();
@@ -202,6 +206,26 @@ bool KnossosHandler::OnProcessMessageReceived(
     browser->GetHost()->RunFileDialog(
         FILE_DIALOG_SAVE, args->GetString(0), args->GetString(1), accepted, 0,
         new KnossosFileResultHandler(frame, args->GetInt(3), false));
+  } else if (message_name == "knMinimizeWindow") {
+#ifndef OS_MAC
+    CefBrowserView::GetForBrowser(browser)->GetWindow()->Minimize();
+#endif
+    return true;
+  } else if (message_name == "knRestoreWindow") {
+#ifndef OS_MAC
+    CefBrowserView::GetForBrowser(browser)->GetWindow()->Restore();
+#endif
+    return true;
+  } else if (message_name == "knMaximizeWindow") {
+#ifndef OS_MAC
+    CefBrowserView::GetForBrowser(browser)->GetWindow()->Maximize();
+#endif
+    return true;
+  } else if (message_name == "knCloseWindow") {
+#ifndef OS_MAC
+    CefBrowserView::GetForBrowser(browser)->GetWindow()->Close();
+#endif
+    return true;
   }
 
   return false;
@@ -222,7 +246,7 @@ bool KnossosHandler::OnContextMenuCommand(
     CefContextMenuHandler::EventFlags event_flags) {
   switch (command_id) {
   case kDevToolsMenuItem:
-    ShowDevTools(browser);
+    KnossosShowDevTools(browser);
     return true;
   case kReloadMenuItem:
     browser->Reload();
@@ -270,30 +294,25 @@ CefRefPtr<CefResourceRequestHandler> KnossosHandler::GetResourceRequestHandler(
   return nullptr;
 }
 
-void KnossosHandler::ShowDevTools(CefRefPtr<CefBrowser> browser) {
-  CefWindowInfo window_info;
-  CefBrowserSettings settings;
-  CefPoint point;
-  CefRefPtr<CefClient> client = browser->GetHost()->GetClient();
-
-#ifdef OS_WIN
-  window_info.SetAsPopup(browser->GetHost()->GetWindowHandle(), "dev_tools");
-#else
-  CefRect screen_size = GetScreenSize();
-  window_info.width = screen_size.width - 200;
-  window_info.height = 400;
-
-  window_info.x = (screen_size.width - window_info.width) / 2;
-  window_info.y = screen_size.height / 2 + 500;
-
-  CefString(&window_info.window_name).FromASCII("dev_tools");
-#endif
-
-  browser->GetHost()->ShowDevTools(window_info, client, settings, point);
-}
-
 void KnossosHandler::BroadcastMessage(CefRefPtr<CefProcessMessage> message) {
   for (auto browser : browser_list_) {
     browser->GetMainFrame()->SendProcessMessage(PID_RENDERER, message);
   }
+}
+
+bool KnossosHandler::PostKnossosTask(CefRefPtr<CefTask> task) {
+  return knossos_thread_->GetTaskRunner()->PostTask(task);
+}
+
+bool KnossosHandler::PostKnossosTask(const base::Closure &closure) {
+  return PostKnossosTask(CefCreateClosureTask(closure));
+}
+
+void KnossosHandler::OnDraggableRegionsChanged(
+    CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
+    const std::vector<CefDraggableRegion> &regions) {
+#ifndef OS_MAC
+  CefBrowserView::GetForBrowser(browser)->GetWindow()->SetDraggableRegions(
+      regions);
+#endif
 }

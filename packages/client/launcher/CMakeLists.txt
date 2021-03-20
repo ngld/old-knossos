@@ -42,6 +42,7 @@ set(KNOSSOS_SRCS
   browser/knossos_archive_handler.cc
   browser/knossos_archive.cc
   browser/knossos_bridge.cc
+  browser/knossos_dev_tools.cc
   browser/knossos_file_result_handler.cc
   browser/knossos_handler.cc
   browser/knossos_resource_handler.cc
@@ -283,7 +284,12 @@ endif()
 
 if(OS_WINDOWS)
   # Executable target.
-  add_executable(${CEF_TARGET} WIN32 ${KNOSSOS_SRCS} ${KNOSSOS_HELPER_SRCS})
+  add_executable(${CEF_TARGET} ${KNOSSOS_SRCS} ${KNOSSOS_HELPER_SRCS})
+  if(NOT CMAKE_BUILD_TYPE STREQUAL Debug)
+    # This doesn't work with IDEs but they probably don't need the console subsystem to get useful debug output.
+    set_target_properties(${CEF_TARGET} PROPERTIES WIN32_EXECUTABLE TRUE)
+  endif()
+
   add_dependencies(${CEF_TARGET} libcef_dll_wrapper)
   SET_EXECUTABLE_TARGET_PROPERTIES(${CEF_TARGET})
   target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper brotlidec-static ${CEF_STANDARD_LIBS})

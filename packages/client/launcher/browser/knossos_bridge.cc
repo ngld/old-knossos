@@ -66,6 +66,7 @@ void PrepareLibKnossos(std::string settings_path) {
 
   char* error;
   if (!LoadKnossos(libknossos_path.c_str(), &error)) {
+    KnossosHandler::ShowError("Failed to load libknossos: " + std::string(error));
     LOG(FATAL) << "Failed to load libknossos: " << error;
   }
 

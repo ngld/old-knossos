@@ -90,3 +90,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 
   return 0;
 }
+
+int main(int argc, char** argv) {
+  return wWinMain(NULL, NULL, NULL, 0);
+}
