@@ -123,7 +123,6 @@ var checkDepsCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(fetchDepsCmd)
-	fetchDepsCmd.Flags().BoolP("full-cef", "f", false, "Download the full CEF distribution (not actually implemented, yet)")
 	fetchDepsCmd.Flags().BoolP("update", "u", false, "Update checksums")
 
 	rootCmd.AddCommand(checkDepsCmd)
@@ -180,17 +179,6 @@ func getConfig(projectRoot string) (depConfig, string, map[string]string, error)
 }
 
 func evalConditions(meta *depSpec, vars map[string]string) bool {
-	varMatcher := regexp.MustCompile(`\{([A-Z0-9_]+)\}`)
-
-	meta.URL = varMatcher.ReplaceAllStringFunc(meta.URL, func(varName string) string {
-		value, ok := vars[varName[1:len(varName)-1]]
-		if ok {
-			return value
-		} else {
-			return ""
-		}
-	})
-
 	for _, condition := range strings.Split(meta.Condition, ",") {
 		if condition == "" {
 			continue
@@ -365,22 +353,12 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 	}
 	buf := make([]byte, 4096)
 
-	fullCef, err := cmd.Flags().GetBool("full-cef")
-	if err != nil {
-		return err
-	}
-	fullStr := ""
-	if fullCef {
-		fullStr = "yes"
-	}
-
 	update, err := cmd.Flags().GetBool("update")
 	if err != nil {
 		return err
 	}
 
 	vars := cfg.Vars
-	vars["full-cef"] = fullStr
 	vars[runtime.GOARCH] = "true"
 	vars[runtime.GOOS] = "true"
 	if os.Getenv("CI") == "true" {
@@ -394,14 +372,21 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 		lineLength[idx] = len(line) + 1
 	}
 
+	varMatcher := regexp.MustCompile(`\{([A-Z0-9_]+)\}`)
 	for name, meta := range cfg.Deps {
-		// We eval the conditions even if we're updating because we have to evaluate the variable placeholders.
 		skip := !evalConditions(&meta, vars)
-		if skip {
-			if !update {
-				continue
-			}
+		if skip && !update {
+			continue
 		}
+
+		meta.URL = varMatcher.ReplaceAllStringFunc(meta.URL, func(varName string) string {
+			value, ok := vars[varName[1:len(varName)-1]]
+			if ok {
+				return value
+			} else {
+				return ""
+			}
+		})
 
 		destPath := filepath.Join(projectRoot, meta.Dest)
 		destInfo, err := os.Stat(destPath)
@@ -409,7 +394,14 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 
 		stampToken := meta.URL + "#" + meta.Sha256
 		stamp, ok := stamps[name]
-		if ok && stampToken == stamp && destExists {
+
+		// Only download the file if necessary. We have to cover the following cases:
+		// * the checksum or URL changed => delete anything we have and download the new version
+		// * the destination is missing and we're not skipping this file
+		//   We can reach this point for a file we should be skipping if we're updating checksums since those have to
+		//   be updated for all platforms. However, the checksum should only change if the URL changed and we have
+		//   already confirmed that this didn't happen.
+		if ok && stampToken == stamp && (destExists || skip) {
 			continue
 		}
 
@@ -553,7 +545,6 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 
 type (
 	archiveExtractor func(*os.File, *progressbar.ProgressBar, string, string, depSpec) error
-	archiveDetector  func(string) (archiveExtractor, bool)
 )
 
 func openExtractorDest(destPath string, item string, ds depSpec) (*os.File, string, error) {
@@ -614,6 +605,7 @@ func getExtractor(url string) (archiveExtractor, error) {
 				}
 				defer itemHandle.Close()
 
+				pos := int64(0)
 				for {
 					n, err := itemHandle.Read(buf)
 					if err != nil && n < 1 {
@@ -628,10 +620,8 @@ func getExtractor(url string) (archiveExtractor, error) {
 						return eris.Wrapf(err, "Failed to write extracted file %s", dest)
 					}
 
-					pos, err := f.Seek(0, io.SeekCurrent)
-					if err == nil {
-						bar.Set64(pos)
-					}
+					pos += int64(n)
+					bar.Set64(pos)
 				}
 
 				itemHandle.Close()

@@ -64,6 +64,9 @@ def configure():
         binext = ".exe"
 
         prepend_path(resolve_path(msys2_path, "mingw64/bin"))
+        setenv("GCCPATH", str(resolve_path(msys2_path, "mingw64/bin/gcc.exe")))
+
+        #prepend_path(resolve_path(msys2_path, "mingw64/lib/ccache/bin"))
         prepend_path("third_party/ninja")
 
         compiler = getenv("CXX")
@@ -104,9 +107,9 @@ def configure():
             else:
                 generator = "Unix Makefiles"
 
-        if isdir('/usr/local/opt/ccache/libexec'):
-            prepend_path('/usr/local/opt/ccache/libexec')
-            info('Using ccache at /usr/local/opt/ccache/libexec')
+        if isdir("/usr/local/opt/ccache/libexec"):
+            prepend_path("/usr/local/opt/ccache/libexec")
+            info("Using ccache at /usr/local/opt/ccache/libexec")
     else:
         libext = ".so"
         binext = ""
@@ -142,13 +145,20 @@ def configure():
         ],
     )
 
+    extra_tools = []
+    if OS == "windows":
+        extra_tools = [
+            "cd packages/build-tools",
+            "go build -o ../../.tools/gcc%s ./ccache-helper" % binext,
+        ]
+
     task(
         "install-tools",
         desc = "Installs necessary go tools in the workspace (task, pggen, protoc plugins, ...)",
         deps = ["build-tool"],
-        inputs = ["packages/build-tools/tools.go", "packages/build-tools/go.mod"],
+        inputs = ["packages/build-tools/tools.go", "packages/build-tools/go.mod", "packages/build-tools/ccache-helper/main.go"],
         outputs = [".tools/%s%s" % (name, binext) for name in ("modd", "pggen", "protoc-gen-go", "protoc-gen-twirp")],
-        cmds = ["tool install-tools"],
+        cmds = ["tool install-tools"] + extra_tools,
     )
 
     js_deps = task(
@@ -200,7 +210,7 @@ def configure():
                 'usr/bin/bash --login -c "mkdir /tmp || true"',
                 'usr/bin/bash --login -c "pacman -Syuu --noconfirm"',
                 'usr/bin/bash --login -c "pacman -Syuu --noconfirm"',
-                'usr/bin/bash --login -c "pacman -Su --noconfirm --needed mingw-w64-x86_64-gcc"',
+                'usr/bin/bash --login -c "pacman -Su --noconfirm --needed mingw-w64-x86_64-{gcc,ccache}"',
             ],
         )
 
@@ -215,7 +225,7 @@ def configure():
             "client/**/*.go",
         ],
         cmds = [
-            "protoc -Idefinitions mod.proto --go_out=api --go_opt=paths=source_relative",
+            "protoc -Idefinitions mod.proto --go_out=client --go_opt=paths=source_relative",
             "protoc -Idefinitions client.proto --go_out=client --go_opt=paths=source_relative --twirp_out=twirp",
             "protoc -Idefinitions service.proto --go_out=api --go_opt=paths=source_relative --twirp_out=twirp",
             # twirp doesn't support go.mod paths so we have to move the generated files to the correct location
@@ -313,7 +323,7 @@ def configure():
             },
             cmds = [
                 ("cd", resolve_path(msys2_path)),
-                ("usr/bin/bash", "--login", "-c", '"$(cygpath %s)"' % resolve_path("packages/libarchive/msys2-build.sh")),
+                ("usr/bin/bash", "--login", "-c", '"$(cygpath "%s")"' % resolve_path("packages/libarchive/msys2-build.sh")),
             ],
         )
     else:
@@ -329,8 +339,6 @@ def configure():
             ],
         )
 
-    libkn_ldflags = []
-
     task(
         "libknossos-build",
         desc = "Builds libknossos (client-side, non-UI logic)",
@@ -343,9 +351,9 @@ def configure():
         ],
         outputs = [
             "../../build/libknossos/libknossos%s" % libext,
+            "../../build/libknossos/dynknossos.{h,cc}",
         ],
         env = {
-            "CGO_LDFLAGS": " ".join(libkn_ldflags),
             # cgo only supports gcc, make sure it doesn't try to use a compiler meant for our other packages
             "CC": "gcc",
         },
@@ -400,13 +408,16 @@ def configure():
         "client-run-dev",
         hidden = True,
         base = "build/client",
-        cmds = ['%s --url="http://localhost:8080/" --libkn=%s' % (kn_bin, libkn_path)],
+        deps = ["client-build"],
+        cmds = ['%s --url="http://localhost:8080/" --libkn="%s"' % (kn_bin, libkn_path)],
     )
 
     task(
         "client-watch",
         desc = "Launch Knossos, recompile and restart after source changes",
-        deps = ["install-tools"],
+        # run fetch-deps before we launch modd to make sure that it doesn't trigger
+        # two parallel fetch-deps tasks
+        deps = ["install-tools", "fetch-deps"],
         cmds = ["modd -f modd_client.conf"],
     )
 

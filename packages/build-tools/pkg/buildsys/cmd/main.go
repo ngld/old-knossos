@@ -42,6 +42,11 @@ var RootCmd = &cobra.Command{
 			return err
 		}
 
+		noDeps, err := cmd.Flags().GetBool("no-deps")
+		if err != nil {
+			return err
+		}
+
 		for _, part := range args {
 			pos := strings.Index(part, "=")
 			if pos > -1 {
@@ -152,6 +157,14 @@ var RootCmd = &cobra.Command{
 
 		if !listTasks {
 			for _, name := range taskArgs {
+				if noDeps {
+					task, ok := taskList[name]
+					// Skip missing tasks. RunTask will complain about them later.
+					if ok {
+						task.Deps = make([]string, 0)
+					}
+				}
+
 				err = buildsys.RunTask(ctx, projectRoot, name, taskList, dryRun, force)
 				if err != nil {
 					logger.Fatal().Err(err).Msgf("Failed task %s:", name)
@@ -232,4 +245,5 @@ func init() {
 	f.BoolP("force", "f", false, "force build; always execute the passed steps even if they don't have to run")
 	f.BoolP("list", "l", false, "list available tasks")
 	f.BoolP("options", "o", false, "list configure options")
+	f.Bool("no-deps", false, "skip the dependencies for all listed tasks")
 }

@@ -103,7 +103,7 @@ func (t *Task) Hash() (uint32, error) {
 type StarlarkPath string
 
 func (p StarlarkPath) String() string {
-	return starlark.String(p).String()
+	return starlark.String(p).GoString()
 }
 
 func (p StarlarkPath) Type() string {

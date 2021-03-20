@@ -81,6 +81,7 @@ func genLoader(headerFile, dynHeader string) error {
 	header := strings.Builder{}
 	loaderDecl := strings.Builder{}
 	loaderFunc := strings.Builder{}
+	funcNames := []string{}
 
 	checksumTpl.Execute(&header, hashDigest)
 	header.WriteString("#ifndef KNOSSOS_BRAIN_LOADER\n")
@@ -101,6 +102,10 @@ func genLoader(headerFile, dynHeader string) error {
 			strings.HasPrefix(line, "//") {
 			header.WriteString(fixTypes(line) + "\n")
 		} else if strings.HasPrefix(line, "extern ") && !strings.HasPrefix(line, "extern \"C\"") {
+			if strings.HasPrefix(line, "extern __declspec(dllexport) ") {
+				line = "extern " + line[29:]
+			}
+
 			parts := strings.SplitN(line, " ", 3)
 			returnType := parts[1]
 			parts = strings.SplitN(parts[2], "(", 2)
@@ -133,6 +138,8 @@ func genLoader(headerFile, dynHeader string) error {
 			loaderFunc.WriteString(") LOAD_SYM(lib, \"")
 			loaderFunc.WriteString(funcName)
 			loaderFunc.WriteString("\");\n")
+
+			funcNames = append(funcNames, funcName)
 		} else if line == "/* Start of preamble from import \"C\" comments.  */" {
 			inPreamble = true
 		}
@@ -179,6 +186,18 @@ func genLoader(headerFile, dynHeader string) error {
 	loader.WriteString("#ifndef WIN32\n")
 	loader.WriteString("\n  dlclose(lib);\n")
 	loader.WriteString("#endif\n")
+
+	loader.WriteString("if (")
+	for idx, name := range funcNames {
+		if idx > 0 {
+			loader.WriteString(" || ")
+		}
+		loader.WriteString("!" + name)
+	}
+	loader.WriteString(") {\n")
+	loader.WriteString(`  *error = "One or more functions could not be found!";` + "\n")
+	loader.WriteString("  return false;\n")
+	loader.WriteString("}\n")
 
 	loader.WriteString("  return true;\n")
 	loader.WriteString("}\n\n")
