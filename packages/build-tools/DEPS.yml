@@ -1,8 +1,8 @@
 vars:
-  PROTOC: 3.14.0
+  PROTOC: 3.15.6
   LIBARCHIVE: 3.5.1
   CEF: 89.0.7+gb5952bd+chromium-89.0.4389.72
-  MSYS_BUILD: 20210215
+  MSYS_BUILD: 20210228
   NODEJS: 14.16.0
   BROTLI: 1.0.9
   NINJA: 1.10.2
@@ -15,9 +15,9 @@ update-checks:
     github:
       project: libarchive/libarchive
   CEF:
-    json:
+    regex:
       url: https://cef-builds.spotifycdn.com/index.json
-      key: linux64.versions.0.cef_version
+      pattern: '"cef_version": "([^"]+)", "channel": "stable",'
   MSYS_BUILD:
     regex:
       url: http://repo.msys2.org/distrib/x86_64/
@@ -36,7 +36,7 @@ update-checks:
 
 deps:
   protoc-linux:
-    sha256: a2900100ef9cda17d9c0bbf6a3c3592e809f9842f2d9f0d50e3fba7f3fc864f0
+    sha256: 38a2f024a0ce68897b1868c59b613939bd41f16c0c8d8890843eccdbbf46ab00
     if: linux, amd64
     url: https://github.com/protocolbuffers/protobuf/releases/download/v{PROTOC}/protoc-{PROTOC}-linux-x86_64.zip
     strip: 1
@@ -44,7 +44,7 @@ deps:
     markExec: [protoc]
 
   protoc-darwin:
-    sha256: 699ceee7ef0988ecf72bf1c146dee5d9d89351a19d4093d30ebea3c04008bb8c
+    sha256: ca025c889efbe02f390b251c153c752a05fb04f5ac8c93929f8dba2818a5392a
     if: darwin, amd64
     url: https://github.com/protocolbuffers/protobuf/releases/download/v{PROTOC}/protoc-{PROTOC}-osx-x86_64.zip
     strip: 1
@@ -52,7 +52,7 @@ deps:
     markExec: [protoc]
 
   protoc-win64:
-    sha256: 642554ed4dd2dba94e1afddcccdd7d832999cea309299cc5952f13db389894f8
+    sha256: d4cd42275a32c3dbc194aa3c884a5b487688befcf5e03e5aa7837702a779ba30
     if: windows, amd64
     url: https://github.com/protocolbuffers/protobuf/releases/download/v{PROTOC}/protoc-{PROTOC}-win64.zip
     strip: 1
@@ -74,10 +74,10 @@ deps:
     dest: third_party/cef
 
   cef-darwin-full:
-    sha256: 8411aa57ffd80a3c41e836ee85c23851646558165c83bf8d5eb390b07edc2dd9
+    sha256: 34fe0a747b5e2d85f527ff8b347c4c4e2aeaa36de2d260a48d6fcea45f24629a
     if: darwin, amd64
     ifNot: ci
-    url: https://cef-builds.spotifycdn.com/cef_binary_{CEF}_macosx64.tar.bz2
+    url: https://cef-builds.spotifycdn.com/cef_binary_90.0.1%2Bg2e4c475%2Bchromium-90.0.4430.30_macosx64_beta.tar.bz2
     strip: 1
     dest: third_party/cef
 
@@ -116,7 +116,7 @@ deps:
     dest: third_party/brotli
 
   msys2:
-    sha256: b69e0272b45cfcf7b5dc162b031808e642912629a1614f950326416ec10da3bd
+    sha256: 3f2ceb097a081789d9d497e0d3df8d99c16a1591b9984b0469440cd5bfa65092
     if: windows, amd64
     ifNot: ci
     url: http://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-{MSYS_BUILD}.tar.xz
