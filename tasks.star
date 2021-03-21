@@ -182,6 +182,13 @@ def configure():
         cmds = ["tool fetch-deps -u"],
     )
 
+    task(
+        "check-deps",
+        desc = "Checks the dependencies listed in DEPS.yml for updates",
+        deps = ["build-tool"],
+        cmds = ["tool check-deps"],
+    )
+
     if OS == "windows":
         task(
             "bootstrap-mingw64",

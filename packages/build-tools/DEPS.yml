@@ -7,6 +7,33 @@ vars:
   BROTLI: 1.0.9
   NINJA: 1.10.2
 
+update-checks:
+  PROTOC:
+    github:
+      project: protocolbuffers/protobuf
+  LIBARCHIVE:
+    github:
+      project: libarchive/libarchive
+  CEF:
+    json:
+      url: https://cef-builds.spotifycdn.com/index.json
+      key: linux64.versions.0.cef_version
+  MSYS_BUILD:
+    regex:
+      url: http://repo.msys2.org/distrib/x86_64/
+      pattern: msys2-base-x86_64-([0-9]+)\.tar\.xz
+      last: true
+  NODEJS:
+    regex:
+      url: https://nodejs.org/en/
+      pattern: ' title="Download ([0-9\.]+) LTS" '
+  BROTLI:
+    github:
+      project: google/brotli
+  NINJA:
+    github:
+      project: ninja-build/ninja
+
 deps:
   protoc-linux:
     sha256: a2900100ef9cda17d9c0bbf6a3c3592e809f9842f2d9f0d50e3fba7f3fc864f0

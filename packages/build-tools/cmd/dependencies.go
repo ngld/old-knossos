@@ -14,8 +14,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,6 +30,21 @@ import (
 	"github.com/ngld/knossos/packages/build-tools/pkg"
 )
 
+type updateCheck struct {
+	Github struct {
+		Project string
+	}
+	JSON struct {
+		URL string
+		Key string
+	}
+	Regex struct {
+		URL     string
+		Pattern string
+		Last    bool
+	}
+}
+
 type depSpec struct {
 	Condition  string `yaml:"if,omitempty"`
 	Rejections string `yaml:"ifNot,omitempty"`
@@ -39,8 +56,15 @@ type depSpec struct {
 }
 
 type depConfig struct {
-	Vars map[string]string
-	Deps map[string]depSpec
+	Vars         map[string]string
+	UpdateChecks map[string]updateCheck `yaml:"update-checks,omitempty"`
+	Deps         map[string]depSpec
+}
+
+type githubRelease struct {
+	TagName    string `json:"tag_name,omitempty"`
+	Name       string
+	Prerelease bool
 }
 
 var fetchDepsCmd = &cobra.Command{
@@ -48,7 +72,7 @@ var fetchDepsCmd = &cobra.Command{
 	Short: "Downloads and unpacks dependencies",
 	Long:  `Downloads and unnpacks the dependencies listed in packages/build-tools/DEPS.yml`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		pkg.PrintTask("Loading config")
+		// pkg.PrintTask("Loading config")
 		root, err := pkg.GetProjectRoot()
 		if err != nil {
 			return err
@@ -59,12 +83,13 @@ var fetchDepsCmd = &cobra.Command{
 			return err
 		}
 
-		pkg.PrintTask("Downloading dependencies")
+		// pkg.PrintTask("Downloading dependencies")
 		err = downloadAndExtract(cmd, cfg, cfgData, stamps, root)
 		stampPath := filepath.Join(root, "packages", "build-tools", "DEPS.stamps")
 		stampData, jErr := json.Marshal(stamps)
 		if jErr != nil {
 			pkg.PrintError(jErr.Error())
+			return nil
 		}
 
 		jErr = ioutil.WriteFile(stampPath, stampData, os.FileMode(0660))
@@ -72,9 +97,27 @@ var fetchDepsCmd = &cobra.Command{
 			pkg.PrintError(jErr.Error())
 		}
 
-		pkg.PrintTask("Done")
+		// pkg.PrintTask("Done")
 
 		return err
+	},
+}
+
+var checkDepsCmd = &cobra.Command{
+	Use:   "check-deps",
+	Short: "Check if any dependencies have updates available",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		root, err := pkg.GetProjectRoot()
+		if err != nil {
+			return err
+		}
+
+		cfg, _, _, err := getConfig(root)
+		if err != nil {
+			return err
+		}
+
+		return checkForUpdates(cfg)
 	},
 }
 
@@ -82,6 +125,8 @@ func init() {
 	rootCmd.AddCommand(fetchDepsCmd)
 	fetchDepsCmd.Flags().BoolP("full-cef", "f", false, "Download the full CEF distribution (not actually implemented, yet)")
 	fetchDepsCmd.Flags().BoolP("update", "u", false, "Update checksums")
+
+	rootCmd.AddCommand(checkDepsCmd)
 }
 
 func getProgressBar(length int64, desc string) *progressbar.ProgressBar {
@@ -168,6 +213,144 @@ func evalConditions(meta *depSpec, vars map[string]string) bool {
 		}
 	}
 	return true
+}
+
+func checkForUpdates(cfg depConfig) error {
+	for name, spec := range cfg.UpdateChecks {
+		pkg.PrintTask(name)
+		version, ok := cfg.Vars[name]
+		if !ok {
+			pkg.PrintError(fmt.Sprintf("Update check %s does not have a matching variable!", name))
+			continue
+		}
+
+		if spec.Github.Project != "" {
+			apiURL := "https://api.github.com/repos/" + spec.Github.Project + "/releases"
+			resp, err := http.Get(apiURL)
+			if err != nil {
+				return eris.Wrapf(err, "Failed to fetch %s", apiURL)
+			}
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return eris.Wrap(err, "Failed to read GitHub response")
+			}
+
+			info := make([]githubRelease, 0)
+			err = json.Unmarshal(body, &info)
+			if err != nil {
+				return eris.Wrap(err, "Failed to parse GitHub response")
+			}
+
+			if len(info) < 1 {
+				pkg.PrintError("No release found")
+			} else {
+				latestVersion := strings.TrimLeft(info[0].TagName, "v")
+				if latestVersion != version {
+					pkg.PrintSubtask(fmt.Sprintf("%s -> %s", version, latestVersion))
+				}
+			}
+		} else if spec.JSON.URL != "" {
+			if spec.JSON.Key == "" {
+				pkg.PrintError("Missing key!")
+				continue
+			}
+
+			key := strings.Split(spec.JSON.Key, ".")
+			resp, err := http.Get(spec.JSON.URL)
+			if err != nil {
+				return eris.Wrapf(err, "Failed to fetch %s", spec.JSON.URL)
+			}
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return eris.Wrap(err, "Failed to read response")
+			}
+
+			var value interface{}
+			err = json.Unmarshal(body, &value)
+			if err != nil {
+				return eris.Wrap(err, "Failed to parse JSON response")
+			}
+
+			valueRef := reflect.ValueOf(value)
+			failed := false
+			for idx, keyPart := range key {
+				switch valueRef.Kind() {
+				case reflect.Map:
+					valueRef = valueRef.MapIndex(reflect.ValueOf(keyPart))
+				case reflect.Slice:
+					idx, err := strconv.Atoi(keyPart)
+					if err != nil {
+						return eris.Wrapf(err, "Failed to parse key part %s as int", keyPart)
+					}
+
+					valueRef = valueRef.Index(idx)
+				default:
+					pkg.PrintError(fmt.Sprintf("Found unexpected type %v at %s. Check your key.", valueRef.Kind(), strings.Join(key[:idx], ".")))
+					failed = true
+				}
+
+				if failed {
+					break
+				}
+
+				if valueRef.Kind() == reflect.Interface {
+					valueRef = valueRef.Elem()
+				}
+			}
+			if failed {
+				continue
+			}
+
+			if valueRef.String() != version {
+				pkg.PrintSubtask(version + " -> " + valueRef.String())
+			}
+		} else if spec.Regex.URL != "" {
+			if spec.Regex.Pattern == "" {
+				pkg.PrintError("Pattern is missing!")
+				continue
+			}
+
+			pattern, err := regexp.Compile(spec.Regex.Pattern)
+			if err != nil {
+				return eris.Wrapf(err, "Failed to parse regex %s", spec.Regex.Pattern)
+			}
+
+			resp, err := http.Get(spec.Regex.URL)
+			if err != nil {
+				return eris.Wrapf(err, "Failed to fetch %s", spec.Regex.URL)
+			}
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return eris.Wrap(err, "Failed to read response")
+			}
+
+			var match string
+			if spec.Regex.Last {
+				matches := pattern.FindAllSubmatch(body, -1)
+				if len(matches) < 1 {
+					pkg.PrintError("No match found")
+					continue
+				}
+				match = string(matches[len(matches)-1][1])
+			} else {
+				m := pattern.FindSubmatch(body)
+				if m == nil {
+					pkg.PrintError("No match found")
+					continue
+				}
+				match = string(m[1])
+			}
+
+			if match != version {
+				pkg.PrintSubtask(version + " -> " + match)
+			}
+		}
+	}
+
+	return nil
 }
 
 type yamlChange struct {

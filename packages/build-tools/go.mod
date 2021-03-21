@@ -6,7 +6,6 @@ require (
 	github.com/aidarkhanov/nanoid v1.0.8
 	github.com/andybalholm/brotli v1.0.1
 	github.com/cortesi/modd v0.0.0-20200630120222-8983974e5450
-	github.com/go-task/task/v3 v3.2.2
 	github.com/golang/protobuf v1.4.3
 	github.com/jschaf/pggen v0.0.0-20210208172654-e5703e272221
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db
