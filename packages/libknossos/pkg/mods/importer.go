@@ -85,7 +85,7 @@ type KnMod struct {
 	Videos        []string
 }
 
-func convertPath(modPath, input string) *client.FileRef {
+func convertPath(ctx context.Context, modPath, input string) *client.FileRef {
 	if input == "" {
 		return nil
 	}
@@ -94,7 +94,7 @@ func convertPath(modPath, input string) *client.FileRef {
 		Fileid: "local_" + nanoid.New(),
 		Urls:   []string{"file://" + filepath.ToSlash(filepath.Join(modPath, input))},
 	}
-	storage.ImportFile(context.Background(), ref)
+	storage.ImportFile(ctx, ref)
 
 	return ref
 }
@@ -113,7 +113,7 @@ func convertChecksum(input KnChecksum) (*client.Checksum, error) {
 
 func ImportMods(ctx context.Context, modFiles []string) error {
 	mod := KnMod{}
-	return storage.ImportMods(ctx, func(importMod func(*client.Release) error) error {
+	return storage.ImportMods(ctx, func(ctx context.Context, importMod func(*client.Release) error) error {
 		for _, modFile := range modFiles {
 			data, err := ioutil.ReadFile(modFile)
 			if err != nil {
@@ -135,8 +135,8 @@ func ImportMods(ctx context.Context, modFiles []string) error {
 			item.Version = mod.Version
 			item.Title = mod.Title
 			item.Description = mod.Description
-			item.Teaser = convertPath(modPath, mod.Tile)
-			item.Banner = convertPath(modPath, mod.Banner)
+			item.Teaser = convertPath(ctx, modPath, mod.Tile)
+			item.Banner = convertPath(ctx, modPath, mod.Banner)
 			item.ReleaseThread = mod.ReleaseThread
 			item.Videos = mod.Videos
 			item.Notes = mod.Notes
@@ -191,7 +191,7 @@ func ImportMods(ctx context.Context, modFiles []string) error {
 			}
 
 			for _, screen := range mod.Screenshots {
-				item.Screenshots = append(item.Screenshots, convertPath(modPath, screen))
+				item.Screenshots = append(item.Screenshots, convertPath(ctx, modPath, screen))
 			}
 
 			item.Packages = make([]*client.Package, len(mod.Packages))

@@ -3,12 +3,12 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"strings"
+	"sort"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/dgraph-io/badger/v3"
 	"github.com/ngld/knossos/packages/api/client"
-	"github.com/ngld/knossos/packages/libknossos/pkg/api"
+	"github.com/rotisserie/eris"
+	bolt "go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -18,39 +18,56 @@ type (
 )
 
 var (
-	localModIndexKey     = []byte("local_modindex")
-	localModTypeIndexKey = []byte("local_modtypeindex")
+	localModsBucket      = []byte("local_mods")
+	localModsIndexBucket = []byte("local_mods_index")
+	localModVersionIndex = []byte("version")
+	localModTypeIndex    = []byte("type")
 )
 
 func GetLocalModKey(rel *client.Release) []byte {
-	return []byte("local_mod#" + rel.Modid + "#" + rel.Version)
+	return []byte(rel.Modid + "#" + rel.Version)
 }
 
-func ImportMods(ctx context.Context, callback func(func(*client.Release) error) error) error {
-	return db.Update(func(txn *badger.Txn) error {
+func getVersionIndex(tx *bolt.Tx) (map[string][]string, error) {
+	encoded := tx.Bucket(localModsIndexBucket).Get(localModVersionIndex)
+	if encoded == nil {
+		return nil, nil
+	}
+
+	result := make(map[string][]string)
+	err := json.Unmarshal(encoded, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func ImportMods(ctx context.Context, callback func(context.Context, func(*client.Release) error) error) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(localModsBucket)
+
 		// Remove existing entries
-		iter := txn.NewIterator(badger.IteratorOptions{
-			Prefix: []byte("local_mod#"),
+		err := bucket.ForEach(func(k, _ []byte) error {
+			return bucket.Delete(k)
 		})
-		defer iter.Close()
-		for iter.Rewind(); iter.Valid(); iter.Next() {
-			err := txn.Delete(iter.Item().Key())
-			if err != nil {
-				return err
-			}
+		if err != nil {
+			return err
 		}
-		iter.Close()
 
 		modIndex := make(stringIndex)
 		typeIndex := make(modTypeIndex)
+
+		ctx = CtxWithTx(ctx, tx)
+
 		// Call the actual import function
-		err := callback(func(rel *client.Release) error {
+		err = callback(ctx, func(rel *client.Release) error {
 			encoded, err := proto.Marshal(rel)
 			if err != nil {
 				return err
 			}
 
-			err = txn.Set(GetLocalModKey(rel), encoded)
+			err = bucket.Put(GetLocalModKey(rel), encoded)
 			if err != nil {
 				return err
 			}
@@ -71,12 +88,29 @@ func ImportMods(ctx context.Context, callback func(func(*client.Release) error) 
 			return err
 		}
 
+		// Sort the version index
+		for _, versions := range modIndex {
+			parsed := make(semver.Collection, len(versions))
+			for idx, raw := range versions {
+				parsed[idx], err = semver.StrictNewVersion(raw)
+				if err != nil {
+					return err
+				}
+			}
+
+			sort.Sort(parsed)
+			for idx, version := range parsed {
+				versions[idx] = version.String()
+			}
+		}
+
 		encoded, err := json.Marshal(modIndex)
 		if err != nil {
 			return err
 		}
 
-		err = txn.Set(localModIndexKey, encoded)
+		indexBucket := tx.Bucket(localModsIndexBucket)
+		err = indexBucket.Put(localModVersionIndex, encoded)
 		if err != nil {
 			return err
 		}
@@ -86,51 +120,30 @@ func ImportMods(ctx context.Context, callback func(func(*client.Release) error) 
 			return err
 		}
 
-		return txn.Set(localModTypeIndexKey, encoded)
+		return indexBucket.Put(localModTypeIndex, encoded)
 	})
 }
 
 func GetLocalMods(ctx context.Context, taskRef uint32) ([]*client.Release, error) {
-	modVersions := make(map[string]*semver.Version)
 	var result []*client.Release
 
-	err := db.View(func(txn *badger.Txn) error {
+	err := db.View(func(tx *bolt.Tx) error {
 		// Retrieve IDs and the latest version for all known local mods
-		iter := txn.NewIterator(badger.IteratorOptions{
-			Prefix: []byte("local_mod#"),
-		})
-		defer iter.Close()
-		for iter.Rewind(); iter.Valid(); iter.Next() {
-			parts := strings.Split(string(iter.Item().Key()), "#")
-			if len(parts) != 3 {
-				api.TaskLog(ctx, taskRef, client.LogMessage_ERROR, "Skipping invalid key %s", iter.Item().Key())
-				continue
-			}
-
-			version, err := semver.StrictNewVersion(parts[2])
-			if err != nil {
-				api.TaskLog(ctx, taskRef, client.LogMessage_ERROR,
-					"Skipping invalid version %s for %s: %+v", parts[2], parts[1], err)
-			}
-
-			prevVersion, ok := modVersions[parts[1]]
-			if !ok || version.Compare(prevVersion) > 0 {
-				modVersions[parts[1]] = version
-			}
+		bucket := tx.Bucket(localModsBucket)
+		versionIdx, err := getVersionIndex(tx)
+		if err != nil {
+			return err
 		}
 
-		result = make([]*client.Release, 0, len(modVersions))
-		// Now retrieve the actual metadata
-		for modID, version := range modVersions {
-			item, err := txn.Get([]byte("local_mod#" + modID + "#" + version.String()))
-			if err != nil {
-				return err
+		result = make([]*client.Release, 0, len(versionIdx))
+		for modId, versions := range versionIdx {
+			item := bucket.Get([]byte(modId + "#" + versions[len(versions)-1]))
+			if item == nil {
+				return eris.Errorf("Failed to find mod %s from index", modId+"#"+versions[len(versions)-1])
 			}
 
 			meta := new(client.Release)
-			err = item.Value(func(val []byte) error {
-				return proto.Unmarshal(val, meta)
-			})
+			err = proto.Unmarshal(item, meta)
 			if err != nil {
 				return err
 			}
@@ -149,15 +162,13 @@ func GetLocalMods(ctx context.Context, taskRef uint32) ([]*client.Release, error
 
 func GetMod(ctx context.Context, id string, version string) (*client.Release, error) {
 	mod := new(client.Release)
-	err := db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("local_mod#" + id + "#" + version))
-		if err != nil {
-			return err
+	err := db.View(func(tx *bolt.Tx) error {
+		item := tx.Bucket(localModsBucket).Get([]byte(id + "#" + version))
+		if item == nil {
+			return eris.New("mod not found")
 		}
 
-		return item.Value(func(val []byte) error {
-			return proto.Unmarshal(val, mod)
-		})
+		return proto.Unmarshal(item, mod)
 	})
 	if err != nil {
 		return nil, err

@@ -1,66 +1,51 @@
 package storage
 
 import (
-	"bytes"
 	"context"
 	"path/filepath"
+	"time"
 
-	"github.com/dgraph-io/badger/v3"
 	"github.com/ngld/knossos/packages/libknossos/pkg/api"
+	bolt "go.etcd.io/bbolt"
 )
 
-var (
-	db            *badger.DB
-	knownPrefixes = [][]byte{
-		[]byte("settings"),
-		[]byte("local_mod#"),
-		[]byte("local_modindex"),
-	}
-)
+type txCtxKey struct{}
+
+var db *bolt.DB
 
 func Open(ctx context.Context) error {
 	var err error
 
 	dbPath := filepath.Join(api.SettingsPath(ctx), "state.db")
-	db, err = badger.Open(
-		badger.DefaultOptions(dbPath).
-			// an empty db takes 2 * log file size so set this to a very low
-			// value to avoid wasting disk space
-			WithValueLogFileSize(2 << 20). // 2 MiB
-			WithLogger(KnBadgerLogger{ctx: ctx}),
-	)
-	return err
-}
-
-func Clean(ctx context.Context) error {
-	err := db.Update(func(txn *badger.Txn) error {
-		iter := txn.NewIterator(badger.IteratorOptions{})
-		for iter.Rewind(); iter.Valid(); iter.Next() {
-			key := iter.Item().Key()
-			ok := false
-			for _, prefix := range knownPrefixes {
-				if bytes.HasPrefix(key, prefix) {
-					ok = true
-					break
-				}
-			}
-
-			if !ok {
-				api.Log(ctx, api.LogInfo, "Purging key %s", key)
-				err := txn.Delete(key)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		return nil
+	newDB, err := bolt.Open(dbPath, 0600, &bolt.Options{
+		Timeout: 1 * time.Second,
 	})
 	if err != nil {
 		return err
 	}
 
-	return db.Flatten(4)
+	buckets := [][]byte{localModsBucket, localModsIndexBucket, fileBucket, settingsBucket}
+	err = newDB.Update(func(tx *bolt.Tx) error {
+		for _, bucket := range buckets {
+			_, err := tx.CreateBucketIfNotExists(bucket)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	db = newDB
+	return nil
+}
+
+func Clean(ctx context.Context) error {
+	// TODO
+	return nil
 }
 
 func Close(ctx context.Context) {
@@ -68,23 +53,14 @@ func Close(ctx context.Context) {
 	db = nil
 }
 
-type KnBadgerLogger struct {
-	badger.Logger
-	ctx context.Context
+func CtxWithTx(ctx context.Context, tx *bolt.Tx) context.Context {
+	return context.WithValue(ctx, txCtxKey{}, tx)
 }
 
-func (l KnBadgerLogger) Errorf(msg string, args ...interface{}) {
-	api.Log(l.ctx, api.LogError, msg, args...)
-}
-
-func (l KnBadgerLogger) Warningf(msg string, args ...interface{}) {
-	api.Log(l.ctx, api.LogWarn, msg, args...)
-}
-
-func (l KnBadgerLogger) Infof(msg string, args ...interface{}) {
-	api.Log(l.ctx, api.LogInfo, msg, args...)
-}
-
-func (l KnBadgerLogger) Debugf(msg string, args ...interface{}) {
-	api.Log(l.ctx, api.LogInfo, msg, args...)
+func TxFromCtx(ctx context.Context) *bolt.Tx {
+	val := ctx.Value(txCtxKey{})
+	if val == nil {
+		return nil
+	}
+	return val.(*bolt.Tx)
 }

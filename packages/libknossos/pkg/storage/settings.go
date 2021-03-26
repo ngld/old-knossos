@@ -4,27 +4,21 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/dgraph-io/badger/v3"
 	"github.com/ngld/knossos/packages/api/client"
-	"github.com/rotisserie/eris"
+	bolt "go.etcd.io/bbolt"
 )
 
-var settingsKey = []byte("settings")
+var settingsBucket = []byte("settings")
 
 func GetSettings(ctx context.Context) (*client.Settings, error) {
 	settings := new(client.Settings)
-	err := db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(settingsKey)
-		if err != nil {
-			if eris.Is(err, badger.ErrKeyNotFound) {
-				return nil
-			}
-			return err
+	err := db.View(func(tx *bolt.Tx) error {
+		item := tx.Bucket(settingsBucket).Get([]byte("settings"))
+		if item == nil {
+			return nil
 		}
 
-		return item.Value(func(val []byte) error {
-			return json.Unmarshal(val, &settings)
-		})
+		return json.Unmarshal(item, &settings)
 	})
 	return settings, err
 }
@@ -35,7 +29,7 @@ func SaveSettings(ctx context.Context, settings *client.Settings) error {
 		return err
 	}
 
-	return db.Update(func(txn *badger.Txn) error {
-		return txn.Set(settingsKey, encoded)
+	return db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(settingsBucket).Put([]byte("settings"), encoded)
 	})
 }
