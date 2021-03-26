@@ -146,7 +146,7 @@ def configure():
     )
 
     extra_tools = []
-    if OS == "windows":
+    if OS == "windows" and getenv("CI") == "":
         extra_tools = [
             "cd packages/build-tools",
             "go build -o ../../.tools/gcc%s ./ccache-helper" % binext,
