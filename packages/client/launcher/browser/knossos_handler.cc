@@ -4,8 +4,6 @@
 #include <sstream>
 #include <string>
 
-#include "browser/knossos_archive.h"
-#include "browser/knossos_file_result_handler.h"
 #include "include/base/cef_bind.h"
 #include "include/cef_app.h"
 #include "include/cef_menu_model.h"
@@ -13,13 +11,13 @@
 #include "include/cef_path_util.h"
 #include "include/cef_process_message.h"
 #include "include/cef_thread.h"
-#include "include/internal/cef_ptr.h"
-#include "include/internal/cef_types.h"
 #include "include/views/cef_browser_view.h"
 #include "include/views/cef_window.h"
 #include "include/wrapper/cef_closure_task.h"
 #include "include/wrapper/cef_helpers.h"
 
+#include "browser/knossos_archive.h"
+#include "browser/knossos_file_result_handler.h"
 #include "browser/knossos_archive_handler.h"
 #include "browser/knossos_dev_tools.h"
 #include "browser/knossos_resource_handler.h"

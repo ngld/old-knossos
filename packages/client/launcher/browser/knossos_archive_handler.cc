@@ -1,7 +1,6 @@
 #include "browser/knossos_archive_handler.h"
 
 #include <cstring>
-#include "include/internal/cef_string.h"
 
 KnossosArchiveHandler::KnossosArchiveHandler(CefRefPtr<KnossosArchive> archive, int prefix_length) :
   _archive(archive), _prefix_length(prefix_length), _pos(0), _res_size(0), _res_data(0) {}

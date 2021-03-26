@@ -2,7 +2,6 @@
 #define KNOSSOS_LAUNCHER_BROWSER_KNOSSOS_DEV_TOOLS
 
 #include "include/cef_browser.h"
-#include "include/internal/cef_ptr.h"
 #include "include/views/cef_browser_view.h"
 #include "include/views/cef_window.h"
 

@@ -9,8 +9,6 @@
 #include "include/cef_process_message.h"
 #include "include/cef_v8.h"
 #include "include/cef_values.h"
-#include "include/internal/cef_ptr.h"
-#include "include/internal/cef_types.h"
 #include "include/wrapper/cef_helpers.h"
 
 class KnossosApiV8Handler : public CefV8Handler {

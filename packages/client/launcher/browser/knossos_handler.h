@@ -3,12 +3,12 @@
 
 #include <list>
 
-#include "browser/knossos_archive.h"
 #include "include/base/cef_callback.h"
 #include "include/cef_client.h"
 #include "include/cef_drag_handler.h"
 #include "include/cef_thread.h"
-#include "include/internal/cef_ptr.h"
+
+#include "browser/knossos_archive.h"
 
 class KnossosHandler : public CefClient,
                        public CefDisplayHandler,

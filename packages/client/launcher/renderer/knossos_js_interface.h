@@ -6,7 +6,6 @@
 
 #include "include/base/cef_lock.h"
 #include "include/cef_v8.h"
-#include "include/internal/cef_ptr.h"
 
 typedef struct {
   CefRefPtr<CefV8Value> resolve;
