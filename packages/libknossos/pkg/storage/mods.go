@@ -17,6 +17,11 @@ type (
 	modTypeIndex map[client.ModType][]string
 )
 
+type ModProvider interface {
+	GetVersionsForMod(string) ([]string, error)
+	GetModMetadata(string, string) (*client.Release, error)
+}
+
 var (
 	localModsBucket      = []byte("local_mods")
 	localModsIndexBucket = []byte("local_mods_index")
@@ -174,4 +179,39 @@ func GetMod(ctx context.Context, id string, version string) (*client.Release, er
 		return nil, err
 	}
 	return mod, nil
+}
+
+func GetVersionsForMod(ctx context.Context, id string) ([]string, error) {
+	var result []string
+	err := db.View(func(tx *bolt.Tx) error {
+		versionIdx, err := getVersionIndex(tx)
+		if err != nil {
+			return err
+		}
+
+		versions, ok := versionIdx[id]
+		if !ok {
+			return eris.Errorf("No versions found for mod %s", id)
+		}
+
+		result = versions
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+type LocalMods struct {
+	ModProvider
+}
+
+func (LocalMods) GetVersionsForMod(id string) ([]string, error) {
+	return GetVersionsForMod(context.Background(), id)
+}
+
+func (LocalMods) GetModMetadata(id, version string) (*client.Release, error) {
+	return GetMod(context.Background(), id, version)
 }

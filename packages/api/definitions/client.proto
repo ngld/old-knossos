@@ -72,6 +72,10 @@ message ModInfoResponse {
   repeated ToolInfo tools = 2;
 }
 
+message ModDependencySnapshot {
+  map<string, string> dependencies = 1;
+}
+
 // event messages
 
 message ClientSentEvent {
@@ -79,6 +83,7 @@ message ClientSentEvent {
   oneof payload {
     LogMessage message = 2;
     ProgressMessage progress = 3;
+    TaskResult result = 4;
   }
 }
 
@@ -105,16 +110,20 @@ message ProgressMessage {
   bool indeterminate = 4;
 }
 
+message TaskResult {
+  bool success = 1;
+  string error = 2;
+}
+
 // RPC methods
 
 service Knossos {
   rpc Wakeup (NullMessage) returns (WakeupResponse) {};
-  rpc DispatchTest (NullMessage) returns (NullResponse) {};
   rpc SpeedTest (TaskRequest) returns (SpeedTestResult) {};
-  rpc ArchiveTest (TaskRequest) returns (NullResponse) {};
   rpc GetSettings (NullMessage) returns (Settings) {};
   rpc SaveSettings (Settings) returns (SuccessResponse) {};
   rpc ScanLocalMods (TaskRequest) returns (SuccessResponse) {};
   rpc GetLocalMods (NullMessage) returns (SimpleModList) {};
   rpc GetModInfo (ModInfoRequest) returns (ModInfoResponse) {};
+  rpc GetModDependencies (ModInfoRequest) returns (ModDependencySnapshot) {};
 }

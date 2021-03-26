@@ -70,7 +70,7 @@ enum PackageType {
 
 message Dependency {
   string modid = 1;
-  string version = 2;
+  string constraint = 2;
   repeated string packages = 3;
 }
 

@@ -217,7 +217,7 @@ func ImportMods(ctx context.Context, modFiles []string) error {
 				for dIdx, dep := range pkg.Dependencies {
 					pbDep := new(client.Dependency)
 					pbDep.Modid = dep.ID
-					pbDep.Version = dep.Version
+					pbDep.Constraint = dep.Version
 					pbDep.Packages = dep.Packages
 					pbPkg.Dependencies[dIdx] = pbDep
 				}
