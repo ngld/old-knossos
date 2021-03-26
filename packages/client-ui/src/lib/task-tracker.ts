@@ -87,8 +87,12 @@ export class TaskTracker {
         break;
       case 'progress':
         const info = ev.payload.progress;
-        task.progress = info.progress;
-        task.status = info.description;
+        if (info.progress >= 0) {
+          task.progress = info.progress;
+        }
+        if (info.description !== "") {
+          task.status = info.description;
+        }
         task.error = info.error;
         task.indeterminate = info.indeterminate;
         break;

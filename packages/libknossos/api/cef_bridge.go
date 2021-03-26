@@ -87,10 +87,11 @@ package main
 //extern void KnossosFreeKnossosResponse(KnossosResponse* response);
 //#endif
 //
-//#define KNOSSOS_LOG_INFO 1
-//#define KNOSSOS_LOG_WARNING 2
-//#define KNOSSOS_LOG_ERROR 3
-//#define KNOSSOS_LOG_FATAL 4
+//#define KNOSSOS_LOG_DEBUG 1
+//#define KNOSSOS_LOG_INFO 2
+//#define KNOSSOS_LOG_WARNING 3
+//#define KNOSSOS_LOG_ERROR 4
+//#define KNOSSOS_LOG_FATAL 5
 import "C"
 
 import (
@@ -114,6 +115,7 @@ import (
 var (
 	ready       = false
 	logLevelMap = map[api.LogLevel]C.uint8_t{
+		api.LogDebug: C.KNOSSOS_LOG_DEBUG,
 		api.LogInfo:  C.KNOSSOS_LOG_INFO,
 		api.LogWarn:  C.KNOSSOS_LOG_WARNING,
 		api.LogError: C.KNOSSOS_LOG_ERROR,
@@ -184,6 +186,8 @@ func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, 
 
 	var err error
 	if strings.HasPrefix(reqURL, "https://api.client.fsnebula.org/ref/") {
+		cancel()
+
 		var fileRef *client.FileRef
 		fileId := reqURL[36:]
 		fileRef, err = storage.GetFile(ctx, fileId)

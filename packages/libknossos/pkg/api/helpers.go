@@ -16,7 +16,8 @@ import (
 type LogLevel int
 
 const (
-	LogInfo LogLevel = iota + 1
+	LogDebug LogLevel = iota + 1
+	LogInfo
 	LogWarn
 	LogError
 	LogFatal
@@ -29,6 +30,15 @@ var byteUnits = []string{
 	"GiB",
 }
 
+var clientLogLevelMap = map[LogLevel]client.LogMessage_LogLevel{
+	LogDebug: client.LogMessage_DEBUG,
+	LogInfo:  client.LogMessage_INFO,
+	LogWarn:  client.LogMessage_WARNING,
+	LogError: client.LogMessage_ERROR,
+	LogFatal: client.LogMessage_FATAL,
+}
+
+// KnossosCtxParams acts as a container for important info stored in the context
 type KnossosCtxParams struct {
 	// LogCallback is a function that records the passed message in the host application's logging system
 	LogCallback func(LogLevel, string, ...interface{})
@@ -38,15 +48,21 @@ type KnossosCtxParams struct {
 	ResourcePath    string
 }
 
+// TaskCtxParams stores info related to the current task
+type TaskCtxParams struct {
+	Ref uint32
+}
+
+// TaskStep contains common step parameters to make function calls related to task steps simpler
 type TaskStep struct {
 	Description string
-	Ref         uint32
 	From        float32
 	To          float32
 }
 
 type (
-	knKey struct{}
+	knKey      struct{}
+	taskCtxKey struct{}
 )
 
 // FormatBytes returns the passed bytes as a human readable string
@@ -69,15 +85,42 @@ func WithKnossosContext(ctx context.Context, params KnossosCtxParams) context.Co
 	return context.WithValue(ctx, knKey{}, params)
 }
 
-// Log records the passed log message in the hosting application's log.
-// The passed context must have been prepared with WithKnossosContext().
-func Log(ctx context.Context, level LogLevel, message string, args ...interface{}) {
+// WithTaskContext stores the passed task info in the context
+func WithTaskContext(ctx context.Context, params TaskCtxParams) context.Context {
+	return context.WithValue(ctx, taskCtxKey{}, &params)
+}
+
+// GetTaskContext retrieves the current task info from the passed context.
+// If required is true and no info is available, the function panics. Otherwise, nil is returned.
+func GetTaskContext(ctx context.Context, required bool) *TaskCtxParams {
+	params := ctx.Value(taskCtxKey{})
+	if params == nil {
+		if required {
+			panic("Invalid context provided. Expected TaskCtxParams but couldn't find any.")
+		}
+		return nil
+	}
+
+	return params.(*TaskCtxParams)
+}
+
+func logImpl(ctx context.Context, level LogLevel, message string, args ...interface{}) {
 	params := ctx.Value(knKey{})
 	if params == nil {
 		panic("Invalid context provided. This is not a KnossosContext")
 	}
 
 	params.(KnossosCtxParams).LogCallback(level, message, args...)
+}
+
+// Log records the passed log message in the hosting application's log.
+// The passed context must have been prepared with WithKnossosContext().
+func Log(ctx context.Context, level LogLevel, message string, args ...interface{}) {
+	if GetTaskContext(ctx, false) == nil {
+		logImpl(ctx, level, message, args...)
+	} else {
+		TaskLog(ctx, clientLogLevelMap[level], message, args...)
+	}
 }
 
 // DispatchMessage delivers a progress message to the hosting application. This can be used to update the UI, generate
@@ -116,7 +159,8 @@ func SettingsPath(ctx context.Context) string {
 // UpdateTask updates the state of a task started by the UI (JavaScript). `ref` contains the task ID and is used by the
 // UI to find the corresponding UI elements.
 // Usually, you won't call this function directly and instead use either SetProgress() or TaskLog().
-func UpdateTask(ctx context.Context, ref uint32, msg interface{}) error {
+func UpdateTask(ctx context.Context, msg interface{}) error {
+	ref := GetTaskContext(ctx, true).Ref
 	wrapped := &client.ClientSentEvent{Ref: ref}
 
 	switch m := msg.(type) {
@@ -128,26 +172,31 @@ func UpdateTask(ctx context.Context, ref uint32, msg interface{}) error {
 		wrapped.Payload = &client.ClientSentEvent_Message{
 			Message: m,
 		}
+	case *client.TaskResult:
+		wrapped.Payload = &client.ClientSentEvent_Result{
+			Result: m,
+		}
 	}
 
 	return DispatchMessage(ctx, wrapped)
 }
 
 // SetProgress updates the progress of the passed task (ref is the task ID)
-func SetProgress(ctx context.Context, ref uint32, progress float32, description string) {
-	err := UpdateTask(ctx, ref, &client.ProgressMessage{
+func SetProgress(ctx context.Context, progress float32, description string) {
+	err := UpdateTask(ctx, &client.ProgressMessage{
 		Progress:      progress,
 		Description:   description,
 		Error:         false,
 		Indeterminate: false,
 	})
 	if err != nil {
-		Log(ctx, LogError, "Error in SetProgres(%d): %+v", ref, err)
+		ref := GetTaskContext(ctx, true).Ref
+		Log(ctx, LogError, "Error in SetProgress(%d): %+v", ref, err)
 	}
 }
 
 // TaskLog appends the passed log message to the given task (ref is the task ID)
-func TaskLog(ctx context.Context, ref uint32, level client.LogMessage_LogLevel, msg string, args ...interface{}) {
+func TaskLog(ctx context.Context, level client.LogMessage_LogLevel, msg string, args ...interface{}) {
 	var sender string
 	_, file, line, ok := runtime.Caller(1)
 	if ok {
@@ -161,10 +210,11 @@ func TaskLog(ctx context.Context, ref uint32, level client.LogMessage_LogLevel, 
 		sender = "unknown"
 	}
 
+	ref := GetTaskContext(ctx, true).Ref
 	composedMsg := fmt.Sprintf(msg, args...)
-	Log(ctx, LogInfo, "Task [%d]: %s", ref, composedMsg)
+	logImpl(ctx, LogInfo, "Task [%d]: %s", ref, composedMsg)
 	if ref > 0 {
-		err := UpdateTask(ctx, ref, &client.LogMessage{
+		err := UpdateTask(ctx, &client.LogMessage{
 			Level:   level,
 			Message: composedMsg,
 			Sender:  sender,
@@ -191,7 +241,7 @@ func ProgressCopier(ctx context.Context, stepInfo TaskStep, length int64, input 
 		read, err := input.Read(buffer)
 		if err != nil {
 			if err == io.EOF {
-				SetProgress(ctx, stepInfo.Ref, stepInfo.To, stepInfo.Description)
+				SetProgress(ctx, stepInfo.To, stepInfo.Description)
 				passedSecs := int(time.Since(start).Seconds())
 				if passedSecs == 0 {
 					return 0, nil
@@ -213,7 +263,37 @@ func ProgressCopier(ctx context.Context, stepInfo TaskStep, length int64, input 
 			lastPos = pos
 
 			msg := fmt.Sprintf("%s %s/s", stepInfo.Description, FormatBytes(tracker.GetSpeed()))
-			SetProgress(ctx, stepInfo.Ref, stepInfo.From+step*float32(pos), msg)
+			SetProgress(ctx, stepInfo.From+step*float32(pos), msg)
 		}
 	}
+}
+
+// RunTask updates the context with the necessary task info and handles errors as well as panics from the task.
+func RunTask(ctx context.Context, ref uint32, task func(context.Context) error) {
+	go func() {
+		ctx = WithTaskContext(ctx, TaskCtxParams{Ref: ref})
+		defer func() {
+			err := recover()
+			if err != nil {
+				TaskLog(ctx, client.LogMessage_FATAL, "Failed with panic: %+v", err)
+				UpdateTask(ctx, &client.TaskResult{
+					Success: false,
+					Error:   "Failed with panic",
+				})
+			}
+		}()
+
+		err := task(ctx)
+		if err != nil {
+			TaskLog(ctx, client.LogMessage_ERROR, "Failed with error: %s", eris.ToString(err, true))
+			UpdateTask(ctx, &client.TaskResult{
+				Success: false,
+				Error:   err.Error(),
+			})
+		} else {
+			UpdateTask(ctx, &client.TaskResult{
+				Success: true,
+			})
+		}
+	}()
 }
