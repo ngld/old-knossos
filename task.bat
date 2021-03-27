@@ -12,6 +12,10 @@ if not exist third_party\go\bin\go.exe call :fetch_go
 if not exist third_party\go\bin\go.exe goto :no_go
 
 :build
+if exist .tools\tool.exe.rebuild (
+    del .tools\tool.exe
+    del .tools\tool.exe.rebuild
+)
 if not exist .tools\tool.exe call :install_tools
 
 .tools\tool.exe task %*

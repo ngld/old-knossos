@@ -39,8 +39,8 @@ Task help:
 """
 
 build = option("build", "Release", help = "Whether to build a Debug or Release build")
-msys2_path = option("msys2_path", "//third_party/msys2", help = "The path to your MSYS2 installation. Only used on Windows. " +
-                                                                "Defaults to the bundled MSYS2 directory")
+msys2_path = option("msys2_path", "//third_party/msys64", help = "The path to your MSYS2 installation. Only used on Windows. " +
+                                                                 "Defaults to the bundled MSYS2 directory")
 generator_opt = option("generator", "", help = "The CMake generator to use. Defaults to ninja if available. " +
                                                "Please note that on Windows you'll  have to run the vcvarsall.bat if you don't choose a Visual Studio generator")
 kn_args = option("args", "", help = "The parameters to pass to Knossos in the client-run target")
@@ -52,6 +52,53 @@ def yarn(*args):
         args = tuple(args[0].split(" "))
 
     return ("node", yarn_path) + args
+
+def cmake_task(name, desc = "", inputs = [], outputs = [], script = None, windows_script = None, unix_script = None):
+    """A wrapper around task() that sets common options for CMake projects
+
+    Args:
+      name: task name
+      desc: a description for the task
+      inputs: a list of files that will be processed by this task
+      outputs: a list of files that will be created by this task
+      script: the script that will call CMake
+      windows_script: If script is None, this script will be used instead on Windows.
+      unix_script: If script is None, this script will be used instead on Unix (Linux / macOS).
+    """
+    if OS == "windows":
+        if not script:
+            script = windows_script
+
+        task(
+            name,
+            desc = desc + " (uses MSYS2)",
+            deps = ["fetch-deps", "bootstrap-mingw64"],
+            inputs = inputs + [script],
+            outputs = outputs,
+            env = {
+                # make sure CMake uses MSYS2's GCC
+                "CC": "gcc",
+                "CXX": "g++",
+            },
+            cmds = [
+                ("cd", resolve_path(msys2_path)),
+                ("usr/bin/bash", "--login", "-c", '"$(cygpath "%s")"' % resolve_path(script)),
+            ],
+        )
+    else:
+        if not script:
+            script = unix_script
+
+        task(
+            name,
+            desc = desc,
+            deps = ["fetch-deps"],
+            inputs = inputs + [script],
+            outputs = outputs,
+            cmds = [
+                ("bash", resolve_path(script)),
+            ],
+        )
 
 def configure():
     generator = generator_opt
@@ -66,7 +113,6 @@ def configure():
         prepend_path(resolve_path(msys2_path, "mingw64/bin"))
         setenv("GCCPATH", str(resolve_path(msys2_path, "mingw64/bin/gcc.exe")))
 
-        #prepend_path(resolve_path(msys2_path, "mingw64/lib/ccache/bin"))
         prepend_path("third_party/ninja")
 
         compiler = getenv("CXX")
@@ -129,6 +175,19 @@ def configure():
     prepend_path("third_party/nodejs/bin")
     prepend_path(".tools")
 
+    if OS == "windows":
+        build_tool_cmds = [
+            "touch .tools/tool.exe.rebuild",
+            "echo \"Can't rebuild tool in one step on Windows. The old build was removed, please run the same command " +
+            "again to finish the build tool update.\"",
+            "exit 1",
+        ]
+    else:
+        build_tool_cmds = [
+            "cd packages/build-tools",
+            "go build -o ../../.tools/tool%s" % binext,
+        ]
+
     task(
         "build-tool",
         desc = "Build our build tool",
@@ -139,10 +198,7 @@ def configure():
         outputs = [
             ".tools/tool%s" % binext,
         ],
-        cmds = [
-            "cd packages/build-tools",
-            "go build -o ../../.tools/tool%s" % binext,
-        ],
+        cmds = build_tool_cmds,
     )
 
     extra_tools = []
@@ -199,19 +255,40 @@ def configure():
         cmds = ["tool check-deps"],
     )
 
+    # This is necessary because VSCode's clangd extension only supports a single compile_commands.json at the root
+    # of the project.
+    merge_compile_commands = task(
+        "merge-compile-commands",
+        desc = "Merges all compile_commands.json files into one",
+        deps = ["build-tool"],
+        cmds = ["tool merge-compile-commands compile_commands.json build/*/compile_commands.json"],
+    )
+
     if OS == "windows":
+        mingw64_bootstrap = []
+
+        if getenv("CI") == "":
+            mingw64_bootstrap = [
+                'usr/bin/bash --login -c "mkdir /tmp || true"',
+                'usr/bin/bash --login -c "pacman -Syuu --noconfirm"',
+                'usr/bin/bash --login -c "pacman -Syuu --noconfirm"',
+            ]
+
+        mingw64_bootstrap.append(
+            'usr/bin/bash --login -c "pacman -Su --noconfirm --needed mingw-w64-x86_64-{gcc,xz,ccache,cmake,SDL2} make"',
+        )
+
         task(
             "bootstrap-mingw64",
             desc = "Runs first-time setup for MSYS2",
             deps = ["fetch-deps"],
             base = msys2_path,
-            skip_if_exists = ["mingw64/bin/gcc.exe"],
-            cmds = [
-                'usr/bin/bash --login -c "mkdir /tmp || true"',
-                'usr/bin/bash --login -c "pacman -Syuu --noconfirm"',
-                'usr/bin/bash --login -c "pacman -Syuu --noconfirm"',
-                'usr/bin/bash --login -c "pacman -Su --noconfirm --needed mingw-w64-x86_64-{gcc,ccache}"',
+            skip_if_exists = [
+                "mingw64/bin/gcc.exe",
+                "mingw64/bin/cmake.exe",
+                "mingw64/bin/SDL2.dll",
             ],
+            cmds = mingw64_bootstrap,
         )
 
     task(
@@ -309,35 +386,14 @@ def configure():
         cmds = [yarn("client:watch")],
     )
 
-    if OS == "windows":
-        task(
-            "libarchive-build",
-            desc = "Builds libarchive with CMake (uses MSYS2)",
-            deps = ["fetch-deps", "bootstrap-mingw64"],
-            inputs = ["third_party/libarchive/libarchive/**/*.{c,h}"],
-            outputs = ["build/libarchive/bin/libarchive.dll"],
-            env = {
-                # make sure CMake uses MSYS2's GCC
-                "CC": "gcc",
-                "CXX": "g++",
-            },
-            cmds = [
-                ("cd", resolve_path(msys2_path)),
-                ("usr/bin/bash", "--login", "-c", '"$(cygpath "%s")"' % resolve_path("packages/libarchive/msys2-build.sh")),
-            ],
-        )
-    else:
-        task(
-            "libarchive-build",
-            desc = "Builds libarchive with CMake",
-            deps = ["fetch-deps"],
-            inputs = ["third_party/libarchive/src/**/*.{c,h}"],
-            outputs = ["build/libarchive/libarchive/libarchive.a"],
-            cmds = [
-                "cd packages/libarchive",
-                "bash ./unix-build.sh",
-            ],
-        )
+    cmake_task(
+        "libarchive-build",
+        desc = "Builds libarchive with CMake",
+        inputs = ["third_party/libarchive/libarchive/**/*.{c,h}"],
+        outputs = ["build/libarchive/bin/libarchive.dll"],
+        windows_script = "packages/libarchive/msys2-build.sh",
+        unix_script = "packages/libarchive/unix-build.sh",
+    )
 
     task(
         "libknossos-build",
@@ -381,11 +437,11 @@ def configure():
     fi
 
     cd build/client
-    if [ ! -f CMakeCache.txt ] || [ ! -f ../../compile_commands.json ]; then
+    if [ ! -f CMakeCache.txt ] || [ ! -f compile_commands.json ]; then
         cmake -G"{generator}" -DCMAKE_BUILD_TYPE={build} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ../../packages/client
-        mv compile_commands.json ../..
     fi
     """.format(generator = generator, build = build),
+            merge_compile_commands,
             build_cmd,
         ],
     )
@@ -419,6 +475,36 @@ def configure():
         # two parallel fetch-deps tasks
         deps = ["install-tools", "fetch-deps"],
         cmds = ["modd -f modd_client.conf"],
+    )
+
+    updater_ldflags = ""
+    if OS == "windows":
+        updater_ldflags = "-lSDL2 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lversion -luuid -ladvapi32 -lsetupapi -lshell32"
+
+    task(
+        "updater-build",
+        desc = "Builds the Knossos updater",
+        deps = [],
+        env = {
+            "CC": "gcc",
+            "CXX": "g++",
+        },
+        cmds = [
+            """
+    if [ ! -d build/updater ]; then
+        mkdir -p build/updater
+    fi
+    """,
+            "cd packages/updater",
+            "go build -tags static -ldflags '-s -w' -o ../../build/updater/updater%s" % binext,
+        ],
+    )
+
+    task(
+        "updater-run",
+        desc = "Launches the Knossos updater",
+        deps = ["updater-build"],
+        cmds = ["build/updater/updater"],
     )
 
     task(
