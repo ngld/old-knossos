@@ -1,11 +1,14 @@
 package libarchive
 
 // #cgo CFLAGS: -I${SRCDIR}/../../third_party/libarchive
-// #cgo linux LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
-// #cgo linux LDFLAGS: -llzma -lzstd -lz
-// #cgo darwin LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
-// #cgo darwin LDFLAGS: /usr/local/opt/xz/lib/liblzma.a -lzstd -liconv -lz
-// #cgo windows LDFLAGS: -L${SRCDIR}/../../build/libarchive/bin -larchive
+// #cgo LDFLAGS: -L${SRCDIR}/../../build/libarchive/libarchive
+// #cgo windows LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive_static.a
+// #cgo linux   LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
+// #cgo darwin  LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
+// #cgo darwin  LDFLAGS: -L/usr/local/opt/xz/lib
+// #cgo LDFLAGS: -static -larchive -Wl,--no-undefined -llzma -lzstd -lz
+// #cgo windows LDFLAGS: -liconv
+// #cgo darwin  LDFLAGS: -liconv
 //
 // #include <stdlib.h>
 // #include <libarchive/archive.h>
@@ -14,6 +17,7 @@ import "C"
 
 import (
 	"fmt"
+	"io"
 	"unsafe"
 
 	"github.com/rotisserie/eris"
@@ -66,8 +70,9 @@ func OpenArchive(filename string) (*Archive, error) {
 	C.free(unsafe.Pointer(cfilename))
 
 	if code != C.ARCHIVE_OK {
+		err := a.Error()
 		a.Close()
-		return nil, ErrAlloc
+		return nil, err
 	} else {
 		fmt.Println("opened archive")
 	}
@@ -85,15 +90,18 @@ func (a *Archive) Error() error {
 	return eris.Errorf("%d: %s", code, msg)
 }
 
-func (a *Archive) Next() bool {
+func (a *Archive) Next() error {
 	var entry *C.struct_archive_entry
 	code := C.archive_read_next_header(a.handle, &entry)
 	if code != C.ARCHIVE_OK {
-		return false
+		if code == C.ARCHIVE_EOF {
+			return io.EOF
+		}
+		return a.Error()
 	}
 
 	a.Entry.Pathname = C.GoString(C.archive_entry_pathname(entry))
-	return true
+	return nil
 }
 
 func (a *Archive) Read(buffer []byte) (int, error) {
