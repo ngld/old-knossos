@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
+	"sync"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ngld/knossos/packages/api/client"
@@ -23,10 +24,14 @@ type ModProvider interface {
 }
 
 var (
-	localModsBucket      = []byte("local_mods")
-	localModsIndexBucket = []byte("local_mods_index")
-	localModVersionIndex = []byte("version")
-	localModTypeIndex    = []byte("type")
+	localModsBucket                           = []byte("local_mods")
+	localModsIndexBucket                      = []byte("local_mods_index")
+	localModVersionIndex                      = []byte("version")
+	localModTypeIndex                         = []byte("type")
+	userModSettingsBucket                     = []byte("user_mod_settings")
+	cachedVersionIdx      map[string][]string = nil
+	cachedVersionIdxLock                      = sync.Mutex{}
+	updateVersionIdxLock                      = sync.Mutex{}
 )
 
 func GetLocalModKey(rel *client.Release) []byte {
@@ -34,18 +39,47 @@ func GetLocalModKey(rel *client.Release) []byte {
 }
 
 func getVersionIndex(tx *bolt.Tx) (map[string][]string, error) {
-	encoded := tx.Bucket(localModsIndexBucket).Get(localModVersionIndex)
-	if encoded == nil {
-		return nil, nil
+	if cachedVersionIdx == nil {
+		cachedVersionIdxLock.Lock()
+		defer cachedVersionIdxLock.Unlock()
+
+		if cachedVersionIdx != nil {
+			return cachedVersionIdx, nil
+		}
+
+		encoded := tx.Bucket(localModsIndexBucket).Get(localModVersionIndex)
+		if encoded == nil {
+			return nil, nil
+		}
+
+		result := make(map[string][]string)
+		err := json.Unmarshal(encoded, &result)
+		if err != nil {
+			return nil, err
+		}
+
+		cachedVersionIdx = result
 	}
 
-	result := make(map[string][]string)
-	err := json.Unmarshal(encoded, &result)
+	return cachedVersionIdx, nil
+}
+
+func updateVersionIdx(tx *bolt.Tx, modid string, versions []string) error {
+	updateVersionIdxLock.Lock()
+	defer updateVersionIdxLock.Unlock()
+
+	// Load the index if necessary
+	if cachedVersionIdx == nil {
+		getVersionIndex(tx)
+	}
+
+	cachedVersionIdx[modid] = versions
+	encoded, err := json.Marshal(&cachedVersionIdx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return result, nil
+	return tx.Bucket(localModsIndexBucket).Put(localModVersionIndex, encoded)
 }
 
 func ImportMods(ctx context.Context, callback func(context.Context, func(*client.Release) error) error) error {
@@ -129,6 +163,119 @@ func ImportMods(ctx context.Context, callback func(context.Context, func(*client
 	})
 }
 
+func ImportUserSettings(ctx context.Context, callback func(context.Context, func(string, string, *client.UserSettings) error) error) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(userModSettingsBucket)
+
+		// Remove existing entries
+		err := bucket.ForEach(func(k, _ []byte) error {
+			return bucket.Delete(k)
+		})
+		if err != nil {
+			return err
+		}
+
+		ctx = CtxWithTx(ctx, tx)
+
+		return callback(ctx, func(modID, version string, us *client.UserSettings) error {
+			encoded, err := proto.Marshal(us)
+			if err != nil {
+				return err
+			}
+
+			return bucket.Put([]byte(modID+"#"+version), encoded)
+		})
+	})
+}
+
+func SaveLocalMod(ctx context.Context, release *client.Release) error {
+	tx := TxFromCtx(ctx)
+	if tx == nil {
+		return BatchUpdate(ctx, func(ctx context.Context) error {
+			return SaveLocalMod(ctx, release)
+		})
+	}
+
+	bucket := tx.Bucket(localModsBucket)
+	versionIdx, err := getVersionIndex(tx)
+	if err != nil {
+		return err
+	}
+
+	versions, ok := versionIdx[release.Modid]
+	isNew := false
+	if ok {
+		verPresent := false
+		for _, ver := range versions {
+			if ver == release.Version {
+				verPresent = true
+				break
+			}
+		}
+
+		if !verPresent {
+			isNew = true
+		}
+	} else {
+		isNew = true
+
+		// Since this is the first entry for this mod, we also have to update the type index
+		indexBucket := tx.Bucket(localModsIndexBucket)
+		data := indexBucket.Get(localModTypeIndex)
+
+		var typeIndex modTypeIndex
+		err = json.Unmarshal(data, &typeIndex)
+		if err != nil {
+			return eris.Wrap(err, "failed to decode local mod type index")
+		}
+
+		typeIndex[release.Type] = append(typeIndex[release.Type], release.Modid)
+		data, err = json.Marshal(typeIndex)
+		if err != nil {
+			return eris.Wrap(err, "failed to re-encode type index")
+		}
+
+		err = indexBucket.Put(localModTypeIndex, data)
+		if err != nil {
+			return eris.Wrap(err, "failed to save mod type index")
+		}
+	}
+
+	// Update the version index for new mods
+	if isNew {
+		parsedVersions := make([]*semver.Version, len(versions)+1)
+		for idx, rawVer := range versions {
+			ver, err := semver.NewVersion(rawVer)
+			if err != nil {
+				return eris.Wrapf(err, "failed to parse old version %s", ver)
+			}
+			parsedVersions[idx] = ver
+		}
+
+		newVer, err := semver.NewVersion(release.Version)
+		if err != nil {
+			return eris.Wrap(err, "failed to parse new version")
+		}
+		parsedVersions[len(versions)] = newVer
+
+		sort.Sort(semver.Collection(parsedVersions))
+
+		versions = make([]string, len(parsedVersions))
+		for idx, pVer := range parsedVersions {
+			versions[idx] = pVer.String()
+		}
+
+		updateVersionIdx(tx, release.Modid, versions)
+	}
+
+	// Finally, we can save the actual mod
+	encoded, err := proto.Marshal(release)
+	if err != nil {
+		return eris.Wrap(err, "failed to encode release")
+	}
+	return bucket.Put([]byte(release.Modid+"#"+release.Version), encoded)
+}
+
 func GetLocalMods(ctx context.Context, taskRef uint32) ([]*client.Release, error) {
 	var result []*client.Release
 
@@ -141,10 +288,10 @@ func GetLocalMods(ctx context.Context, taskRef uint32) ([]*client.Release, error
 		}
 
 		result = make([]*client.Release, 0, len(versionIdx))
-		for modId, versions := range versionIdx {
-			item := bucket.Get([]byte(modId + "#" + versions[len(versions)-1]))
+		for modID, versions := range versionIdx {
+			item := bucket.Get([]byte(modID + "#" + versions[len(versions)-1]))
 			if item == nil {
-				return eris.Errorf("Failed to find mod %s from index", modId+"#"+versions[len(versions)-1])
+				return eris.Errorf("Failed to find mod %s from index", modID+"#"+versions[len(versions)-1])
 			}
 
 			meta := new(client.Release)

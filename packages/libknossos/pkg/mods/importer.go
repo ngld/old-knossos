@@ -5,13 +5,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/aidarkhanov/nanoid"
 	"github.com/ngld/knossos/packages/api/client"
+	"github.com/ngld/knossos/packages/libknossos/pkg/api"
 	"github.com/ngld/knossos/packages/libknossos/pkg/storage"
+	"github.com/rotisserie/eris"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -85,6 +88,13 @@ type KnMod struct {
 	Videos        []string
 }
 
+type UserModSettings struct {
+	Cmdline     string
+	CustomBuild string `json:"custom_build"`
+	LastPlayed  string `json:"last_played"`
+	Exe         []string
+}
+
 func convertPath(ctx context.Context, modPath, input string) *client.FileRef {
 	if input == "" {
 		return nil
@@ -113,7 +123,10 @@ func convertChecksum(input KnChecksum) (*client.Checksum, error) {
 
 func ImportMods(ctx context.Context, modFiles []string) error {
 	mod := KnMod{}
-	return storage.ImportMods(ctx, func(ctx context.Context, importMod func(*client.Release) error) error {
+	releases := make([]*client.Release, 0)
+
+	api.Log(ctx, api.LogInfo, "Parsing mod.json files")
+	err := storage.ImportMods(ctx, func(ctx context.Context, importMod func(*client.Release) error) error {
 		for _, modFile := range modFiles {
 			data, err := ioutil.ReadFile(modFile)
 			if err != nil {
@@ -133,6 +146,7 @@ func ImportMods(ctx context.Context, modFiles []string) error {
 			item := new(client.Release)
 			item.Modid = mod.ID
 			item.Version = mod.Version
+			item.Folder = modPath
 			item.Title = mod.Title
 			item.Description = mod.Description
 			item.Teaser = convertPath(ctx, modPath, mod.Tile)
@@ -141,6 +155,8 @@ func ImportMods(ctx context.Context, modFiles []string) error {
 			item.Videos = mod.Videos
 			item.Notes = mod.Notes
 			item.Cmdline = mod.Cmdline
+
+			releases = append(releases, item)
 
 			if mod.FirstRelease != "" {
 				releaseDate, err := time.Parse("2006-01-02", mod.FirstRelease)
@@ -290,6 +306,80 @@ func ImportMods(ctx context.Context, modFiles []string) error {
 			if err != nil {
 				return err
 			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	api.Log(ctx, api.LogInfo, "Building dependency snapshots")
+	err = storage.BatchUpdate(ctx, func(ctx context.Context) error {
+		for _, rel := range releases {
+			snapshot, err := GetDependencySnapshot(ctx, storage.LocalMods{}, rel)
+			if err != nil {
+				api.Log(ctx, api.LogError, "failed to build snapshot for %s (%s): %+v", rel.Modid, rel.Version, err)
+				continue
+			}
+
+			rel.DependencySnapshot = snapshot
+			err = storage.SaveLocalMod(ctx, rel)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	api.Log(ctx, api.LogInfo, "Importing user settings")
+	return storage.ImportUserSettings(ctx, func(ctx context.Context, importSettings func(string, string, *client.UserSettings) error) error {
+		for _, rel := range releases {
+			settingsPath := filepath.Join(rel.Folder, "user.json")
+			data, err := ioutil.ReadFile(settingsPath)
+			if err != nil {
+				if !eris.Is(err, os.ErrNotExist) {
+					api.Log(ctx, api.LogError, "failed to open %s: %+v", settingsPath, err)
+				}
+				continue
+			}
+
+			var settings UserModSettings
+			err = json.Unmarshal(data, &settings)
+			if err != nil {
+				api.Log(ctx, api.LogError, "failed to parse %s: %+v", settingsPath, err)
+				continue
+			}
+
+			newSettings := new(client.UserSettings)
+			newSettings.Cmdline = settings.Cmdline
+			newSettings.CustomBuild = settings.CustomBuild
+
+			lastPlayed, err := time.Parse("2006-01-02 15:04:05", settings.LastPlayed)
+			if err != nil {
+				api.Log(ctx, api.LogWarn, "failed to parse last played date in %s: %+v", settingsPath, err)
+			} else {
+				newSettings.LastPlayed = &timestamppb.Timestamp{
+					Seconds: lastPlayed.Unix(),
+				}
+			}
+
+			if len(settings.Exe) != 0 {
+				if len(settings.Exe) != 2 {
+					api.Log(ctx, api.LogWarn, "failed to parse selected build in %s: expected two values but found %+v", settingsPath, settings.Exe)
+				} else {
+					newSettings.EngineOptions = &client.UserSettings_EngineOptions{
+						Modid:   settings.Exe[0],
+						Version: settings.Exe[1],
+					}
+				}
+			}
+
+			importSettings(rel.Modid, rel.Version, newSettings)
 		}
 
 		return nil

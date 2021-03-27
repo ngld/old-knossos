@@ -65,3 +65,7 @@ body {
 .mod-tile .cover:hover {
     opacity: 1;
 }
+
+.mod-title {
+    text-shadow: 0 0 4px #000;
+}

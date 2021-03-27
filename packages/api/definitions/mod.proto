@@ -39,6 +39,7 @@ message Release {
   string modid = 1;
   string version = 2;
   string title = 5;
+  string folder = 7;
   ReleaseStability stability = 3;
   ModType type = 6;
 
@@ -57,6 +58,8 @@ message Release {
 
   // launch
   string cmdline = 21;
+  map<string, string> dependency_snapshot = 22;
+  bool snapshot_modified = 23;
 
   // content
   repeated Package packages = 4;
@@ -113,3 +116,14 @@ message Package {
   repeated EngineExecutable executables = 20;
 }
 
+message UserSettings {
+  message EngineOptions {
+    string modid = 1;
+    string version = 2;
+  }
+
+  EngineOptions engine_options = 1;
+  string cmdline = 2;
+  string custom_build = 3;
+  google.protobuf.Timestamp last_played = 4;
+}

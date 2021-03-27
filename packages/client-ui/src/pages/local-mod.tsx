@@ -5,6 +5,8 @@ import type { RouteComponentProps } from 'react-router-dom';
 import { Spinner, Callout, NonIdealState, HTMLSelect, Tab, Tabs } from '@blueprintjs/core';
 
 import { ModInfoResponse, ModDependencySnapshot } from '@api/client';
+import { Release } from '@api/mod';
+
 import RefImage from '../elements/ref-image';
 import { useGlobalState, GlobalState } from '../lib/state';
 import bbparser from '../lib/bbparser';
@@ -28,7 +30,11 @@ async function getModDependencies(
   return response.response;
 }
 
-const DepInfo = observer(function DepInfo(props: ModDetailsParams): React.ReactElement {
+interface DepInfoProps extends ModDetailsParams {
+  release?: Release;
+}
+
+const DepInfo = observer(function DepInfo(props: DepInfoProps): React.ReactElement {
   const gs = useGlobalState();
   const deps = useMemo(() => fromPromise(getModDependencies(gs, props)), [
     props.modid,
@@ -46,11 +52,19 @@ const DepInfo = observer(function DepInfo(props: ModDetailsParams): React.ReactE
     ),
     fulfilled: (response) => (
       <table>
+        <thead>
+          <tr>
+            <th>Mod</th>
+            <th>Latest Local Version</th>
+            <th>Saved Version</th>
+          </tr>
+        </thead>
         <tbody>
           {Object.entries(response.dependencies).map(([modid, version]) => (
             <tr key={modid}>
               <td>{modid}</td>
               <td>{version}</td>
+              <td>{props.release?.dependencySnapshot[modid] ?? '???'}</td>
             </tr>
           ))}
         </tbody>
@@ -71,7 +85,6 @@ export default observer(function ModDetailsPage(
   const modDetails = useMemo(() => fromPromise(getModDetails(gs, props.match.params)), [
     props.match.params,
   ]);
-  const [selectedVersion, setVersion] = useState('unknown');
   const description = useMemo(
     () => ({ __html: bbparser((modDetails.value as ModInfoResponse)?.mod?.description ?? '') }),
     [modDetails.value?.mod?.description],
@@ -98,17 +111,20 @@ export default observer(function ModDetailsPage(
               <div className="relative">
                 <RefImage src={mod.mod?.banner} />
                 <div className="absolute top-0 left-0 p-5 text-white">
-                  <h1 className="text-3xl mb-4 text-white">{mod.mod?.title}</h1>
+                  <h1 className="text-3xl mb-4 text-white mod-title">{mod.mod?.title}</h1>
                   <div>
                     <span className="pr-4">Version: </span>
                     <HTMLSelect
-                      value={selectedVersion}
+                      value={props.match.params.version ?? mod.versions[0]}
                       onChange={(e) => {
-                        setVersion(e.target.value);
                         props.history.push(`/mod/${props.match.params.modid}/${e.target.value}`);
                       }}
                     >
-                      <option>TODO</option>
+                      {mod.versions.map((version) => (
+                        <option key={version} value={version}>
+                          {version}
+                        </option>
+                      ))}
                     </HTMLSelect>
                   </div>
                   {/*<div>
@@ -117,7 +133,7 @@ export default observer(function ModDetailsPage(
                   </div>*/}
                 </div>
               </div>
-              <Tabs>
+              <Tabs renderActiveTabPanelOnly={true}>
                 <Tab
                   id="desc"
                   title="Description"
@@ -133,6 +149,7 @@ export default observer(function ModDetailsPage(
                   panel={
                     <div className="bg-base p-2 rounded text-white">
                       <DepInfo
+                        release={mod.mod}
                         modid={props.match.params.modid}
                         version={props.match.params.version}
                       />

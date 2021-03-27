@@ -69,6 +69,7 @@ message ToolInfo {
 message ModInfoResponse {
   Release mod = 1;
 
+  repeated string versions = 3;
   repeated ToolInfo tools = 2;
 }
 

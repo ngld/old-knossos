@@ -24,7 +24,7 @@ func Open(ctx context.Context) error {
 		return err
 	}
 
-	buckets := [][]byte{localModsBucket, localModsIndexBucket, fileBucket, settingsBucket}
+	buckets := [][]byte{localModsBucket, localModsIndexBucket, fileBucket, settingsBucket, userModSettingsBucket}
 	err = newDB.Update(func(tx *bolt.Tx) error {
 		for _, bucket := range buckets {
 			_, err := tx.CreateBucketIfNotExists(bucket)
@@ -63,4 +63,16 @@ func TxFromCtx(ctx context.Context) *bolt.Tx {
 		return nil
 	}
 	return val.(*bolt.Tx)
+}
+
+func BatchUpdate(ctx context.Context, callback func(context.Context) error) error {
+	return db.Batch(func(tx *bolt.Tx) error {
+		return callback(CtxWithTx(ctx, tx))
+	})
+}
+
+func BatchRead(ctx context.Context, callback func(context.Context) error) error {
+	return db.View(func(tx *bolt.Tx) error {
+		return callback(CtxWithTx(ctx, tx))
+	})
 }

@@ -96,6 +96,16 @@ export class TaskTracker {
         task.error = info.error;
         task.indeterminate = info.indeterminate;
         break;
+      case 'result':
+        const taskResult = ev.payload.result;
+        task.indeterminate = false;
+
+        if (!taskResult.success) {
+          task.error = true;
+        } else {
+          task.progress = 1;
+        }
+        break;
     }
 
     this.taskMap[ev.ref] = task;

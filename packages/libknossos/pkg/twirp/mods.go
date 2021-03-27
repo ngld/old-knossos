@@ -15,7 +15,7 @@ import (
 )
 
 func (kn *knossosServer) ScanLocalMods(ctx context.Context, task *client.TaskRequest) (*client.SuccessResponse, error) {
-	api.RunTask(ctx, task.Ref, func(c context.Context) error {
+	api.RunTask(ctx, task.Ref, func(ctx context.Context) error {
 		settings, err := storage.GetSettings(ctx)
 		if err != nil {
 			return err
@@ -113,8 +113,17 @@ func (kn *knossosServer) GetModInfo(ctx context.Context, req *client.ModInfoRequ
 		return nil, err
 	}
 
+	versions, err := storage.GetVersionsForMod(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	mod.Folder = ""
+	mod.Packages = make([]*client.Package, 0)
+
 	return &client.ModInfoResponse{
-		Mod: mod,
+		Mod:      mod,
+		Versions: versions,
 	}, nil
 }
 

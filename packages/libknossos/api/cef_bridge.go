@@ -105,6 +105,7 @@ import (
 	"unsafe"
 
 	"github.com/ngld/knossos/packages/api/client"
+	"github.com/ngld/knossos/packages/libarchive"
 	"github.com/ngld/knossos/packages/libknossos/pkg/api"
 	"github.com/ngld/knossos/packages/libknossos/pkg/storage"
 	"github.com/ngld/knossos/packages/libknossos/pkg/twirp"
@@ -162,6 +163,8 @@ func KnossosInit(params *C.KnossosInitParams) bool {
 	if err != nil {
 		Log(api.LogError, "Failed to open the DB: %+v", err)
 	}
+
+	Log(api.LogInfo, "LibArchive version: %d", libarchive.Version())
 
 	return true
 }

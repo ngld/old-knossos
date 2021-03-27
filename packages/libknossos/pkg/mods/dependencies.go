@@ -184,7 +184,7 @@ func GetDependencySnapshot(ctx context.Context, mods storage.ModProvider, releas
 		api.Log(ctx, api.LogDebug, "%s -> %s", modid, result.String())
 	}
 
-	api.Log(ctx, api.LogDebug, "Verifying pre requirement assumptions")
+	api.Log(ctx, api.LogDebug, "Verifying requirement assumptions")
 	for modid, cons := range constraints {
 		for _, con := range cons {
 			for reqMod, reqVersion := range con.preReq {

@@ -306,5 +306,23 @@ func runTaskInternal(ctx context.Context, task *Task, tasks TaskList, dryRun, fo
 	if task.Short != "" {
 		rctx.runTasks[task.Short] = true
 	}
+
+	outputList, err := resolvePatternLists(ctx, task.Base, task.Outputs)
+	if err != nil {
+		return eris.Wrap(err, "failed to resolve output list")
+	}
+
+	// Touch all output files once to make sure that we don't rerun this step even if the step didn't actually modify
+	// its outputs.
+	for _, path := range outputList {
+		hdl, err := os.OpenFile(path, os.O_APPEND|os.O_RDWR, 0660)
+		if err != nil {
+			if !eris.Is(err, os.ErrNotExist) {
+				return eris.Wrapf(err, "failed to stamp output %s", path)
+			}
+		} else {
+			hdl.Close()
+		}
+	}
 	return nil
 }
