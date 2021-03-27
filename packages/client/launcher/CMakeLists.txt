@@ -20,13 +20,6 @@ find_path(libknossos "libknossos.${libext}" PATHS "../../../build/libknossos/" R
 set(libknossos "${libknossos}/libknossos.${libext}")
 ## BRAIN END
 
-## LIBARCHIVE START
-if(OS_WINDOWS)
-  find_path(libarchive "libarchive.dll" PATHS "../../../build/libarchive/bin/" REQUIRED)
-  set(libarchive "${libarchive}/libarchive.dll")
-endif()
-## LIBARCHIVE END
-
 #if(MSVC AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 #  # Clang-cl doesn't support the /MP option
 #  list(REMOVE_ITEM CEF_COMPILER_FLAGS /MP)
@@ -312,11 +305,5 @@ if(OS_WINDOWS)
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libknossos}" "${CEF_TARGET_OUT_DIR}" VERBATIM
     DEPENDS "${libknossos}"
-  )
-  add_custom_command(
-    TARGET ${CEF_TARGET}
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libarchive}" "${CEF_TARGET_OUT_DIR}" VERBATIM
-    DEPENDS "${libarchive}"
   )
 endif()
