@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -52,6 +53,7 @@ type depSpec struct {
 	Dest       string
 	Sha256     string
 	Strip      int
+	SfxArgs    string   `yaml:"sfxArgs,omitempty"`
 	MarkExec   []string `yaml:"markExec,omitempty"`
 }
 
@@ -374,11 +376,6 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 
 	varMatcher := regexp.MustCompile(`\{([A-Z0-9_]+)\}`)
 	for name, meta := range cfg.Deps {
-		skip := !evalConditions(&meta, vars)
-		if skip && !update {
-			continue
-		}
-
 		meta.URL = varMatcher.ReplaceAllStringFunc(meta.URL, func(varName string) string {
 			value, ok := vars[varName[1:len(varName)-1]]
 			if ok {
@@ -388,11 +385,18 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 			}
 		})
 
+		stampToken := meta.URL + "#" + meta.Sha256
+		skip := !evalConditions(&meta, vars)
+		if skip && !update {
+			// Remember the hash and URL even for skipped dependencies
+			stamps[name] = "skip-" + stampToken
+			continue
+		}
+
 		destPath := filepath.Join(projectRoot, meta.Dest)
 		destInfo, err := os.Stat(destPath)
 		destExists := err == nil
 
-		stampToken := meta.URL + "#" + meta.Sha256
 		stamp, ok := stamps[name]
 
 		// Only download the file if necessary. We have to cover the following cases:
@@ -401,7 +405,14 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 		//   We can reach this point for a file we should be skipping if we're updating checksums since those have to
 		//   be updated for all platforms. However, the checksum should only change if the URL changed and we have
 		//   already confirmed that this didn't happen.
-		if ok && stampToken == stamp && (destExists || skip) {
+		if skip {
+			// This dependency would usually skipped but we got here because update is true
+			if ok && "skip-"+stampToken == stamp {
+				// The URL and hash haven't changed, nothing to do here
+				continue
+			}
+		} else if ok && stampToken == stamp && destExists {
+			// Nothing changed and the folder exists, nothing to do here
 			continue
 		}
 
@@ -456,12 +467,14 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 			if update {
 				fmt.Println("      Updating checksum")
 				changes[name] = digest
+				stampToken = meta.URL + "#" + digest
 			} else {
 				return eris.New("Checksum check failed")
 			}
 		}
 
 		if skip {
+			stamps[name] = "skip-" + stampToken
 			continue
 		}
 
@@ -477,16 +490,39 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 			}
 		}
 
-		extractor, err := getExtractor(meta.URL)
-		if err != nil {
-			return err
-		}
+		if strings.HasSuffix(meta.URL, ".exe") && meta.SfxArgs != "" {
+			err = arHandle.Close()
+			if err != nil {
+				return err
+			}
 
-		arHandle.Seek(0, io.SeekStart)
-		bar = getProgressBar(resp.ContentLength, "      extract")
-		err = extractor(arHandle, bar, projectRoot, name, meta)
-		if err != nil {
-			return err
+			args := strings.Split(meta.SfxArgs, " ")
+
+			os.Rename("deps_dl.tmp", "deps_dl.exe")
+			cmd := exec.Command("deps_dl.exe", args...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+
+			fmt.Println("      Running SFX extractor")
+
+			err = cmd.Run()
+			os.Remove("deps_dl.exe")
+
+			if err != nil {
+				return err
+			}
+		} else {
+			extractor, err := getExtractor(meta.URL)
+			if err != nil {
+				return err
+			}
+
+			arHandle.Seek(0, io.SeekStart)
+			bar = getProgressBar(resp.ContentLength, "      extract")
+			err = extractor(arHandle, bar, projectRoot, name, meta)
+			if err != nil {
+				return err
+			}
 		}
 
 		if runtime.GOOS != "windows" {
@@ -531,6 +567,11 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 					fmt.Printf("     Couldn't find checksum section for %s.\n", name)
 				}
 			} else {
+				prevPos := strings.Index(generated[pos:], "sha256:")
+				if prevPos < subPos {
+					fmt.Printf("     Found wrong position for %s.\n", name)
+					continue
+				}
 				start := pos + subPos + 8
 				end := start + len(cfg.Deps[name].Sha256)
 				generated = generated[:start] + newChecksum + generated[end:]

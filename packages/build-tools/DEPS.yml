@@ -116,12 +116,12 @@ deps:
     dest: third_party/brotli
 
   msys2:
-    sha256: 3f2ceb097a081789d9d497e0d3df8d99c16a1591b9984b0469440cd5bfa65092
+    sha256: 75b047250293df04c0cfebca41f9611156a608f0a08e3f2c190534d04ff0eeee
     if: windows, amd64
     ifNot: ci
-    url: http://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-{MSYS_BUILD}.tar.xz
-    strip: 1
-    dest: third_party/msys2
+    url: http://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-{MSYS_BUILD}.sfx.exe
+    sfxArgs: "-y -othird_party"
+    dest: third_party/msys64
 
   nodejs-linux:
     sha256: 2e079cf638766fedd720d30ec8ffef5d6ceada4e8b441fc2a093cb9a865f4087
