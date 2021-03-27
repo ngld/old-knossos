@@ -22,6 +22,9 @@
             "path": "../packages/client-ui"
         },
         {
+            "path": "../packages/updater",
+        },
+        {
             "path": "../packages/build-tools"
         },
         {
