@@ -150,6 +150,23 @@ var mkdirCmd = &cobra.Command{
 	},
 }
 
+var touchCmd = &cobra.Command{
+	Use:   "touch",
+	Short: "A cross-platform implementation of the POSIX touch command",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		for _, item := range args {
+			hdl, err := os.OpenFile(item, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0660)
+			if err != nil {
+				return err
+			}
+
+			hdl.Close()
+		}
+
+		return nil
+	},
+}
+
 func init() {
 	rmCmd.Flags().BoolP("recursive", "r", false, "recursively delete directories")
 	rmCmd.Flags().BoolP("force", "f", false, "suppresses errors caused by missing files/folders")
@@ -158,4 +175,5 @@ func init() {
 	rootCmd.AddCommand(mvCmd)
 	rootCmd.AddCommand(rmCmd)
 	rootCmd.AddCommand(mkdirCmd)
+	rootCmd.AddCommand(touchCmd)
 }
