@@ -72,7 +72,7 @@ const DepInfo = observer(function DepInfo(props: DepInfoProps): React.ReactEleme
       <Callout intent="danger" title="Error">
         Could not resolve dependencies:
         <br />
-        {e.toString()}
+        <pre>{e.toString()}</pre>
       </Callout>
     ),
     fulfilled: (response) => (
@@ -124,7 +124,7 @@ const FlagsInfo = observer(function FlagsInfo(props: DepInfoProps): React.ReactE
       <Callout intent="danger" title="Error">
         Could not fetch flags:
         <br />
-        {e.toString()}
+        <pre>{e.toString()}</pre>
       </Callout>
     ),
     fulfilled: (mappedFlags) => {

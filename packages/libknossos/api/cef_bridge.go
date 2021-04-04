@@ -97,6 +97,7 @@ import "C"
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -170,6 +171,34 @@ func KnossosInit(params *C.KnossosInitParams) bool {
 	return true
 }
 
+func serveRequest(ctx context.Context, twirpResp *memoryResponse, req *http.Request) {
+	defer func() {
+		r := recover()
+		if r != nil {
+			err, ok := r.(error)
+			if !ok {
+				err = errors.New(fmt.Sprint(r))
+			}
+			err = eris.Wrap(err, "Most recent call last:\n")
+
+			api.Log(ctx, api.LogError, "panic for request %s: %s", req.URL, eris.ToString(err, true))
+
+			// Write a more detailed error to the response body
+			twirpResp.resp.Reset()
+
+			msg := fmt.Sprintf("panic for request %s: %s", req.URL, eris.ToString(err, true))
+			encodedMsg, err := json.Marshal(msg)
+			if err == nil {
+				twirpResp.resp.WriteString(`{"code":"internal","meta":{"cause":"panic"},"msg":`)
+				twirpResp.resp.Write(encodedMsg)
+				twirpResp.resp.WriteString("}")
+			}
+		}
+	}()
+
+	server.ServeHTTP(twirpResp, req)
+}
+
 // KnossosHandleRequest handles an incoming request from CEF
 //export KnossosHandleRequest
 func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, bodyLen C.int) *C.KnossosResponse {
@@ -236,20 +265,8 @@ func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, 
 		if err == nil {
 			twirpResp := newMemoryResponse()
 
-			defer func() {
-				r := recover()
-				if r != nil {
-					err, ok := r.(error)
-					if !ok {
-						err = errors.New(fmt.Sprint(r))
-					}
-					err = eris.Wrap(err, "Most recent call last:\n")
+			serveRequest(ctx, twirpResp, req)
 
-					api.Log(ctx, api.LogError, "panic for request %s: %s", reqURL, eris.ToString(err, true))
-				}
-			}()
-
-			server.ServeHTTP(twirpResp, req)
 			// Cancel any background operation still attached to the request context
 			cancel()
 
