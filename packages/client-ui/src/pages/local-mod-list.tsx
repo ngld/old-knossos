@@ -25,10 +25,14 @@ export default observer(function LocalModList(props: LocalModListProps): React.R
         pending: () => <NonIdealState icon={<Spinner />} title="Loading mods..." />,
         rejected: (e) => <NonIdealState icon="error" title="Failed to load mods" description={e?.toString ? e.toString() : e} />,
         fulfilled: (mods) => (
-          <div className="flex flex-row gap-4">
+          <div className="flex flex-row flex-wrap justify-between gap-4">
             {mods.map((mod) => (
               <div key={mod.modid} className="mod-tile bg-important flex flex-col overflow-hidden">
-                <img src={"https://api.client.fsnebula.org/ref/" + mod.teaser?.fileid} />
+                {mod.teaser?.fileid ? 
+                  <img src={"https://api.client.fsnebula.org/ref/" + mod.teaser?.fileid} />
+                :
+                  <img src={require('../resources/modstock.jpg').default} />
+                }
                 <div className="flex-1 flex flex-col justify-center text-white">
                   <div className="flex-initial text-center overflow-ellipsis overflow-hidden">{mod.title}</div>
                 </div>
