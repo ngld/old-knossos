@@ -68,7 +68,8 @@ bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
     auto post_data = request->GetPostData();
     if (post_data == nullptr) {
       LOG(WARNING) << "Invalid request " << url << ": Empty request";
-      SetStringResponse(400, "Empty request");
+      // SetStringResponse(400, "Empty request");
+      kn_response = 0;
       return true;
     }
 
@@ -77,7 +78,8 @@ bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
 
     if (body.size() > 1) {
       LOG(ERROR) << "Expected at most one body part on request " << url << " but found " << body.size() << "!";
-      SetStringResponse(400, "More than one body part");
+      // SetStringResponse(400, "More than one body part");
+      kn_response = 0;
       return true;
     }
 
@@ -105,7 +107,8 @@ bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
     }
 
     LOG(WARNING) << "Invalid request " << url << ": No handler found";
-    SetStringResponse(404, "No handler found");
+    // SetStringResponse(404, "No handler found");
+    kn_response = 0;
     return true;
   } else if(url.find("https://api.client.fsnebula.org/ref/") == 0) {
     kn_response = KnossosHandleRequest((char*)url.c_str(), (int)url.size(), nullptr, 0);
@@ -114,12 +117,14 @@ bool KnossosResourceHandler::Open(CefRefPtr<CefRequest> request,
     }
 
     LOG(WARNING) << "Invalid request " << url << ": No handler found";
-    SetStringResponse(404, "No handler found");
+    // SetStringResponse(404, "No handler found");
+    kn_response = 0;
     return true;
   }
 
   LOG(WARNING) << "Invalid request " << url << ": Invalid method";
-  SetStringResponse(400, "Invalid method");
+  // SetStringResponse(400, "Invalid method");
+  kn_response = 0;
   return true;
 }
 
@@ -138,28 +143,4 @@ bool KnossosResourceHandler::Read(void* data_out,
     return to_read > 0;
   }
   return false;
-}
-
-void KnossosResourceHandler::SetStringResponse(int status, std::string message) {
-  auto response = new KnossosResponse;
-  response->header_count = 1;
-  response->headers = new KnossosHeader[1];
-
-  std::string hdr("Content-Type");
-  std::string value("text/plain");
-
-  response->headers[0].header_name = new char[hdr.length() + 1];
-  response->headers[0].header_len = hdr.length();
-  hdr.copy(response->headers[0].header_name, hdr.length());
-
-  response->headers[0].value = new char[value.length() + 1];
-  response->headers[0].value_len = value.length();
-  value.copy(response->headers[0].value, value.length());
-
-  response->status_code = status;
-  response->response_data = new char[message.length() + 1];
-  response->response_length = message.length();
-  message.copy((char*)response->response_data, message.length());
-
-  kn_response = response;
 }

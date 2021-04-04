@@ -27,7 +27,7 @@ private:
   size_t pos;
   KnossosResponse* kn_response;
 
-  void SetStringResponse(int status, std::string message);
+  // void SetStringResponse(int status, std::string message);
 
 IMPLEMENT_REFCOUNTING(KnossosResourceHandler);
 };

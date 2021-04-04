@@ -10,6 +10,7 @@ import (
 
 	"github.com/ngld/knossos/packages/api/client"
 	"github.com/rotisserie/eris"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // LogLevel indicates the severity of a log message
@@ -218,6 +219,7 @@ func TaskLog(ctx context.Context, level client.LogMessage_LogLevel, msg string, 
 			Level:   level,
 			Message: composedMsg,
 			Sender:  sender,
+			Time:    timestamppb.Now(),
 		})
 		if err != nil {
 			Log(ctx, LogError, "Error in TaskLog(%d): %+v", ref, err)

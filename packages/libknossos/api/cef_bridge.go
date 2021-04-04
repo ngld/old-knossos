@@ -97,6 +97,7 @@ import "C"
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -234,6 +235,20 @@ func KnossosHandleRequest(urlPtr *C.char, urlLen C.int, bodyPtr unsafe.Pointer, 
 
 		if err == nil {
 			twirpResp := newMemoryResponse()
+
+			defer func() {
+				r := recover()
+				if r != nil {
+					err, ok := r.(error)
+					if !ok {
+						err = errors.New(fmt.Sprint(r))
+					}
+					err = eris.Wrap(err, "Most recent call last:\n")
+
+					api.Log(ctx, api.LogError, "panic for request %s: %s", reqURL, eris.ToString(err, true))
+				}
+			}()
+
 			server.ServeHTTP(twirpResp, req)
 			// Cancel any background operation still attached to the request context
 			cancel()

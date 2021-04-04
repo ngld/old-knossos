@@ -1,6 +1,7 @@
-import {useState, useEffect} from 'react';
-import {makeAutoObservable} from 'mobx';
-import {LogMessage, LogMessage_LogLevel, ClientSentEvent} from '@api/client';
+import { useState, useEffect } from 'react';
+import { makeObservable, action, observable, computed } from 'mobx';
+import EventEmitter from 'eventemitter3';
+import { LogMessage, LogMessage_LogLevel, ClientSentEvent } from '@api/client';
 
 export interface TaskState {
   id: number;
@@ -9,26 +10,38 @@ export interface TaskState {
   status: string;
   error: boolean;
   indeterminate: boolean;
-  started: Date;
+  started: number;
   logMessages: LogMessage[];
 }
 
-export const logLevelMap: Record<LogMessage_LogLevel, string> = {} as Record<LogMessage_LogLevel, string>;
+export const logLevelMap: Record<LogMessage_LogLevel, string> = {} as Record<
+  LogMessage_LogLevel,
+  string
+>;
 for (const [name, level] of Object.entries(LogMessage_LogLevel)) {
   logLevelMap[level as LogMessage_LogLevel] = name;
 }
 
-export class TaskTracker {
+export class TaskTracker extends EventEmitter {
   _idCounter: number;
   tasks: TaskState[];
   taskMap: Record<string, TaskState>;
 
   constructor() {
+    super();
     this._idCounter = 1;
     this.tasks = [];
     this.taskMap = {};
 
-    makeAutoObservable(this);
+    makeObservable(this, {
+      tasks: observable,
+      taskMap: observable,
+      active: computed,
+      listen: action,
+      startTask: action,
+      updateTask: action,
+      removeTask: action,
+    });
   }
 
   get active(): number {
@@ -46,10 +59,10 @@ export class TaskTracker {
       try {
         const ev = ClientSentEvent.fromBinary(new Uint8Array(msg));
         this.updateTask(ev);
-      } catch(e) {
+      } catch (e) {
         console.error(e);
       }
-    }
+    };
 
     knAddMessageListener(listener);
     return () => knRemoveMessageListener(listener);
@@ -64,12 +77,13 @@ export class TaskTracker {
       status: 'Initialising',
       error: false,
       indeterminate: true,
-      started: new Date(),
+      started: Math.floor(Date.now() / 1000),
       logMessages: [],
     } as TaskState;
 
     this.taskMap[id] = task;
     this.tasks.unshift(this.taskMap[id]);
+    this.emit('new', id);
 
     return id;
   }
@@ -81,7 +95,7 @@ export class TaskTracker {
       return;
     }
 
-    switch(ev.payload.oneofKind) {
+    switch (ev.payload.oneofKind) {
       case 'message':
         task.logMessages.push(ev.payload.message);
         break;
@@ -90,7 +104,7 @@ export class TaskTracker {
         if (info.progress >= 0) {
           task.progress = info.progress;
         }
-        if (info.description !== "") {
+        if (info.description !== '') {
           task.status = info.description;
         }
         task.error = info.error;

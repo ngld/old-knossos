@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Classes, Button, Dialog, ProgressBar, Text } from '@blueprintjs/core';
 import { CiTimesLine } from '@meronex/icons/ci';
 import { Tooltip2 } from '@blueprintjs/popover2';
@@ -13,7 +13,7 @@ function getLogTime(task: TaskState, line: LogMessage): string {
     return '00:00';
   }
 
-  const duration = time.seconds - task.started.getTime();
+  const duration = time.seconds - task.started;
   const minutes = Math.floor(duration / 60);
   const seconds = duration % 60;
 
@@ -22,9 +22,51 @@ function getLogTime(task: TaskState, line: LogMessage): string {
   return result;
 }
 
+interface LogBoxProps {
+  task: TaskState;
+}
+function LogBox({ task }: LogBoxProps): React.ReactElement {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const isBottom = useRef<boolean>(true);
+
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (box && isBottom.current) {
+      box.scrollTop = box.scrollHeight;
+    }
+  });
+
+  const scrollHandler = () => {
+    const box = boxRef.current;
+    if (box) {
+      // 10 pixel tolerance
+      isBottom.current = (box.scrollTop + box.clientHeight + 10) >= box.scrollHeight;
+    }
+  };
+
+  return (
+    <div ref={boxRef} className="overflow-y-auto max-h-56 bg-base text-xs" onScroll={scrollHandler}>
+      {task.logMessages.map((item, idx) => (
+        <div key={idx} title={item.sender}>
+          <span className="font-mono">
+            [{getLogTime(task, item)} {logLevelMap[item.level] ?? '???'}]:
+          </span>{' '}
+          {item.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default observer(function TaskDisplay(): React.ReactElement {
   const gs = useGlobalState();
   const [open, setOpen] = useState<boolean>(false);
+  useEffect(() => {
+    const listener = () => setOpen(true);
+    gs.tasks.on('new', listener);
+
+    return () => void gs.tasks.off('new', listener);
+  }, []);
 
   return (
     <div className="absolute bottom-0 right-40">
@@ -48,28 +90,24 @@ export default observer(function TaskDisplay(): React.ReactElement {
                 <Text className="mb-1" ellipsize={true}>
                   {task.label}
                 </Text>
-                {(task.progress === 1 || task.error) &&
-                <div className="absolute right-0 top-0">
-                  <Button minimal={true} small={true} onClick={() => gs.tasks.removeTask(task.id)}>
-                    <CiTimesLine />
-                  </Button>
-                </div>}
+                {(task.progress === 1 || task.error) && (
+                  <div className="absolute right-0 top-0">
+                    <Button
+                      minimal={true}
+                      small={true}
+                      onClick={() => gs.tasks.removeTask(task.id)}
+                    >
+                      <CiTimesLine />
+                    </Button>
+                  </div>
+                )}
               </div>
               <ProgressBar
                 stripes={task.indeterminate}
                 value={task.indeterminate ? 1 : task.progress}
                 intent={task.error ? 'danger' : task.progress === 1 ? 'success' : 'primary'}
               />
-              <div className="overflow-y-auto max-h-56 bg-base text-xs">
-                {task.logMessages.map((item, idx) => (
-                  <div key={idx} title={item.sender}>
-                    <span className="font-mono">
-                      [{getLogTime(task, item)} {logLevelMap[item.level] ?? '???'}]:
-                    </span>{' '}
-                    {item.message}
-                  </div>
-                ))}
-              </div>
+              <LogBox task={task} />
             </div>
           ))}
         </div>
