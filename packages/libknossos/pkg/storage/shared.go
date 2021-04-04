@@ -24,7 +24,7 @@ func Open(ctx context.Context) error {
 		return err
 	}
 
-	buckets := [][]byte{localModsBucket, localModsIndexBucket, fileBucket, settingsBucket, userModSettingsBucket}
+	buckets := [][]byte{localModsBucket, indexBucket, fileBucket, settingsBucket, userModSettingsBucket}
 	err = newDB.Update(func(tx *bolt.Tx) error {
 		for _, bucket := range buckets {
 			_, err := tx.CreateBucketIfNotExists(bucket)

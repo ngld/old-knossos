@@ -2,20 +2,13 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"sort"
 	"sync"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/ngld/knossos/packages/api/client"
 	"github.com/rotisserie/eris"
 	bolt "go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-)
-
-type (
-	stringIndex  map[string][]string
-	modTypeIndex map[client.ModType][]string
 )
 
 type ModProvider interface {
@@ -24,65 +17,28 @@ type ModProvider interface {
 }
 
 var (
-	localModsBucket                           = []byte("local_mods")
-	localModsIndexBucket                      = []byte("local_mods_index")
-	localModVersionIndex                      = []byte("version")
-	localModTypeIndex                         = []byte("type")
-	userModSettingsBucket                     = []byte("user_mod_settings")
-	cachedVersionIdx      map[string][]string = nil
-	cachedVersionIdxLock                      = sync.Mutex{}
-	updateVersionIdxLock                      = sync.Mutex{}
+	localModsBucket       = []byte("local_mods")
+	userModSettingsBucket = []byte("user_mod_settings")
+	localVersionIdx       = NewStringListIndex("local_mod_versions", modVersionSorter)
+	// TODO maybe add a Uint8ListIndex?
+	localTypeIdx = NewStringListIndex("local_mod_types", nil)
+	importMutex  = sync.Mutex{}
 )
 
-func GetLocalModKey(rel *client.Release) []byte {
-	return []byte(rel.Modid + "#" + rel.Version)
-}
-
-func getVersionIndex(tx *bolt.Tx) (map[string][]string, error) {
-	if cachedVersionIdx == nil {
-		cachedVersionIdxLock.Lock()
-		defer cachedVersionIdxLock.Unlock()
-
-		if cachedVersionIdx != nil {
-			return cachedVersionIdx, nil
-		}
-
-		encoded := tx.Bucket(localModsIndexBucket).Get(localModVersionIndex)
-		if encoded == nil {
-			return nil, nil
-		}
-
-		result := make(map[string][]string)
-		err := json.Unmarshal(encoded, &result)
-		if err != nil {
-			return nil, err
-		}
-
-		cachedVersionIdx = result
-	}
-
-	return cachedVersionIdx, nil
-}
-
-func updateVersionIdx(tx *bolt.Tx, modid string, versions []string) error {
-	updateVersionIdxLock.Lock()
-	defer updateVersionIdxLock.Unlock()
-
-	// Load the index if necessary
-	if cachedVersionIdx == nil {
-		getVersionIndex(tx)
-	}
-
-	cachedVersionIdx[modid] = versions
-	encoded, err := json.Marshal(&cachedVersionIdx)
+func modVersionSorter(_ string, versions []string) error {
+	vcoll, err := NewStringVersionCollection(versions)
 	if err != nil {
 		return err
 	}
 
-	return tx.Bucket(localModsIndexBucket).Put(localModVersionIndex, encoded)
+	sort.Sort(vcoll)
+	return nil
 }
 
 func ImportMods(ctx context.Context, callback func(context.Context, func(*client.Release) error) error) error {
+	importMutex.Lock()
+	defer importMutex.Unlock()
+
 	return db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(localModsBucket)
 
@@ -94,29 +50,12 @@ func ImportMods(ctx context.Context, callback func(context.Context, func(*client
 			return err
 		}
 
-		modIndex := make(stringIndex)
-		typeIndex := make(modTypeIndex)
-
 		// Clear indexes to make sure nothing uses them during the import since they'd be empty during the initial import.
-		indexBucket := tx.Bucket(localModsIndexBucket)
+		localVersionIdx.Clear()
+		localTypeIdx.Clear()
 
-		encoded, err := json.Marshal(&modIndex)
-		if err != nil {
-			return err
-		}
-		err = indexBucket.Put(localModVersionIndex, encoded)
-		if err != nil {
-			return err
-		}
-
-		encoded, err = json.Marshal(&typeIndex)
-		if err != nil {
-			return err
-		}
-		err = indexBucket.Put(localModTypeIndex, encoded)
-		if err != nil {
-			return err
-		}
+		localVersionIdx.StartBatch()
+		localTypeIdx.StartBatch()
 
 		ctx = CtxWithTx(ctx, tx)
 
@@ -127,59 +66,31 @@ func ImportMods(ctx context.Context, callback func(context.Context, func(*client
 				return err
 			}
 
-			err = bucket.Put(GetLocalModKey(rel), encoded)
+			err = bucket.Put([]byte(rel.Modid+"#"+rel.Version), encoded)
 			if err != nil {
 				return err
 			}
 
-			_, found := modIndex[rel.Modid]
-			if !found {
+			if len(localVersionIdx.Lookup(tx, rel.Modid)) < 1 {
 				// This is the first time we process this mod
 
 				// Add this mod to our type index
-				typeIndex[rel.Type] = append(typeIndex[rel.Type], rel.Modid)
+				localTypeIdx.BatchedAdd(string(rel.Type), rel.Modid)
 			}
 
-			modIndex[rel.Modid] = append(modIndex[rel.Modid], rel.Version)
-
+			localVersionIdx.BatchedAdd(rel.Modid, rel.Version)
 			return nil
 		})
 		if err != nil {
 			return err
 		}
 
-		// Sort the version index
-		for _, versions := range modIndex {
-			parsed := make(semver.Collection, len(versions))
-			for idx, raw := range versions {
-				parsed[idx], err = semver.StrictNewVersion(raw)
-				if err != nil {
-					return err
-				}
-			}
-
-			sort.Sort(parsed)
-			for idx, version := range parsed {
-				versions[idx] = version.String()
-			}
-		}
-
-		encoded, err = json.Marshal(modIndex)
+		err = localVersionIdx.FinishBatch(tx)
 		if err != nil {
 			return err
 		}
 
-		err = indexBucket.Put(localModVersionIndex, encoded)
-		if err != nil {
-			return err
-		}
-
-		encoded, err = json.Marshal(typeIndex)
-		if err != nil {
-			return err
-		}
-
-		return indexBucket.Put(localModTypeIndex, encoded)
+		return localTypeIdx.FinishBatch(tx)
 	})
 }
 
@@ -216,15 +127,14 @@ func SaveLocalMod(ctx context.Context, release *client.Release) error {
 		})
 	}
 
-	bucket := tx.Bucket(localModsBucket)
-	versionIdx, err := getVersionIndex(tx)
-	if err != nil {
-		return err
-	}
+	importMutex.Lock()
+	defer importMutex.Unlock()
 
-	versions, ok := versionIdx[release.Modid]
+	bucket := tx.Bucket(localModsBucket)
+	versions := localVersionIdx.Lookup(tx, release.Modid)
+
 	isNew := false
-	if ok {
+	if len(versions) > 0 {
 		verPresent := false
 		for _, ver := range versions {
 			if ver == release.Version {
@@ -240,52 +150,18 @@ func SaveLocalMod(ctx context.Context, release *client.Release) error {
 		isNew = true
 
 		// Since this is the first entry for this mod, we also have to update the type index
-		indexBucket := tx.Bucket(localModsIndexBucket)
-		data := indexBucket.Get(localModTypeIndex)
-
-		var typeIndex modTypeIndex
-		err = json.Unmarshal(data, &typeIndex)
+		err := localTypeIdx.Add(tx, string(release.Type), release.Modid)
 		if err != nil {
-			return eris.Wrap(err, "failed to decode local mod type index")
-		}
-
-		typeIndex[release.Type] = append(typeIndex[release.Type], release.Modid)
-		data, err = json.Marshal(typeIndex)
-		if err != nil {
-			return eris.Wrap(err, "failed to re-encode type index")
-		}
-
-		err = indexBucket.Put(localModTypeIndex, data)
-		if err != nil {
-			return eris.Wrap(err, "failed to save mod type index")
+			return err
 		}
 	}
 
 	// Update the version index for new mods
 	if isNew {
-		parsedVersions := make([]*semver.Version, len(versions)+1)
-		for idx, rawVer := range versions {
-			ver, err := semver.NewVersion(rawVer)
-			if err != nil {
-				return eris.Wrapf(err, "failed to parse old version %s", ver)
-			}
-			parsedVersions[idx] = ver
-		}
-
-		newVer, err := semver.NewVersion(release.Version)
+		err := localVersionIdx.Add(tx, release.Modid, release.Version)
 		if err != nil {
-			return eris.Wrap(err, "failed to parse new version")
+			return err
 		}
-		parsedVersions[len(versions)] = newVer
-
-		sort.Sort(semver.Collection(parsedVersions))
-
-		versions = make([]string, len(parsedVersions))
-		for idx, pVer := range parsedVersions {
-			versions[idx] = pVer.String()
-		}
-
-		updateVersionIdx(tx, release.Modid, versions)
 	}
 
 	// Finally, we can save the actual mod
@@ -302,26 +178,23 @@ func GetLocalMods(ctx context.Context, taskRef uint32) ([]*client.Release, error
 	err := db.View(func(tx *bolt.Tx) error {
 		// Retrieve IDs and the latest version for all known local mods
 		bucket := tx.Bucket(localModsBucket)
-		versionIdx, err := getVersionIndex(tx)
-		if err != nil {
-			return err
-		}
+		result = make([]*client.Release, 0)
 
-		result = make([]*client.Release, 0, len(versionIdx))
-		for modID, versions := range versionIdx {
+		localVersionIdx.ForEach(tx, func(modID string, versions []string) error {
 			item := bucket.Get([]byte(modID + "#" + versions[len(versions)-1]))
 			if item == nil {
 				return eris.Errorf("Failed to find mod %s from index", modID+"#"+versions[len(versions)-1])
 			}
 
 			meta := new(client.Release)
-			err = proto.Unmarshal(item, meta)
+			err := proto.Unmarshal(item, meta)
 			if err != nil {
 				return err
 			}
 
 			result = append(result, meta)
-		}
+			return nil
+		})
 
 		return nil
 	})
@@ -351,21 +224,15 @@ func GetMod(ctx context.Context, id string, version string) (*client.Release, er
 func GetVersionsForMod(ctx context.Context, id string) ([]string, error) {
 	var result []string
 	err := db.View(func(tx *bolt.Tx) error {
-		versionIdx, err := getVersionIndex(tx)
-		if err != nil {
-			return err
-		}
-
-		versions, ok := versionIdx[id]
-		if !ok {
-			return eris.Errorf("No versions found for mod %s", id)
-		}
-
-		result = versions
+		result = localVersionIdx.Lookup(tx, id)
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if len(result) < 1 {
+		return nil, eris.Errorf("No versions found for mod %s", id)
 	}
 
 	return result, nil
