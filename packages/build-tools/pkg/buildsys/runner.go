@@ -314,14 +314,11 @@ func runTaskInternal(ctx context.Context, task *Task, tasks TaskList, dryRun, fo
 
 	// Touch all output files once to make sure that we don't rerun this step even if the step didn't actually modify
 	// its outputs.
+	now := time.Now()
 	for _, path := range outputList {
-		hdl, err := os.OpenFile(path, os.O_APPEND|os.O_RDWR, 0660)
-		if err != nil {
-			if !eris.Is(err, os.ErrNotExist) {
-				return eris.Wrapf(err, "failed to stamp output %s", path)
-			}
-		} else {
-			hdl.Close()
+		err := os.Chtimes(path, now, now)
+		if err != nil && !eris.Is(err, os.ErrNotExist) {
+			return eris.Wrapf(err, "failed to stamp output %s", path)
 		}
 	}
 	return nil

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
@@ -154,13 +155,13 @@ var touchCmd = &cobra.Command{
 	Use:   "touch",
 	Short: "A cross-platform implementation of the POSIX touch command",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		now := time.Now()
+
 		for _, item := range args {
-			hdl, err := os.OpenFile(item, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0660)
+			err := os.Chtimes(item, now, now)
 			if err != nil {
 				return err
 			}
-
-			hdl.Close()
 		}
 
 		return nil
