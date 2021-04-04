@@ -52,7 +52,7 @@ func Open(ctx context.Context) error {
 }
 
 func Clean(ctx context.Context) error {
-	// TODO
+	// TODO This should delete all unknown keys and if possible unreferenced entries from the DB
 	return nil
 }
 

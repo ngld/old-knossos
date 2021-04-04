@@ -184,3 +184,22 @@ func (kn *knossosServer) GetModFlags(ctx context.Context, req *client.ModInfoReq
 		Flags: flagInfo,
 	}, nil
 }
+
+func (kn *knossosServer) LaunchMod(ctx context.Context, req *client.LaunchModRequest) (*client.SuccessResponse, error) {
+	mod, err := storage.GetMod(ctx, req.Modid, req.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	userSettings, err := storage.GetUserSettingsForMod(ctx, req.Modid, req.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	err = mods.LaunchMod(ctx, mod, userSettings)
+	if err != nil {
+		return nil, err
+	}
+
+	return &client.SuccessResponse{Success: true}, nil
+}

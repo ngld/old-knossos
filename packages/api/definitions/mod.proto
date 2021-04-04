@@ -42,6 +42,7 @@ message Release {
   string folder = 7;
   ReleaseStability stability = 3;
   ModType type = 6;
+  string parent = 8;
 
   // mod page
   string description = 10;
@@ -58,6 +59,7 @@ message Release {
 
   // launch
   string cmdline = 21;
+  repeated string mod_order = 24;
   map<string, string> dependency_snapshot = 22;
   bool snapshot_modified = 23;
 

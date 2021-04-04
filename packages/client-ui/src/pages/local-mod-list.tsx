@@ -5,6 +5,7 @@ import { fromPromise } from 'mobx-utils';
 import { History } from 'history';
 import { Release } from '@api/mod';
 import { GlobalState, useGlobalState } from '../lib/state';
+import {launchMod} from '../dialogs/launch-mod';
 
 async function fetchMods(gs: GlobalState): Promise<Release[]> {
   const result = await gs.client.getLocalMods({});
@@ -38,7 +39,7 @@ export default observer(function LocalModList(props: LocalModListProps): React.R
                 </div>
 
                 <div className="cover flex flex-col justify-center gap-2">
-                  <Button>Play</Button>
+                  <Button onClick={() => launchMod(gs, mod.modid, mod.version)}>Play</Button>
                   <Button onClick={() => props.history.push('/mod/' + mod.modid + '/' + mod.version)}>Details</Button>
                   <Button>Uninstall</Button>
                 </div>

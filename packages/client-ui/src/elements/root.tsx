@@ -14,7 +14,7 @@ import cx from 'classnames';
 import { Switch, Route, Redirect, useHistory, useLocation } from 'react-router-dom';
 import ErrorBoundary from './error-boundary';
 import HoverLink from './hover-link';
-import { useGlobalState } from '../lib/state';
+import { GlobalState, useGlobalState } from '../lib/state';
 import TaskDisplay from './task-display';
 import LocalModList from '../pages/local-mod-list';
 import Settings from '../pages/settings';
@@ -105,6 +105,20 @@ const ModContainer = observer(function ModContainer(): React.ReactElement {
   );
 });
 
+const OverlayRenderer = observer(function OverlayRenderer({
+  gs,
+}: {
+  gs: GlobalState;
+}): React.ReactElement {
+  return (
+    <ErrorBoundary>
+      {gs.overlays.map(([Component, props], idx) => (
+        <Component onFinished={() => gs.removeOverlay(idx)} {...props} />
+      ))}
+    </ErrorBoundary>
+  );
+});
+
 export default function Root(): React.ReactElement {
   const gs = useGlobalState();
   const history = useHistory();
@@ -159,6 +173,7 @@ export default function Root(): React.ReactElement {
         <NavTabs />
       </div>
       <ModContainer />
+      <OverlayRenderer gs={gs} />
     </div>
   );
 }

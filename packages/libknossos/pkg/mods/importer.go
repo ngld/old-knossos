@@ -283,6 +283,7 @@ func ImportMods(ctx context.Context, modFiles []string) error {
 			item.Videos = mod.Videos
 			item.Notes = mod.Notes
 			item.Cmdline = mod.Cmdline
+			item.ModOrder = mod.ModFlag
 
 			releases = append(releases, item)
 
