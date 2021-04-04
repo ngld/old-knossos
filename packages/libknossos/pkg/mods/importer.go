@@ -153,7 +153,6 @@ func cleanEmptyFolders(ctx context.Context, folder string) error {
 }
 
 func ImportMods(ctx context.Context, modFiles []string) error {
-	mod := KnMod{}
 	releases := make([]*client.Release, 0)
 
 	api.Log(ctx, api.LogInfo, "Parsing mod.json files")
@@ -168,6 +167,7 @@ func ImportMods(ctx context.Context, modFiles []string) error {
 				return err
 			}
 
+			var mod KnMod
 			err = json.Unmarshal(data, &mod)
 			if err != nil {
 				return err
@@ -487,12 +487,14 @@ func ImportMods(ctx context.Context, modFiles []string) error {
 			newSettings.Cmdline = settings.Cmdline
 			newSettings.CustomBuild = settings.CustomBuild
 
-			lastPlayed, err := time.Parse("2006-01-02 15:04:05", settings.LastPlayed)
-			if err != nil {
-				api.Log(ctx, api.LogWarn, "failed to parse last played date in %s: %+v", settingsPath, err)
-			} else {
-				newSettings.LastPlayed = &timestamppb.Timestamp{
-					Seconds: lastPlayed.Unix(),
+			if settings.LastPlayed != "" {
+				lastPlayed, err := time.Parse("2006-01-02 15:04:05", settings.LastPlayed)
+				if err != nil {
+					api.Log(ctx, api.LogWarn, "failed to parse last played date in %s: %+v", settingsPath, err)
+				} else {
+					newSettings.LastPlayed = &timestamppb.Timestamp{
+						Seconds: lastPlayed.Unix(),
+					}
 				}
 			}
 

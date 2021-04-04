@@ -73,8 +73,8 @@ func GetDependencySnapshot(ctx context.Context, mods storage.ModProvider, releas
 		for _, pkg := range modReq.mod.Packages {
 			for _, dep := range pkg.Dependencies {
 				rawConstraint := dep.Constraint
-				if rawConstraint == "" {
-					rawConstraint = "*"
+				if rawConstraint == "" || rawConstraint == "*" {
+					rawConstraint = ">= 0.0.0-0"
 				}
 
 				// Make sure all constraints allow prerelease versions
