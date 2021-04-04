@@ -390,7 +390,7 @@ def configure():
         "libarchive-build",
         desc = "Builds libarchive with CMake",
         inputs = ["third_party/libarchive/libarchive/**/*.{c,h}"],
-        outputs = ["build/libarchive/bin/libarchive.dll"],
+        outputs = ["build/libarchive/libarchive/*.a"],
         windows_script = "packages/libarchive/msys2-build.sh",
         unix_script = "packages/libarchive/unix-build.sh",
     )
