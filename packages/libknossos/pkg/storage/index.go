@@ -12,9 +12,9 @@ type StringListSorter func(string, []string) error
 
 type StringListIndex struct {
 	cache     map[string][]string
-	batchMode bool
 	sorter    StringListSorter
 	Name      string
+	batchMode bool
 }
 
 func NewStringListIndex(name string, sorter StringListSorter) *StringListIndex {
@@ -22,6 +22,19 @@ func NewStringListIndex(name string, sorter StringListSorter) *StringListIndex {
 		Name:   name,
 		sorter: sorter,
 	}
+}
+
+func (i *StringListIndex) Open(tx *bolt.Tx) error {
+	bucket := tx.Bucket(indexBucket)
+	data := bucket.Get([]byte(i.Name))
+	if data != nil {
+		err := json.Unmarshal(data, &i.cache)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (i *StringListIndex) StartBatch() {
@@ -32,7 +45,7 @@ func (i *StringListIndex) FinishBatch(tx *bolt.Tx) error {
 	i.batchMode = false
 
 	if i.sorter != nil {
-		err := i.ForEach(tx, i.sorter)
+		err := i.ForEach(i.sorter)
 		if err != nil {
 			return err
 		}
@@ -41,28 +54,12 @@ func (i *StringListIndex) FinishBatch(tx *bolt.Tx) error {
 	return i.Save(tx)
 }
 
-func (i *StringListIndex) getCache(tx *bolt.Tx) map[string][]string {
-	if i.cache == nil {
-		bucket := tx.Bucket(indexBucket)
-		data := bucket.Get([]byte(i.Name))
-		if data != nil {
-			err := json.Unmarshal(data, &i.cache)
-			if err != nil {
-				i.Clear()
-			}
-		}
-	}
-
-	return i.cache
+func (i *StringListIndex) Lookup(key string) []string {
+	return i.cache[key]
 }
 
-func (i *StringListIndex) Lookup(tx *bolt.Tx, key string) []string {
-	return i.getCache(tx)[key]
-}
-
-func (i *StringListIndex) ForEach(tx *bolt.Tx, cb func(string, []string) error) error {
-	items := i.getCache(tx)
-	for k, v := range items {
+func (i *StringListIndex) ForEach(cb func(string, []string) error) error {
+	for k, v := range i.cache {
 		err := cb(k, v)
 		if err != nil {
 			return err
@@ -95,7 +92,7 @@ func (i *StringListIndex) Add(tx *bolt.Tx, key, value string) error {
 
 	if !i.batchMode {
 		if i.sorter != nil {
-			err := i.ForEach(tx, i.sorter)
+			err := i.ForEach(i.sorter)
 			if err != nil {
 				return err
 			}

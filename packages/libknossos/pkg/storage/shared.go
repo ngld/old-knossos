@@ -35,12 +35,20 @@ func Open(ctx context.Context) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
+
 	db = newDB
-	return nil
+
+	return db.View(func(tx *bolt.Tx) error {
+		err := localVersionIdx.Open(tx)
+		if err != nil {
+			return err
+		}
+
+		return localTypeIdx.Open(tx)
+	})
 }
 
 func Clean(ctx context.Context) error {

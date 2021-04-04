@@ -71,7 +71,7 @@ func ImportMods(ctx context.Context, callback func(context.Context, func(*client
 				return err
 			}
 
-			if len(localVersionIdx.Lookup(tx, rel.Modid)) < 1 {
+			if len(localVersionIdx.Lookup(rel.Modid)) < 1 {
 				// This is the first time we process this mod
 
 				// Add this mod to our type index
@@ -131,7 +131,7 @@ func SaveLocalMod(ctx context.Context, release *client.Release) error {
 	defer importMutex.Unlock()
 
 	bucket := tx.Bucket(localModsBucket)
-	versions := localVersionIdx.Lookup(tx, release.Modid)
+	versions := localVersionIdx.Lookup(release.Modid)
 
 	isNew := false
 	if len(versions) > 0 {
@@ -180,7 +180,7 @@ func GetLocalMods(ctx context.Context, taskRef uint32) ([]*client.Release, error
 		bucket := tx.Bucket(localModsBucket)
 		result = make([]*client.Release, 0)
 
-		localVersionIdx.ForEach(tx, func(modID string, versions []string) error {
+		localVersionIdx.ForEach(func(modID string, versions []string) error {
 			item := bucket.Get([]byte(modID + "#" + versions[len(versions)-1]))
 			if item == nil {
 				return eris.Errorf("Failed to find mod %s from index", modID+"#"+versions[len(versions)-1])
@@ -222,14 +222,7 @@ func GetMod(ctx context.Context, id string, version string) (*client.Release, er
 }
 
 func GetVersionsForMod(ctx context.Context, id string) ([]string, error) {
-	var result []string
-	err := db.View(func(tx *bolt.Tx) error {
-		result = localVersionIdx.Lookup(tx, id)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
+	result := localVersionIdx.Lookup(id)
 
 	if len(result) < 1 {
 		return nil, eris.Errorf("No versions found for mod %s", id)
