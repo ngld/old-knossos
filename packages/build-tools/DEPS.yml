@@ -36,7 +36,7 @@ update-checks:
 
 deps:
   protoc-linux:
-    sha256: 38a2f024a0ce68897b1868c59b613939bd41f16c0c8d8890843eccdbbf46ab00
+    sha256: 28b8ca3c0f91441ca80598ced2584e58f8281ebfaf0e6377fea45301eddee94f
     if: linux, amd64
     url: https://github.com/protocolbuffers/protobuf/releases/download/v{PROTOC}/protoc-{PROTOC}-linux-x86_64.zip
     strip: 1
@@ -52,7 +52,7 @@ deps:
     markExec: [protoc]
 
   protoc-win64:
-    sha256: d4cd42275a32c3dbc194aa3c884a5b487688befcf5e03e5aa7837702a779ba30
+    sha256: d592c46b83f1700dfe9588afdd19ef4eaa0c6b114daeb19ce26e98df5e46c123
     if: windows, amd64
     url: https://github.com/protocolbuffers/protobuf/releases/download/v{PROTOC}/protoc-{PROTOC}-win64.zip
     strip: 1
