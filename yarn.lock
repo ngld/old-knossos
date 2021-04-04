@@ -1599,6 +1599,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tailwindcss/jit@npm:^0.1.18":
+  version: 0.1.18
+  resolution: "@tailwindcss/jit@npm:0.1.18"
+  dependencies:
+    chokidar: ^3.5.1
+    dlv: ^1.1.3
+    fast-glob: ^3.2.5
+    lodash.topath: ^4.5.2
+    normalize-path: ^3.0.0
+    object-hash: ^2.1.1
+    parse-glob: ^3.0.4
+    postcss-selector-parser: ^6.0.4
+    quick-lru: ^5.1.1
+  peerDependencies:
+    postcss: ^8.2.6
+    tailwindcss: ^2.0.3
+  checksum: c9305b27f3def34e603916ac24775eb4f5778a0d84983a34a2f20fd42b2ad58d77e8efc458ca7d89a35b33bc30bdec05051b42acda968251e10e7db994a1a2ba
+  languageName: node
+  linkType: hard
+
 "@tsconfig/recommended@npm:^1.0.1":
   version: 1.0.1
   resolution: "@tsconfig/recommended@npm:1.0.1"
@@ -3507,7 +3527,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chokidar@npm:^3.3.0":
+"chokidar@npm:^3.3.0, chokidar@npm:^3.5.1":
   version: 3.5.1
   resolution: "chokidar@npm:3.5.1"
   dependencies:
@@ -4309,6 +4329,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dlv@npm:^1.1.3":
+  version: 1.1.3
+  resolution: "dlv@npm:1.1.3"
+  checksum: 3ed2cd5054ed51e3778b5939ec58b16a970ee7447c3fc02b9b75ccd0788cf596b705d0f3060f2f1593432c10809d4289a17166a5723282ab2ead5c37d7c45cf0
+  languageName: node
+  linkType: hard
+
 "dns-equal@npm:^1.0.0":
   version: 1.0.0
   resolution: "dns-equal@npm:1.0.0"
@@ -4990,6 +5017,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fast-glob@npm:^3.2.5":
+  version: 3.2.5
+  resolution: "fast-glob@npm:3.2.5"
+  dependencies:
+    "@nodelib/fs.stat": ^2.0.2
+    "@nodelib/fs.walk": ^1.2.3
+    glob-parent: ^5.1.0
+    merge2: ^1.3.0
+    micromatch: ^4.0.2
+    picomatch: ^2.2.1
+  checksum: 1a33c4a68d14cb2314c07a451689bc311bde87b09c525dd2064321165127a38a553457d121e2d3ecdd022374e3d53afb82cbb57f5694414d3406ce14ed6c0a1f
+  languageName: node
+  linkType: hard
+
 "fast-json-stable-stringify@npm:^2.0.0":
   version: 2.1.0
   resolution: "fast-json-stable-stringify@npm:2.1.0"
@@ -5434,6 +5475,25 @@ fsevents@~2.3.1:
   dependencies:
     assert-plus: ^1.0.0
   checksum: 2650725bc6939616da8432e5351ca87d8b29421bb8dc19c21bad2c37cd337d2a50d36fcc398ce0c16a075f6079afe114131780dca7e2f4b96063e53e7d28fd7a
+  languageName: node
+  linkType: hard
+
+"glob-base@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "glob-base@npm:0.3.0"
+  dependencies:
+    glob-parent: ^2.0.0
+    is-glob: ^2.0.0
+  checksum: 9a464f8b5a97ee2a524f7534a2ef42b731a22b37849925d831052ed7afc5b50827e524da5cc1f1961e574bcf9ffcde99b9161fc75e44c7bf397aad1f93fe5d6c
+  languageName: node
+  linkType: hard
+
+"glob-parent@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "glob-parent@npm:2.0.0"
+  dependencies:
+    is-glob: ^2.0.0
+  checksum: d3d0bc909b973b361ccd20cf82907a19ade72554c1caffee982fad3ac4d0cbfeabe9609fe7188aab6c4dfdf68af96f35623fe1453195baf5414e2a1834b44c59
   languageName: node
   linkType: hard
 
@@ -6258,6 +6318,13 @@ fsevents@~2.3.1:
   languageName: node
   linkType: hard
 
+"is-dotfile@npm:^1.0.0":
+  version: 1.0.3
+  resolution: "is-dotfile@npm:1.0.3"
+  checksum: 82be54d6d57710d393c2275a63f4c60b33bfe5e21080899073b4ef315f13c9017891aed3477c2c1ecfc43b2a1c2180151fad8fab02aba930473e88b00393501f
+  languageName: node
+  linkType: hard
+
 "is-extendable@npm:^0.1.0, is-extendable@npm:^0.1.1":
   version: 0.1.1
   resolution: "is-extendable@npm:0.1.1"
@@ -6271,6 +6338,13 @@ fsevents@~2.3.1:
   dependencies:
     is-plain-object: ^2.0.4
   checksum: 2bf711afe60cc99f46699015c444db8f06c9c5553dd2b26fd8cb663fcec4bf00df1c11d02e28a8cc97b8efb49315c3c3fcf6ce1ceb09341af8e4fcccde516dd7
+  languageName: node
+  linkType: hard
+
+"is-extglob@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "is-extglob@npm:1.0.0"
+  checksum: 77073b0ebe962261395f4f72e594ca53157cdb14e41070fd856aca1422f0c1c49a26a55dabdf3c66559c98ca1a6a1ac8b9342034c5577714008b21fd314595a4
   languageName: node
   linkType: hard
 
@@ -6308,6 +6382,15 @@ fsevents@~2.3.1:
   version: 3.0.0
   resolution: "is-fullwidth-code-point@npm:3.0.0"
   checksum: a01a19ecac34386ae3a4e801c5639d6e31082d1ddc418e7cd96317fef3c8b24ec8531558e9d3d35b33551ab9c5cf20bf2cdefa583927b7ff60c27c8d7c216063
+  languageName: node
+  linkType: hard
+
+"is-glob@npm:^2.0.0":
+  version: 2.0.1
+  resolution: "is-glob@npm:2.0.1"
+  dependencies:
+    is-extglob: ^1.0.0
+  checksum: b3190fc9ca6ad047f6e1856bb80b5b7de740c727025300b078a5557a27c5d1d25594baf8bd582529963eda61cc73c5d8cb546dba8e8afeaeef58012343c52600
   languageName: node
   linkType: hard
 
@@ -6885,6 +6968,13 @@ fsevents@~2.3.1:
   version: 4.4.0
   resolution: "lodash.toarray@npm:4.4.0"
   checksum: f2b8de1812789321335dd5f4cb60625c4b8874cb3b300367d8a22990072459b76eb893feacd243686493393cccd035115cc149563f7aa5123d06d9a3b2825bf1
+  languageName: node
+  linkType: hard
+
+"lodash.topath@npm:^4.5.2":
+  version: 4.5.2
+  resolution: "lodash.topath@npm:4.5.2"
+  checksum: c635ffd3586817e6beeff174d0e39015a1df88b885d9ba742587a2bd047af13cd9662870e0cce90ef706f6468127105488a96a8778d5d7c4af0358d025782c6b
   languageName: node
   linkType: hard
 
@@ -7649,6 +7739,7 @@ fsevents@~2.3.1:
     "@protobuf-ts/runtime": ^2.0.0-alpha.17
     "@protobuf-ts/runtime-rpc": ^2.0.0-alpha.17
     "@protobuf-ts/twirp-transport": ^2.0.0-alpha.17
+    "@tailwindcss/jit": ^0.1.18
     "@tsconfig/recommended": ^1.0.1
     "@types/babel__core": ^7.1.14
     "@types/babel__preset-env": ^7.9.1
@@ -7712,13 +7803,7 @@ fsevents@~2.3.1:
     webpack-merge: ^5.7.3
     xbbcode: ^2.0.4
   dependenciesMeta:
-    "@blueprintjs/core@3.38.2":
-      unplugged: true
-    "@blueprintjs/core@3.41.0":
-      unplugged: true
     "@blueprintjs/core@3.42.0":
-      unplugged: true
-    "@blueprintjs/icons@3.25.1":
       unplugged: true
     "@blueprintjs/icons@3.26.0":
       unplugged: true
@@ -7982,6 +8067,18 @@ fsevents@~2.3.1:
   dependencies:
     callsites: ^3.0.0
   checksum: 58714b9699f8e84340aaf0781b7cbd82f1c357f6ce9c035c151d0e8c1e9b869c51b95b680882f0d21b4751e817a6c936d4bb2952a1a1d9d9fb27e5a84baec2aa
+  languageName: node
+  linkType: hard
+
+"parse-glob@npm:^3.0.4":
+  version: 3.0.4
+  resolution: "parse-glob@npm:3.0.4"
+  dependencies:
+    glob-base: ^0.3.0
+    is-dotfile: ^1.0.0
+    is-extglob: ^1.0.0
+    is-glob: ^2.0.0
+  checksum: bc9f7a8ed61b8005cce9b6f63130f9080e7034472b3e0c48cc28bfbad8c1290cca25b4fefddc7cd96d6f44e5bc2bace9e0c1f26e665cb2f693a13c2c7fcd5ff2
   languageName: node
   linkType: hard
 

@@ -7,11 +7,12 @@
     "front:prod": "cd packages/front && NODE_ENV=production postcss src/tw-index.css -o gen/tw-index.css && webpack --env production --color --progress",
     "front:watch": "cd packages/front && webpack serve",
     "client:css": "cd packages/client-ui && postcss src/tw-index.css -o gen/tw-index.css",
-    "client:prod": "cd packages/client-ui && NODE_ENV=production postcss src/tw-index.css -o gen/tw-index.css && webpack --env production --color --progress",
-    "client:watch": "cd packages/client-ui && webpack serve"
+    "client:prod": "cd packages/client-ui && NODE_ENV=production webpack --env production --color --progress",
+    "client:watch": "cd packages/client-ui && NODE_ENV=development webpack serve"
   },
   "devDependencies": {
     "@protobuf-ts/plugin": "^2.0.0-alpha.17",
+    "@tailwindcss/jit": "^0.1.18",
     "@tsconfig/recommended": "^1.0.1",
     "@types/babel__core": "^7.1.14",
     "@types/babel__preset-env": "^7.9.1",

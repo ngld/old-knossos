@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import '../gen/tw-index.css';
+import './tw-index.css';
 import './blueprint.scss';
 import '@blueprintjs/popover2/lib/css/blueprint-popover2.css';
 import './resources/fonts/index.css';
