@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/rotisserie/eris"
@@ -102,6 +103,8 @@ func (kn *knossosServer) GetLocalMods(ctx context.Context, _ *client.NullMessage
 			field.Set(reflect.Zero(field.Type()))
 		}
 	}
+
+	sort.Sort(mods.SortByTitle{ReleaseCollection: modMeta})
 
 	return &client.SimpleModList{
 		Mods: modMeta,
