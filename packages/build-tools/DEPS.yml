@@ -1,5 +1,5 @@
 vars:
-  PROTOC: 3.15.6
+  PROTOC: 3.15.7
   LIBARCHIVE: 3.5.1
   CEF: 89.0.7+gb5952bd+chromium-89.0.4389.72
   MSYS_BUILD: 20210228
