@@ -74,7 +74,12 @@ message ModInfoResponse {
 }
 
 message ModDependencySnapshot {
+  message ModInfo {
+    repeated string versions = 1;
+  }
+
   map<string, string> dependencies = 1;
+  map<string, ModInfo> available = 2;
 }
 
 message FlagInfo {

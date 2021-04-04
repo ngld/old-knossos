@@ -12,6 +12,7 @@ import { observer } from 'mobx-react-lite';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import cx from 'classnames';
 import { Switch, Route, Redirect, useHistory, useLocation } from 'react-router-dom';
+import ErrorBoundary from './error-boundary';
 import HoverLink from './hover-link';
 import { useGlobalState } from '../lib/state';
 import TaskDisplay from './task-display';
@@ -35,7 +36,8 @@ const NavTabs = function NavTabs(): React.ReactElement {
           key={key}
           href="#"
           className={
-            'text-white ml-10 pb-1 border-b-4' + (location.pathname === '/' + key ? '' : ' border-transparent')
+            'text-white ml-10 pb-1 border-b-4' +
+            (location.pathname === '/' + key ? '' : ' border-transparent')
           }
           onClick={(e) => {
             e.preventDefault();
@@ -86,17 +88,19 @@ const ModContainer = observer(function ModContainer(): React.ReactElement {
         'overflow-auto',
       )}
     >
-      <Switch>
-        <Redirect from="/" to="/play" exact />
-        <Route path="/play" component={LocalModList} />
-        <Route path="/settings">
-          <Settings />
-        </Route>
-        <Route path="/mod/:modid/:version?" component={LocalMod} />
-        <Route path="/">
-          <div className="text-white">Page not found</div>
-        </Route>
-      </Switch>
+      <ErrorBoundary>
+        <Switch>
+          <Redirect from="/" to="/play" exact />
+          <Route path="/play" component={LocalModList} />
+          <Route path="/settings">
+            <Settings />
+          </Route>
+          <Route path="/mod/:modid/:version?" component={LocalMod} />
+          <Route path="/">
+            <div className="text-white">Page not found</div>
+          </Route>
+        </Switch>
+      </ErrorBoundary>
     </div>
   );
 });

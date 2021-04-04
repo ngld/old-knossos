@@ -8,6 +8,7 @@ import {
   Checkbox,
   NonIdealState,
   HTMLSelect,
+  HTMLTable,
   Tab,
   Tabs,
 } from '@blueprintjs/core';
@@ -76,30 +77,43 @@ const DepInfo = observer(function DepInfo(props: DepInfoProps): React.ReactEleme
       </Callout>
     ),
     fulfilled: (response) => (
-      <table>
+      <HTMLTable>
         <thead>
           <tr>
             <th>Mod</th>
             <th>Latest Local Version</th>
+            <th>Latest Available Version</th>
             <th>Saved Version</th>
           </tr>
         </thead>
         <tbody>
-          {Object.entries(response.dependencies).map(([modid, version]) => (
-            <tr key={modid}>
-              <td>{modid}</td>
-              <td>{version}</td>
-              <td>{props.release?.dependencySnapshot[modid] ?? '???'}</td>
-            </tr>
-          ))}
+          {Object.entries(response.dependencies).map(([modid, version]) => {
+            const current = props.release?.dependencySnapshot[modid] ?? '???';
+            return (
+              <tr key={modid}>
+                <td>{modid}</td>
+                <td>{version}</td>
+                <td>TBD</td>
+                <td>
+                  <HTMLSelect>
+                    {response.available[modid].versions.map((version) => (
+                      <option key={version} value={version} selected={current === version}>
+                        {version}
+                      </option>
+                    ))}
+                  </HTMLSelect>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
-      </table>
+      </HTMLTable>
     ),
   });
 });
 
 function renderFlags(flags: FlagInfo_Flag[]): (React.ReactElement | null)[] {
-  return flags.map((flag) =>
+  return flags.map((flag) => (
     <div key={flag.flag}>
       <Checkbox checked={flag.enabled}>
         {flag.label === '' ? flag.flag : flag.label}
@@ -110,7 +124,7 @@ function renderFlags(flags: FlagInfo_Flag[]): (React.ReactElement | null)[] {
         )}
       </Checkbox>
     </div>
-  );
+  ));
 }
 
 const FlagsInfo = observer(function FlagsInfo(props: DepInfoProps): React.ReactElement {
@@ -137,7 +151,7 @@ const FlagsInfo = observer(function FlagsInfo(props: DepInfoProps): React.ReactE
                 All
               </option>
               {Object.keys(mappedFlags).map((cat) => (
-                <option key={cat} value={cat}>
+                <option key={cat} value={cat} selected={cat === currentCat}>
                   {cat}
                 </option>
               ))}
@@ -171,10 +185,12 @@ export default observer(function ModDetailsPage(
   const modDetails = useMemo(() => fromPromise(getModDetails(gs, props.match.params)), [
     props.match.params,
   ]);
-  const description = useMemo(
-    () => ({ __html: bbparser((modDetails.value as ModInfoResponse)?.mod?.description ?? '') }),
-    [modDetails.value?.mod?.description],
-  );
+
+  const rawDesc = (modDetails.value as ModInfoResponse)?.mod?.description;
+  const description = useMemo(() => {
+    let desc = rawDesc ?? '';
+    return { __html: bbparser(desc === '' ? 'No description provided' : desc) };
+  }, [rawDesc]);
 
   return (
     <div>
@@ -195,29 +211,29 @@ export default observer(function ModDetailsPage(
           ) : (
             <>
               <div className="relative">
-                <RefImage src={mod.mod?.banner} />
-                <div className="absolute top-0 left-0 p-5 text-white">
-                  <h1 className="text-3xl mb-4 text-white mod-title">{mod.mod?.title}</h1>
-                  <div>
-                    <span className="pr-4">Version: </span>
+                <div>
+                  <h1 className="mb-2 text-white mod-title">
+                    <span className="text-3xl">{mod.mod?.title}</span>
                     <HTMLSelect
+                      className="ml-2 -mt-2"
                       value={props.match.params.version ?? mod.versions[0]}
                       onChange={(e) => {
                         props.history.push(`/mod/${props.match.params.modid}/${e.target.value}`);
                       }}
                     >
                       {mod.versions.map((version) => (
-                        <option key={version} value={version}>
+                        <option
+                          key={version}
+                          value={version}
+                          selected={version === props.match.params.version}
+                        >
                           {version}
                         </option>
                       ))}
                     </HTMLSelect>
-                  </div>
-                  {/*<div>
-                    <span className="pr-4">Last update:</span>
-                    <span>{mod.updated?.seconds}</span>
-                  </div>*/}
+                  </h1>
                 </div>
+                <RefImage className="object-contain w-full max-h-300px" src={mod.mod?.banner} />
               </div>
               <Tabs renderActiveTabPanelOnly={true}>
                 <Tab

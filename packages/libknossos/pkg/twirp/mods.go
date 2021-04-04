@@ -137,14 +137,21 @@ func (kn *knossosServer) GetModDependencies(ctx context.Context, req *client.Mod
 		return nil, err
 	}
 
-	// TODO: Calculate and store the snapshot during import
-	snapshot, err := mods.GetDependencySnapshot(ctx, storage.LocalMods{}, mod)
-	if err != nil {
-		return nil, err
+	versions := make(map[string]*client.ModDependencySnapshot_ModInfo)
+	for modID, _ := range mod.DependencySnapshot {
+		localVersions, err := storage.GetVersionsForMod(ctx, modID)
+		if err != nil {
+			return nil, err
+		}
+
+		versions[modID] = &client.ModDependencySnapshot_ModInfo{
+			Versions: localVersions,
+		}
 	}
 
 	return &client.ModDependencySnapshot{
-		Dependencies: snapshot,
+		Dependencies: mod.DependencySnapshot,
+		Available:    versions,
 	}, nil
 }
 

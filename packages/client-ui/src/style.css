@@ -85,3 +85,7 @@ body {
 .log-error, .log-fatal {
     color: #f00;
 }
+
+.max-h-300px {
+    max-height: 300px;
+}
