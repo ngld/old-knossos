@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/rotisserie/eris"
 
@@ -141,5 +142,35 @@ func (kn *knossosServer) GetModDependencies(ctx context.Context, req *client.Mod
 
 	return &client.ModDependencySnapshot{
 		Dependencies: snapshot,
+	}, nil
+}
+
+func (kn *knossosServer) GetModFlags(ctx context.Context, req *client.ModInfoRequest) (*client.FlagInfo, error) {
+	mod, err := storage.GetMod(ctx, req.Id, req.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	flagInfo, err := mods.GetFlagsForMod(ctx, mod)
+	if err != nil {
+		return nil, err
+	}
+
+	userSettings, err := storage.GetUserSettingsForMod(ctx, req.Id, req.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	cmdline := userSettings.Cmdline
+	if cmdline == "" {
+		cmdline = mod.Cmdline
+	}
+
+	for _, flag := range flagInfo {
+		flag.Enabled = strings.Contains(cmdline, flag.Flag)
+	}
+
+	return &client.FlagInfo{
+		Flags: flagInfo,
 	}, nil
 }

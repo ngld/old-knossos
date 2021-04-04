@@ -77,6 +77,19 @@ message ModDependencySnapshot {
   map<string, string> dependencies = 1;
 }
 
+message FlagInfo {
+  message Flag {
+    string label = 1;
+    string flag = 5;
+    string category = 2;
+    bool enabled = 3;
+    string help = 4;
+  }
+
+  map<string, Flag> flags = 1;
+  string freeform = 2;
+}
+
 // event messages
 
 message ClientSentEvent {
@@ -127,4 +140,5 @@ service Knossos {
   rpc GetLocalMods (NullMessage) returns (SimpleModList) {};
   rpc GetModInfo (ModInfoRequest) returns (ModInfoResponse) {};
   rpc GetModDependencies (ModInfoRequest) returns (ModDependencySnapshot) {};
+  rpc GetModFlags (ModInfoRequest) returns (FlagInfo) {};
 }

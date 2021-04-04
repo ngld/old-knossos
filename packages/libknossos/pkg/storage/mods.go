@@ -97,6 +97,27 @@ func ImportMods(ctx context.Context, callback func(context.Context, func(*client
 		modIndex := make(stringIndex)
 		typeIndex := make(modTypeIndex)
 
+		// Clear indexes to make sure nothing uses them during the import since they'd be empty during the initial import.
+		indexBucket := tx.Bucket(localModsIndexBucket)
+
+		encoded, err := json.Marshal(&modIndex)
+		if err != nil {
+			return err
+		}
+		err = indexBucket.Put(localModVersionIndex, encoded)
+		if err != nil {
+			return err
+		}
+
+		encoded, err = json.Marshal(&typeIndex)
+		if err != nil {
+			return err
+		}
+		err = indexBucket.Put(localModTypeIndex, encoded)
+		if err != nil {
+			return err
+		}
+
 		ctx = CtxWithTx(ctx, tx)
 
 		// Call the actual import function
@@ -143,12 +164,11 @@ func ImportMods(ctx context.Context, callback func(context.Context, func(*client
 			}
 		}
 
-		encoded, err := json.Marshal(modIndex)
+		encoded, err = json.Marshal(modIndex)
 		if err != nil {
 			return err
 		}
 
-		indexBucket := tx.Bucket(localModsIndexBucket)
 		err = indexBucket.Put(localModVersionIndex, encoded)
 		if err != nil {
 			return err
@@ -351,9 +371,9 @@ func GetVersionsForMod(ctx context.Context, id string) ([]string, error) {
 	return result, nil
 }
 
-type LocalMods struct {
-	ModProvider
-}
+type LocalMods struct{}
+
+var _ ModProvider = (*LocalMods)(nil)
 
 func (LocalMods) GetVersionsForMod(id string) ([]string, error) {
 	return GetVersionsForMod(context.Background(), id)
@@ -361,4 +381,35 @@ func (LocalMods) GetVersionsForMod(id string) ([]string, error) {
 
 func (LocalMods) GetModMetadata(id, version string) (*client.Release, error) {
 	return GetMod(context.Background(), id, version)
+}
+
+func SaveUserSettingsForMod(ctx context.Context, id, version string, settings *client.UserSettings) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		encoded, err := proto.Marshal(settings)
+		if err != nil {
+			return err
+		}
+
+		bucket := tx.Bucket(userModSettingsBucket)
+		return bucket.Put([]byte(id+"#"+version), encoded)
+	})
+}
+
+func GetUserSettingsForMod(ctx context.Context, id, version string) (*client.UserSettings, error) {
+	result := new(client.UserSettings)
+	err := db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(userModSettingsBucket)
+
+		encoded := bucket.Get([]byte(id + "#" + version))
+		if encoded != nil {
+			return proto.Unmarshal(encoded, result)
+		} else {
+			return nil
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

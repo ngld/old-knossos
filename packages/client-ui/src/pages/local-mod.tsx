@@ -2,9 +2,17 @@ import React, { useState, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { fromPromise } from 'mobx-utils';
 import type { RouteComponentProps } from 'react-router-dom';
-import { Spinner, Callout, NonIdealState, HTMLSelect, Tab, Tabs } from '@blueprintjs/core';
+import {
+  Spinner,
+  Callout,
+  Checkbox,
+  NonIdealState,
+  HTMLSelect,
+  Tab,
+  Tabs,
+} from '@blueprintjs/core';
 
-import { ModInfoResponse, ModDependencySnapshot } from '@api/client';
+import { ModInfoResponse, ModDependencySnapshot, FlagInfo, FlagInfo_Flag } from '@api/client';
 import { Release } from '@api/mod';
 
 import RefImage from '../elements/ref-image';
@@ -28,6 +36,23 @@ async function getModDependencies(
     version: params.version ?? '',
   });
   return response.response;
+}
+
+async function getFlagInfos(
+  gs: GlobalState,
+  params: ModDetailsParams,
+): Promise<Record<string, FlagInfo_Flag[]>> {
+  const response = await gs.client.getModFlags({ id: params.modid, version: params.version ?? '' });
+
+  const mappedFlags = {} as Record<string, FlagInfo_Flag[]>;
+  for (const info of Object.values(response.response.flags)) {
+    if (!mappedFlags[info.category]) {
+      mappedFlags[info.category] = [];
+    }
+
+    mappedFlags[info.category].push(info);
+  }
+  return mappedFlags;
 }
 
 interface DepInfoProps extends ModDetailsParams {
@@ -70,6 +95,67 @@ const DepInfo = observer(function DepInfo(props: DepInfoProps): React.ReactEleme
         </tbody>
       </table>
     ),
+  });
+});
+
+function renderFlags(flags: FlagInfo_Flag[]): (React.ReactElement | null)[] {
+  return flags.map((flag) =>
+    <div key={flag.flag}>
+      <Checkbox checked={flag.enabled}>
+        {flag.label === '' ? flag.flag : flag.label}
+        {flag.help && (
+          <span className="float-right">
+            <a href={flag.help}>?</a>
+          </span>
+        )}
+      </Checkbox>
+    </div>
+  );
+}
+
+const FlagsInfo = observer(function FlagsInfo(props: DepInfoProps): React.ReactElement {
+  const gs = useGlobalState();
+  const flags = useMemo(() => fromPromise(getFlagInfos(gs, props)), [props.modid, props.version]);
+  const [currentCat, setCurrentCat] = useState<string>('combined');
+
+  return flags.case({
+    pending: () => <span>Loading...</span>,
+    rejected: (e) => (
+      <Callout intent="danger" title="Error">
+        Could not fetch flags:
+        <br />
+        {e.toString()}
+      </Callout>
+    ),
+    fulfilled: (mappedFlags) => {
+      return (
+        <div>
+          <div className="pb-2">
+            <label className="text-sm pr-4">Category</label>
+            <HTMLSelect onChange={(e) => setCurrentCat(e.target.value)}>
+              <option key="combined" value="combined">
+                All
+              </option>
+              {Object.keys(mappedFlags).map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </HTMLSelect>
+          </div>
+          <div className="p-4 border-black border">
+            {currentCat === 'combined'
+              ? Object.entries(mappedFlags).map(([cat, flags]) => (
+                  <div key={cat}>
+                    <div className="font-bold p-2">{cat}</div>
+                    {renderFlags(flags)}
+                  </div>
+                ))
+              : renderFlags(mappedFlags[currentCat] ?? [])}
+          </div>
+        </div>
+      );
+    },
   });
 });
 
@@ -149,6 +235,19 @@ export default observer(function ModDetailsPage(
                   panel={
                     <div className="bg-base p-2 rounded text-white">
                       <DepInfo
+                        release={mod.mod}
+                        modid={props.match.params.modid}
+                        version={props.match.params.version}
+                      />
+                    </div>
+                  }
+                />
+                <Tab
+                  id="flags"
+                  title="Flags"
+                  panel={
+                    <div className="bg-base p-2 rounded text-white">
+                      <FlagsInfo
                         release={mod.mod}
                         modid={props.match.params.modid}
                         version={props.match.params.version}
