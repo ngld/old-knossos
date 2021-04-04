@@ -40,18 +40,15 @@ function LogBox({ task }: LogBoxProps): React.ReactElement {
     const box = boxRef.current;
     if (box) {
       // 10 pixel tolerance
-      isBottom.current = (box.scrollTop + box.clientHeight + 10) >= box.scrollHeight;
+      isBottom.current = box.scrollTop + box.clientHeight + 10 >= box.scrollHeight;
     }
   };
 
   return (
     <div ref={boxRef} className="overflow-y-auto max-h-56 bg-base text-xs" onScroll={scrollHandler}>
       {task.logMessages.map((item, idx) => (
-        <div key={idx} title={item.sender}>
-          <span className="font-mono">
-            [{getLogTime(task, item)} {logLevelMap[item.level] ?? '???'}]:
-          </span>{' '}
-          {item.message}
+        <div key={idx} title={item.sender} className={'log-' + (logLevelMap[item.level].toLowerCase() ?? 'info')}>
+          <span className="font-mono">[{getLogTime(task, item)}]:</span> {item.message}
         </div>
       ))}
     </div>
@@ -82,7 +79,7 @@ export default observer(function TaskDisplay(): React.ReactElement {
             : gs.tasks.tasks[0].label}
         </div>
       </Tooltip2>
-      <Dialog isOpen={open} onClose={() => setOpen(false)} title="Tasks">
+      <Dialog isOpen={open} onClose={() => setOpen(false)} title="Tasks" className="large-dialog">
         <div className={Classes.DIALOG_BODY}>
           {gs.tasks.tasks.map((task) => (
             <div key={task.id}>
