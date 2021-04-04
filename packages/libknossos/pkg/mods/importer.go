@@ -1,6 +1,7 @@
 package mods
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -69,6 +70,7 @@ type KnMod struct {
 	LocalPath     string
 	Title         string
 	Version       string
+	Parent        string
 	Stability     string
 	Description   string
 	Logo          string
@@ -83,6 +85,7 @@ type KnMod struct {
 	LastUpdate    string `json:"last_update"`
 	Cmdline       string
 	ModFlag       []string `json:"mod_flag"`
+	DevMode       bool     `json:"dev_mode"`
 	Screenshots   []string
 	Packages      []KnPackage
 	Videos        []string
@@ -121,12 +124,44 @@ func convertChecksum(input KnChecksum) (*client.Checksum, error) {
 	}, nil
 }
 
+func cleanEmptyFolders(ctx context.Context, folder string) error {
+	items, err := os.ReadDir(folder)
+	if err != nil {
+		return err
+	}
+
+	for _, item := range items {
+		if item.IsDir() {
+			err = cleanEmptyFolders(ctx, filepath.Join(folder, item.Name()))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Check again because the previous loop might have deleted all remaining folders
+	items, err = os.ReadDir(folder)
+	if err != nil {
+		return err
+	}
+
+	if len(items) == 0 {
+		return os.Remove(folder)
+	}
+
+	return nil
+}
+
 func ImportMods(ctx context.Context, modFiles []string) error {
 	mod := KnMod{}
 	releases := make([]*client.Release, 0)
 
 	api.Log(ctx, api.LogInfo, "Parsing mod.json files")
+	api.SetProgress(ctx, 0, "Processing mods")
+	modCount := float32(len(modFiles))
+
 	err := storage.ImportMods(ctx, func(ctx context.Context, importMod func(*client.Release) error) error {
+		done := float32(0)
 		for _, modFile := range modFiles {
 			data, err := ioutil.ReadFile(modFile)
 			if err != nil {
@@ -141,6 +176,99 @@ func ImportMods(ctx context.Context, modFiles []string) error {
 			modPath, err := filepath.Abs(filepath.Dir(modFile))
 			if err != nil {
 				return err
+			}
+
+			api.SetProgress(ctx, done/modCount, mod.Title+" "+mod.Version)
+			done++
+
+			if !mod.DevMode {
+				api.Log(ctx, api.LogInfo, "Converting folder structure to dev mode for %s %s", mod.Title, mod.Version)
+				workPath := filepath.Join(modPath, "__dev_work")
+				err := os.Mkdir(workPath, 0770)
+				if err != nil {
+					return eris.Wrapf(err, "failed to create working directory %s", workPath)
+				}
+
+				items, err := os.ReadDir(modPath)
+				if err != nil {
+					return err
+				}
+
+				// Move all items in the mod into the work subfolder to avoid conflicts between package folders and already
+				// existing folders. For example, a package folder named "data" containing a data directory would require
+				// this case.
+				for _, item := range items {
+					if item.Name() != "__dev_work" {
+						err = os.Rename(filepath.Join(modPath, item.Name()), filepath.Join(workPath, item.Name()))
+						if err != nil {
+							return err
+						}
+					}
+				}
+
+				for _, pkg := range mod.Packages {
+					pkgPath := filepath.Join(modPath, pkg.Folder)
+					err = os.Mkdir(pkgPath, 0770)
+					if err != nil && !eris.Is(err, os.ErrExist) {
+						return eris.Wrapf(err, "failed to create folder for package %s (%s)", pkg.Name, pkg.Folder)
+					}
+
+					for _, pkgFile := range pkg.Filelist {
+						src := filepath.Join(workPath, pkgFile.Filename)
+						dest := filepath.Join(pkgPath, pkgFile.Filename)
+						destParent := filepath.Dir(dest)
+
+						err = os.MkdirAll(destParent, 0770)
+						if err != nil {
+							relPath, suberr := filepath.Rel(modPath, dest)
+							if suberr != nil {
+								relPath = dest
+							}
+							return eris.Wrapf(err, "failed to create folder file %s in package %s", relPath, pkg.Name)
+						}
+
+						err = os.Rename(src, dest)
+						if err != nil {
+							return eris.Wrapf(err, "failed to move %s to %s", src, dest)
+						}
+					}
+				}
+
+				api.Log(ctx, api.LogInfo, "Cleaning up")
+				err = cleanEmptyFolders(ctx, workPath)
+				if err != nil {
+					return eris.Wrap(err, "failed cleanup")
+				}
+
+				leftOvers, err := os.ReadDir(workPath)
+				if err != nil {
+					if !eris.Is(err, os.ErrNotExist) {
+						return eris.Wrap(err, "failed to check work folder")
+					}
+				} else {
+					// Move left overs back to mod folder and remove work folder
+					for _, item := range leftOvers {
+						src := filepath.Join(workPath, item.Name())
+						dest := filepath.Join(modPath, item.Name())
+						err = os.Rename(src, dest)
+						if err != nil {
+							return eris.Wrapf(err, "failed to move %s back to %s", src, dest)
+						}
+					}
+
+					err = os.Remove(workPath)
+					if err != nil {
+						return eris.Wrapf(err, "failed to remove work folder %s", workPath)
+					}
+				}
+
+				data = bytes.Replace(data, []byte(`"dev_mode": false,`), []byte(`"dev_mode": true,`), 1)
+				err = os.WriteFile(modFile, data, 0660)
+				if err != nil {
+					return eris.Wrapf(err, "failed to update dev_mode field in %s", modFile)
+				}
+
+				api.Log(ctx, api.LogInfo, "Folder conversion done")
 			}
 
 			item := new(client.Release)
