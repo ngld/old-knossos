@@ -53,6 +53,29 @@ def yarn(*args):
 
     return ("node", yarn_path) + args
 
+def protoc(args, go=None, twirp=None, ts=None):
+    """A helper to construct protoc commands.
+
+    Args:
+      args: parameters to pass to protoc
+      go: the path to be used for --go_out
+      twirp: the path to be used for --twirp_out
+      ts: the path to be used for --ts_out
+    Returns:
+      the complete command
+    """
+    cmd = "protoc -Idefinitions %s" % args
+    if go:
+        cmd += " --go_opt=paths=source_relative --go_out=%s" % go
+
+    if twirp:
+        cmd += " --twirp_out=%s" % twirp
+
+    if ts:
+        cmd += " --ts_opt long_type_number --ts_out=%s" % ts
+
+    return cmd
+
 def cmake_task(name, desc = "", inputs = [], outputs = [], script = None, windows_script = None, unix_script = None):
     """A wrapper around task() that sets common options for CMake projects
 
@@ -112,6 +135,7 @@ def configure():
 
         prepend_path(resolve_path(msys2_path, "mingw64/bin"))
         setenv("GCCPATH", str(resolve_path(msys2_path, "mingw64/bin/gcc.exe")))
+        setenv("NODE_OPTIONS", '-r "%s"' % to_slashes(str(resolve_path("//.pnp.js"))))
 
         prepend_path("third_party/ninja")
 
@@ -212,9 +236,19 @@ def configure():
         "install-tools",
         desc = "Installs necessary go tools in the workspace (task, pggen, protoc plugins, ...)",
         deps = ["build-tool"],
-        inputs = ["packages/build-tools/tools.go", "packages/build-tools/go.mod", "packages/build-tools/ccache-helper/main.go"],
-        outputs = [".tools/%s%s" % (name, binext) for name in ("modd", "pggen", "protoc-gen-go", "protoc-gen-twirp")],
-        cmds = ["tool install-tools"] + extra_tools,
+        inputs = [
+            "packages/build-tools/tools.go",
+            "packages/build-tools/go.mod",
+            "packages/build-tools/ccache-helper/main.go",
+            "packages/build-tools/protoc-ts-helper/main.go",
+        ],
+        outputs = [".tools/%s%s" % (name, binext) for name in ("modd", "pggen", "protoc-gen-go", "protoc-gen-twirp", "protoc-gen-ts")],
+        cmds = [
+            "tool install-tools",
+            "cd packages/build-tools",
+            "go build -o ../../.tools/protoc-gen-ts%s ./protoc-ts-helper" % binext,
+            "cd ../..",
+        ] + extra_tools,
     )
 
     js_deps = task(
@@ -302,17 +336,14 @@ def configure():
             "client/**/*.go",
         ],
         cmds = [
-            "protoc -Idefinitions mod.proto --go_out=client --go_opt=paths=source_relative",
-            "protoc -Idefinitions client.proto --go_out=client --go_opt=paths=source_relative --twirp_out=twirp",
-            "protoc -Idefinitions service.proto --go_out=api --go_opt=paths=source_relative --twirp_out=twirp",
+            protoc("google/protobuf/timestamp.proto", ts="api"),
+            protoc("mod.proto", go="client", ts="api"),
+            protoc("client.proto", go="client", twirp="twirp", ts="api"),
+            protoc("service.proto", go="api", twirp="twirp", ts="api"),
             # twirp doesn't support go.mod paths so we have to move the generated files to the correct location
             "mv twirp/github.com/ngld/knossos/packages/api/api/*.go api",
             "mv twirp/github.com/ngld/knossos/packages/api/client/*.go client",
             "rm -r twirp/github.com",
-            yarn("protoc google/protobuf/timestamp.proto --ts_opt long_type_number --ts_out=api"),
-            yarn("protoc -Idefinitions mod.proto --ts_opt long_type_number --ts_out=api"),
-            yarn("protoc -Idefinitions client.proto --ts_opt long_type_number --ts_out=api"),
-            yarn("protoc -Idefinitions service.proto --ts_opt long_type_number --ts_out=api"),
         ],
     )
 

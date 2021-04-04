@@ -72,6 +72,17 @@ func resolvePath(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tu
 	return StarlarkPath(normPath), nil
 }
 
+func toSlashes(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path string
+
+	err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &path)
+	if err != nil {
+		return nil, err
+	}
+
+	return starlark.String(filepath.ToSlash(path)), nil
+}
+
 func starInfo(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var message string
 

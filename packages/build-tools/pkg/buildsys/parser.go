@@ -372,6 +372,7 @@ func RunScript(ctx context.Context, filename, projectRoot string, options map[st
 		"warn":         starlark.NewBuiltin("warn", starWarn),
 		"error":        starlark.NewBuiltin("error", starError),
 		"resolve_path": starlark.NewBuiltin("resolve_path", resolvePath),
+		"to_slashes":   starlark.NewBuiltin("to_slashes", toSlashes),
 		"option":       starlark.NewBuiltin("option", option),
 		"getenv":       starlark.NewBuiltin("getenv", getenv),
 		"setenv":       starlark.NewBuiltin("setenv", setenv),
