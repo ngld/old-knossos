@@ -199,14 +199,19 @@ func runTaskInternal(ctx context.Context, task *Task, tasks TaskList, dryRun, fo
 			}
 		}
 
+		missing := false
 		if !newestInput.IsZero() {
 			var newestOutput time.Time
 			oldestOutput := time.Now()
 
 			for _, item := range outputList {
 				info, err := os.Stat(item)
-				if err != nil && !eris.Is(err, os.ErrNotExist) {
+				if err != nil !eris.Is(err, os.ErrNotExist) {
 					return eris.Wrapf(err, "Failed to check output %s", item)
+				}
+
+				if eris.Is(err, os.ErrNotExist) {
+					missing = true
 				}
 
 				if err == nil {
@@ -221,19 +226,21 @@ func runTaskInternal(ctx context.Context, task *Task, tasks TaskList, dryRun, fo
 				}
 			}
 
-			if newestOutput.Sub(oldestOutput) > 10*time.Minute {
-				log(ctx).Warn().
-					Str("task", task.Short).
-					Msgf("oldest output is %f minutes older than the newest output", newestOutput.Sub(oldestOutput).Minutes())
-			}
+			if !missing {
+				if newestOutput.Sub(oldestOutput) > 10*time.Minute {
+					log(ctx).Warn().
+						Str("task", task.Short).
+						Msgf("oldest output is %f minutes older than the newest output", newestOutput.Sub(oldestOutput).Minutes())
+				}
 
-			if newestOutput.Sub(newestInput) > 0 {
-				log(ctx).Info().
-					Str("task", task.Short).
-					Msgf("nothing to do (output is %f seconds newer)", newestOutput.Sub(newestInput).Seconds())
+				if newestOutput.Sub(newestInput) > 0 {
+					log(ctx).Info().
+						Str("task", task.Short).
+						Msgf("nothing to do (output is %f seconds newer)", newestOutput.Sub(newestInput).Seconds())
 
-				rctx.runTasks[task.Short] = true
-				return nil
+					rctx.runTasks[task.Short] = true
+					return nil
+				}
 			}
 		}
 	}

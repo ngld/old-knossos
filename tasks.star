@@ -262,7 +262,14 @@ def configure():
             ".yarn/cache/*.zip",
             ".pnp.js",
         ],
-        cmds = [yarn("install")],
+        env = {
+            # The .pnp.js file doesn't exist, yet, so forcing Node.js to load it will cause yarn install to fail.
+            "NODE_OPTIONS": "",
+        },
+        cmds = [
+            yarn("install"),
+            "touch .pnp.js",
+        ],
     )
 
     task(
