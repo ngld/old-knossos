@@ -129,13 +129,14 @@ def configure():
     if build not in ("Debug", "Release"):
         error("Invalid build mode %s passed. Only Debug or Release are valid." % build)
 
+    setenv("NODE_OPTIONS", '-r "%s"' % to_slashes(str(resolve_path("//.pnp.js"))))
+
     if OS == "windows":
         libext = ".dll"
         binext = ".exe"
 
         prepend_path(resolve_path(msys2_path, "mingw64/bin"))
         setenv("GCCPATH", str(resolve_path(msys2_path, "mingw64/bin/gcc.exe")))
-        setenv("NODE_OPTIONS", '-r "%s"' % to_slashes(str(resolve_path("//.pnp.js"))))
 
         prepend_path("third_party/ninja")
 
