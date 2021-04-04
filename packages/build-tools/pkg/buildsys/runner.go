@@ -206,7 +206,7 @@ func runTaskInternal(ctx context.Context, task *Task, tasks TaskList, dryRun, fo
 
 			for _, item := range outputList {
 				info, err := os.Stat(item)
-				if err != nil !eris.Is(err, os.ErrNotExist) {
+				if err != nil && !eris.Is(err, os.ErrNotExist) {
 					return eris.Wrapf(err, "Failed to check output %s", item)
 				}
 
