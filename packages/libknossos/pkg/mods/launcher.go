@@ -93,6 +93,10 @@ func GetFlagsForMod(ctx context.Context, mod *client.Release) (map[string]*clien
 		}
 	}
 
+	if engine == nil {
+		return nil, eris.New("no engine found")
+	}
+
 	return GetFlagsForEngine(ctx, engine)
 }
 
@@ -168,7 +172,7 @@ func getBinaryForEngine(ctx context.Context, engine *client.Release) (string, er
 		for _, exe := range pkg.Executables {
 			if exe.Label == "" && !exe.Debug && exe.Priority > binaryScore {
 				binaryScore = exe.Priority
-				binaryPath = filepath.Join(engine.Folder, exe.Path)
+				binaryPath = filepath.Join(engine.Folder, pkg.Folder, exe.Path)
 			}
 		}
 	}

@@ -158,7 +158,14 @@ var touchCmd = &cobra.Command{
 		now := time.Now()
 
 		for _, item := range args {
-			err := os.Chtimes(item, now, now)
+			// Make sure the file exists
+			hdl, err := os.OpenFile(item, os.O_CREATE|os.O_RDONLY, 0660)
+			if err != nil {
+				return err
+			}
+			hdl.Close()
+
+			err = os.Chtimes(item, now, now)
 			if err != nil {
 				return err
 			}
