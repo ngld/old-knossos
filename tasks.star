@@ -43,6 +43,7 @@ msys2_path = option("msys2_path", "//third_party/msys64", help = "The path to yo
                                                                  "Defaults to the bundled MSYS2 directory")
 generator_opt = option("generator", "", help = "The CMake generator to use. Defaults to ninja if available. " +
                                                "Please note that on Windows you'll  have to run the vcvarsall.bat if you don't choose a Visual Studio generator")
+libkn_static = option("static", "true", help = "Whether to statically or dynamically link libknossos")
 kn_args = option("args", "", help = "The parameters to pass to Knossos in the client-run target")
 
 yarn_path = resolve_path(read_yaml(".yarnrc.yml", "yarnPath"))
@@ -451,6 +452,7 @@ def configure():
         env = {
             # cgo only supports gcc, make sure it doesn't try to use a compiler meant for our other packages
             "CC": "gcc",
+            "CGO_LDFLAGS": "-static" if libkn_static == "true" else "",
         },
         cmds = [
             "go build -o ../../build/libknossos/libknossos%s -buildmode c-shared ./api" % libext,

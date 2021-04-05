@@ -6,7 +6,7 @@ package libarchive
 // #cgo linux   LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
 // #cgo darwin  LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
 // #cgo darwin  LDFLAGS: -L/usr/local/opt/xz/lib
-// #cgo LDFLAGS: -static -Wl,--no-undefined -llzma -lzstd -lz
+// #cgo LDFLAGS: -Wl,--no-undefined -llzma -lzstd -lz
 // #cgo windows LDFLAGS: -liconv
 // #cgo darwin  LDFLAGS: -liconv
 //
