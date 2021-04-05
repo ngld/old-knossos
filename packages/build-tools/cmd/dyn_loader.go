@@ -195,7 +195,7 @@ func genLoader(headerFile, dynHeader string) error {
 		loader.WriteString("!" + name)
 	}
 	loader.WriteString(") {\n")
-	loader.WriteString(`  *error = "One or more functions could not be found!";` + "\n")
+	loader.WriteString(`  *error = (char*) "One or more functions could not be found!";` + "\n")
 	loader.WriteString("  return false;\n")
 	loader.WriteString("}\n")
 
