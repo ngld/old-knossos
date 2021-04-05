@@ -149,7 +149,7 @@ func getBinaryForEngine(ctx context.Context, engine *client.Release) (string, er
 	return binaryPath, nil
 }
 
-func getJsonFlagsForBinary(ctx context.Context, binaryPath string) (*jsonFlags, error) {
+func getJSONFlagsForBinary(ctx context.Context, binaryPath string) (*jsonFlags, error) {
 	api.Log(ctx, api.LogInfo, "Running \"%s -parse_cmdline_only -get_flags json_v1\"", binaryPath)
 	proc := exec.Command(binaryPath, "-parse_cmdline_only", "-get_flags", "json_v1")
 	proc.Env = append(proc.Env, "FSO_KEEP_STDOUT=1")
@@ -186,7 +186,7 @@ func GetFlagsForEngine(ctx context.Context, engine *client.Release) (map[string]
 		return nil, err
 	}
 
-	flags, err := getJsonFlagsForBinary(ctx, binaryPath)
+	flags, err := getJSONFlagsForBinary(ctx, binaryPath)
 	if err != nil {
 		return nil, err
 	}
@@ -292,12 +292,18 @@ func LaunchMod(ctx context.Context, mod *client.Release, settings *client.UserSe
 	cmdline += strings.Join(modFlag, ",")
 	cmdline += "\""
 
-	flags, err := getJsonFlagsForBinary(ctx, binary)
+	flags, err := getJSONFlagsForBinary(ctx, binary)
 	if err != nil {
 		return err
 	}
 
-	cmdlineFile := filepath.Join(flags.PrefPath, "cmdline_fso.cfg")
+	cmdlineFile := filepath.Join(flags.PrefPath, "data", "cmdline_fso.cfg")
+	cmdlineFolder := filepath.Dir(cmdlineFile)
+	err = os.MkdirAll(cmdlineFolder, 0770)
+	if err != nil {
+		return err
+	}
+
 	hdl, err := os.Create(cmdlineFile)
 	if err != nil {
 		return err
