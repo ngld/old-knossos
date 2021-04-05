@@ -44,7 +44,7 @@ deps:
     markExec: [protoc]
 
   protoc-darwin:
-    sha256: ca025c889efbe02f390b251c153c752a05fb04f5ac8c93929f8dba2818a5392a
+    sha256: 4f568bea2fd0087c9726e43a6610fd726d0fb17a447f40f7e4f5490a63b69b90
     if: darwin, amd64
     url: https://github.com/protocolbuffers/protobuf/releases/download/v{PROTOC}/protoc-{PROTOC}-osx-x86_64.zip
     strip: 1
