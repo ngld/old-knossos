@@ -105,7 +105,7 @@ def cmake_task(name, desc = "", inputs = [], outputs = [], script = None, window
             },
             cmds = [
                 ("cd", resolve_path(msys2_path)),
-                ("usr/bin/bash", "--login", "-c", '"$(cygpath "%s")"' % resolve_path(script)),
+                ("usr/bin/bash", "-lc", '"$(cygpath "%s")"' % resolve_path(script)),
             ],
         )
     else:
@@ -119,7 +119,7 @@ def cmake_task(name, desc = "", inputs = [], outputs = [], script = None, window
             inputs = inputs + [script],
             outputs = outputs,
             cmds = [
-                ("bash", resolve_path(script)),
+                ("sh", resolve_path(script)),
             ],
         )
 
@@ -307,17 +307,17 @@ def configure():
     )
 
     if OS == "windows":
-        mingw64_bootstrap = []
+        mingw64_bootstrap = [
+            'usr/bin/bash -lc true'
+        ]
 
         if getenv("CI") == "":
-            mingw64_bootstrap = [
-                'usr/bin/bash --login -c "mkdir /tmp || true"',
-                'usr/bin/bash --login -c "pacman -Syuu --noconfirm"',
-                'usr/bin/bash --login -c "pacman -Syuu --noconfirm"',
-            ]
+            mingw64_bootstrap.append(
+                'usr/bin/bash -lc "pacman --noconfirm -Syu"',
+            )
 
         mingw64_bootstrap.append(
-            'usr/bin/bash --login -c "pacman -Su --noconfirm --needed mingw-w64-x86_64-{gcc,xz,ccache,cmake,SDL2} make"',
+            'usr/bin/bash -lc "pacman --noconfirm -Syu --needed mingw-w64-x86_64-{gcc,xz,ccache,cmake,SDL2} make"',
         )
 
         task(
@@ -470,12 +470,9 @@ def configure():
         desc = "Builds the Knossos client",
         deps = ["libarchive-build", "libknossos-build"],
         cmds = [
+            "mkdir -p build/client",
+            "cd build/client",
             """
-    if [ ! -d build/client ]; then
-        mkdir -p build/client
-    fi
-
-    cd build/client
     if [ ! -f CMakeCache.txt ] || [ ! -f compile_commands.json ]; then
         cmake -G"{generator}" -DCMAKE_BUILD_TYPE={build} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ../../packages/client
     fi
@@ -529,11 +526,7 @@ def configure():
             "CXX": "g++",
         },
         cmds = [
-            """
-    if [ ! -d build/updater ]; then
-        mkdir -p build/updater
-    fi
-    """,
+            "mkdir -p build/updater",
             "cd packages/updater",
             "go build -tags static -ldflags '-s -w' -o ../../build/updater/updater%s" % binext,
         ],
