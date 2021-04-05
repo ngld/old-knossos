@@ -20,6 +20,11 @@ message SuccessResponse {
 
 // RPC types
 
+message LaunchModRequest {
+  string modid = 1;
+  string version = 2;
+  }
+
 message TaskRequest {
   uint32 ref = 1;
 }
@@ -146,4 +151,5 @@ service Knossos {
   rpc GetModInfo (ModInfoRequest) returns (ModInfoResponse) {};
   rpc GetModDependencies (ModInfoRequest) returns (ModDependencySnapshot) {};
   rpc GetModFlags (ModInfoRequest) returns (FlagInfo) {};
+  rpc LaunchMod (LaunchModRequest) returns (SuccessResponse) {};
 }
