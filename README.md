@@ -29,6 +29,7 @@ You'll need the following:
 * go (the package is sometimes called golang)
 * CMake
 * GCC
+* GTK 3
 * liblzma
 * libzstd
 * zlib
