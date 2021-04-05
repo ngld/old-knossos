@@ -416,18 +416,24 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 			continue
 		}
 
+		sfx := strings.HasSuffix(meta.URL, ".exe") && meta.SfxArgs != ""
+		tempPath := "deps_dl.tmp"
+		if sfx {
+			tempPath = "deps_dl.exe"
+		}
+
 		pkg.PrintSubtask(name + ":  " + meta.URL)
 		if meta.Sha256 == "" && !update {
 			return eris.Errorf("Dependency %s doesn't have a checksum", name)
 		}
 
-		arHandle, err := os.Create("deps_dl.tmp")
+		tempHandle, err := os.Create(tempPath)
 		if err != nil {
-			return eris.Wrap(err, "Failed to create deps_dl.tmp")
+			return eris.Wrapf(err, "Failed to create %s", tempPath)
 		}
 		defer func() {
-			arHandle.Close()
-			os.Remove("deps_dl.tmp")
+			tempHandle.Close()
+			os.Remove(tempPath)
 		}()
 
 		resp, err := client.Get(meta.URL)
@@ -452,9 +458,9 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 				return eris.Wrapf(err, "Failed to calculate checksum for %s", meta.URL)
 			}
 
-			_, err = arHandle.Write(buf[:n])
+			_, err = tempHandle.Write(buf[:n])
 			if err != nil {
-				return eris.Wrap(err, "Failed to write download to file deps_dl.tmp")
+				return eris.Wrapf(err, "Failed to write download to file %s", tempPath)
 			}
 
 			bar.Write(buf[:n])
@@ -490,24 +496,21 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 			}
 		}
 
-		if strings.HasSuffix(meta.URL, ".exe") && meta.SfxArgs != "" {
-			err = arHandle.Close()
+		if sfx {
+			err = tempHandle.Close()
 			if err != nil {
 				return err
 			}
 
 			args := strings.Split(meta.SfxArgs, " ")
 
-			os.Rename("deps_dl.tmp", "deps_dl.exe")
-			cmd := exec.Command("deps_dl.exe", args...)
+			cmd := exec.Command(tempPath, args...)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 
-			fmt.Println("      Running SFX extractor")
+			fmt.Printf("      Running SFX extractor (with %s)\n", meta.SfxArgs)
 
 			err = cmd.Run()
-			os.Remove("deps_dl.exe")
-
 			if err != nil {
 				return err
 			}
@@ -517,9 +520,9 @@ func downloadAndExtract(cmd *cobra.Command, cfg depConfig, cfgData string, stamp
 				return err
 			}
 
-			arHandle.Seek(0, io.SeekStart)
+			tempHandle.Seek(0, io.SeekStart)
 			bar = getProgressBar(resp.ContentLength, "      extract")
-			err = extractor(arHandle, bar, projectRoot, name, meta)
+			err = extractor(tempHandle, bar, projectRoot, name, meta)
 			if err != nil {
 				return err
 			}

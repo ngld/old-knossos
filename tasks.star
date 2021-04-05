@@ -198,10 +198,9 @@ def configure():
 
     prepend_path("third_party/go/bin")
     prepend_path("third_party/protoc-dist")
-    prepend_path("third_party/nodejs/bin")
-    prepend_path(".tools")
 
     if OS == "windows":
+        prepend_path("third_party/nodejs")
         build_tool_cmds = [
             "touch .tools/tool.exe.rebuild",
             "echo \"Can't rebuild tool in one step on Windows. The old build was removed, please run the same command " +
@@ -209,10 +208,13 @@ def configure():
             "exit 1",
         ]
     else:
+        prepend_path("third_party/nodejs/bin")
         build_tool_cmds = [
             "cd packages/build-tools",
             "go build -o ../../.tools/tool%s" % binext,
         ]
+
+    prepend_path(".tools")
 
     task(
         "build-tool",

@@ -3,6 +3,7 @@
 setlocal
 cd %~dp0
 
+set "PATH=%CD%\third_party\go\bin;%PATH%"
 go version > NUL 2>&1
 if errorlevel 1 goto :fix_go
 goto :build
