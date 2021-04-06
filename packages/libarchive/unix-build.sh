@@ -1,13 +1,9 @@
-#!/bin/bash
+#!/bin/sh
 
-set -eo pipefail
+set -e
 
-cd "$(dirname "$0")"
-
-cd ../..
-if [ ! -d build/libarchive ]; then
-	mkdir -p build/libarchive
-fi
+cd "$(dirname "$0")"/../..
+mkdir -p build/libarchive
 cd build/libarchive
 
 if [ ! -f CMakeCache.txt ]; then
