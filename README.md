@@ -35,7 +35,7 @@ You'll need the following:
 * zlib
 
 Once you've installed these dependencies, follow the general instructions and
-replace the `task` command with `./task.sh`.
+replace the `task.ps1` command with `./task.sh`.
 
 ### macOS
 
@@ -44,21 +44,21 @@ You'll need the following:
 * liblzma installed through Homebrew (`/usr/local/opt/xz/lib/liblzma.a`)
 
 Once you've installed these dependencies, follow the general instructions and
-replace the `task` command with `./task.sh`.
+replace the `task.ps1` command with `./task.sh`.
 
 ## Build instructions
 
-Enter `task configure -o` to get a list of available options and their default
-values. The first time you run this command, the `task` script will compile the
+Enter `task.ps1 configure -o` to get a list of available options and their default
+values. The first time you run this command, the `task.ps1` script will compile the
 build system before launching it.
-To modify the listed options, run `task configure option1=value option2=...`.
-If you don't want to modify the options, just run `task configure` without any
+To modify the listed options, run `task.ps1 configure option1=value option2=...`.
+If you don't want to modify the options, just run `task.ps1 configure` without any
 further parameters. This will run a few platform checks necessary before we can
 run any build targets.
 
-To get a list of available build targets, run `task -l`. `client-build` and
+To get a list of available build targets, run `task.ps1 -l`. `client-build` and
 `client-run` are probably the most interesting. To build a target, run
-`task <target>`. It's pretty similar to make: You can pass multiple targets,
+`task.ps1 <target>`. It's pretty similar to make: You can pass multiple targets,
 dependencies are automatically built whenever necessary. If a target's source
 files haven't changed since the last build, it will be skipped.
 

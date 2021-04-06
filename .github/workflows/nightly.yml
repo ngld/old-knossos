@@ -43,25 +43,25 @@ jobs:
         run: del .tools\tool.exe
 
       - name: Configure
-        run: task configure msys2_path=C:\msys64 build=Release
+        run: task.ps1 configure msys2_path=C:\msys64 build=Release
 
       - name: Install dependencies
-        run: task install-tools fetch-deps
+        run: task.ps1 install-tools fetch-deps
 
       - name: Compile API definitions
-        run: task proto-build
+        run: task.ps1 proto-build
 
       - name: Build libarchive
-        run: task libarchive-build
+        run: task.ps1 libarchive-build
 
       - name: Build libknossos
-        run: task libknossos-build
+        run: task.ps1 libknossos-build
 
       - name: Build Knossos
-        run: task client-build
+        run: task.ps1 client-build
 
       - name: Build client UI
-        run: task client-ui-build
+        run: task.ps1 client-ui-build
 
       - name: Compress final build
         run: cd build/client/launcher/Release && 7z a Knossos.7z .
