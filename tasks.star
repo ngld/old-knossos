@@ -388,20 +388,6 @@ def configure():
         ],
     )
 
-    task(
-        "client-ui-css",
-        desc = "Compiles Tailwind CSS for Knossos (only rarely necessary)",
-        base = "packages/client-ui",
-        inputs = [
-            "src/tw-index.css",
-            "tailwind.config.js",
-        ],
-        outputs = [
-            "gen/tw-index.css",
-        ],
-        cmds = [yarn("postcss src/tw-index.css -o gen/tw-index.css")],
-    )
-
     res_dir = ""
     if OS == "darwin":
         res_dir = "knossos.app/Contents/Frameworks/Chromium Embedded Framework.framework/Resources/"
@@ -414,7 +400,6 @@ def configure():
         inputs = ["src/**/*.{ts,tsx,js,css}"],
         outputs = ["../../build/client/launcher/%s/%sui.kar" % (build, res_dir)],
         cmds = [
-            ("NODE_ENV=production",) + yarn("postcss src/tw-index.css -o gen/tw-index.css"),
             yarn("webpack --env production --color --progress"),
             'tool pack-kar "../../build/client/launcher/%s/%sui.kar" dist/prod' % (build, res_dir),
         ],

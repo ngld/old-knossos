@@ -161,8 +161,6 @@ module.exports = function (env, args) {
         'process.env.REACT_APP_BLUEPRINT_NAMESPACE': 'null',
         'global': 'window',
       }),
-      // remove unused exports even in dev mode to avoid ridiculous bundle sizes
-      new webpack.optimize.ModuleConcatenationPlugin(),
       new CleanWebpackPlugin(),
       new MiniCssExtractPlugin({
         filename: 'css/[name].[contenthash].css',
