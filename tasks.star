@@ -454,7 +454,7 @@ def configure():
         env = {
             # cgo only supports gcc, make sure it doesn't try to use a compiler meant for our other packages
             "CC": "gcc",
-            "CGO_LDFLAGS": "-static" if libkn_static == "true" else "",
+            "CGO_LDFLAGS": "-static" if libkn_static == "true" and OS != "darwin" else "",
         },
         cmds = [
             "go build -o ../../build/libknossos/libknossos%s -buildmode c-shared ./api" % libext,

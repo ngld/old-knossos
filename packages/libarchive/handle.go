@@ -2,13 +2,21 @@ package libarchive
 
 // #cgo CFLAGS: -I${SRCDIR}/../../third_party/libarchive
 // #cgo LDFLAGS: -L${SRCDIR}/../../build/libarchive/libarchive
+//
+// // platform specific filename for libarchive
 // #cgo windows LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive_static.a
 // #cgo linux   LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
 // #cgo darwin  LDFLAGS: ${SRCDIR}/../../build/libarchive/libarchive/libarchive.a
+//
+// // look for liblzma in the lib directory from homebrew's xz package
 // #cgo darwin  LDFLAGS: -L/usr/local/opt/xz/lib
-// #cgo LDFLAGS: -Wl,--no-undefined -llzma -lzstd -lz
-// #cgo windows LDFLAGS: -liconv
+//
+// // darwin's ld doesn't understand --no-undefined so skip it there
+// // linux doesn't need iconv since it's part of glibc
+// #cgo windows LDFLAGS: -Wl,--no-undefined -liconv
+// #cgo linux   LDFLAGS: -Wl,--no-undefined
 // #cgo darwin  LDFLAGS: -liconv
+// #cgo         LDFLAGS: -llzma -lzstd -lz
 //
 // #include <stdlib.h>
 // #include <libarchive/archive.h>
