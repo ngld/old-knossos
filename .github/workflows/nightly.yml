@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-2019
     defaults:
       run:
-        shell: cmd
+        shell: pwsh
     steps:
       - name: Git checkout
         uses: actions/checkout@v2
@@ -40,28 +40,28 @@ jobs:
             packages/build-tools/DEPS.stamps
 
       - name: Delete cached build tool
-        run: del .tools\tool.exe
+        run: Remove-Item -Path .tools\tool.exe
 
       - name: Configure
-        run: task.ps1 configure msys2_path=C:\msys64 build=Release
+        run: .\task.ps1 configure msys2_path=C:\msys64 build=Release
 
       - name: Install dependencies
-        run: task.ps1 install-tools fetch-deps
+        run: .\task.ps1 install-tools fetch-deps
 
       - name: Compile API definitions
-        run: task.ps1 proto-build
+        run: .\task.ps1 proto-build
 
       - name: Build libarchive
-        run: task.ps1 libarchive-build
+        run: .\task.ps1 libarchive-build
 
       - name: Build libknossos
-        run: task.ps1 libknossos-build
+        run: .\task.ps1 libknossos-build
 
       - name: Build Knossos
-        run: task.ps1 client-build
+        run: .\task.ps1 client-build
 
       - name: Build client UI
-        run: task.ps1 client-ui-build
+        run: .\task.ps1 client-ui-build
 
       - name: Compress final build
         run: cd build/client/launcher/Release && 7z a Knossos.7z .
