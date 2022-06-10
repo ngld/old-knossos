@@ -75,7 +75,7 @@ else:
 
 # Check if all required modules are available
 check_module('setuptools')
-check_module('PyQt5')
+check_module('PySide6')
 check_module('semantic_version')
 check_module('six')
 check_module('requests')
@@ -85,9 +85,9 @@ check_module('token_bucket')
 
 # We want to use the more modern QtWebEngine by default so we check for that first.
 webkit = False
-if not check_module('PyQt5.QtWebEngineWidgets', required=False):
+if not check_module('PySide6.QtWebEngineWidgets', required=False):
     # If it's not available, we use QtWebKit as a fallback.
-    check_module('PyQt5.QtWebKit')
+    check_module('PySide6.QtWebKit')
     webkit = True
 
     if not os.path.isdir('node_modules/es6-shim'):
@@ -96,11 +96,11 @@ if not check_module('PyQt5.QtWebEngineWidgets', required=False):
     JS_FILES.append('node_modules/es6-shim/package.json')
 else:
     # We need QtWebChannel to communicate with the web page inside QtWebEngine.
-    check_module('PyQt5.QtWebChannel')
+    check_module('PySide6.QtWebChannel')
 
 # Look for the various programs we need.
-pyuic = try_program([[sys.executable, '-mPyQt5.uic.pyuic'], ['pyuic5'], ['pyuic']], 'pyuic')
-pylupdate = try_program([[sys.executable, '-mPyQt5.pylupdate_main'], ['pylupdate5'], ['pylupdate']], 'pylupdate', test_param='-version')
+pyuic = try_program([[sys.executable, '-mPySide6.uic.pyuic'], ['pyuic5'], ['pyuic']], 'pyuic')
+pylupdate = try_program([[sys.executable, '-mPySide6.pylupdate_main'], ['pylupdate5'], ['pylupdate']], 'pylupdate', test_param='-version')
 
 lupdate = find_program(['lupdate-qt5', 'lupdate'], 'lupdate')
 # lrelease = find_program(['lrelease-qt5', 'lrelease'], 'lrelease')

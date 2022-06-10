@@ -94,7 +94,7 @@ class WindowsIntegration(Integration):
     _busy = False
 
     def __init__(self):
-        from PyQt5 import QtWinExtras
+        from PySide6 import QtWinExtras
 
         self._button = QtWinExtras.QWinTaskbarButton()
         self._button.setWindow(center.main_win.win.windowHandle())

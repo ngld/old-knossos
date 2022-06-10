@@ -341,7 +341,7 @@ class HellWindow(Window):
         center.signals.task_launched.disconnect(self.watch_task)
 
         # Trying to free this object usually leads to memory corruption
-        # See http://pyqt.sourceforge.net/Docs/PyQt5/gotchas.html#crashes-on-exit
+        # See http://pyqt.sourceforge.net/Docs/PySide6/gotchas.html#crashes-on-exit
         # Since this is the main window and should only be closed whenever the application exits, skipping this
         # won't lead to memory leaks.
         # super(HellWindow, self)._del()

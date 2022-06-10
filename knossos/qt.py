@@ -22,32 +22,30 @@ import logging
 os.environ['DBUS_FATAL_WARNINGS'] = '0'
 
 try:
-    from PyQt5 import QtCore, QtGui, QtWidgets, QtNetwork
-
+    from PySide6 import QtCore, QtGui, QtWidgets, QtNetwork
+    
     try:
-        from PyQt5 import QtWebChannel, QtWebEngineWidgets
+        from PySide6 import QtWebChannel, QtWebEngineWidgets
 
         try:
-            from PyQt5 import QtWebSockets
+            from PySide6 import QtWebSockets
         except ImportError:
             QtWebSockets = None
     except ImportError:
-        from PyQt5 import QtWebKit, QtWebKitWidgets
+        from PySide6 import QtWebKit, QtWebKitWidgets
 
         QtWebChannel = None
 
         class QtWebEngineWidgets(object):
             QWebEngineView = QtWebKitWidgets.QWebView
 
-    QtCore.Signal = QtCore.pyqtSignal
-    QtCore.Slot = QtCore.pyqtSlot
     QtCore.QString = str
 
     # Success!
-    variant = 'PyQt5'
+    variant = 'PySide6'
 
 except ImportError:
-    logging.exception('I was unable to load Qt! Tried PyQt5.')
+    logging.exception('I was unable to load Qt! Tried PySide6.')
     sys.exit(1)
 
 
