@@ -12,8 +12,6 @@ build
 dist
 version-rthook.py
 /knossos/parser.out
-/knossos/ui/*
-!/knossos/ui/hell.py
 /knossos/data/resources.rcc
 /knossos/data/resources.qrc
 /knossos.egg-info/
