@@ -213,7 +213,7 @@ class Fs2Watcher(threading.Thread):
                     logging.info('Mapping joystick %s => %s (many matched)', sel_guid, joy[0]['guid'])
 
                     cfg['fso']['joystick_guid'] = joy[0]['guid']
-                elif len(candidates) == 0:
+                elif len(candidates) > 0:
                     if len(flags['joysticks']) > sel_id:
                         logging.warning('Mapping joystick %s => %s (based on index)', sel_guid, candidates[sel_id]['guid'])
 
