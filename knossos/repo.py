@@ -766,8 +766,9 @@ class Package(object):
         else:
             logging.error('You are using an unrecognized OS! (%s)' % sys.platform)
 
-        for flag in CPU_INFO['flags']:
-            bvars[flag.lower()] = True
+        if hasattr(CPU_INFO, 'flags'):
+            for flag in CPU_INFO['flags']:
+                bvars[flag.lower()] = True
 
         try:
             return bool_parser.eval_string(self.environment, bvars)
