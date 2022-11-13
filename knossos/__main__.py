@@ -15,6 +15,12 @@
 
 from __future__ import absolute_import, print_function
 import sys
+import multiprocessing
+
+# needed to work properly on windows (due to cpuinfo)
+# NOTE: must be first thing executed here
+if __name__ == '__main__':
+    multiprocessing.freeze_support()
 
 if __package__ is None and not hasattr(sys, 'frozen'):
     import os.path
@@ -31,16 +37,16 @@ if len(sys.argv) > 1 and sys.argv[1] == '--cpuinfo':
     info = None
 
     try:
-        info = cpuinfo.get_cpu_info()
+        info = cpuinfo.get_cpu_info_json()
     except Exception:
         from knossos.launcher import logging
         logging.exception('Failed to retrieve CPU info.')
 
-    print(json.dumps(info))
+    print(info)
 elif len(sys.argv) > 1 and sys.argv[1] == '--run-cpuid':
     from knossos.third_party import cpuinfo
 
-    print(cpuinfo._actual_get_cpu_info_from_cpuid())
+    print(cpuinfo._get_cpu_info_from_cpuid())
 elif len(sys.argv) > 1 and sys.argv[1] == '--deviceinfo':
     import json
     from knossos import clibs
