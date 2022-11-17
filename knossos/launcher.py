@@ -222,6 +222,11 @@ def run_knossos():
             logging.exception('Failed to load local mod list!')
             center.mods.clear()
 
+    # Init SDL at the start to load up video modes, which only works
+    # on the main thread with some OSes (macOS in particular)
+    from knossos import clibs
+    clibs.init_sdl()
+
     center.main_win.start_init()
 
     app.exec_()
