@@ -293,7 +293,7 @@ def get_settings():
     kn_settings = center.settings.copy()
     del kn_settings['hash_cache']
 
-    fso['has_voice'] = sys.platform == 'win32'
+    fso['has_voice'] = sys.platform in ('win32', 'darwin')
 
     return {
         'knossos': kn_settings,

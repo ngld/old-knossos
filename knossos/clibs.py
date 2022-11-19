@@ -409,40 +409,67 @@ def get_gtk_theme():
 
 
 def list_voices():
-    if sys.platform != 'win32':
-        return []
+    if sys.platform == 'win32':
+        try:
+            import win32com.client as cc
+            voice = cc.Dispatch('SAPI.SpVoice')
+            return [v.GetDescription() for v in voice.GetVoices()]
+        except Exception:
+            logging.exception('Failed to retrieve voices!')
+            return []
+    elif sys.platform == 'darwin':
+        try:
+            from AppKit import NSSpeechSynthesizer
+            voices = NSSpeechSynthesizer.availableVoices()
 
-    try:
-        import win32com.client as cc
-        voice = cc.Dispatch('SAPI.SpVoice')
-        return [v.GetDescription() for v in voice.GetVoices()]
-    except Exception:
-        logging.exception('Failed to retrieve voices!')
+            voicenames = []
+            for voice in voices:
+                voiceattr = NSSpeechSynthesizer.attributesForVoice_(voice)
+                voicenames.append(voiceattr['VoiceName'])
+
+            return voicenames
+        except Exception:
+            logging.exception('Failed to retrieve voices!')
+            return []
+    else:
         return []
 
 
 def speak(voice, volume, text):
-    if sys.platform != 'win32':
-        return False
-
-    try:
-        import win32com.client as cc
-
-        hdl = cc.Dispatch('SAPI.SpVoice')
-
-        # We always seem to receive an AttributeError when we try to access
-        # SetVoice the first time. It works the second time for whatever reason... >_>
+    if sys.platform == 'win32':
         try:
-            hdl.SetVoice
-        except AttributeError:
-            pass
+            import win32com.client as cc
 
-        hdl.SetVoice(hdl.GetVoices()[voice])
-        hdl.Volume = volume
-        hdl.Speak(text, 19)
-        hdl.WaitUntilDone(10000)
+            hdl = cc.Dispatch('SAPI.SpVoice')
 
-        return True
-    except Exception:
-        logging.exception('Failed to speak!')
+            # We always seem to receive an AttributeError when we try to access
+            # SetVoice the first time. It works the second time for whatever reason... >_>
+            try:
+                hdl.SetVoice
+            except AttributeError:
+                pass
+
+            hdl.SetVoice(hdl.GetVoices()[voice])
+            hdl.Volume = volume
+            hdl.Speak(text, 19)
+            hdl.WaitUntilDone(10000)
+
+            return True
+        except Exception:
+            logging.exception('Failed to speak!')
+            return False
+    elif sys.platform == 'darwin':
+        try:
+            from AppKit import NSSpeechSynthesizer
+            synth = NSSpeechSynthesizer.alloc().init()
+
+            synth.setVoice_(list(NSSpeechSynthesizer.availableVoices())[voice])
+            synth.setVolume_(volume * 0.01)
+            synth.startSpeakingString_(text)
+
+            return True
+        except Exception:
+            logging.exception('Failed to speak!')
+            return False
+    else:
         return False
