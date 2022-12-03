@@ -16,10 +16,8 @@ export default {
         knossos: {},
         fso: {},
         old_settings: {},
-        sel_joystick: null,
-        ff_enabled: false,
-        joysticks: [],
-        joysticks_loading: false,
+        joylist: [],
+        joylist_loading: false,
 
         neb_logged_in: false,
         neb_user: '',
@@ -40,22 +38,13 @@ export default {
             this.neb_user = this.knossos.neb_user;
             this.neb_logged_in = this.neb_user !== '';
 
-            let joy = this.knossos.joystick;
-            if(joy.guid) {
-                this.sel_joystick = joy.guid + '#' + joy.id;
-            } else {
-                this.sel_joystick = this.fso.joystick_id === 'No Joystick' ? 'No Joystick' : this.fso.joystick_guid + '#' + this.fso.joystick_id;
-            }
-
-            this.ff_enabled = settings.fso.joystick_ff_strength == 100;
-
             this.loading = false;
         });
 
-        this.joysticks_loading = true;
+        this.joylist_loading = true;
         call_async(fs2mod.getJoysticks, (joysticks) => {
-            this.joysticks = joysticks;
-            this.joysticks_loading = false;
+            this.joylist = joysticks;
+            this.joylist_loading = false;
         });
     },
 
@@ -67,13 +56,35 @@ export default {
         },
 
         save() {
-            this.fso.joystick_ff_strength = this.ff_enabled ? 100 : 0;
-            let joystick = this.sel_joystick.split('#');
-            if(joystick.length < 2) {
-                this.fso.joystick_id = 99999;
-            } else {
-                this.fso.joystick_guid = joystick[0];
-                this.fso.joystick_id = joystick[1];
+            // SDL device index could always change, so don't depend on it. We do
+            // use it as a fallback however and need to keep track of it to an extent.
+            // So try to find guid in currently connected joysticks and set the device
+            // index to match.
+            for (let j = 0; j < this.fso.joysticks.length; ++j) {
+                if (this.fso.joysticks[j].guid) {
+                    const joy = this.joylist.find(item => item[0] === this.fso.joysticks[j].guid);
+
+                    // update index if found, otherwise we just keep the existing value
+                    if (!joy) continue;
+
+                    const [guid, id, name] = joy;
+
+                    // skip if item is a previously configured entry
+                    if (!Number.isInteger(id) || id == -1) continue;
+
+                    this.fso.joysticks[j].id = id;
+
+                    // also save this to knossos config so that we can still see what
+                    // joystick is configured even when not currently connected
+                    this.knossos.joysticks[`joy${j}`].name = name;
+                    this.knossos.joysticks[`joy${j}`].guid = guid;
+                } else {
+                    // 'No Joystick'
+                    this.fso.joysticks[j].id = '';
+
+                    this.knossos.joysticks[`joy${j}`].name = '';
+                    this.knossos.joysticks[`joy${j}`].guid = '';
+                }
             }
 
             if(this.knossos.base_path !== this.old_settings.knossos.base_path) {
@@ -88,6 +99,9 @@ export default {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
                 }
             }
+
+            // always save this (easier than checking for changes)
+            fs2mod.saveSetting('joysticks', JSON.stringify(this.knossos['joysticks']))
 
             let fso = Object.assign({}, this.fso);
             for(let key of Object.keys(this.old_settings.fso)) {
@@ -149,6 +163,21 @@ export default {
                 }
             });
         },
+
+        isJoySelected(exclude_id, guid) {
+            let selected = false;
+
+            for (let j = 0; j < this.fso.joysticks.length; ++j) {
+                if (j == exclude_id) continue;
+
+                if (guid == this.fso.joysticks[j].guid) {
+                    selected = true;
+                    break;
+                }
+            }
+
+            return selected
+        }
     }
 };
 </script>
@@ -428,38 +457,40 @@ export default {
         <div class="col-sm-6">
             <kn-drawer label="Joystick">
                 <div class="settings-exp drawer-exp">Setup and calibrate your joystick</div>
-                <div class="form-group">
-                    <label class="col-sm-4 control-label">Joystick:</label>
-                    <div class="col-sm-8">
-                        <div v-if="joysticks_loading">Loading...</div>
-                        <select v-else v-model="sel_joystick">
-                            <option>No Joystick</option>
-                            <option v-for="joy in joysticks" :value="joy[0] + '#' + joy[1]" :key="joy[0] + '#' + joy[1]">{{ joy[2] }}</option>
-                        </select>
+                <template v-for="(joystick, idx) in fso.joysticks">
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">Joy-{{ idx }}:</label>
+                        <div class="col-sm-8">
+                            <div v-if="joylist_loading">Loading...</div>
+                            <select v-else v-model="fso.joysticks[idx].guid">
+                                <option value="">None / Autodetect</option>
+                                <option v-for="joy in joylist" :value="joy[0]" :key="joy[0]" v-bind:disabled="isJoySelected(idx, joy[0])">{{ joy[2] }}</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
-
-                <!--
-        <div class="form-group">
-            <div class="col-sm-8 col-sm-offset-5">
-                <button disabled>Detect</button>
-                <button disabled>Calibrate</button>
-            </div>
-        </div>
-        -->
-
-                <div class="form-group">
-                    <div class="col-sm-4 col-sm-offset-4">
-                        Force Feedback:
-                        <!-- TODO: This should be a slider -->
-                        <input type="checkbox" v-model="ff_enabled">
-                    </div>
-                    <div class="col-sm-4">
-                        Directional Hit:
-                        <input type="checkbox" v-model="fso.joystick_enable_hit">
-                    </div>
-                </div>
+                    <!--
+                        haptic/force feedback is currently only supported on the first joystick
+                        so let's only show the options for it on the first entry
+                    -->
+                    <template v-if="(idx == 0)">
+                        <div class="form-group">
+                            <div class="col-sm-4 col-sm-offset-4">
+                                Force Feedback:
+                                <input type="checkbox" v-model="fso.joystick_ff">
+                            </div>
+                            <div class="col-sm-4">
+                                Directional Hit:
+                                <input type="checkbox" v-model="fso.joystick_enable_hit">
+                            </div>
+                            <div class="col-sm-8 col-sm-offset-4">
+                                Strength:
+                                <input type="range" min="0" max="100" style="display: inline-block; width: 70%; vertical-align: middle;" v-model="fso.joystick_ff_strength">
+                            </div>
+                        </div>
+                    </template>
+                </template>
             </kn-drawer>
+
             <kn-drawer label="Nebula">
                 <div class="settings-exp drawer-exp">Login and manage your Nebula credentials</div>
 

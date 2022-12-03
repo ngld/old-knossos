@@ -150,88 +150,21 @@ class Fs2Watcher(threading.Thread):
         cfg = settings.get_settings()
         settings.save_fso_settings(cfg['fso'])
 
-        if not cfg['fso']['joystick_guid']:
-            # No joystick selected
-            return True
+        # Previous logic here would detect if the configured joystick was currently
+        # attached and if not then attempt to find and set another joystick as active.
+        # This is problematic since the new joystick, if one is found, may not match
+        # the capabilities of the configured joystick and lead to unexpected control
+        # issues in-game. Not to mention that it requires the player to exit back to
+        # Knossos and reconfigure their joystick to 'fix' the changed joystick. In
+        # older builds this could also lead to a complaint loop if the knossos config
+        # doesn't already have joystick info saved in it.
+        #
+        # Instead, let's trust in FSO's error/fallback handling here and just stay out
+        # of the way. FSO builds since late-2016 allow for joysticks being added/removed
+        # at runtime which offers the player the perfect chance to remedy the situation.
+        # Earlier builds, and even retail, should be able to handle missing joysticks
+        # fine by simply not using one or having a decent fallback.
 
-        sel_guid = cfg['fso']['joystick_guid']
-        found_joystick = False
-        flags = settings.get_fso_flags(fs2_bin)
-        joysticks = settings.get_joysticks()
-        if 'joysticks' in flags:
-            for joy in flags['joysticks']:
-                if joy['guid'] == sel_guid:
-                    found_joystick = True
-                    break
-        else:
-            # Old build, use our own joystick list
-            for joy in joysticks:
-                if joy[0] == sel_guid:
-                    found_joystick = True
-                    break
-
-        if found_joystick:
-            # Everything's fine
-            # NOTE: The config already exists in this case since a joystick was selected.
-            return True
-
-        sel_guid = center.settings['joystick']['guid']
-        try:
-            sel_id = int(center.settings['joystick']['id'])
-        except ValueError:
-            sel_id = 9999
-
-        sel_name = None
-        if 'joysticks' not in flags:
-            if not sel_guid:
-                self.complain_joystick()
-                return False
-
-            # Old build, just use our stored values
-            cfg['fso']['joystick_guid'] = sel_guid
-            cfg['fso']['joystick_id'] = sel_id
-
-            logging.info('Detected old build, used joystick GUID from Knossos settings')
-        elif not sel_guid:
-            self.complain_joystick()
-            return False
-        else:
-            # Try to guess the correct GUID and ID by using our own GUID and ID as basis
-            candidates = []
-            for joy in joysticks:
-                if joy[0] == sel_guid and joy[1] == sel_id:
-                    sel_name = joy[2]
-                    break
-
-            for i, joy in enumerate(flags['joysticks']):
-                if joy['name'] == sel_name:
-                    candidates.append((i, joy))
-
-            if len(flags['joysticks']) == 0:
-                logging.info('Skipped joystick mapping because no joysticks were detected.')
-                return True
-
-            if len(candidates) == 1:
-                # This is easy!
-                logging.info('Mapping joystick %s (%d) => %s (%d)', sel_guid, sel_id, candidates[0][1]['guid'], candidates[0][0])
-
-                cfg['fso']['joystick_guid'] = candidates[0][1]['guid']
-                cfg['fso']['joystick_id'] = candidates[0][0]
-            else:
-                joy = [j[1] for j in candidates if j[0] == sel_id]
-                if joy:
-                    logging.info('Mapping joystick %s => %s (many matched)', sel_guid, joy[0]['guid'])
-
-                    cfg['fso']['joystick_guid'] = joy[0]['guid']
-                elif len(candidates) > 0:
-                    if len(flags['joysticks']) > sel_id:
-                        logging.warning('Mapping joystick %s => %s (based on index)', sel_guid, candidates[sel_id]['guid'])
-
-                        cfg['fso']['joystick_guid'] = candidates[sel_id]['guid']
-                    else:
-                        logging.error('Joystick mapping failed!')
-
-        settings.save_fso_settings(cfg['fso'])
         return True
 
     @run_in_qt
