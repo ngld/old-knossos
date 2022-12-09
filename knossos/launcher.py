@@ -214,13 +214,6 @@ def run_knossos():
     repo.CPU_INFO = util.get_cpuinfo()
 
     integration.init()
-    mod_db = os.path.join(center.settings_path, 'mods.json')
-    if os.path.isfile(mod_db):
-        try:
-            center.mods.load_json(mod_db)
-        except Exception:
-            logging.exception('Failed to load local mod list!')
-            center.mods.clear()
 
     center.main_win.start_init()
 
