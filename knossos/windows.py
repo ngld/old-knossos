@@ -605,7 +605,8 @@ class HellWindow(Window):
             integration.current.set_progress(pi[0])
 
         if len(task.mods) == 0 and self._prg_visible:
-            self.win.progressBar.setValue(pi[0] * 100)
+            self.win.progressLabel.setText(task.title + ' ' + pi[2])
+            self.win.progressBar.setValue(int(pi[0] * 100))
 
     def _forget_task(self, task):
         tid = id(task)

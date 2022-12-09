@@ -311,10 +311,7 @@ class Task(QtCore.QObject):
 
                 self.progress.emit((total / max(1, len(self._slot_prog)), self._slot_prog, self.title))
             else:
-                if self._work_count == 1:
-                    self.progress.emit((prog, {}, self.title))
-                else:
-                    self.progress.emit((self._res_count / self._work_count, {}, self.title))
+                self.progress.emit((prog, {}, text))
 
     def post(self, result):
         with self._result_lock:

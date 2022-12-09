@@ -56,7 +56,7 @@ class FetchTask(progress.MultistepTask):
         pass
 
     def work1(self, part):
-        progress.update(0.1, 'Fetching "%s"...' % part)
+        progress.update(0.01, '')
 
         try:
             data = Repo()
@@ -104,6 +104,7 @@ class FetchTask(progress.MultistepTask):
                     os.unlink(dest_path + '.tmp')
 
                 with open(dest_path, 'r') as dest:
+                    progress.update(0.9, 'loading, please wait...')
                     data.parse(dest.read())
 
                 self._public = data

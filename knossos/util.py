@@ -446,8 +446,8 @@ def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=Fa
                         text = format_bytes(speed) + '/s, '
                         text += time.strftime('%M:%S', time.gmtime((size - by_done) / speed)) + ' left'
                     else:
-                        p = 0
-                        text = ''
+                        p = 1
+                        text = format_bytes(sc.get_speed()) + '/s, <unknown>'
                     progress.update(p, text)
 
                 if _DL_CANCEL.is_set():
