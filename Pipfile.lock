@@ -27,6 +27,7 @@
                 "sha256:35824b4c3a97115964b408844d64aa14db1cc518f6562e8d7261699d1350a9e3",
                 "sha256:4ad3232f5e926d6718ec31cfc1fcadfde020920e278684144551c91769c7bc18"
             ],
+            "markers": "python_version >= '3.6'",
             "version": "==2022.12.7"
         },
         "chardet": {
@@ -121,7 +122,7 @@
         },
         "pywin32": {
             "sys_platform": "== 'win32'",
-            "version": "==228"
+            "version": "==301"
         },
         "raven": {
             "hashes": [
