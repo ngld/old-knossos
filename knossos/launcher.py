@@ -208,7 +208,7 @@ def run_knossos():
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()
-    center.auto_fetcher = auto_fetch.AutoFetcher()
+    center.auto_fetcher = auto_fetch.AutoFetcher(center.settings['fetch_interval'])
 
     # This has to run before we can load any mods!
     repo.CPU_INFO = util.get_cpuinfo()

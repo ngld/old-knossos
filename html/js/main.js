@@ -222,6 +222,10 @@ function init() {
         vm.popup_progress_message = msg;
     });
 
+    fs2mod.statusMessage.connect((msg) => {
+        vm.status_message = msg;
+    });
+
     fs2mod.fs2Launching.connect((msg) => {
         vm.status_message = 'FSO is launching...';
     });

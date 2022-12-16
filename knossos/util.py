@@ -305,6 +305,34 @@ def format_bytes(value):
     return str(round(value)) + ' ' + unit
 
 
+def head(link, headers=None, random_ua=False, timeout=60):
+    global HTTP_SESSION
+
+    if random_ua:
+        if headers is None:
+            headers = {}
+
+        headers['User-Agent'] = get_user_agent(True)
+
+    result = None
+
+    try:
+        result = HTTP_SESSION.head(link, headers=headers, timeout=timeout, allow_redirects=True)
+
+        if result.status_code == 304:
+            return 304
+        elif result.status_code != 200:
+            result.raise_for_status()
+    except Exception:
+        if result is None:
+            logging.exception('Failed to load "%s"!', link)
+        else:
+            logging.error('Failed to load "%s"! (%d %s)', link, result.status_code, result.reason)
+        return None
+
+    return result
+
+
 def get(link, headers=None, random_ua=False, raw=False, timeout=60):
     global HTTP_SESSION
 

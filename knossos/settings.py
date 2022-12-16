@@ -716,6 +716,9 @@ def save_setting(name, value):
             logging.getLogger().setLevel(logging.DEBUG)
         else:
             logging.getLogger().setLevel(logging.INFO)
+    elif name == 'fetch_interval':
+        if value != center.settings['fetch_interval']:
+            center.auto_fetcher.set_interval(value)
 
     refresh_mod_list = False
     if name == 'show_fs2_mods_without_retail':

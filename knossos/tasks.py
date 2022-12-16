@@ -44,11 +44,14 @@ class FetchTask(progress.MultistepTask):
     _public = None
     _private = None
     _steps = 2
+    _check_only = False
+    _has_update = False
 
-    def __init__(self):
+    def __init__(self, check_only=False):
         super(FetchTask, self).__init__()
         self.title = 'Fetching mod list...'
         self.done.connect(self.finish)
+        self._check_only = check_only
 
         self.add_work(['#public', '#private'])
 
@@ -63,6 +66,9 @@ class FetchTask(progress.MultistepTask):
             data.is_link = True
 
             if part == '#private':
+                if self._check_only and not center.mods.empty():
+                    return
+
                 if not center.settings['neb_user']:
                     return
 
@@ -73,35 +79,57 @@ class FetchTask(progress.MultistepTask):
                 data.set(mods)
                 self._private = data
             elif part == '#public':
-                raw_data = None
                 dest_path = os.path.join(center.settings_path, 'mods.json')
                 headers = {}
+
+                # force download if in manual mode and we don't have a mod list already
+                if self._check_only and not os.path.isfile(dest_path):
+                    self._check_only = False
 
                 if os.path.isfile(dest_path + '.etag') and os.path.isfile(dest_path):
                     with open(dest_path + '.etag', 'r') as hdl:
                         headers['If-None-Match'] = hdl.read()
 
-                with open(dest_path + '.tmp', 'wb') as dest:
+                if self._check_only:
                     for link in center.REPOS:
-                        result = util.download(link, dest, headers, get_etag=True)
-                        if result == 304 or result:
+                        result = util.head(link, headers)
+
+                        # if no change and list is already loaded then just bail
+                        if result == 304 and not center.mods.empty():
+                            return
+                        elif result:
+                            self._has_update = result != 304
                             data.base = link
-
-                            if result not in (304, True):
-                                # We got an ETag
-                                with open(dest_path + '.etag', 'w') as hdl:
-                                    hdl.write(result)
-
                             break
-
-                info = os.stat(dest_path + '.tmp')
-                if info.st_size > 0:
-                    if os.path.isfile(dest_path):
-                        os.unlink(dest_path)
-
-                    os.rename(dest_path + '.tmp', dest_path)
                 else:
-                    os.unlink(dest_path + '.tmp')
+                    with open(dest_path + '.tmp', 'wb') as dest:
+                        for link in center.REPOS:
+                            result = util.download(link, dest, headers, get_etag=True)
+
+                            if result == 304:
+                                break
+                            elif result:
+                                data.base = link
+
+                                if result not in (304, True):
+                                    # We got an ETag
+                                    with open(dest_path + '.etag', 'w') as hdl:
+                                        hdl.write(result)
+
+                                break
+
+                    info = os.stat(dest_path + '.tmp')
+                    if info.st_size > 0:
+                        if os.path.isfile(dest_path):
+                            os.unlink(dest_path)
+
+                        os.rename(dest_path + '.tmp', dest_path)
+                    else:
+                        os.unlink(dest_path + '.tmp')
+
+                        # nothing new, so maybe don't reload current list
+                        if not center.mods.empty():
+                            return
 
                 with open(dest_path, 'r') as dest:
                     data.parse(dest.read())
@@ -132,6 +160,9 @@ class FetchTask(progress.MultistepTask):
     def finish(self):
         if not self.aborted:
             center.main_win.update_mod_list()
+
+            if self._has_update:
+                center.main_win.browser_ctrl.bridge.statusMessage.emit("Mod list update available. Click the refresh button to download...")
 
 
 class LoadLocalModsTask(progress.Task):
