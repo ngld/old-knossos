@@ -35,7 +35,7 @@ WEB = 'https://fsnebula.org/'
 REPOS = [
     'https://cf.fsnebula.org/storage/repo.json',
     'https://fsnebula.org/storage/repo.json',
-    'https://porphyrion.feralhosting.com/datacorder/nebula/repo.json'
+    'https://aigaion.feralhosting.com/discovery/nebula/repo.json'
 ]
 
 LANGUAGES = {
