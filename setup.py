@@ -107,7 +107,7 @@ setup(
 
     keywords='fso freespace',
     packages=['knossos', 'knossos.ui', 'knossos.third_party'],
-    install_requires=['six', 'requests', 'requests_toolbelt', 'ply', 'semantic_version', 'raven', 'PyQt5', 'token_bucket'],
+    install_requires=['six', 'requests', 'requests_toolbelt', 'ply', 'semantic_version', 'PyQt5'],
 
     # List additional groups of dependencies here (e.g. development dependencies).
     # You can install these using the following syntax, for example:

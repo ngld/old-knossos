@@ -16,23 +16,25 @@
 from __future__ import absolute_import, print_function
 import sys
 import multiprocessing
+import os.path
 
 # needed to work properly on windows (due to cpuinfo)
 # NOTE: must be first thing executed here
 if __name__ == '__main__':
     multiprocessing.freeze_support()
 
-if __package__ is None and not hasattr(sys, 'frozen'):
-    import os.path
-    path = os.path.realpath(os.path.abspath(__file__))
-    sys.path.insert(0, os.path.dirname(os.path.dirname(path)))
+# add third_party to module search path
+path = os.path.realpath(os.path.abspath(__file__))
+sys.path.insert(1, os.path.join(os.path.dirname(path), 'third_party'))
 
+if __package__ is None and not hasattr(sys, 'frozen'):
+    sys.path.insert(0, os.path.dirname(os.path.dirname(path)))
 
 if len(sys.argv) > 1 and sys.argv[1] == '--cpuinfo':
     # We don't need to initialize knossos if we only need to fetch the CPU info.
 
     import json
-    from knossos.third_party import cpuinfo
+    import cpuinfo
 
     info = None
 
@@ -44,7 +46,7 @@ if len(sys.argv) > 1 and sys.argv[1] == '--cpuinfo':
 
     print(info)
 elif len(sys.argv) > 1 and sys.argv[1] == '--run-cpuid':
-    from knossos.third_party import cpuinfo
+    import cpuinfo
 
     print(cpuinfo._get_cpu_info_from_cpuid())
 elif len(sys.argv) > 1 and sys.argv[1] == '--deviceinfo':

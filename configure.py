@@ -81,7 +81,6 @@ check_module('six')
 check_module('requests')
 check_module('requests_toolbelt')
 check_module('ply')
-check_module('token_bucket')
 
 # We want to use the more modern QtWebEngine by default so we check for that first.
 webkit = False

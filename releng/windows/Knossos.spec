@@ -48,7 +48,7 @@ for p in (r'C:\Program Files (x86)\Windows Kits\10\Redist\ucrt\DLLs', r'C:\Progr
         crt_path = p
         break
 
-pathex = []
+pathex = ['../../knossos/third_party']
 if crt_path:
     pathex.append(crt_path)
 

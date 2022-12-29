@@ -10,7 +10,7 @@ RUN apt-get update && apt-get upgrade -y && \
 	echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list && \
 	add-apt-repository ppa:ngld/knossos && \
 	apt-get update && \
-	apt-get install -y python3-token-bucket yarn dh-python
+	apt-get install -y yarn dh-python
 
 RUN useradd -mG sudo packager && \
 	echo '%sudo ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers && \
