@@ -1432,7 +1432,15 @@ class WebBridge(QtCore.QObject):
             filter_ = '*'
 
         res = QtWidgets.QFileDialog.getOpenFileNames(None, 'Please select your FSO build', None, filter_)
+
         if res and len(res[0]) > 0:
+            # The file dialog on mac doesn't allow picking a file inside of an app bundle
+            # and we need to point to the executable within it. This fixup assumes that
+            # the executable filename matches the bundle name
+            if sys.platform == 'darwin' and res[0][0].endswith('.app'):
+                fn = os.path.splitext(os.path.basename(res[0][0]))[0]
+                return os.path.join(res[0][0], 'Contents', 'MacOS', fn)
+
             return res[0][0]
         else:
             return ''
