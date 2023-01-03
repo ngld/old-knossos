@@ -15,7 +15,6 @@
 from __future__ import absolute_import, print_function
 
 import sys
-import os.path
 import logging
 import ctypes.util
 import threading
@@ -109,12 +108,16 @@ def double_zero_string(val):
     return data
 
 
+# SDL constants
+SDL_INIT_VIDEO = 0x00000020
+SDL_INIT_JOYSTICK = 0x00000200
+
 def init_sdl():
-    global sdl, get_modes, list_joysticks, list_guid_joysticks, get_config_path
+    global sdl
 
     with sdl_init_lock:
         if sdl:
-            return
+            return True
 
         if center.settings['sdl2_path']:
             try:
@@ -131,11 +134,11 @@ def init_sdl():
                     logging.exception('Failed to load bundled SDL2!')
 
         if not sdl:
-            sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
+            try:
+                sdl = load_lib('libSDL2-2.0.so.0', 'SDL2', 'SDL2.dll', 'libSDL2.dylib')
+            except Exception:
+                return False
 
-        # SDL constants
-        SDL_INIT_VIDEO = 0x00000020
-        SDL_INIT_JOYSTICK = 0x00000200
 
         # SDL.h
         sdl.SDL_SetMainReady.argtypes = []
@@ -215,51 +218,67 @@ def init_sdl():
                 sdl.SDL_VideoQuit()
                 sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
 
-        def get_modes():
-            return sdl.video_modes
+        return True
 
-        def list_joysticks():
-            if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
-                logging.error('Failed to init SDL\'s joystick subsystem!')
-                logging.error(sdl.SDL_GetError())
-                return []
 
-            joys = []
-            for i in range(sdl.SDL_NumJoysticks()):
-                joys.append(sdl.SDL_JoystickNameForIndex(i).decode(ENCODING))
+def get_modes():
+    if not sdl:
+        return []
 
-            sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
-            return joys
+    return sdl.video_modes
 
-        def list_guid_joysticks():
-            if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
-                logging.error('Failed to init SDL\'s joystick subsystem!')
-                logging.error(sdl.SDL_GetError())
-                return []
+def list_joysticks():
+    if not sdl:
+        return []
 
-            joys = []
-            buf = ctypes.create_string_buffer(33)
-            for i in range(sdl.SDL_NumJoysticks()):
-                guid = sdl.SDL_JoystickGetDeviceGUID(i)
-                sdl.SDL_JoystickGetGUIDString(guid, buf, 33)
+    if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
+        logging.error('Failed to init SDL\'s joystick subsystem!')
+        logging.error(sdl.SDL_GetError())
+        return []
 
-                guid_str = buf.raw.decode(ENCODING).strip('\x00')
-                name = sdl.SDL_JoystickNameForIndex(i).decode(ENCODING)
-                joys.append((guid_str, i, name))
+    joys = []
+    for i in range(sdl.SDL_NumJoysticks()):
+        joys.append(sdl.SDL_JoystickNameForIndex(i).decode(ENCODING))
 
-            sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
+    sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
+    return joys
 
-            # add previously configured joysticks to list if they aren't currently connected
-            for _,item in center.settings['joysticks'].items():
-                if item['guid'] and item['name']:
-                    if item['guid'] not in [joy[0] for joy in joys]:
-                        joys.append((item['guid'], -1, item['name']))
+def list_guid_joysticks():
+    if not sdl:
+        return []
 
-            return joys
+    if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
+        logging.error('Failed to init SDL\'s joystick subsystem!')
+        logging.error(sdl.SDL_GetError())
+        return []
 
-        def get_config_path():
-            # See https://github.com/scp-fs2open/fs2open.github.com/blob/master/code/osapi/osapi.cpp
-            return sdl.SDL_GetPrefPath(b'HardLightProductions', b'FreeSpaceOpen').decode('utf8')
+    joys = []
+
+    buf = ctypes.create_string_buffer(33)
+    for i in range(sdl.SDL_NumJoysticks()):
+        guid = sdl.SDL_JoystickGetDeviceGUID(i)
+        sdl.SDL_JoystickGetGUIDString(guid, buf, 33)
+
+        guid_str = buf.raw.decode(ENCODING).strip('\x00')
+        name = sdl.SDL_JoystickNameForIndex(i).decode(ENCODING)
+        joys.append((guid_str, i, name))
+
+    sdl.SDL_QuitSubSystem(SDL_INIT_JOYSTICK)
+
+    # add previously configured joysticks to list if they aren't currently connected
+    for _,item in center.settings['joysticks'].items():
+        if item['guid'] and item['name']:
+            if item['guid'] not in [joy[0] for joy in joys]:
+                joys.append((item['guid'], -1, item['name']))
+
+    return joys
+
+def get_config_path():
+    if not sdl:
+        raise Exception('SDL2 not found! Unable to get path!')
+
+    # See https://github.com/scp-fs2open/fs2open.github.com/blob/master/code/osapi/osapi.cpp
+    return sdl.SDL_GetPrefPath(b'HardLightProductions', b'FreeSpaceOpen').decode('utf8')
 
 
 # OpenAL constants
@@ -271,11 +290,11 @@ ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER = 0x311
 
 
 def init_openal():
-    global alc, dev, ctx
+    global alc
 
     with alc_init_lock:
         if alc:
-            return
+            return True
 
         # Load OpenAL
         if center.settings['openal_path']:
@@ -364,6 +383,9 @@ def init_gtk():
 
 
 def can_detect_audio():
+    if not alc:
+        return False
+
     return alc.alcIsExtensionPresent(None, b'ALC_ENUMERATION_EXT')
 
 
