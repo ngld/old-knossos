@@ -88,8 +88,8 @@ class FetchTask(progress.MultistepTask):
                             data.base = link
 
                             if result not in (304, True):
-                                # We got an ETag
-                                with open(dest_path + '.etag', 'w') as hdl:
+                                # We got an ETag, write it to a temp file
+                                with open(dest_path + '.etag.tmp', 'w') as hdl:
                                     hdl.write(result)
 
                             break
@@ -105,6 +105,14 @@ class FetchTask(progress.MultistepTask):
 
                 with open(dest_path, 'r') as dest:
                     data.parse(dest.read())
+
+                # We've successfully parsed the downloaded data,
+                # so we know we've got a complete mods.json.
+                # It's now safe to replace the existing etag file.
+                if os.path.isfile(dest_path + '.etag'):
+                    os.unlink(dest_path)
+                
+                os.rename(dest_path + '.etag.tmp', dest_path + '.etag')
 
                 self._public = data
 
