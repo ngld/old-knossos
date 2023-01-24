@@ -124,7 +124,7 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'gui_scripts': [
-            'knossos=knossos.launcher:main',
+            'knossos=knossos.__main__:main',
         ]
     }
 )
