@@ -190,29 +190,33 @@ def init_sdl():
         sdl.SDL_GetPrefPath.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         sdl.SDL_GetPrefPath.restype = ctypes.c_char_p
 
+        # default video modes
+        sdl.video_modes = []
+
         sdl.SDL_SetMainReady()
         if sdl.SDL_Init(0) != 0:
             logging.error('Failed to init SDL!')
             logging.error(sdl.SDL_GetError())
-
-        def get_modes():
+        else:
+            # Video init can fail if done in a separate thread, so just load it now
+            # to get video modes and store them for use later on
             if sdl.SDL_InitSubSystem(SDL_INIT_VIDEO) < 0 or sdl.SDL_VideoInit(None) < 0:
                 logging.error('Failed to init SDL\'s video subsystem!')
                 logging.error(sdl.SDL_GetError())
-                return []
+            else:
+                for i in range(sdl.SDL_GetNumVideoDisplays()):
+                    for a in range(sdl.SDL_GetNumDisplayModes(i)):
+                        m = SDL_DisplayMode()
+                        sdl.SDL_GetDisplayMode(i, a, ctypes.byref(m))
 
-            modes = []
-            for i in range(sdl.SDL_GetNumVideoDisplays()):
-                for a in range(sdl.SDL_GetNumDisplayModes(i)):
-                    m = SDL_DisplayMode()
-                    sdl.SDL_GetDisplayMode(i, a, ctypes.byref(m))
+                        if (m.w, m.h) not in sdl.video_modes:
+                            sdl.video_modes.append((m.w, m.h))
 
-                    if (m.w, m.h) not in modes:
-                        modes.append((m.w, m.h))
+                sdl.SDL_VideoQuit()
+                sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
 
-            sdl.SDL_VideoQuit()
-            sdl.SDL_QuitSubSystem(SDL_INIT_VIDEO)
-            return modes
+        def get_modes():
+            return sdl.video_modes
 
         def list_joysticks():
             if sdl.SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0:
