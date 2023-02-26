@@ -82,7 +82,7 @@ export default {
 
             for(let set of [
                 'max_downloads', 'use_raven', 'engine_stability', 'download_bandwidth', 'update_notify',
-                'custom_bar', 'show_fs2_mods_without_retail', 'debug_log',  'show_fso_builds'
+                'custom_bar', 'show_fs2_mods_without_retail', 'debug_log',  'show_fso_builds', 'fetch_interval'
             ]) {
                 if(this.knossos[set] != this.old_settings.knossos[set]) {
                     fs2mod.saveSetting(set, JSON.stringify(this.knossos[set]));
@@ -177,6 +177,17 @@ export default {
                     <label class="col-sm-4 control-label">Update Notifications:</label>
                     <div class="col-sm-8">
                         <input type="checkbox" v-model="knossos.update_notify">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label">Update Interval:</label>
+                    <div class="col-sm-8">
+                        <select v-model="knossos.fetch_interval">
+                            <option value="hourly">Hourly</option>
+                            <option value="daily">Daily</option>
+                            <option value="manual">Manual</option>
+                        </select>
                     </div>
                 </div>
 

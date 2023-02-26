@@ -105,6 +105,7 @@ export default {
         },
 
         updateList() {
+            this.status_message = '';
             fs2mod.fetchModlist();
         },
 

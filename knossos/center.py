@@ -42,6 +42,13 @@ LANGUAGES = {
     'en': 'English'
 }
 
+FETCH_INTERVALS = {
+    'manual':  0, # special case, must be 0
+    'hourly':  60 * 60,
+    'daily':   60 * 60 * 24
+}
+
+
 app = None
 main_win = None
 fs2_watcher = None
@@ -68,6 +75,7 @@ settings = {
     'api_override': None,
     'web_override': None,
     'update_notify': True,
+    'fetch_interval': 'hourly',
     'use_raven': True,
     'sdl2_path': None,
     'openal_path': None,

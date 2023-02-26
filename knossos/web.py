@@ -84,6 +84,8 @@ class WebBridge(QtCore.QObject):
     taskFinished = QtCore.Signal(float)
     taskMessage = QtCore.Signal(str)
 
+    statusMessage = QtCore.Signal(str)
+
     fs2Launching = QtCore.Signal()
     fs2Launched = QtCore.Signal()
     fs2Quit = QtCore.Signal()

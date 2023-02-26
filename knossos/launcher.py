@@ -208,19 +208,12 @@ def run_knossos():
     center.pmaster = progress.Master()
     center.pmaster.start_workers(10)
     center.mods = repo.Repo()
-    center.auto_fetcher = auto_fetch.AutoFetcher()
+    center.auto_fetcher = auto_fetch.AutoFetcher(center.settings['fetch_interval'])
 
     # This has to run before we can load any mods!
     repo.CPU_INFO = util.get_cpuinfo()
 
     integration.init()
-    mod_db = os.path.join(center.settings_path, 'mods.json')
-    if os.path.isfile(mod_db):
-        try:
-            center.mods.load_json(mod_db)
-        except Exception:
-            logging.exception('Failed to load local mod list!')
-            center.mods.clear()
 
     center.main_win.start_init()
 
