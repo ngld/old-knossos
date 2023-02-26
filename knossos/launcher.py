@@ -309,6 +309,10 @@ def main():
 
     logging.info('Running Knossos %s on %s and Python %s.', center.VERSION, qt_variant, sys.version)
     logging.info('OpenSSL version: %s', ssl.OPENSSL_VERSION)
+
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
+
     app = QtWidgets.QApplication([])
 
     res_path = get_file_path('resources.rcc')
