@@ -429,6 +429,8 @@ def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=Fa
     if continue_:
         headers['Range'] = 'bytes=%d-' % dest.tell()
 
+    size = 0
+
     with DL_POOL:
         if _DL_CANCEL.is_set():
             return False
@@ -460,6 +462,10 @@ def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=Fa
 
         if result.status_code != 206 or not continue_:
             dest.seek(0)
+        elif size > 0:
+            # Since content-length is the remainder of the data to get, add in what we've already
+            # downloaded so that our progress math is correct
+            size += dest.tell()
 
         try:
             sc = SpeedCalc()
@@ -494,6 +500,12 @@ def download(link, dest, headers=None, random_ua=False, timeout=60, continue_=Fa
                 })
             except Exception:
                 pass
+
+    # Make sure we actually got the entire file. If not then try again, hopefully
+    # continuing where we left off
+    if size > 0 and dest.tell() < int(size):
+        logging.warn('Download of "%s" was cut off with %d bytes to go! Retrying...', link, size - dest.tell())
+        return download(link, dest, headers, False, timeout, True, get_etag)
 
     if get_etag:
         return result.headers.get('etag', True)
