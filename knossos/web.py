@@ -1325,6 +1325,7 @@ class WebBridge(QtCore.QObject):
             return True
         else:
             QtWidgets.QMessageBox.critical(None, 'Knossos', 'Login failed.')
+            return False
 
     @QtCore.Slot(result=bool)
     def nebLogout(self):
