@@ -104,7 +104,7 @@ class Fs2Watcher(threading.Thread):
                         # Not a clean solution but shlex.quote doesn't work on Windows
                         # and escaping like this should be fine for FSO parameters
                         hdl.write('@' + ' '.join(['"%s"' % p for p in [fso_bin] + self._params[1:]]) + '\n')
-                else if name.lower().startswith('qtfred') and not os.path.isfile(launch_script):
+                elif name.lower().startswith('qtfred') and not os.path.isfile(launch_script):
                     fso_bin = os.path.join(os.path.dirname(fs2_bin), name.lower().replace('qtfred', 'fs2_open'))
 
                     with open(launch_script, 'w', errors='replace') as hdl:

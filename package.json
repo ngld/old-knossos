@@ -27,7 +27,7 @@
     "vue-loader": "^15.2.4",
     "vue-popperjs": "^1.2.5",
     "vue-template-compiler": "^2.5.16",
-    "webpack": "^4.15.1",
+    "webpack": "^5.61.0",
     "webpack-cli": "^3.0.8",
     "xbbcode": "^2.0.4"
   }
