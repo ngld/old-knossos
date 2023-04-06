@@ -49,6 +49,8 @@ FETCH_INTERVALS = {
 }
 
 
+MAX_JOYSTICKS = 4
+
 app = None
 main_win = None
 fs2_watcher = None
@@ -88,6 +90,7 @@ settings = {
         'guid': None,
         'id': 99999
     },
+    'joysticks': { 'joy' + str(i): { 'name': '', 'guid': '' } for i in range(0, MAX_JOYSTICKS) },
     'show_fs2_mods_without_retail': False,
     'debug_log': False,
     'show_fso_builds': False
