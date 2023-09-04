@@ -9,8 +9,8 @@ url="https://github.com/ngld/knossos"
 license=('Apache')
 groups=()
 depends=(
-  'python' 'python-six' 'python-requests' 'python-requests-toolbelt' 'python-ply' 'python-token-bucket' 'python-pyqt5' 'qt5-webengine'
-  'qt5-webchannel' 'qt5-tools' 'python-semantic-version' 'python-raven' 'p7zip' 'openal' 'sdl2'
+  'python' 'python-six' 'python-requests' 'python-requests-toolbelt' 'python-ply' 'python-pyqt5' 'qt5-webengine'
+  'qt5-webchannel' 'qt5-tools' 'python-semantic-version' 'p7zip' 'openal' 'sdl2'
 )
 makedepends=('python-setuptools' 'ninja' 'yarn')
 options=(!emptydirs)
