@@ -218,7 +218,10 @@ def run_knossos():
     # Init SDL at the start to load up video modes, which only works
     # on the main thread with some OSes (macOS in particular)
     from knossos import clibs
-    clibs.init_sdl()
+    if not clibs.init_sdl():
+        QtWidgets.QMessageBox.critical(None, 'Knossos', translate(
+            'launcher', 'Cannot find SDL2! Please install it and run this program again.'))
+        return
 
     center.main_win.start_init()
 
