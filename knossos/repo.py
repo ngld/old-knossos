@@ -766,7 +766,7 @@ class Package(object):
         else:
             logging.error('You are using an unrecognized OS! (%s)' % sys.platform)
 
-        for flag in CPU_INFO['flags']:
+        for flag in CPU_INFO.get('flags', []):
             bvars[flag.lower()] = True
 
         try:

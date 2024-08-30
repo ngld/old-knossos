@@ -11,6 +11,14 @@ Files: knossos/third_party/cpuinfo.py
 Copyright: 2014 Matthew Brennan Jones <matthew.brennan.jones@gmail.com>
 License: MIT
 
+Files: knossos/third_party/raven/*
+Copyright: 2015 Functional Software, Inc
+License: BSD 3-Clause
+
+Files: knossos/third_party/token_bucket/*
+Copyright: by various authors, as noted in the individual source files.
+License: Apache-2.0
+
 Files: html/js/bootstrap.* html/css/bootstrap*
 Copyright: 2011-2014 Twitter, Inc
 License: MIT

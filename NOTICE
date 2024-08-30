@@ -5,6 +5,12 @@ This software contains the py-cpuinfo module which was written by
 Matthew Brennan Jones <matthew.brennan.jones@gmail.com> and is available at
 https://github.com/workhorsy/py-cpuinfo
 
+This software contains the raven module from sentry.io and is available
+at https://github.com/getsentry/raven-python
+
+This software contains the token-bucket module and is available at
+https://github.com/falconry/token-bucket
+
 Knossos also uses the jQuery library which is licensed under the MIT license
 and copyrighted by the jQuery Foundation, Inc.
 
