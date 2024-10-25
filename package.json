@@ -23,7 +23,7 @@
     "file-loader": "^1.1.5",
     "moment": "^2.29.4",
     "style-loader": "^0.21.0",
-    "vue": "^2.4.2",
+    "vue": "^3.0.0",
     "vue-loader": "^15.2.4",
     "vue-popperjs": "^1.2.5",
     "vue-template-compiler": "^2.5.16",
